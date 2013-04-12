@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "ctapi.h"
+#include <ctccid/ctapi.h>
 
 unsigned char requesticc[5] = {0x20,0x12,0x00,0x01,0x00};
 unsigned char getstatus[5] = {0x20,0x13,0x00,0x46,0x00};
