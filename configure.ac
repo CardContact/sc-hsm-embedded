@@ -11,15 +11,16 @@ LT_INIT
 AC_PROG_CC
 
 AC_ARG_ENABLE(debug,
-	      AC_HELP_STRING([--enable-debug],[include debugging output]),
-	      [CPPFLAGS="-DDEBUG"], [])
-	      
+		AC_HELP_STRING([--enable-debug],[include debugging output]),
+		[CPPFLAGS="-DDEBUG"], [])
+
 PKG_CHECK_MODULES(LIBUSB, libusb-1.0)
 
 AC_CONFIG_FILES([
     Makefile
     src/Makefile
     src/ctccid/Makefile
+    src/pkcs11/Makefile
     src/tests/Makefile
 ])
 
