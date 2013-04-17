@@ -1,3 +1,20 @@
+/*
+ *  ---------
+ * |.**> <**.|  CardContact
+ * |*       *|  Software & System Consulting
+ * |*       *|  Minden, Germany
+ * |'**> <**'|  Copyright (c) 1999-2006. All rights reserved
+ *  ---------
+ *
+ * See file LICENSE for details on licensing
+ *
+ * Abstract :       CT-API Tests
+ *
+ * Author :         Andreas Schwier
+ *
+ * Last modified:   2006-02-20
+ *
+ *****************************************************************************/
 
 #include <stdio.h>
 #include <string.h>
@@ -9,15 +26,6 @@ unsigned char requesticc[5] = {0x20,0x12,0x00,0x01,0x00};
 unsigned char getstatus[5] = {0x20,0x13,0x00,0x46,0x00};
 unsigned char ejecticc[6] = {0x20,0x15,0x00,0x04,0x00, 5};
 
-unsigned char selectmf[] = {0x00,0xA4,0x00,0x00,0x02, 0x3F, 0x00, 0x00};
-unsigned char askrandom[] = {0x00,0x84,0x00,0x00,0x08};
-unsigned char closeapp[] = {0x00,0xAC,0x3F,0x00,0x00};
-
-unsigned char write4442[] = {0x00,0xD6,0x00,0xFA,0x02,0xee,0xee}; 
-unsigned char selectmf2[] = {0x00,0xA4,0x00,0x00,0x02,0x3f, 0x00}; 
-unsigned char selectkvk[] = {0x00,0xA4,0x04,0x00,0x06,0xD2,0x76,0x00,0x00,0x01,0x01 }; 
-unsigned char verify[] = {0x00,0x20,0x00,0x00,0x03,0xff,0xff,0xff};
-unsigned char read4442[] = {0x00,0xB0,0x00,0x00,0x00};
 
 
 int freq[] = { 143, 35, 71, 17, 196, 49, 98, 24, 122, 30, 61, 15 ,0};
@@ -182,7 +190,6 @@ void Dump(unsigned char *mem, int len)
  *
  *  Returns : < 0 Error > 0 Bytes read
  */
-
 int ProcessAPDU(int ctn, int todad,
                 unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
                 int OutLen, unsigned char *OutData,
@@ -205,7 +212,7 @@ int ProcessAPDU(int ctn, int todad,
         rv = 0;
 
         if (OutData && OutLen) {
-            if (OutLen <= 255) {
+            if ((OutLen <= 255) && (InLen <= 255)) {
                 *po++ = (unsigned char)OutLen;
             } else {
                 *po++ = 0;
@@ -223,7 +230,9 @@ int ProcessAPDU(int ctn, int todad,
                 if (InLen >= 65556)
                     InLen = 0;
 
-                *po++ = 0;
+                if (!OutData) {
+                	*po++ = 0;
+                }
                 *po++ = (unsigned char)(InLen >> 8);
                 *po++ = (unsigned char)(InLen & 0xFF);
             }
@@ -233,7 +242,7 @@ int ProcessAPDU(int ctn, int todad,
         dad  = todad;
         lenr = sizeof(scr);
         
-        rc = CT_data((unsigned short)ctn, &dad, &sad, (unsigned short)(po - scr), scr, &lenr, scr);
+        rc = CT_data(ctn, &dad, &sad, po - scr, scr, &lenr, scr);
 
         if (rc < 0)
             return rc;
@@ -375,377 +384,39 @@ int TestStatus(int ctn)
 
 
 /*
- * Test memory cards
+ * Test microprocessor cards (SmartCard-HSM)
  *
  */
-
-int TestMemoryCard(int ctn)
-
-{
-    unsigned char Brsp[MAX_APDULEN];
-    unsigned short SW1SW2;
-    int rc;
-
-    printf("\n- Memory Card: SELECT MF for ctn=%d ------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0x00,0xA4,0x00,0x00,
-                     2, (unsigned char*)"\x3F\x00",
-                     0, Brsp, sizeof(Brsp), &SW1SW2);
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0) {
-        Dump(Brsp, rc);
-    } else {
-        printf("### Failed ###");
-        return -1;
-    }
-
-    printf("\n- Memory Card: READ BINARY for ctn=%d ------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0x00,0xB0,0x00,0x00,
-                     0, NULL,
-                     0, Brsp, sizeof(Brsp), &SW1SW2);
-
-  
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0)
-        Dump(Brsp, rc);
-
-#if 0
-    printf("\n- Memory Card: VERIFY for ctn=%d ------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0x00,0x20,0x00,0x00,
-                     2, (unsigned char*)"\xFF\xFF",
-                     0, NULL, 0, &SW1SW2);
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0)
-        Dump(Brsp, rc);
-
-
-    
-
-    printf("\n- Memory Card: UPDATE for ctn=%d -------------\n\n", ctn);
-    memset(Brsp, 0xdd, 260);
-
-    rc = ProcessAPDU(ctn, 0, 0x00,0xD6,0x00,0x05,
-                     250, Brsp,
-                     0, NULL, 0, &SW1SW2);
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0)
-        Dump(Brsp, rc);
-#endif
-
-    return 0;
-}
-
-
-
-/*
- * Test native reader commands
- *
- */
-
-int TestNativeCommands(int ctn)
-
-{
-    unsigned char Brsp[260];
-    unsigned short SW1SW2;
-    int rc;
-
-    /* Issue Power Off */
-    rc = ProcessAPDU(ctn, 1, 0x80,'p',4,0x00,
-                     4, (unsigned char*)"poff",
-                     0, Brsp, sizeof(Brsp), &SW1SW2);
-
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0) {
-        Dump(Brsp, rc);
-    } else {
-        printf("\n### Failed ###\n");
-        return -1;
-    }
-
-    /* Issue oa command */
-    rc = ProcessAPDU(ctn, 1, 0x80,'p',2,0x00,
-                     2, (unsigned char*)"oa",
-                     0, Brsp, sizeof(Brsp), &SW1SW2);
-
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0) {
-        Dump(Brsp, rc);
-    } else {
-        printf("\n### Failed ###\n");
-        return -1;
-    }
-
-    /* Issue REQA */
-    rc = ProcessAPDU(ctn, 1, 0x80,'t',0xE3,0x00,
-                     1, (unsigned char*)"\x26",
-                     0, Brsp, sizeof(Brsp), &SW1SW2);
-
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0) {
-        Dump(Brsp, rc);
-    } else {
-        printf("\n### Failed ###\n");
-        return -1;
-    }
-
-    return 0;
-}
-
-
-
-/*
- * Test microprocessor cards
- *
- */
-
 int TestProcessorCard(int ctn)
 
 {
-    unsigned char Brsp[260], ref[260];
+    unsigned char Brsp[4096];
     unsigned short SW1SW2;
-    int rc, i;
+    int rc;
 
-
-    printf("\n- LDS: SELECT LDS or ctn=%d --(Wrong P1/P2) ---------\n\n", ctn);
+    // Case 4s
+    printf("\n- SmartCard-HSM: SELECT APPLET for ctn=%d ------------------\n\n", ctn);
 
     rc = ProcessAPDU(ctn, 0, 0x00,0xA4,0x04,0x04,
-                     7, (unsigned char*)"\xA0\x00\x00\x02\x47\x10\x01",
+                     11, (unsigned char*)"\xE8\x2B\x06\x01\x04\x01\x81\xC3\x1F\x02\x01",
                      0, Brsp, sizeof(Brsp), &SW1SW2);
-
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0) {
-        Dump(Brsp, rc);
-    } else {
-        printf("\n### Failed ###\n");
-        return -1;
-    }
-
-
-    printf("\n- LDS: SELECT LDS or ctn=%d -------------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0x00,0xA4,0x04,0x00,
-                     7, (unsigned char*)"\xA0\x00\x00\x02\x47\x10\x01",
-                     0, Brsp, sizeof(Brsp), &SW1SW2);
-
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0) {
-        Dump(Brsp, rc);
-    } else {
-        printf("\n### Failed ###\n");
-        return -1;
-    }
-
-
-    printf("\n- LDS: SELECT EF_SOD for ctn=%d -------------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0x00,0xA4,0x02,0x00,
-                     2, (unsigned char*)"\x01\x1D",
-                     0, Brsp, sizeof(Brsp), &SW1SW2);
-
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0) {
-        Dump(Brsp, rc);
-    } else {
-        printf("\n### Failed ###\n");
-        return -1;
-    }
-
-
-
-    printf("\n- LDS: READ_BINARY 128 Bytes for ctn=%d ------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0x00,0xB0,0x00,0x00,
-                     0, NULL,
-                     128, Brsp, sizeof(Brsp), &SW1SW2);
-
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0) {
-        Dump(Brsp, rc);
-    } else {
-        printf("\n### Failed ###\n");
-        return -1;
-    }
-
-
-
-    printf("\n- LDS: UPDATE_BINARY 128 Bytes for ctn=%d ------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0x00,0xD6,0x00,0x00,
-                     128, Brsp,
-                     0, NULL, 0, &SW1SW2);
-
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0) {
-        Dump(Brsp, rc);
-    } else {
-        printf("\n### Failed ###\n");
-        return -1;
-    }
-
-
-
-    printf("\n- LDS: READ_BINARY 256 Bytes for ctn=%d ------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0x00,0xB0,0x00,0x00,
-                     0, NULL,
-                     0, Brsp, sizeof(Brsp), &SW1SW2);
-
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0) {
-        Dump(Brsp, rc);
-    } else {
-        printf("\n### Failed ###\n");
-        return -1;
-    }
-
-
-
-    printf("\n- LDS: READ_BINARY 256 Bytes for ctn=%d ------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0x00,0xB0,0x01,0x00,
-                     0, NULL,
-                     0, Brsp, sizeof(Brsp), &SW1SW2);
-
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0) {
-        Dump(Brsp, rc);
-    } else {
-        printf("\n### Failed ###\n");
-        return -1;
-    }
-
-
-    for (i = 0; i < 256; i++)
-        Brsp[i] ^= 0xA5;
-
-    Dump(Brsp, rc);
-
-    printf("\n- LDS: UPDATE_BINARY 255 Bytes for ctn=%d ------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0x00,0xD6,0x01,0x00,
-                     255, Brsp,
-                     0, NULL, 0, &SW1SW2);
-
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0) {
-        Dump(Brsp, rc);
-    } else {
-        printf("\n### Failed ###\n");
-        return -1;
-    }
-
-
-
-    printf("\n- LDS: READ_BINARY 255 Bytes for ctn=%d ------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0x00,0xB0,0x01,0x00,
-                     0, NULL,
-                     255, ref, sizeof(ref), &SW1SW2);
-
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0) {
-        Dump(ref, rc);
-        for (i = 0; i < 255; i++) {
-            if (ref[i] != Brsp[i]) {
-                printf("\n### Failed: Data mismatch at offset %d ###\n", i);
-                return -1;
-            }
-        }
-    } else {
-        printf("\n### Failed ###\n");
-        return -1;
-    }
-
-
-
-    printf("\n- LDS: SELECT EF_DG2 for ctn=%d -------------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0x00,0xA4,0x02,0x00,
-                     2, (unsigned char*)"\x01\x02",
-                     0, Brsp, sizeof(Brsp), &SW1SW2);
-
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0) {
-        Dump(Brsp, rc);
-    } else {
-        printf("\n### Failed ###\n");
-        return -1;
-    }
-
-
-
-    for (i = 0; i < 78; i++) {
-
-        printf("\n- LDS: %d. READ_BINARY 256 Bytes for ctn=%d ------------------\n\n", i, ctn);
-
-        rc = ProcessAPDU(ctn, 0, 0x00,0xB0,i,0x00,
-                         0, NULL,
-                         0, Brsp, sizeof(Brsp), &SW1SW2);
-
-
-        printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-        if (rc >= 0) {
-            Dump(Brsp, rc);
-        } else {
-            printf("\n### Failed ###\n");
-            return -1;
-        }
-    }
-
-
-
-
-
-#if 0
-    printf("\n- uP Card: SELECT MF for ctn=%d ------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0x00,0xA4,0x00,0x00,
-                     2, (unsigned char*)"\x3F\x00",
-                     0, Brsp, sizeof(Brsp), &SW1SW2);
-
 
     printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
 
     if (rc >= 0)
         Dump(Brsp, rc);
 
-    printf("\n- uP Card: ASK RANDOM for ctn=%d ------------------\n\n", ctn);
+    // Case 1
+    printf("\n- SmartCard-HSM: VERIFY STATUS for ctn=%d ------------------\n\n", ctn);
+
+    rc = ProcessAPDU(ctn, 0, 0x00,0x20,0x00,0x81,
+                     0, NULL,
+                     0, NULL, 0, &SW1SW2);
+
+    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
+
+    // Case 2s
+    printf("\n- SmartCard-HSM: GET CHALLENGE for ctn=%d ------------------\n\n", ctn);
 
     rc = ProcessAPDU(ctn, 0, 0x00,0x84,0x00,0x00,
                      0, NULL,
@@ -756,62 +427,56 @@ int TestProcessorCard(int ctn)
     if (rc >= 0)
         Dump(Brsp, rc);
 
-    printf("\n- uP Card: CLOSE APPLICATION for ctn=%d ------------------\n\n", ctn);
+    // Case 3s
+    printf("\n- SmartCard-HSM: VERIFY PIN for ctn=%d ------------------\n\n", ctn);
 
-    rc = ProcessAPDU(ctn, 0, 0x00,0xAC,0x3F,0x00,
-                     0, NULL,
+    rc = ProcessAPDU(ctn, 0, 0x00,0x20,0x00,0x81,
+                     6, (unsigned char *)"648219",
                      0, NULL, 0, &SW1SW2);
 
     printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
 
-    if (rc >= 0)
-        Dump(Brsp, rc);
+    // Case 4e / Inbound extended
+    printf("\n- SmartCard-HSM: READ EF_DevAut for ctn=%d ------------------\n\n", ctn);
 
-// #else
-    printf("\n- uP Card: VERIFY_CHV for ctn=%d ------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0xA0,0x20,0x00,0x01,
-                     8, (unsigned char*)"4961\xFF\xFF\xFF\xFF",
-                     0, Brsp, sizeof(Brsp), &SW1SW2);
+    rc = ProcessAPDU(ctn, 0, 0x00,0xB1,0x2F,0x02,
+                     4, (unsigned char*)"\x54\x02\x00\x00",
+                     65536, Brsp, sizeof(Brsp), &SW1SW2);
 
     printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
 
     if (rc >= 0)
         Dump(Brsp, rc);
 
-    printf("\n- uP Card: SELECT DF_TELECOM for ctn=%d ------------------\n\n", ctn);
+    // Case 4e / Outbound extended
+    printf("\n- SmartCard-HSM: UPDATE EF for ctn=%d ------------------\n\n", ctn);
 
-    rc = ProcessAPDU(ctn, 0, 0xA0,0xA4,0x00,0x00,
-                     2, (unsigned char*)"\x7F\x10",
-                     0, Brsp, sizeof(Brsp), &SW1SW2);
+    Brsp[0] = 0x54;
+    Brsp[1] = 0x02;
+    Brsp[2] = 0x00;
+    Brsp[3] = 0x00;
+    Brsp[4] = 0x53;
+    Brsp[5] = 0x82;
+    Brsp[6] = 0x01;
+    Brsp[7] = 0x00;
+
+    rc = ProcessAPDU(ctn, 0, 0x00,0xD7,0xEF,0x01,
+                     264, Brsp,
+                     0, NULL, 0, &SW1SW2);
+
+    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
+
+    // Case 4e / Inbound extended
+    printf("\n- SmartCard-HSM: GAKP(RSA) for ctn=%d ------------------\n\n", ctn);
+
+    rc = ProcessAPDU(ctn, 0, 0x00,0x46,0x01,0x00,
+                     63, (unsigned char*)"\x5F\x29\x01\x00\x42\x0E\x44\x45\x43\x41\x30\x30\x30\x30\x31\x30\x30\x30\x30\x31\x7F\x49\x15\x06\x0A\x04\x00\x7F\x00\x07\x02\x02\x02\x01\x02\x82\x03\x01\x00\x01\x02\x02\x08\x00\x5F\x20\x10\x55\x54\x54\x45\x53\x54\x4B\x45\x59\x30\x31\x30\x30\x30\x30\x30",
+                     65536, Brsp, sizeof(Brsp), &SW1SW2);
 
     printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
 
     if (rc >= 0)
         Dump(Brsp, rc);
-
-    printf("\n- uP Card: SELECT EF_ADN for ctn=%d ------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0xA0,0xA4,0x00,0x00,
-                     2, (unsigned char*)"\x6F\x3A",
-                     0, Brsp, sizeof(Brsp), &SW1SW2);
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0)
-        Dump(Brsp, rc);
-
-    printf("\n- uP Card: READ_RECORD for ctn=%d ------------------\n\n", ctn);
-
-    rc = ProcessAPDU(ctn, 0, 0xA0,0xB2,0x01,0x04,
-                     0, NULL,
-                     32, Brsp, sizeof(Brsp), &SW1SW2);
-
-    printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
-
-    if (rc >= 0)
-        Dump(Brsp, rc);
-#endif
 
     return 0;
 }
@@ -895,15 +560,6 @@ int main(int argc, char **argv)
 
     for (i = 0; i < MAXPORT; i++) {
         if (ctns[i] >= 0) {
-            if ((rc = TestNativeCommands(i)) < 0)
-                ctns[i] = -1;
-            else
-                ctns[i] = rc;
-        }
-    }
-
-    for (i = 0; i < MAXPORT; i++) {
-        if (ctns[i] >= 0) {
             if ((rc = TestRequestICC(i)) < 0)
                 ctns[i] = -1;
             else
@@ -915,9 +571,6 @@ int main(int argc, char **argv)
         switch(ctns[i]) {
             case -1 :
             case  0 :
-                break;
-            case  1 :
-                TestMemoryCard(i);
                 break;
             case  2 :
                 TestProcessorCard(i);
