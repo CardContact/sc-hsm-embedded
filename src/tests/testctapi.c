@@ -518,7 +518,7 @@ int TestEjectICC(int ctn)
 
 
 
-#define MAXPORT 1
+#define MAXPORT 2
 
 /*
  * cnts stores the status for the card reader
@@ -538,8 +538,7 @@ int main(int argc, char **argv)
     for (i = 0; i < MAXPORT; i++)
         ctns[i] = -1;
 
-    i = 0;
-	if ((i >= 0) && (i < MAXPORT)) {
+    for (i = 0; i < MAXPORT; i++) {
 		rc = CT_init((unsigned short) i, (unsigned short) i);
 		if (rc < 0) {
 			printf("\nNo reader found at port %d\n", i);
@@ -548,7 +547,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-#if 0
     for (i = 0; i < MAXPORT; i++) {
         if (ctns[i] >= 0) {
             if ((rc = TestStatus(i)) < 0)
@@ -568,24 +566,15 @@ int main(int argc, char **argv)
     }
 
     for (i = 0; i < MAXPORT; i++) {
-        switch(ctns[i]) {
-            case -1 :
-            case  0 :
-                break;
-            case  2 :
-                TestProcessorCard(i);
-                break;
-        }
+    	TestProcessorCard(i);
     }
-  
+
     for (i = 0; i < MAXPORT; i++) {
         if (ctns[i] >= 1) {
             TestEjectICC(i);
             ctns[i] = 0;
         }
     }
-
-#endif
 
     for (i = 0; i < MAXPORT; i++) {
         if (ctns[i] >= 0)

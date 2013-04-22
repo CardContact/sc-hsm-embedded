@@ -191,13 +191,13 @@ void main(int argc, char *argv[])
     while (i < slots) {
     	slotid = *(slotlist + i);
 
-    	printf("Calling C_GetSlotInfo for slot %i ", slotid);
+    	printf("Calling C_GetSlotInfo for slot %lu ", slotid);
 
     	rc = p11->C_GetSlotInfo(slotid, &slotinfo);
     	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), rc == CKR_OK ? "Passed" : "Failed");
 
     	if (rc != CKR_OK) {
-    		printf("Error getting slot information from cryptoki. slotid = %l, rc = %l = %s\n", slotid, rc, id2name(p11CKRName, rc, NULL));
+    		printf("Error getting slot information from cryptoki. slotid = %lu, rc = %lu = %s\n", slotid, rc, id2name(p11CKRName, rc, NULL));
     	    free(slotlist);
     	    exit(-1);
     	}
@@ -211,7 +211,7 @@ void main(int argc, char *argv[])
       	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), rc == CKR_OK ? "Passed" : rc == CKR_TOKEN_NOT_PRESENT ? "No token" : "Failed");
 
         if (rc != CKR_OK && rc != CKR_TOKEN_NOT_PRESENT) {
-            printf("Error getting token information from cryptoki. slotid = %l, rc = %l = %s\n", slotid, rc, id2name(p11CKRName, rc, NULL));
+            printf("Error getting token information from cryptoki. slotid = %lu, rc = %lu = %s\n", slotid, rc, id2name(p11CKRName, rc, NULL));
         	free(slotlist);
         	exit(-1);
         }
@@ -233,7 +233,7 @@ void main(int argc, char *argv[])
     printf("- %s : %s\n", id2name(p11CKRName, rc, 0), rc == CKR_OK ? "Passed" : "Failed");
 
     if (rc != CKR_OK) {
-    	printf("Error getting slot information from cryptoki. slotid = %l, rc = %l = %s\n", slotid, rc, id2name(p11CKRName, rc, NULL));
+    	printf("Error getting slot information from cryptoki. slotid = %lu, rc = %lu = %s\n", slotid, rc, id2name(p11CKRName, rc, NULL));
         exit(-1);
     }
 
@@ -279,7 +279,7 @@ void main(int argc, char *argv[])
     printf("- %s : %s\n", id2name(p11CKRName, rc, 0), rc == CKR_OK ? "Passed" : rc == CKR_TOKEN_NOT_PRESENT ? "No token" : "Failed");
 
     if (rc != CKR_OK) {
-    	printf("Error getting token information from cryptoki. slotid = %l, rc = %l = %s\n", slotid, rc, id2name(p11CKRName, rc, NULL));
+    	printf("Error getting token information from cryptoki. slotid = %lu, rc = %lu = %s\n", slotid, rc, id2name(p11CKRName, rc, NULL));
         exit(-1);
     }
 

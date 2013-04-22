@@ -3,16 +3,16 @@
  * |.**> <**.|  CardContact
  * |*       *|  Software & System Consulting
  * |*       *|  Minden, Germany
- * |�**> <**�|  Copyright (c) 1999-2006. All rights reserved
- *  --------- 
+ * |.**> <**.|  Copyright (c) 2013. All rights reserved
+ *  ---------
  *
  * See file LICENSE for details on licensing
  *
  * Abstract :       Main API interface according to MKT specification
  *
- * Author :         Frank Thater (FTH), David Corcoran
+ * Author :         Frank Thater (FTH)
  *
- * Last modified:   04/04/2000
+ * Last modified:   2013-04-22
  *
  *****************************************************************************/
 
@@ -32,7 +32,7 @@ signed char CT_init (
 
 signed char CT_close(
     unsigned short ctn                  /* Number assigned to terminal       */
-    );                 
+    );
 
 signed char CT_data(
     unsigned short ctn,                /* Number assigned to terminal       */
