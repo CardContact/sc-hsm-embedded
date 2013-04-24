@@ -181,10 +181,12 @@ int Write(usb_device_t *device, unsigned int length, unsigned char *buffer) {
     int rc;
     int send;
 
-    rc = libusb_bulk_transfer(device->handle, device->bulk_out, buffer, length,
-            &send, USB_WRITE_TIMEOUT);
+    rc = libusb_bulk_transfer(device->handle, device->bulk_out, buffer, length, &send, USB_WRITE_TIMEOUT);
 
     if (rc != 0 || (send != length)) {
+#ifdef DEBUG
+    	printf("libusb_bulk_transfer failed. rc = %i, send=%i, length=%i", rc, send, length);
+#endif
         return -1;
     }
 

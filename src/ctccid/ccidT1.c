@@ -33,7 +33,7 @@
 
 void ccidT1InitProtocol(scr_t *ctx) {
     ctx->t1->WorkBWT = ctx->t1->BlockWaitTime;
-    ctx->t1->IFSC = MaxCCIDMessageLength(ctx);
+    ctx->t1->IFSC = 254; /* Fixed IFSC size */
     ctx->t1->SSequenz = 0;
     ctx->t1->RSequenz = 0;
 }
@@ -125,20 +125,24 @@ int ccidT1ReceiveBlock(scr_t *ctx) {
 
     lrc = 0;
 
-    // Calculate checksum
-    for (i = 0; i < (len - 1); i++) {
-        lrc ^= buf[i];
-    }
+    if (len != 0) {
+    	// Calculate checksum
+    	for (i = 0; i < (len - 1); i++) {
+    		lrc ^= buf[i];
+    	}
 
-    if (lrc != buf[len - 1]) {
-        return ERR_EDC;
+    	if (lrc != buf[len - 1]) {
+    		return ERR_EDC;
+    	}
     }
 
     ctx->t1->Nad = buf[0];
     ctx->t1->Pcb = buf[1];
     ctx->t1->InBuffLength = buf[2];
 
-    memcpy(ctx->t1->InBuff, buf + 3, ctx->t1->InBuffLength);
+    if (ctx->t1->InBuffLength > 0) {
+    	memcpy(ctx->t1->InBuff, buf + 3, ctx->t1->InBuffLength);
+    }
 
     return 0;
 }
@@ -517,12 +521,27 @@ int ccidT1Transport(scr_t *ctx,
 
     int ret;
 
+#ifdef DEBUG
+    printf("ccidT1SendData called\n");
+#endif
+
     ret = ccidT1SendData(ctx, FALSE, SrcNode, DestNode, OBuffer, OBuffLen);
 
-    if (ret < 0)
-        return(ret);
+    if (ret < 0) {
+#ifdef DEBUG
+    printf("ccidT1SendData failed with rc = %i\n", ret);
+#endif
+    	return(ret);
+    }
 
     ret = ccidT1ReceiveData(ctx, SrcNode, DestNode, IBuffer, IBuffLen);
+
+#ifdef DEBUG
+    if (ret < 0) {
+    	printf("ccidT1ReceiveData failed with rc = %i\n", ret);
+    }
+#endif
+
     return(ret);
 }
 

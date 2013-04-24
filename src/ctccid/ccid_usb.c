@@ -37,30 +37,27 @@ void CCIDDump(unsigned char *mem, int len) {
 
     switch(mem[0]) {
     case MSG_TYPE_PC_to_RDR_IccPowerOn:
-        printf("PC_to_RDR_IccPowerOn\n");
+        printf("CCID PC_to_RDR_IccPowerOn\n");
         break;
     case MSG_TYPE_PC_to_RDR_IccPowerOff:
-        printf("PC_to_RDR_IccPowerOff\n");
+        printf("CCID PC_to_RDR_IccPowerOff\n");
         break;
     case MSG_TYPE_PC_to_RDR_GetSlotStatus:
-        printf("PC_to_RDR_GetSlotStatus\n");
+        printf("CCID PC_to_RDR_GetSlotStatus\n");
         break;
     case MSG_TYPE_PC_to_RDR_XfrBlock	:
-        printf("PC_to_RDR_XfrBlock\n");
+        printf("CCID PC_to_RDR_XfrBlock\n");
         break;
     case MSG_TYPE_RDR_to_PC_DataBlock:
-        printf("RDR_to_PC_DataBlock\n");
+        printf("CCID RDR_to_PC_DataBlock\n");
         break;
     case MSG_TYPE_RDR_to_PC_SlotStatus:
-        printf("RDR_to_PC_SlotStatus\n");
+        printf("CCID RDR_to_PC_SlotStatus\n");
         break;
     default:
         printf("Unknown message type");
         break;
     }
-
-    if (len >= 16)
-        printf("\n");
 
     while(len--) {
         printf("%02x ", *mem);
@@ -215,7 +212,7 @@ int PC_to_RDR_XfrBlock(scr_t *ctx, unsigned int outlen, unsigned char *outbuf) {
     rc = Write(ctx->device, (10 + outlen), msg);
 
     if (rc < 0) {
-        return rc;
+    	return rc;
     }
 
     return 0;
