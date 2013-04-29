@@ -114,13 +114,6 @@ int RequestICC(struct scr *ctx, unsigned int lc, unsigned char *cmd,
         return ERR_CT;
     }
 
-    if (status == ICC_PRESENT_AND_ACTIVE) { /* card already inserted ! */
-        rsp[0] = HIGH(W_ICC_ALREADY_PRESENT);
-        rsp[1] = LOW(W_ICC_ALREADY_PRESENT);
-        *lr = 2;
-        return OK;
-    }
-
     timeout *= 4;
 
     do {
