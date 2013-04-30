@@ -46,10 +46,13 @@ static int LookupReader(unsigned short ctn) {
 
 
 
-/*
- * Initialize the interface to the card reader attached
- * to the port number specified in <pn>
+/**
+ * Initialize the interface to the card reader ctn attached
+ * to the port number specified in pn
  *
+ * @param ctn Card terminal number
+ * @param pn Port number
+ * @return Status code \ref OK, \ref ERR_INVALID, \ref ERR_CT, \ref ERR_TRANS, \ref ERR_MEMORY, \ref ERR_HOST, \ref ERR_HTSI
  */
 signed char CT_init(unsigned short ctn, unsigned short pn) {
     int rc, indx;
@@ -97,9 +100,11 @@ signed char CT_init(unsigned short ctn, unsigned short pn) {
 
 
 
-/*
+/**
  * Close the interface and free all allocated resources
  *
+ * @param ctn Card terminal number
+ * @return Status code \ref OK, \ref ERR_INVALID, \ref ERR_CT, \ref ERR_TRANS, \ref ERR_MEMORY, \ref ERR_HOST, \ref ERR_HTSI
  */
 signed char CT_close(unsigned short ctn) {
 
@@ -132,9 +137,17 @@ signed char CT_close(unsigned short ctn) {
 
 
 
-/*
+/**
  * Pass a command to the reader driver and receive the response
  *
+ * @param ctn Card terminal number
+ * @param dad Destination address
+ * @param sad Source address
+ * @param lc Length of command data
+ * @param cmd Command data
+ * @param lr Size of response data buffer
+ * @param rsp Response data
+ * @return Status code \ref OK, \ref ERR_INVALID, \ref ERR_CT, \ref ERR_TRANS, \ref ERR_MEMORY, \ref ERR_HOST, \ref ERR_HTSI
  */
 signed char CT_data(unsigned short ctn, unsigned char *dad, unsigned char *sad,
                     unsigned short lc, unsigned char *cmd, unsigned short *lr,

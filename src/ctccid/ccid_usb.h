@@ -42,7 +42,7 @@
 
 #define MATCH(x,y) ((x >= (y - y / 20)) && (x <= (y + y / 20)))
 
-int PC_to_RDR_IccPowerOn(scr_t *ctx, unsigned int *len, unsigned char *buf);
+int PC_to_RDR_IccPowerOn(scr_t *ctx);
 
 int PC_to_RDR_IccPowerOff(scr_t *ctx);
 
@@ -57,7 +57,5 @@ static int DetermineBaudrate(int F, int D);
 static int DecodeATR(scr_t *ctx);
 
 int PC_to_RDR_SetParameters(scr_t *ctx);
-
-int MaxCCIDMessageLength(scr_t *ctx);
 
 #endif

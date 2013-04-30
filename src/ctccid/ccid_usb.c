@@ -79,11 +79,11 @@ void CCIDDump(unsigned char *mem, int len) {
 
 
 
-int PC_to_RDR_IccPowerOn(scr_t *ctx, unsigned int *len, unsigned char *buf) {
+int PC_to_RDR_IccPowerOn(scr_t *ctx) {
 
     int rc;
-    unsigned char msg[10];
-    unsigned int atrlen;
+    unsigned char msg[10 + MAX_ATR];
+    unsigned int atrlen, l = 10 + MAX_ATR;
 
     memset(msg, 0, 10);
     msg[0] = MSG_TYPE_PC_to_RDR_IccPowerOn;
@@ -98,24 +98,24 @@ int PC_to_RDR_IccPowerOn(scr_t *ctx, unsigned int *len, unsigned char *buf) {
         return rc;
     }
 
-    rc = Read(ctx->device, len, buf);
+    rc = Read(ctx->device, &l, msg);
 
     if (rc < 0) {
         return rc;
     }
 
 #ifdef DEBUG
-    CCIDDump(buf, *len);
+    CCIDDump(msg, l);
 #endif
 
-    if (*len < 10 || buf[0] != MSG_TYPE_RDR_to_PC_DataBlock || buf[5] != 0x00 || buf[6] != 0x00) { // wrong length, message type, slot or sequence number
+    if (l < 10 || msg[0] != MSG_TYPE_RDR_to_PC_DataBlock || msg[5] != 0x00 || msg[6] != 0x00) { // wrong length, message type, slot or sequence number
         return -1;
     }
 
-    atrlen = (buf[4] << 24) + (buf[3] << 16) + (buf[2] << 8) + buf[1];
+    atrlen = (msg[4] << 24) + (msg[3] << 16) + (msg[2] << 8) + msg[1];
 
     memset(ctx->ATR, 0, sizeof(ctx->ATR));
-    memcpy(ctx->ATR, (buf + 10), atrlen);
+    memcpy(ctx->ATR, (msg + 10), atrlen);
     ctx->LenOfATR = atrlen;
 
     rc = DecodeATR(ctx);
@@ -124,7 +124,6 @@ int PC_to_RDR_IccPowerOn(scr_t *ctx, unsigned int *len, unsigned char *buf) {
         return rc;
     }
 
-    // rc = PC_to_RDR_SetParameters(ctx, 0x01, 0x03, 0x02, 0xFE);
     rc = PC_to_RDR_SetParameters(ctx);
 
     if (rc < 0) {

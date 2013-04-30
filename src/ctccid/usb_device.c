@@ -24,6 +24,13 @@
 
 #include "usb_device.h"
 
+/**
+ * Open USB device at the specified port and allocate necessary resources
+ *
+ * @param pn Port number
+ * @param device Structure holding device specific data
+ * @return 0 on success, -1 otherwise
+ */
 int Open(unsigned short pn, usb_device_t **device) {
 
     int rc, cnt, i;
@@ -159,21 +166,42 @@ int Open(unsigned short pn, usb_device_t **device) {
 
 
 
+/**
+ * Close USB device and free allocated resources
+ *
+ * @param device Structure with device specific data
+ * @return 0 on success, -1 otherwise
+ */
 int Close(usb_device_t **device) {
 
-    libusb_release_interface((*device)->handle,
+	int rc;
+
+    rc = libusb_release_interface((*device)->handle,
                              (*device)->configuration_descriptor->interface->altsetting->bInterfaceNumber);
+    if (rc != 0) {
+    	return -1;
+    }
+
     libusb_free_config_descriptor((*device)->configuration_descriptor);
     libusb_close((*device)->handle);
     free(*device);
     *device = NULL;
 
     libusb_exit(NULL );
+
     return 0;
 }
 
 
 
+/**
+ * Write data block to specified USB device using bulk transfer
+ *
+ * @param device Device specific data
+ * @param length Length of data to write
+ * @param buffer Data buffer
+ * @return 0 on success, -1 otherwise
+ */
 int Write(usb_device_t *device, unsigned int length, unsigned char *buffer) {
     int rc;
     int send;
@@ -192,6 +220,14 @@ int Write(usb_device_t *device, unsigned int length, unsigned char *buffer) {
 
 
 
+/**
+ * Read data block from specified USB device using bulk transfer
+ *
+ * @param device Device specific data
+ * @param length Length of data buffer
+ * @param buffer Data buffer
+ * @return 0 on success, -1 otherwise
+ */
 int Read(usb_device_t *device, unsigned int *length, unsigned char *buffer) {
     int rc;
     int read;

@@ -38,6 +38,8 @@ typedef struct ccidT1 {
     unsigned char   InBuff[BUFFMAX];     /* Buffer for incoming data          */
 } ccidT1_t;
 
+#define ERR_EDC     -11
+
 #ifndef TRUE
 #define TRUE    1
 #define FALSE   0

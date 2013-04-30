@@ -72,7 +72,7 @@ int ResetCard(struct scr *ctx, unsigned int lc, unsigned char *cmd,
               unsigned int *lr, unsigned char *rsp) {
     int response = 0;
 
-    if (PC_to_RDR_IccPowerOn(ctx, lr, rsp) < 0) {
+    if (PC_to_RDR_IccPowerOn(ctx) < 0) {
         rsp[0] = HIGH(NOT_SUCCESSFUL);
         rsp[1] = LOW(NOT_SUCCESSFUL);
         *lr = 2;
