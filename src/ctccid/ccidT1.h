@@ -29,7 +29,7 @@ typedef struct ccidT1 {
     unsigned int    CharWaitTime;        /* Character Wait Time in ETU        */
     unsigned int    BlockWaitTime;       /* Block Wait Time in ETU            */
     long             WorkBWT;             /* Working Block Wait Time in ETU    */
-    int              IFSC;                /* Maximum length of INF field       */
+    unsigned char   IFSC;                /* Maximum length of INF field       */
     int              RSequenz;            /* Receiver sequence number          */
     int              SSequenz;            /* Transmitter sequence number       */
     unsigned char   Nad;                 /* NAD unsigned char of received block        */

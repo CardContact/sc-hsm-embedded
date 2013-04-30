@@ -28,6 +28,9 @@
 #include "ccid_usb.h"
 #include "scr.h"
 
+int FTable[]  = { 372, 372, 558, 744, 1116, 1488, 1860, -1, -1, 512, 768, 1024, 1536, 2048, -1, -1};
+int DTable[]  = { -1, 1, 2, 4, 8, 16, 32, -1, 12, 20, -1, -1, -1, -1, -1, -1};
+
 #ifdef DEBUG
 /*
  * Dump the content any type of CCID message
@@ -54,8 +57,14 @@ void CCIDDump(unsigned char *mem, int len) {
     case MSG_TYPE_RDR_to_PC_SlotStatus:
         printf("CCID RDR_to_PC_SlotStatus\n");
         break;
+    case MSG_TYPE_PC_to_RDR_SetParameters:
+        printf("CCID PC_to_RDR_SetParameters\n");
+        break;
+    case MSG_TYPE_RDR_to_PC_Parameters:
+        printf("CCID RDR_to_PC_Parameters\n");
+        break;
     default:
-        printf("Unknown message type");
+        printf("Unknown message type\n");
         break;
     }
 
@@ -108,6 +117,176 @@ int PC_to_RDR_IccPowerOn(scr_t *ctx, unsigned int *len, unsigned char *buf) {
     memset(ctx->ATR, 0, sizeof(ctx->ATR));
     memcpy(ctx->ATR, (buf + 10), atrlen);
     ctx->LenOfATR = atrlen;
+
+    rc = DecodeATR(ctx);
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    // rc = PC_to_RDR_SetParameters(ctx, 0x01, 0x03, 0x02, 0xFE);
+    rc = PC_to_RDR_SetParameters(ctx);
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    return 0;
+}
+
+
+
+static int DetermineBaudrate(int F, int D) {
+    int br;
+
+    br = 14318000 * D / (F * 4);
+
+    if (MATCH(br, 9600)) {
+        br = 9600;
+    }
+    else if (MATCH(br, 19200)) {
+        br = 19200;
+    }
+    else if (MATCH(br, 38400)) {
+        br = 38400;
+    }
+    else if (MATCH(br, 57600)) {
+        br = 57600;
+    }
+    else if (MATCH(br, 115200)) {
+        br = 115200;
+    }
+    else {
+        br = -1;
+    }
+
+    return br;
+}
+
+
+
+static int DecodeATR(scr_t *ctx) {
+
+    int atrp,rc;
+    int F,Fi;
+    unsigned char i;
+    unsigned char temp;
+    unsigned char help;
+
+    F = Fi = 372;
+    ctx->FI = 1;
+    ctx->DI = 1;
+
+    ctx->IFSC = 32;              /* T=1: information field size TA(i)*/
+    ctx->CWI = 13;               /* T=1: Char waiting time indx TB(i)*/
+    ctx->BWI = 4;                /* T=1: Block waiting time inx TB(i)*/
+
+    atrp = 0;
+
+    /* Check initial char in ATR */
+    temp = ctx->ATR[atrp++];
+
+    if (temp != 0x3B && temp != 0x3F) {
+        return -1;
+    }
+
+    /* Get T0 */
+    temp = ctx->ATR[atrp++];
+    ctx->NumOfHB = temp & 0x0F;
+
+    i = 1;
+    do {
+        help = (temp >> 4);
+        if (help & 1) { /* Get TAx                          */
+            if (i == 1) { /* TA(1) present ?                */
+                temp = ctx->ATR[atrp++];
+                ctx->FI = temp >> 4;
+                ctx->DI = temp & 0xF;
+            }
+
+            if (i > 2) {
+                temp = ctx->ATR[atrp++];
+                ctx->IFSC = temp;
+            }
+        }
+
+        if (help & 2) { /* Get TBx                          */
+            temp = ctx->ATR[atrp++];
+
+            if (i > 2) {
+                ctx->CWI = temp & 0x0F;
+                ctx->BWI = temp >> 4;
+            }
+        }
+
+        if (help & 4) { /* Get TCx                          */
+            temp = ctx->ATR[atrp++];
+
+            if (i == 1) { /* TC(1) present ?                  */
+                ctx->EXTRA_GUARD_TIME = temp;
+            }
+        }
+
+        if (help & 8) { /* Get TDx                          */
+            temp = ctx->ATR[atrp++];
+        } else {
+            temp = 0;
+        }
+
+        i++;
+
+    } while (temp);
+
+    for (i = 0; i < ctx->NumOfHB; i++) {
+        ctx->HCC[i] = ctx->ATR[atrp++];
+    }
+
+    ctx->Baud = DetermineBaudrate(FTable[ctx->FI], DTable[ctx->DI]);
+
+    return 0;
+}
+
+
+
+int PC_to_RDR_SetParameters(scr_t *ctx) {
+
+    unsigned char msg[17];
+    int rc;
+    unsigned int len = 0;
+
+    /* 61 07 00 00 00 00 0F 01 00 00 18 10 02 45 00 FE 00 */
+    memset(msg, 0, 17);
+    msg[0] = MSG_TYPE_PC_to_RDR_SetParameters;
+    msg[1] = 0x07;
+    msg[7] = 0x01;  /* T=1 protocol */
+    msg[10] = (ctx->FI << 4) | (ctx->DI & 0x0F); /* FI, DI */
+    msg[11] = 0x10; /* CRC, direct convention */
+    msg[12] = ctx->EXTRA_GUARD_TIME; /* Extra guard time */
+    msg[13] = (ctx->BWI << 4) | (ctx->CWI & 0x0F); /* BWI, CWI */
+    msg[14] = 0x00; /* Stopping clock is not allowed */
+    msg[15] = ctx->IFSC; /* Negotiated IFSC = 254 bytes */
+    msg[16] = 0x00; /* Default value for NAD */
+
+#ifdef DEBUG
+    CCIDDump(msg, 17);
+#endif
+
+    rc = Write(ctx->device, 17, msg);
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    len = 17;
+    rc = Read(ctx->device, &len, msg);
+
+    if (rc < 0) {
+        return rc;
+    }
+
+#ifdef DEBUG
+    CCIDDump(msg, len);
+#endif
 
     return 0;
 }
@@ -212,7 +391,7 @@ int PC_to_RDR_XfrBlock(scr_t *ctx, unsigned int outlen, unsigned char *outbuf) {
     rc = Write(ctx->device, (10 + outlen), msg);
 
     if (rc < 0) {
-    	return rc;
+        return rc;
     }
 
     return 0;
@@ -251,12 +430,4 @@ int RDR_to_PC_DataBlock(scr_t *ctx, unsigned int *inlen, unsigned char *inbuf) {
     memcpy(inbuf, msg + 10, *inlen);
 
     return 0;
-}
-
-
-
-int MaxCCIDMessageLength(scr_t *ctx) {
-
-    /* Message length as indicated in descriptor - CCID header (10 bytes)) */
-    return (MaxMessageLength(ctx->device) - 10);
 }

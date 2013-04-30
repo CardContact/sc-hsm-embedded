@@ -30,11 +30,15 @@ int Open(unsigned short pn, usb_device_t **device) {
     libusb_device **devs, *dev;
     const unsigned char *extra;
 
-    rc = libusb_init(NULL );
+    rc = libusb_init(NULL);
 
     if (rc != 0) {
         return -1;
     }
+
+#ifdef DEBUG
+    libusb_set_debug(NULL, 3);
+#endif
 
     cnt = libusb_get_device_list(NULL, &devs);
 
@@ -63,12 +67,12 @@ int Open(unsigned short pn, usb_device_t **device) {
 #ifdef DEBUG
             if (desc.idProduct == SCM_SCR_35XX_DEVICE_ID) {
                 printf("Found reader SCR_35XX (%04X:%04X)\n", desc.idVendor,
-                        desc.idProduct);
+                       desc.idProduct);
             }
 
             if (desc.idProduct == SCM_SCR_3310_DEVICE_ID) {
                 printf("Found reader SCR_3310 (%04X:%04X)\n", desc.idVendor,
-                        desc.idProduct);
+                       desc.idProduct);
             }
 #endif
 
@@ -137,17 +141,10 @@ int Open(unsigned short pn, usb_device_t **device) {
                 (*device)->bulk_in = bEndpointAddress;
             }
 
-            if ((bEndpointAddress & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_OUT)
+            if ((bEndpointAddress & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_OUT) {
                 (*device)->bulk_out = bEndpointAddress;
+            }
         }
-
-        if (!(*device)->configuration_descriptor->interface->altsetting->extra_length
-            || (*device)->configuration_descriptor->interface->altsetting->extra_length != 54) {
-                rc = -1;
-        }
-
-        extra = (*device)->configuration_descriptor->interface->altsetting->extra;
-        (*device)->maxMessageLength = (extra[47] << 24) + (extra[46] << 16) + (extra[45] << 8) + extra[44];
 
         rc = 0;
 
@@ -165,7 +162,7 @@ int Open(unsigned short pn, usb_device_t **device) {
 int Close(usb_device_t **device) {
 
     libusb_release_interface((*device)->handle,
-            (*device)->configuration_descriptor->interface->altsetting->bInterfaceNumber);
+                             (*device)->configuration_descriptor->interface->altsetting->bInterfaceNumber);
     libusb_free_config_descriptor((*device)->configuration_descriptor);
     libusb_close((*device)->handle);
     free(*device);
@@ -185,7 +182,7 @@ int Write(usb_device_t *device, unsigned int length, unsigned char *buffer) {
 
     if (rc != 0 || (send != length)) {
 #ifdef DEBUG
-    	printf("libusb_bulk_transfer failed. rc = %i, send=%i, length=%i", rc, send, length);
+        printf("libusb_bulk_transfer failed. rc = %i, send=%i, length=%i", rc, send, length);
 #endif
         return -1;
     }
@@ -199,8 +196,7 @@ int Read(usb_device_t *device, unsigned int *length, unsigned char *buffer) {
     int rc;
     int read;
 
-    rc = libusb_bulk_transfer(device->handle, device->bulk_in, buffer, *length,
-            &read, USB_READ_TIMEOUT);
+    rc = libusb_bulk_transfer(device->handle, device->bulk_in, buffer, *length, &read, USB_READ_TIMEOUT);
 
     if (rc != 0) {
         *length = 0;
@@ -211,10 +207,3 @@ int Read(usb_device_t *device, unsigned int *length, unsigned char *buffer) {
 
     return 0;
 }
-
-
-
-int MaxMessageLength(usb_device_t *device) {
-    return device->maxMessageLength;
-}
-

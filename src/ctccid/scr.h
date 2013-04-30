@@ -33,18 +33,25 @@ typedef struct scr {
 
     struct usb_device	*device;
 
-    unsigned char     ATR[MAX_ATR];       /* Last ATR received from the card    */
-    unsigned char     LenOfATR;           /* Length of ATR                      */
-    unsigned char     NumOfHB;            /* Number of HB                       */
-    unsigned char     HCC[HBSIZE];        /* History Bytes                      */
-    int	                AvailProt;          /* Protocols indicated in ATR         */
-    int 		        Protocol;           /* Handler module providing protocol  */
+    unsigned char     ATR[MAX_ATR];      /* Last ATR received from the card    */
+    unsigned char     LenOfATR;          /* Length of ATR                      */
+    unsigned char     NumOfHB;           /* Number of HB                       */
+    unsigned char     HCC[HBSIZE];       /* History Bytes                      */
+    int	                AvailProt;         /* Protocols indicated in ATR         */
+    int 		        Protocol;          /* Handler module providing protocol  */
+    unsigned char		FI;                /* Clock rate conversion integer	  	 */
+    unsigned char		DI;                /* Baud rate adjustement integer      */
+    unsigned char		CWI;               /* Char waiting time                  */
+    unsigned char		BWI;               /* Block waiting time                 */
+    unsigned char		EXTRA_GUARD_TIME;  /* Extra guard time                   */
+    unsigned char     IFSC;              /* Maximum length of INF field        */
+    int                Baud;              /* Current baudrate                   */
 
     int               (*CTModFunc)(struct scr *,
-                                    unsigned int,         /* length of command  */
-                                    unsigned char *,      /* command            */
-                                    unsigned int *,       /* length of response */
-                                    unsigned char *);     /* response           */
+                                   unsigned int,         /* length of command  */
+                                   unsigned char *,      /* command            */
+                                   unsigned int *,       /* length of response */
+                                   unsigned char *);     /* response           */
 
     struct ccidT1      *t1;
 

@@ -32,8 +32,9 @@
  */
 
 void ccidT1InitProtocol(scr_t *ctx) {
+    ctx->t1->BlockWaitTime = 200 + (1 << ctx->BWI) * 100 + 11000 / ctx->Baud;
     ctx->t1->WorkBWT = ctx->t1->BlockWaitTime;
-    ctx->t1->IFSC = 254; /* Fixed IFSC size */
+    ctx->t1->IFSC = ctx->IFSC;
     ctx->t1->SSequenz = 0;
     ctx->t1->RSequenz = 0;
 }
@@ -75,30 +76,41 @@ void ccidT1BlockInfo(unsigned char Nad, unsigned char Pcb, int InBuffLength, uns
         printf("\n");
     }
 
-    if (ISRBLOCK(Pcb))
+    if (ISRBLOCK(Pcb)) {
         printf("R(%d)[%d]\n", NR(Pcb), RERR(Pcb));
+    }
 
-    if (ISSBLOCK(Pcb))
+    if (ISSBLOCK(Pcb)) {
         switch (SBLOCKFUNC(Pcb)) {
-            case RESYNCHREQ :
-                printf("S(RESYNCH Request)\n"); break;
-            case RESYNCHRES :
-                printf("S(RESYNCH Response)\n"); break;
-            case IFSREQ :
-                printf("S(IFS Request:%d)\n",(int)InBuff[0]); break;
-            case IFSRES :
-                printf("S(IFS Response:%d)\n",(int)InBuff[0]); break;
-            case ABORTREQ       :
-                printf("S(ABORT Request)\n"); break;
-            case ABORTRES       :
-                printf("S(ABORT Response)\n"); break;
-            case WTXREQ :
-                printf("S(WTX Request:%d)\n",(int)InBuff[0]); break;
-            case WTXRES :
-                printf("S(WTX Response:%d)\n",(int)InBuff[0]); break;
-            default :
-                printf("Unknown S(...) Block\n"); break;
+        case RESYNCHREQ :
+            printf("S(RESYNCH Request)\n");
+            break;
+        case RESYNCHRES :
+            printf("S(RESYNCH Response)\n");
+            break;
+        case IFSREQ :
+            printf("S(IFS Request:%d)\n",(int)InBuff[0]);
+            break;
+        case IFSRES :
+            printf("S(IFS Response:%d)\n",(int)InBuff[0]);
+            break;
+        case ABORTREQ       :
+            printf("S(ABORT Request)\n");
+            break;
+        case ABORTRES       :
+            printf("S(ABORT Response)\n");
+            break;
+        case WTXREQ :
+            printf("S(WTX Request:%d)\n",(int)InBuff[0]);
+            break;
+        case WTXRES :
+            printf("S(WTX Response:%d)\n",(int)InBuff[0]);
+            break;
+        default :
+            printf("Unknown S(...) Block\n");
+            break;
         }
+    }
 }
 #endif
 
@@ -126,14 +138,14 @@ int ccidT1ReceiveBlock(scr_t *ctx) {
     lrc = 0;
 
     if (len != 0) {
-    	// Calculate checksum
-    	for (i = 0; i < (len - 1); i++) {
-    		lrc ^= buf[i];
-    	}
+        // Calculate checksum
+        for (i = 0; i < (len - 1); i++) {
+            lrc ^= buf[i];
+        }
 
-    	if (lrc != buf[len - 1]) {
-    		return ERR_EDC;
-    	}
+        if (lrc != buf[len - 1]) {
+            return ERR_EDC;
+        }
     }
 
     ctx->t1->Nad = buf[0];
@@ -141,7 +153,7 @@ int ccidT1ReceiveBlock(scr_t *ctx) {
     ctx->t1->InBuffLength = buf[2];
 
     if (ctx->t1->InBuffLength > 0) {
-    	memcpy(ctx->t1->InBuff, buf + 3, ctx->t1->InBuffLength);
+        memcpy(ctx->t1->InBuff, buf + 3, ctx->t1->InBuffLength);
     }
 
     return 0;
@@ -154,10 +166,10 @@ int ccidT1ReceiveBlock(scr_t *ctx) {
  *
  */
 int ccidT1SendBlock(scr_t *ctx,
-                   unsigned char Nad,
-                   unsigned char Pcb,
-                   unsigned char *Buffer,
-                   int BuffLen) {
+                    unsigned char Nad,
+                    unsigned char Pcb,
+                    unsigned char *Buffer,
+                    int BuffLen) {
     int rc, len;
     unsigned char sndbuf[BUFFMAX], rcvbuf[BUFFMAX];
     unsigned char *ptr, lrc;
@@ -207,22 +219,24 @@ int ccidT1Resynch(scr_t *ctx, int SrcNode, int DestNode) {
 
     while (retry--) {
         ret = ccidT1SendBlock(ctx,
-                             CODENAD(SrcNode, DestNode),
-                             CODESBLOCK(RESYNCHREQ),
-                             NULL,0);
+                              CODENAD(SrcNode, DestNode),
+                              CODESBLOCK(RESYNCHREQ),
+                              NULL,0);
 
-        if (ret < 0)
+        if (ret < 0) {
             return(-1);
+        }
 
         ret = ccidT1ReceiveBlock(ctx);
 
         if (!ret &&
-            ISSBLOCK(ctx->t1->Pcb) &&
-            (SBLOCKFUNC(ctx->t1->Pcb) == RESYNCHRES)) {
+                ISSBLOCK(ctx->t1->Pcb) &&
+                (SBLOCKFUNC(ctx->t1->Pcb) == RESYNCHRES)) {
             ccidT1InitProtocol(ctx);
             return(0);
         }
     }
+
     return(-1);
 }
 
@@ -239,17 +253,19 @@ int ccidT1AbortChain(scr_t *ctx, int SrcNode, int DestNode) {
 
     while (retry--) {
         ret = ccidT1SendBlock(ctx,
-                             CODENAD(SrcNode, DestNode),
-                             CODESBLOCK(ABORTREQ),
-                             NULL, 0);
+                              CODENAD(SrcNode, DestNode),
+                              CODESBLOCK(ABORTREQ),
+                              NULL, 0);
 
-        if (ret < 0)
+        if (ret < 0) {
             return(-1);
+        }
 
         ret = ccidT1ReceiveBlock(ctx);
 
-        if (!ret && ISSBLOCK(ctx->t1->Pcb) && (SBLOCKFUNC(ctx->t1->Pcb) == ABORTRES))
+        if (!ret && ISSBLOCK(ctx->t1->Pcb) && (SBLOCKFUNC(ctx->t1->Pcb) == ABORTRES)) {
             return(0);
+        }
     }
 
     return(-1);
@@ -271,21 +287,23 @@ int ccidT1GetBlock(scr_t *ctx, int SrcNode, int DestNode) {
         ret = ccidT1ReceiveBlock(ctx);
 
         if (ret < 0) {
-            if (!retry)
+            if (!retry) {
                 return(ret);
+            }
 
             /* The receiver did not understand our transmission block.             */
             /* Unless the retry counter expires, we send it again                  */
 
             retry--;
             ret = ccidT1SendBlock(ctx,
-                                 CODENAD(SrcNode, DestNode),
-                                 CODERBLOCK(ctx->t1->RSequenz, ret == ERR_EDC ? 1 : 2),
-                                 NULL,
-                                 0);
+                                  CODENAD(SrcNode, DestNode),
+                                  CODERBLOCK(ctx->t1->RSequenz, ret == ERR_EDC ? 1 : 2),
+                                  NULL,
+                                  0);
 
-            if (ret < 0)
+            if (ret < 0) {
                 return(ret);
+            }
 
             ctx->t1->WorkBWT = ctx->t1->BlockWaitTime;
             continue;
@@ -295,56 +313,57 @@ int ccidT1GetBlock(scr_t *ctx, int SrcNode, int DestNode) {
 
         if (ISSBLOCK(ctx->t1->Pcb)) {
             switch(SBLOCKFUNC(ctx->t1->Pcb)) {
-                case RESYNCHRES :               /* Request to synchronize again      */
-                    ccidT1InitProtocol(ctx);
-                    return(1);
-                    break;
+            case RESYNCHRES :               /* Request to synchronize again      */
+                ccidT1InitProtocol(ctx);
+                return(1);
+                break;
 
-                case IFSREQ :                   /* Request to change the buffer size */
-                    ccidT1SendBlock(ctx,
-                                   CODENAD(SrcNode, DestNode),
-                                   CODESBLOCK(IFSRES),
-                                   ctx->t1->InBuff,
-                                   1);
-                    ctx->t1->IFSC = (int)ctx->t1->InBuff[0];
-
-#ifdef DEBUG
-                    printf("New IFSC: %d unsigned chars.\n", ctx->t1->IFSC);
-#endif
-                    break;
-
-                case ABORTREQ :                 /* Request to abort the transmission */
-                    ccidT1SendBlock(ctx,
-                                   CODENAD(SrcNode, DestNode),
-                                   CODESBLOCK(ABORTRES),
-                                   NULL,
-                                   0);
-
-                    ccidT1ReceiveBlock(ctx);
-                    return(-1);
-                    break;
-
-                case WTXREQ :                   /* Request to extend timeout         */
-                    ccidT1SendBlock(ctx,
-                                   CODENAD(SrcNode, DestNode),
-                                   CODESBLOCK(WTXRES),
-                                   ctx->t1->InBuff,
-                                   1);
-                    ctx->t1->WorkBWT = ctx->t1->BlockWaitTime *
-                        (int)ctx->t1->InBuff[0];
+            case IFSREQ :                   /* Request to change the buffer size */
+                ccidT1SendBlock(ctx,
+                                CODENAD(SrcNode, DestNode),
+                                CODESBLOCK(IFSRES),
+                                ctx->t1->InBuff,
+                                1);
+                ctx->t1->IFSC = (int)ctx->t1->InBuff[0];
 
 #ifdef DEBUG
-                    printf("New BWT value %ld ms.\n",ctx->t1->WorkBWT);
+                printf("New IFSC: %d unsigned chars.\n", ctx->t1->IFSC);
 #endif
-                    break;
+                break;
 
-                default :
-                    return(-1);
+            case ABORTREQ :                 /* Request to abort the transmission */
+                ccidT1SendBlock(ctx,
+                                CODENAD(SrcNode, DestNode),
+                                CODESBLOCK(ABORTRES),
+                                NULL,
+                                0);
+
+                ccidT1ReceiveBlock(ctx);
+                return(-1);
+                break;
+
+            case WTXREQ :                   /* Request to extend timeout         */
+                ccidT1SendBlock(ctx,
+                                CODENAD(SrcNode, DestNode),
+                                CODESBLOCK(WTXRES),
+                                ctx->t1->InBuff,
+                                1);
+                ctx->t1->WorkBWT = ctx->t1->BlockWaitTime *
+                                   (int)ctx->t1->InBuff[0];
+
+#ifdef DEBUG
+                printf("New BWT value %ld ms.\n",ctx->t1->WorkBWT);
+#endif
+                break;
+
+            default :
+                return(-1);
             }
         }
 
-        if (ISRBLOCK(ctx->t1->Pcb) || ISIBLOCK(ctx->t1->Pcb))
+        if (ISRBLOCK(ctx->t1->Pcb) || ISIBLOCK(ctx->t1->Pcb)) {
             break;
+        }
     }
 
     return(0);
@@ -358,11 +377,11 @@ int ccidT1GetBlock(scr_t *ctx, int SrcNode, int DestNode) {
  *
  */
 int ccidT1SendData(scr_t *ctx,
-                  int HostMode,
-                  int SrcNode,
-                  int DestNode,
-                  unsigned char *Buffer,
-                  int BuffLen) {
+                   int HostMode,
+                   int SrcNode,
+                   int DestNode,
+                   unsigned char *Buffer,
+                   int BuffLen) {
     int ret,more,retry,Length,response;
 
     while (BuffLen) {
@@ -375,14 +394,14 @@ int ccidT1SendData(scr_t *ctx,
 
         while (response <= 0) {
             ret = ccidT1SendBlock(ctx,
-                                 CODENAD(SrcNode, DestNode),
-                                 CODEIBLOCK(ctx->t1->SSequenz,more),
-                                 Buffer,
-                                 Length);
+                                  CODENAD(SrcNode, DestNode),
+                                  CODEIBLOCK(ctx->t1->SSequenz,more),
+                                  Buffer,
+                                  Length);
 
-            if (ret < 0)
+            if (ret < 0) {
                 return(ret);
-
+            }
 
             if (!more & HostMode) {
                 ctx->t1->SSequenz = 1 - ctx->t1->SSequenz;
@@ -391,21 +410,26 @@ int ccidT1SendData(scr_t *ctx,
 
             ret = ccidT1GetBlock(ctx, SrcNode, DestNode);
 
-            if (ret < 0)                      /* Something went wrong              */
+            if (ret < 0) {                    /* Something went wrong              */
                 return(ret);
+            }
 
-            if (ret > 0)                      /* Send block again                  */
+            if (ret > 0) {                     /* Send block again                  */
                 continue;
+            }
 
             /* A block can be acknowledged with an I or R-block                    */
 
             if (ISRBLOCK(ctx->t1->Pcb)) {
                 if (NR(ctx->t1->Pcb) == ctx->t1->SSequenz) {
-                    if (retry--)
+                    if (retry--) {
                         continue;                   /* Receiver is requesting same block */
+                    }
 
-                    if (ccidT1Resynch(ctx,SrcNode,DestNode))
+                    if (ccidT1Resynch(ctx,SrcNode,DestNode)) {
                         return(-1);
+                    }
+
                     continue;
                 } else if (more) {
 
@@ -417,8 +441,9 @@ int ccidT1SendData(scr_t *ctx,
 #ifdef DEBUG
                     printf("Error: Unexpected R-Block.\n");
 #endif
-                    if (ccidT1Resynch(ctx,SrcNode,DestNode))
+                    if (ccidT1Resynch(ctx,SrcNode,DestNode)) {
                         return(-1);
+                    }
                 }
             }
 
@@ -427,8 +452,9 @@ int ccidT1SendData(scr_t *ctx,
 #ifdef DEBUG
                     printf("Asynchronous I-Block received as response.\n");
 #endif
-                    if (ccidT1Resynch(ctx,SrcNode,DestNode))
+                    if (ccidT1Resynch(ctx,SrcNode,DestNode)) {
                         return(-1);
+                    }
                 } else {
                     ctx->t1->SSequenz = 1 - ctx->t1->SSequenz;
                     response = 1;
@@ -449,10 +475,10 @@ int ccidT1SendData(scr_t *ctx,
  *
  */
 int ccidT1ReceiveData(scr_t *ctx,
-                     int SrcNode,
-                     int DestNode,
-                     unsigned char *Buffer,
-                     int BuffLen) {
+                      int SrcNode,
+                      int DestNode,
+                      unsigned char *Buffer,
+                      int BuffLen) {
     int more,Length,ret;
 
     Length = 0;
@@ -475,14 +501,19 @@ int ccidT1ReceiveData(scr_t *ctx,
         if (more) {
             while (TRUE) {
                 ret = ccidT1SendBlock(ctx,
-                                     CODENAD(SrcNode, DestNode),
-                                     CODERBLOCK(ctx->t1->RSequenz, 0),
-                                     NULL, 0);
+                                      CODENAD(SrcNode, DestNode),
+                                      CODERBLOCK(ctx->t1->RSequenz, 0),
+                                      NULL, 0);
+
+                if (ret < 0) {
+                    return(ret);
+                }
 
                 ret = ccidT1GetBlock(ctx, SrcNode, DestNode);
 
-                if (ret < 0)
+                if (ret < 0) {
                     return(ret);
+                }
 
                 if (ISRBLOCK(ctx->t1->Pcb)) {
                     if (NR(ctx->t1->Pcb) != ctx->t1->SSequenz) {
@@ -491,8 +522,9 @@ int ccidT1ReceiveData(scr_t *ctx,
                         printf("Error: Invalid sequenz received in R-Block.\n");
 #endif
 
-                        if (ccidT1Resynch(ctx,SrcNode,DestNode))
+                        if (ccidT1Resynch(ctx,SrcNode,DestNode)) {
                             return(-1);
+                        }
                     }
                     continue;
                 }
@@ -512,12 +544,12 @@ int ccidT1ReceiveData(scr_t *ctx,
  *
  */
 int ccidT1Transport(scr_t *ctx,
-                   int SrcNode,
-                   int DestNode,
-                   unsigned char *OBuffer,
-                   int OBuffLen,
-                   unsigned char *IBuffer,
-                   int IBuffLen) {
+                    int SrcNode,
+                    int DestNode,
+                    unsigned char *OBuffer,
+                    int OBuffLen,
+                    unsigned char *IBuffer,
+                    int IBuffLen) {
 
     int ret;
 
@@ -529,16 +561,16 @@ int ccidT1Transport(scr_t *ctx,
 
     if (ret < 0) {
 #ifdef DEBUG
-    printf("ccidT1SendData failed with rc = %i\n", ret);
+        printf("ccidT1SendData failed with rc = %i\n", ret);
 #endif
-    	return(ret);
+        return(ret);
     }
 
     ret = ccidT1ReceiveData(ctx, SrcNode, DestNode, IBuffer, IBuffLen);
 
 #ifdef DEBUG
     if (ret < 0) {
-    	printf("ccidT1ReceiveData failed with rc = %i\n", ret);
+        printf("ccidT1ReceiveData failed with rc = %i\n", ret);
     }
 #endif
 
@@ -552,16 +584,17 @@ int ccidT1Transport(scr_t *ctx,
  *
  */
 int ccidT1Process (struct scr *ctx,
-                  unsigned int  lc,
-                  unsigned char *cmd,
-                  unsigned int  *lr,
-                  unsigned char *rsp) {
+                   unsigned int  lc,
+                   unsigned char *cmd,
+                   unsigned int  *lr,
+                   unsigned char *rsp) {
     int rc;
 
     rc = ccidT1Transport(ctx, 0, 0, cmd, lc, rsp, *lr);
 
-    if (rc < 0)
+    if (rc < 0) {
         return rc;
+    }
 
     *lr = rc;
     return 0;

@@ -37,8 +37,6 @@ typedef struct usb_device {
     struct libusb_device_handle *handle;
     struct libusb_config_descriptor *configuration_descriptor;
 
-    int maxMessageLength;
-
     uint8_t bulk_in;
     uint8_t bulk_out;
     uint8_t interrupt;
@@ -49,6 +47,5 @@ int Open(unsigned short pn, usb_device_t **device);
 int Close(usb_device_t **device);
 int Write(usb_device_t *device, unsigned int length, unsigned char *buffer);
 int Read(usb_device_t *device, unsigned int *length, unsigned char *buffer);
-int MaxMessageLength(usb_device_t *device);
 #endif
 

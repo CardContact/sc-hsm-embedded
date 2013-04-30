@@ -16,9 +16,9 @@
  *
  *****************************************************************************/
 
+#include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "scr.h"
 #include "ctbcs.h"
@@ -27,7 +27,7 @@
 
 
 int setResponse(struct scr *ctx, unsigned char *cmd, unsigned int *lr,
-        unsigned char *rsp) {
+                unsigned char *rsp) {
     unsigned char index = 0;
     unsigned char what = cmd[3] & 0x0F;
 
@@ -69,7 +69,7 @@ int setResponse(struct scr *ctx, unsigned char *cmd, unsigned int *lr,
 
 
 int ResetCard(struct scr *ctx, unsigned int lc, unsigned char *cmd,
-        unsigned int *lr, unsigned char *rsp) {
+              unsigned int *lr, unsigned char *rsp) {
     int response = 0;
 
     if (PC_to_RDR_IccPowerOn(ctx, lr, rsp) < 0) {
@@ -77,11 +77,6 @@ int ResetCard(struct scr *ctx, unsigned int lc, unsigned char *cmd,
         rsp[1] = LOW(NOT_SUCCESSFUL);
         *lr = 2;
         return OK;
-    }
-
-    /* check if explicit ATR was set */
-    if ((lc > 4) && (cmd[4] >= 2)) {
-        memcpy(ctx->ATR, (unsigned char *) &cmd[5], cmd[4]);
     }
 
     ccidT1Init(ctx);
@@ -96,7 +91,7 @@ int ResetCard(struct scr *ctx, unsigned int lc, unsigned char *cmd,
 
 
 int RequestICC(struct scr *ctx, unsigned int lc, unsigned char *cmd,
-        unsigned int *lr, unsigned char *rsp) {
+               unsigned int *lr, unsigned char *rsp) {
     int status, timeout;
 
     if ((lc > 4) && (cmd[4] == 1)) {
@@ -152,7 +147,7 @@ int RequestICC(struct scr *ctx, unsigned int lc, unsigned char *cmd,
 
 
 int EjectICC(struct scr *ctx, unsigned int lc, unsigned char *cmd,
-        unsigned int *lr, unsigned char *rsp) {
+             unsigned int *lr, unsigned char *rsp) {
     int response, status;
     unsigned char value, save_timeout;
     unsigned char timeout;
@@ -275,7 +270,7 @@ int GetICCStatus(struct scr *ctx, unsigned int *lr, unsigned char *rsp) {
 
 
 int GetStatus(struct scr *ctx, unsigned char *cmd, unsigned int *lr,
-        unsigned char *rsp) {
+              unsigned char *rsp) {
     int response;
     unsigned char func_unit = cmd[2];
     unsigned char what = cmd[3];

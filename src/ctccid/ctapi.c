@@ -62,7 +62,9 @@ signed char CT_init(unsigned short ctn, unsigned short pn) {
         /*
          * Determine next free position in reader list
          */
-        for (indx = 0; (indx < MAX_READER) && readerTable[indx]; indx++);
+        for (indx = 0; (indx < MAX_READER) && readerTable[indx]; indx++) {
+            ;
+        }
 
         if (indx == MAX_READER) {
             return ERR_MEMORY;
@@ -135,8 +137,8 @@ signed char CT_close(unsigned short ctn) {
  *
  */
 signed char CT_data(unsigned short ctn, unsigned char *dad, unsigned char *sad,
-        unsigned short lc, unsigned char *cmd, unsigned short *lr,
-        unsigned char *rsp) {
+                    unsigned short lc, unsigned char *cmd, unsigned short *lr,
+                    unsigned char *rsp) {
 
     int rc;
     unsigned int ilr;
@@ -189,8 +191,7 @@ signed char CT_data(unsigned short ctn, unsigned char *dad, unsigned char *sad,
                 ilr = 2;
                 break;
             }
-        } else /* Wrong class for CTAPI */
-        {
+        } else { /* Wrong class for CTAPI */
             rsp[0] = HIGH(CLASS_NOT_SUPPORTED);
             rsp[1] = LOW(CLASS_NOT_SUPPORTED);
             ilr = 2;
