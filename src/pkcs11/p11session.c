@@ -269,30 +269,22 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
     if ((session->user == CKU_USER) || (session->user == CKU_SO)) {
         return CKR_USER_ALREADY_LOGGED_IN;
     }
-      
-    if ((!slot->token->pinUserInitialized) && (userType == CKU_USER)) {
+
+    if (!(slot->token->info.flags & CKF_USER_PIN_INITIALIZED) && (userType == CKU_USER)) {
         return CKR_USER_PIN_NOT_INITIALIZED;
     }
-    
-    /* ToDo: Add Pin verification!
+
+    rv = token_login(slot, userType, pPin, ulPinLen);
     
     if (rv != 0) {
-        return CKR_PIN_INCORRECT;      
+        return rv;
     }
-    */
     
     session->user = userType;
 
     if (session->user == CKU_SO) {
         session->state = CKS_RW_SO_FUNCTIONS;
     } else {
-        rv = loadObjects(slot, slot->token, FALSE);
-
-        if (rv < 0) {
-            session->user = 0xFF;
-            return CKR_GENERAL_ERROR;
-        }
-        
         session->state = (session->flags & CKF_RW_SESSION) ? CKS_RW_USER_FUNCTIONS : CKS_RO_USER_FUNCTIONS;        
     }
 

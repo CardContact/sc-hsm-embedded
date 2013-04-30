@@ -49,9 +49,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
     struct p11Slot_t *slot;
     int pos;
 
-#ifdef DEBUG
-    debug("[C_CreateObject] called\n");
-#endif
+	FUNC_CALLED();
 
     rv = findSessionByHandle(context->sessionPool, hSession, &session);
     
@@ -145,9 +143,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CopyObject)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
-#ifdef DEBUG
-    debug("[C_CopyObject] called\n");
-#endif
+	FUNC_CALLED();
 
     return rv;
 }
@@ -165,9 +161,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DestroyObject)(
     struct p11Slot_t *slot = NULL;
     struct p11Object_t *pObject = NULL;
 
-#ifdef DEBUG
-    debug("[C_DestroyObject] called\n");
-#endif
+	FUNC_CALLED();
 
     rv = findSessionByHandle(context->sessionPool, hSession, &session);
     
@@ -238,9 +232,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetObjectSize)(
     unsigned int size;
     unsigned char *tmp;
 
-#ifdef DEBUG
-    debug("[C_GetObjectSize] called\n");
-#endif
+	FUNC_CALLED();
 
     rv = findSessionByHandle(context->sessionPool, hSession, &session);
     
@@ -300,9 +292,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetAttributeValue)(
     struct p11Slot_t *slot;
     struct p11Attribute_t *attribute;
 
-#ifdef DEBUG
-    debug("[C_GetAttributeValue] called\n");    
-#endif
+	FUNC_CALLED();
 
     rv = findSessionByHandle(context->sessionPool, hSession, &session);
     
@@ -397,10 +387,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
     struct p11Slot_t *slot;
     struct p11Attribute_t *attribute;
     
-#ifdef DEBUG
-    debug("[C_SetAttributeValue] called\n");
-#endif
-    
+	FUNC_CALLED();
+
     rv = findSessionByHandle(context->sessionPool, hSession, &session);
     
     if (rv < 0) {
@@ -505,6 +493,31 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 }
 
 
+
+static int isMatchingObject(struct p11Object_t *pObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount)
+
+{
+    struct p11Attribute_t *pAttribute;
+	int i, rv;
+
+	for (i = 0; i < ulCount; i++) {
+		rv = findAttribute(pObject, pTemplate + i, &pAttribute);
+
+		if (rv < 0) {
+			return CK_FALSE;
+		}
+		if (pTemplate[i].ulValueLen != pAttribute->attrData.ulValueLen) {
+			return CK_FALSE;
+		}
+        if (memcmp(pAttribute->attrData.pValue, pTemplate[i].pValue, pAttribute->attrData.ulValueLen)) {
+			return CK_FALSE;
+        }
+	}
+	return CK_TRUE;
+}
+
+
+
 /*  C_FindObjectsInit initializes a search for token and session objects 
     that match a template. */
 
@@ -515,17 +528,15 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
 )
 {
     int rv;
-    // int i,j;
+    int i;
     struct p11Object_t *pObject;
     // , *pNewSearchObject, *pTempObject;
     struct p11Session_t *session;
     struct p11Slot_t *slot;
     struct p11Attribute_t *pAttribute;
     
-#ifdef DEBUG
-    debug("[C_FindObjectsInit] called\n");
-#endif
-    
+	FUNC_CALLED();
+
     rv = findSessionByHandle(context->sessionPool, hSession, &session);
     
     if (rv < 0) {
@@ -538,10 +549,50 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
         return CKR_FUNCTION_FAILED;        
     }
      
-    session->searchObj.searchList = NULL;
-    session->searchObj.searchNumOfObjects = 0;
-    session->searchObj.objectsCollected = 0;
+#ifdef DEBUG
+    debug("Search Filter:\n");
+    for (i = 0; i < ulCount; i++) {
+    	dumpAttribute(&pTemplate[i]);
+    }
+#endif
 
+    if (session->searchObj.searchList != NULL) {
+    	C_FindObjectsFinal(hSession);
+    }
+
+    /* session objects */
+    pObject = session->sessionObjList;
+
+    while (pObject != NULL) {
+    	if (isMatchingObject(pObject, pTemplate, ulCount)) {
+    		addObjectToSearchList(session, pObject);
+    	}
+        pObject = pObject->next;
+    }
+
+    /* public token objects */
+    pObject = slot->token->tokenObjList;
+
+    while (pObject != NULL) {
+    	if (isMatchingObject(pObject, pTemplate, ulCount)) {
+    		addObjectToSearchList(session, pObject);
+    	}
+        pObject = pObject->next;
+    }
+
+    /* private token objects */
+    if (session->state == CKS_RW_USER_FUNCTIONS) {
+
+        pObject = slot->token->tokenPrivObjList;
+
+        while (pObject != NULL) {
+        	if (isMatchingObject(pObject, pTemplate, ulCount)) {
+        		addObjectToSearchList(session, pObject);
+        	}
+            pObject = pObject->next;
+        }
+    }
+#if 0
     if (ulCount == 0) {
        /* return all objects in the token */
         
@@ -630,6 +681,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
     } else {
         return CKR_FUNCTION_NOT_SUPPORTED;
     }
+#endif
 
     return CKR_OK;
 }
@@ -649,9 +701,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjects)(
     struct p11Object_t *pObject;
     int i = 0;
     
-#ifdef DEBUG
-    debug("[C_FindObjects] called\n");
-#endif
+	FUNC_CALLED();
 
     rv = findSessionByHandle(context->sessionPool, hSession, &session);
     
@@ -692,9 +742,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsFinal)(
     struct p11Object_t *pObject, *pTempObject;
     struct p11Session_t *session;
  
-#ifdef DEBUG
-    debug("[C_FindObjectsFinal] called\n");
-#endif
+	FUNC_CALLED();
 
     rv = findSessionByHandle(context->sessionPool, hSession, &session);
     
@@ -716,5 +764,3 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsFinal)(
 
     return CKR_OK;
 }
-
-

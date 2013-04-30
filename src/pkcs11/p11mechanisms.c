@@ -45,6 +45,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
     struct p11Slot_t *pSlot;
     struct p11Session_t *pSession;
 
+	FUNC_CALLED();
+
     rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
     
     if (rv < 0) {
@@ -97,7 +99,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
     struct p11Slot_t *pSlot;
     struct p11Session_t *pSession;
 
-    rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+	FUNC_CALLED();
+
+	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
     
     if (rv < 0) {
         return CKR_SESSION_HANDLE_INVALID;
@@ -145,6 +149,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptUpdate)(
     struct p11Slot_t *pSlot;
     struct p11Session_t *pSession;
 
+	FUNC_CALLED();
+
     rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
     
     if (rv < 0) {
@@ -189,6 +195,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptFinal)(
     struct p11Object_t *pObject;
     struct p11Slot_t *pSlot;
     struct p11Session_t *pSession;
+
+	FUNC_CALLED();
 
     rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
     
@@ -237,6 +245,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptInit)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -252,6 +262,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_Decrypt)(
 )
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+
+	FUNC_CALLED();
 
     return rv;
 }
@@ -270,6 +282,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptUpdate)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -284,6 +298,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptFinal)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -296,6 +312,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestInit)(
 )
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+
+	FUNC_CALLED();
 
     return rv;
 }
@@ -313,6 +331,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_Digest)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -328,6 +348,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestUpdate)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -341,6 +363,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestKey)(
 )
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+
+	FUNC_CALLED();
 
     return rv;
 }
@@ -356,6 +380,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestFinal)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -370,6 +396,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignInit)(
 )
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+
+	FUNC_CALLED();
 
     return rv;
 }
@@ -387,6 +415,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -402,6 +432,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignUpdate)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -415,6 +447,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 )
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+
+	FUNC_CALLED();
 
     return rv;
 }
@@ -430,6 +464,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignRecoverInit)(
 )
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+
+	FUNC_CALLED();
 
     return rv;
 }
@@ -448,6 +484,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignRecover)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -462,6 +500,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyInit)(
 )
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+
+	FUNC_CALLED();
 
     return rv;
 }
@@ -480,6 +520,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_Verify)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -494,6 +536,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyUpdate)(
 )
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+
+	FUNC_CALLED();
 
     return rv;
 }
@@ -510,6 +554,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyFinal)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -524,6 +570,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyRecoverInit)(
 )
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+
+	FUNC_CALLED();
 
     return rv;
 }
@@ -542,6 +590,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyRecover)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -558,6 +608,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestEncryptUpdate)(
 )
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+
+	FUNC_CALLED();
 
     return rv;
 }
@@ -576,6 +628,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptDigestUpdate)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -592,6 +646,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignEncryptUpdate)(
 )
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+
+	FUNC_CALLED();
 
     return rv;
 }
@@ -610,6 +666,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptVerifyUpdate)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -626,6 +684,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GenerateKey)(
 )
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+
+	FUNC_CALLED();
 
     return rv;
 }
@@ -646,6 +706,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GenerateKeyPair)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -662,6 +724,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_WrapKey)(
 )
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+
+	FUNC_CALLED();
 
     return rv;
 }
@@ -683,6 +747,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_UnwrapKey)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -700,6 +766,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_DeriveKey)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -713,6 +781,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_SeedRandom)(
 )
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+
+	FUNC_CALLED();
 
     return rv;
 }
@@ -728,6 +798,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GenerateRandom)(
 {
     CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
+	FUNC_CALLED();
+
     return rv;
 }
 
@@ -739,6 +811,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetFunctionStatus)(
     CK_SESSION_HANDLE hSession
 )
 {
+	FUNC_CALLED();
+
     return CKR_FUNCTION_NOT_PARALLEL;
 }
 
@@ -750,5 +824,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CancelFunction)(
     CK_SESSION_HANDLE hSession
 )
 {
+	FUNC_CALLED();
+
     return CKR_FUNCTION_NOT_PARALLEL; 
 }

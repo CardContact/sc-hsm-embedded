@@ -31,7 +31,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <dirent.h>
 #endif
 
 #include <pkcs11/p11generic.h>
@@ -40,14 +39,15 @@
 
 #include <strbpcpy.h>
 
+#include <ctccid/ctapi.h>
+
 extern struct p11Context_t *context;
 
 
 /**
  * initSlotPool initializes the slot-pool structure.
  *
- * All directories in the "SlotDirectory" are scanned for valid slots
- * and tokens.
+ * Call CT_init with increasing port number to determine number of readers attached
  *
  * Token found in a slot are added to specific slot structure for later use. 
  *
@@ -82,8 +82,7 @@ extern struct p11Context_t *context;
 int initSlotPool(struct p11SlotPool_t *pool)
 
 { 
-    DIR *dir;
-    struct dirent *dirent;
+    char scr[10];
     int rc, i;
     
     struct p11Slot_t *slot;
@@ -95,77 +94,51 @@ int initSlotPool(struct p11SlotPool_t *pool)
     pool->list = NULL;
     pool->numberOfSlots = 0;
     pool->nextSlotID = 1;
-     
-    dir = NULL;
-    dirent = NULL;
 
-    dir = opendir(context->slotDirectory);
+    for (i = 0; i < MAX_SLOTS; i++) {
+    	rc = CT_init(pool->nextSlotID, i);
 
-#ifdef WIN32
-    if (dir->handle == -1) {
-        return CKR_GENERAL_ERROR;
-    }
-#else
-    if (dir == NULL) {
-            return CKR_GENERAL_ERROR;
-    }
-#endif
+    	if (rc != OK) {
+    		break;
+    	}
 
-    while((dirent = readdir(dir)) != NULL) {
-    
-        if (memcmp(dirent->d_name, ".", 1)) {
-                
-            slot = (struct p11Slot_t *) malloc(sizeof(struct p11Slot_t));
+        slot = (struct p11Slot_t *) malloc(sizeof(struct p11Slot_t));
 
-            if (slot == NULL) {
-                return CKR_HOST_MEMORY;
-            }
-
-            memset(slot, 0x00, sizeof(struct p11Slot_t));
-
-#ifdef WIN32
-            memcpy(slot->slotDir, dirent->d_name, dirent->d_size);
-            i = dirent->d_size;
-#else
-            i = 0;
-            while (dirent->d_name[i] != 0x00) {
-            	i++;
-            }
-            memcpy(slot->slotDir, dirent->d_name, i);
-#endif
-            strbpcpy(slot->info.slotDescription,
-                     dirent->d_name,
-                     i);
-
-            strbpcpy(slot->info.manufacturerID,
-                     "CardContact",
-                     sizeof(slot->info.manufacturerID));
-
-            slot->info.hardwareVersion.minor = 0;
-            slot->info.hardwareVersion.major = 0;
-                
-            slot->info.firmwareVersion.minor = 0;
-            slot->info.firmwareVersion.major = 0;
-
-            addSlot(context->slotPool, slot);
-                
-            rc = checkForToken(slot, &token);
-
-            if (rc != CKR_OK) {
-                removeSlot(context->slotPool, slot->id);
-                return CKR_GENERAL_ERROR;
-            }
-
-            if (token != NULL) {  
-                addToken(slot, token);
-            }
-                
-            dirent = NULL;
+        if (slot == NULL) {
+            return CKR_HOST_MEMORY;
         }
 
-    }
+        memset(slot, 0x00, sizeof(struct p11Slot_t));
 
-    closedir(dir);
+        sprintf(scr, "Slot#%d", i);
+        strbpcpy(slot->info.slotDescription,
+                 scr,
+                 sizeof(slot->info.slotDescription));
+
+        strbpcpy(slot->info.manufacturerID,
+                 "CardContact",
+                 sizeof(slot->info.manufacturerID));
+
+        slot->info.hardwareVersion.minor = 0;
+        slot->info.hardwareVersion.major = 0;
+
+        slot->info.firmwareVersion.minor = 0;
+        slot->info.firmwareVersion.major = 0;
+
+        slot->info.flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
+        addSlot(context->slotPool, slot);
+
+        rc = checkForToken(slot, &token);
+
+        if (rc != CKR_OK) {
+            removeSlot(context->slotPool, slot->id);
+            return CKR_GENERAL_ERROR;
+        }
+
+        if (token != NULL) {
+            addToken(slot, token);
+        }
+    }
     
     return CKR_OK;
 }

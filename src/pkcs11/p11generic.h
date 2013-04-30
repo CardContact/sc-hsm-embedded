@@ -31,6 +31,27 @@
 #define _MAX_PATH FILENAME_MAX
 #endif
 
+#ifdef DEBUG
+#define FUNC_CALLED() do { \
+	debug("Function %s called.\n", __FUNCTION__); \
+} while (0)
+
+#define FUNC_RETURNS(rc) do { \
+	debug("Function %s completes with rc=%d.\n", __FUNCTION__, rc); \
+	return rc; \
+} while (0)
+
+#define FUNC_FAILS(rc, msg) do { \
+	debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, rc, msg); \
+	return rc; \
+} while (0)
+
+#else
+#define FUNC_CALLED()
+#define FUNC_RETURNS(rc) return rc
+#define FUNC_FAILS(rc, msg) return rc
+#endif
+
 /**
  * Internal structure to store information about a token.
  *
@@ -39,6 +60,7 @@
 struct p11Token_t {
 
     CK_TOKEN_INFO info;                 /**< General information about the token            */
+    struct p11Slot_t *slot;				/**< The slot where the token is inserted			*/
     unsigned char pinSO[8];             /**< The encrypted pin of the SO                    */
     unsigned char pinUser[8];           /**< The encrypted pin of the user                  */
     int pinUserInitialized;

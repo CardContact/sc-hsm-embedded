@@ -22,6 +22,7 @@
 
 #include <pkcs11/p11generic.h>
 
+void decodeBCDString(unsigned char *Inbuff, int len, char *Outbuff);
 int initDebug(struct p11Context_t *context);
 int debug(unsigned char *log, ...);
 int termDebug(struct p11Context_t *context);

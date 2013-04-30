@@ -76,6 +76,8 @@
 #include <pkcs11/secretkeyobject.h>
 #include <pkcs11/dataobject.h>
 
+#include <token-sc-hsm.h>
+
 // #define USE_CRYPTO
 // #define USE_MAC
 
@@ -252,6 +254,13 @@ int removeObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicOb
 
     return CKR_OK;
 }
+
+
+
+int token_login(struct p11Slot_t *slot, int userType, unsigned char *pPin, int ulPinLen) {
+	return sc_hsm_login(slot, userType, pPin, ulPinLen);
+}
+
 
 
 int removeObjectLeavingAttributes(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject)

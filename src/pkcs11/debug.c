@@ -30,6 +30,25 @@
 
 extern struct p11Context_t *context;
 
+#define bcddigit(x) ((x) >= 10 ? 'A' - 10 + (x) : '0' + (x))
+
+
+/*
+ *  Convert a string of bytes in BCD coding to a string of hexadecimal char.
+ *
+ */
+void decodeBCDString(unsigned char *Inbuff, int len, char *Outbuff)
+
+{
+    while (len--) {
+        *Outbuff++ = bcddigit(*Inbuff >> 4);
+        *Outbuff++ = bcddigit(*Inbuff & 15);
+        Inbuff++;
+    }
+    *Outbuff++ = '\0';
+}
+
+
 
 int initDebug(struct p11Context_t *context)
 
@@ -60,7 +79,7 @@ int debug(unsigned char *log, ...)
 
     if (context->debugFileHandle != NULL) {
         
-        fprintf(context->debugFileHandle, "%02d.%02d.%04d %02d:%02d",
+        fprintf(context->debugFileHandle, "%02d.%02d.%04d %02d:%02d ",
             loctim->tm_mday,
             loctim->tm_mon,
             loctim->tm_year+1900,

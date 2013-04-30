@@ -246,6 +246,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_Finalize)
 {    
     CK_RV rv = CKR_OK;
 
+	FUNC_CALLED();
+
     if (context != NULL) {
 
         terminateSessionPool(context->sessionPool);
@@ -289,7 +291,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetInfo)
 {
     CK_RV rv = CKR_OK;
 
-    if (pInfo == NULL) {
+	FUNC_CALLED();
+
+	if (pInfo == NULL) {
         return CKR_HOST_MEMORY;
     }
 

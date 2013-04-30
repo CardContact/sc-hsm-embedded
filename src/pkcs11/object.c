@@ -320,6 +320,8 @@ struct id2name_t p11CKOName[] = {
 #define CKT_BIN         2
 #define CKT_DATE        3
 #define CKT_LONG        4
+#define CKT_ULONG       5
+
 
 struct id2name_t p11CKAName[] = {
 { CKA_CLASS                              , "CKA_CLASS", CKT_LONG },
@@ -329,7 +331,7 @@ struct id2name_t p11CKAName[] = {
 { CKA_APPLICATION                        , "CKA_APPLICATION", 0 },
 { CKA_VALUE                              , "CKA_VALUE", CKT_BIN },
 { CKA_OBJECT_ID                          , "CKA_OBJECT_ID", 0 },
-{ CKA_CERTIFICATE_TYPE                   , "CKA_CERTIFICATE_TYPE", 0 },
+{ CKA_CERTIFICATE_TYPE                   , "CKA_CERTIFICATE_TYPE", CKT_ULONG },
 { CKA_ISSUER                             , "CKA_ISSUER", 0 },
 { CKA_SERIAL_NUMBER                      , "CKA_SERIAL_NUMBER", 0 },
 { CKA_AC_ISSUER                          , "CKA_AC_ISSUER", 0 },
@@ -487,7 +489,11 @@ void dumpAttribute(CK_ATTRIBUTE_PTR attr)
         default: 
             switch(atype) {
                 case CKT_BBOOL: 
-                    debug("\n  %s = %s [%d]\n", attribute, *(CK_BBOOL *)attr->pValue ? "TRUE" : "FALSE", *(CK_BBOOL *)attr->pValue);
+                	if (attr->pValue) {
+                		debug("\n  %s = %s [%d]\n", attribute, *(CK_BBOOL *)attr->pValue ? "TRUE" : "FALSE", *(CK_BBOOL *)attr->pValue);
+                	} else {
+                		debug("\n  %s\n", attribute);
+                	}
                     break;
                 case CKT_DATE:
                     // pdate = (CK_DATE *)attr->pValue;
@@ -497,7 +503,10 @@ void dumpAttribute(CK_ATTRIBUTE_PTR attr)
                     debug("\n  %s\n", attribute);                    
                     break;
                 case CKT_LONG:
-                    debug("\n  %s = %ld [0x%lX]\n", attribute, *(CK_LONG *)attr->pValue, *(CK_LONG *)attr->pValue);
+                    debug("\n  %s = %d [0x%X]\n", attribute, *(CK_LONG *)attr->pValue, *(CK_LONG *)attr->pValue);
+                    break;
+                case CKT_ULONG:
+                    debug("\n  %s = %u [0x%X]\n", attribute, *(CK_ULONG *)attr->pValue, *(CK_ULONG *)attr->pValue);
                     break;
                 case CKT_BIN:
                 default:
@@ -557,7 +566,8 @@ int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate)
 
 int findAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTemplate, struct p11Attribute_t **attribute)
 
-{   struct p11Attribute_t *attr;
+{
+	struct p11Attribute_t *attr;
     int pos = 0;            /* remember the current position in the list */
 
     attr = object->attrList;
