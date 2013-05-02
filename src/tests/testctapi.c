@@ -202,7 +202,7 @@ int ProcessAPDU(int ctn, int todad,
     unsigned char scr[MAX_APDULEN], *po;
 
     retry = 2;
-    
+
     while (retry--) {
         scr[0] = CLA;
         scr[1] = INS;
@@ -241,7 +241,7 @@ int ProcessAPDU(int ctn, int todad,
         sad  = HOST;
         dad  = todad;
         lenr = sizeof(scr);
-        
+
         rc = CT_data(ctn, &dad, &sad, po - scr, scr, &lenr, scr);
 
         if (rc < 0)
@@ -251,26 +251,26 @@ int ProcessAPDU(int ctn, int todad,
             InLen = scr[lenr - 1];
             continue;
         }
-    
+
         rv = lenr - 2;
-    
+
         if (rv > InSize)
             rv = InSize;
-    
+
         if (InData)
             memcpy(InData, scr, rv);
 
         if ((scr[lenr - 2] == 0x9F) || (scr[lenr - 2] == 0x61))
             if (InData && InSize) {             /* Get Response             */
                 r = ProcessAPDU(ctn, todad,
-                                (unsigned char)((CLA == 0xE0) || (CLA == 0x80) ? 
+                                (unsigned char)((CLA == 0xE0) || (CLA == 0x80) ?
                                                 0x00 : CLA), 0xC0, 0, 0,
                                 0, NULL,
                                 scr[1], InData + rv, InSize - rv, SW1SW2);
 
                 if (r < 0)
                     return(r);
-        
+
                 rv += r;
             } else
                 *SW1SW2 = 0x9000;
@@ -278,7 +278,7 @@ int ProcessAPDU(int ctn, int todad,
             *SW1SW2 = (scr[lenr - 2] << 8) + scr[lenr - 1];
         break;
     }
-  
+
     return(rv);
 }
 
@@ -300,15 +300,15 @@ int TestRequestICC(int ctn)
     dad = 1;   // Reader
     sad = 2;   // Host
     lr = sizeof(Brsp);
-    
+
     printf("- REQUEST ICC for ctn=%d ------------------\n", ctn);
 
-    rc = CT_data((unsigned short)ctn, &dad, &sad, sizeof(requesticc), (unsigned char *) &requesticc, &lr, Brsp); 
-  
+    rc = CT_data((unsigned short)ctn, &dad, &sad, sizeof(requesticc), (unsigned char *) &requesticc, &lr, Brsp);
+
     printf("\nrc = %d - Print rsp: %d\n", rc, lr);
 
     Dump(Brsp, lr);
-  
+
     if((Brsp[0] == 0x64) || (Brsp[0] == 0x62)) {
         printf("No card present or error !! \n");
         return 0;
@@ -339,8 +339,8 @@ int TestStatus(int ctn)
     dad = 1;   // Reader
     sad = 2;   // Host
     lr = sizeof(Brsp);
-    rc = CT_data((unsigned short)ctn, &dad, &sad, 4, (unsigned char *) "\x20\x13\x00\x46", &lr, Brsp); 
-  
+    rc = CT_data((unsigned short)ctn, &dad, &sad, 4, (unsigned char *) "\x20\x13\x00\x46", &lr, Brsp);
+
     printf("\nrc = %d - Print rsp: %d\n", rc, lr);
 
     Dump(Brsp, lr);
@@ -350,8 +350,8 @@ int TestStatus(int ctn)
     dad = 1;   // Reader
     sad = 2;   // Host
     lr = sizeof(Brsp);
-    rc = CT_data((unsigned short)ctn, &dad, &sad, 4, (unsigned char *) "\x20\x13\x00\x80", &lr, Brsp); 
-  
+    rc = CT_data((unsigned short)ctn, &dad, &sad, 4, (unsigned char *) "\x20\x13\x00\x80", &lr, Brsp);
+
     printf("\nrc = %d - Print rsp: %d\n", rc, lr);
 
     Dump(Brsp, lr);
@@ -361,8 +361,8 @@ int TestStatus(int ctn)
     dad = 1;   // Reader
     sad = 2;   // Host
     lr = sizeof(Brsp);
-    rc = CT_data((unsigned short)ctn, &dad, &sad, 4, (unsigned char *) "\x20\x13\x00\x81", &lr, Brsp); 
-  
+    rc = CT_data((unsigned short)ctn, &dad, &sad, 4, (unsigned char *) "\x20\x13\x00\x81", &lr, Brsp);
+
     printf("\nrc = %d - Print rsp: %d\n", rc, lr);
 
     Dump(Brsp, lr);
@@ -372,8 +372,8 @@ int TestStatus(int ctn)
     dad = 1;   // Reader
     sad = 2;   // Host
     lr = sizeof(Brsp);
-    rc = CT_data((unsigned short)ctn, &dad, &sad, 4, (unsigned char *) "\x20\x13\x01\x80", &lr, Brsp); 
-  
+    rc = CT_data((unsigned short)ctn, &dad, &sad, 4, (unsigned char *) "\x20\x13\x01\x80", &lr, Brsp);
+
     printf("\nrc = %d - Print rsp: %d\n", rc, lr);
 
     Dump(Brsp, lr);
@@ -501,13 +501,13 @@ int TestEjectICC(int ctn)
     lr = sizeof(Brsp);
 
     printf("- EJECT ICC for cnt=%d ------------------\n", ctn);
-  
-    rc = CT_data((unsigned short)ctn, &dad, &sad, sizeof(ejecticc), (unsigned char *) &ejecticc, &lr, Brsp); 
-  
+
+    rc = CT_data((unsigned short)ctn, &dad, &sad, sizeof(ejecticc), (unsigned char *) &ejecticc, &lr, Brsp);
+
     printf("\nrc = %d - Print rsp: %d\n", rc, lr);
 
     Dump(Brsp, lr);
-  
+
     if((Brsp[0] == 0x64) || (Brsp[0] == 0x62)) {
         printf("No card present or error !! \n");
         return 0;
@@ -566,7 +566,12 @@ int main(int argc, char **argv)
     }
 
     for (i = 0; i < MAXPORT; i++) {
-    	TestProcessorCard(i);
+    	if (ctns[i] >= 0) {
+    	    if ((rc = TestProcessorCard(i)) < 0)
+    	        ctns[i] = -1;
+    	    else
+			    ctns[i] = rc;
+		}
     }
 
     for (i = 0; i < MAXPORT; i++) {

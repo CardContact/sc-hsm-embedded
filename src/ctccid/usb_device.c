@@ -87,10 +87,16 @@ int Open(unsigned short pn, usb_device_t **device) {
              * Found the desired reader?
              */
             if (cnt == pn) {
+#ifdef DEBUG
+                printf("Reader index (%i) and requested port number (%i) match.\n", cnt, pn);
+#endif
                 *device = malloc(sizeof(usb_device_t));
                 memset(*device, 0, sizeof(usb_device_t));
                 break;
             } else {
+#ifdef DEBUG
+                printf("Reader index (%i) and requested port number (%i) do not match.\n", cnt, pn);
+#endif
                 cnt++;
             }
         }
