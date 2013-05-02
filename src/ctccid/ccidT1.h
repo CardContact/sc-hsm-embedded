@@ -20,7 +20,6 @@
 #define _CCIDT1_H_
 
 #include "scr.h"
-#include "usb_device.h"
 #include "ctapi.h"
 
 #define BUFFMAX    261

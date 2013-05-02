@@ -29,7 +29,7 @@
  *
  * @param pn Port number
  * @param device Structure holding device specific data
- * @return 0 on success, -1 otherwise
+ * @return Status code \ref USB_OK, \ref ERR_NO_READER, \ref ERR_USB
  */
 int Open(unsigned short pn, usb_device_t **device) {
 
@@ -39,8 +39,8 @@ int Open(unsigned short pn, usb_device_t **device) {
 
     rc = libusb_init(NULL);
 
-    if (rc != 0) {
-        return -1;
+    if (rc != LIBUSB_SUCCESS) {
+        return ERR_USB;
     }
 
 #ifdef DEBUG
@@ -50,7 +50,7 @@ int Open(unsigned short pn, usb_device_t **device) {
     cnt = libusb_get_device_list(NULL, &devs);
 
     if (cnt < 0) {
-        return -1;
+        return ERR_NO_READER;
     }
 
     /* Iterate through all devices to find a reader */
@@ -105,26 +105,26 @@ int Open(unsigned short pn, usb_device_t **device) {
     if (dev != NULL ) { // reader found
         rc = libusb_open(dev, &((*device)->handle));
 
-        if (rc != 0) {
+        if (rc != LIBUSB_SUCCESS) {
             free(device);
             libusb_free_device_list(devs, 1);
-            return -1;
+            return ERR_USB;
         }
 
         rc = libusb_get_active_config_descriptor(dev, &((*device)->configuration_descriptor));
-        if (rc != 0) {
+        if (rc != LIBUSB_SUCCESS) {
             libusb_close((*device)->handle);
             free(device);
             libusb_free_device_list(devs, 1);
-            return -1;
+            return ERR_USB;
         }
 
         rc = libusb_claim_interface((*device)->handle, (*device)->configuration_descriptor->interface->altsetting->bInterfaceNumber);
-        if (rc != 0) {
+        if (rc != LIBUSB_SUCCESS) {
             libusb_close((*device)->handle);
             free(*device);
             libusb_free_device_list(devs, 1);
-            return -1;
+            return ERR_USB;
         }
 
         /*
@@ -159,10 +159,10 @@ int Open(unsigned short pn, usb_device_t **device) {
             }
         }
 
-        rc = 0;
+        rc = USB_OK;
 
     } else { // no reader found
-        rc = -1;
+        rc = ERR_NO_READER;
     }
 
     libusb_free_device_list(devs, 1);
@@ -176,7 +176,7 @@ int Open(unsigned short pn, usb_device_t **device) {
  * Close USB device and free allocated resources
  *
  * @param device Structure with device specific data
- * @return 0 on success, -1 otherwise
+ * @return Status code \ref USB_OK, \ref ERR_USB
  */
 int Close(usb_device_t **device) {
 
@@ -184,8 +184,8 @@ int Close(usb_device_t **device) {
 
     rc = libusb_release_interface((*device)->handle,
                              (*device)->configuration_descriptor->interface->altsetting->bInterfaceNumber);
-    if (rc != 0) {
-    	return -1;
+    if (rc != LIBUSB_SUCCESS) {
+    	return ERR_USB;
     }
 
     libusb_free_config_descriptor((*device)->configuration_descriptor);
@@ -193,9 +193,9 @@ int Close(usb_device_t **device) {
     free(*device);
     *device = NULL;
 
-    libusb_exit(NULL );
+    libusb_exit(NULL);
 
-    return 0;
+    return USB_OK;
 }
 
 
@@ -206,7 +206,7 @@ int Close(usb_device_t **device) {
  * @param device Device specific data
  * @param length Length of data to write
  * @param buffer Data buffer
- * @return 0 on success, -1 otherwise
+ * @return Status code \ref USB_OK, \ref ERR_USB
  */
 int Write(usb_device_t *device, unsigned int length, unsigned char *buffer) {
     int rc;
@@ -214,14 +214,14 @@ int Write(usb_device_t *device, unsigned int length, unsigned char *buffer) {
 
     rc = libusb_bulk_transfer(device->handle, device->bulk_out, buffer, length, &send, USB_WRITE_TIMEOUT);
 
-    if (rc != 0 || (send != length)) {
+    if (rc != LIBUSB_SUCCESS || (send != length)) {
 #ifdef DEBUG
         printf("libusb_bulk_transfer failed. rc = %i, send=%i, length=%i", rc, send, length);
 #endif
-        return -1;
+        return ERR_USB;
     }
 
-    return 0;
+    return USB_OK;
 }
 
 
@@ -232,7 +232,7 @@ int Write(usb_device_t *device, unsigned int length, unsigned char *buffer) {
  * @param device Device specific data
  * @param length Length of data buffer
  * @param buffer Data buffer
- * @return 0 on success, -1 otherwise
+ * @return Status code \ref USB_OK, \ref ERR_USB
  */
 int Read(usb_device_t *device, unsigned int *length, unsigned char *buffer) {
     int rc;
@@ -240,12 +240,15 @@ int Read(usb_device_t *device, unsigned int *length, unsigned char *buffer) {
 
     rc = libusb_bulk_transfer(device->handle, device->bulk_in, buffer, *length, &read, USB_READ_TIMEOUT);
 
-    if (rc != 0) {
+    if (rc != LIBUSB_SUCCESS) {
         *length = 0;
-        return -1;
+#ifdef DEBUG
+        printf("libusb_bulk_transfer failed. rc = %i", rc);
+#endif
+        return ERR_USB;
     }
 
     *length = read;
 
-    return 0;
+    return USB_OK;
 }

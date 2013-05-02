@@ -201,6 +201,9 @@ int ProcessAPDU(int ctn, int todad,
     unsigned char dad, sad;
     unsigned char scr[MAX_APDULEN], *po;
 
+    /* Reset status word */
+    *SW1SW2 = 0x0000;
+
     retry = 2;
 
     while (retry--) {
@@ -311,7 +314,7 @@ int TestRequestICC(int ctn)
 
     if((Brsp[0] == 0x64) || (Brsp[0] == 0x62)) {
         printf("No card present or error !! \n");
-        return 0;
+        return -1;
     }
 
     DecodeATR(Brsp);
@@ -541,7 +544,7 @@ int main(int argc, char **argv)
     for (i = 0; i < MAXPORT; i++) {
 		rc = CT_init((unsigned short) i, (unsigned short) i);
 		if (rc < 0) {
-			printf("\nNo reader found at port %d\n", i);
+			printf("\nNo reader found at port %d, rc=%i\n", i, rc);
 		} else {
 			ctns[i] = 0;
 		}

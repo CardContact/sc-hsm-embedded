@@ -84,10 +84,14 @@ signed char CT_init(unsigned short ctn, unsigned short pn) {
          */
         rc = Open(pn, &(ctx->device));
 
-        if (rc < 0) {
+        if (rc != USB_OK) {
             free(ctx);
-            return ERR_CT;
-        }
+            if (rc == ERR_NO_READER) {
+        	   	return ERR_CT;
+            } else {
+            	return ERR_HOST; /* USB transmission error */
+            }
+    	}
 
         ctx->ctn = ctn;
         ctx->pn = pn;
@@ -220,6 +224,10 @@ signed char CT_data(unsigned short ctn, unsigned char *dad, unsigned char *sad,
 
         if (ctx->CTModFunc) {
             rc = (*ctx->CTModFunc)(ctx, lc, cmd, &ilr, rsp);
+
+            if (rc < 0) {
+            	rc = ERR_TRANS;
+            }
         } else {
 
             *sad = 1; /* Shows that response comes from CTAPI */

@@ -132,7 +132,7 @@ int ccidT1ReceiveBlock(scr_t *ctx) {
     rc = RDR_to_PC_DataBlock(ctx, &len, buf);
 
     if (rc < 0) {
-        return rc;
+        return -1;
     }
 
     lrc = 0;
@@ -175,7 +175,7 @@ int ccidT1SendBlock(scr_t *ctx,
     unsigned char *ptr, lrc;
 
     if (BuffLen > 254) {
-        return(-1);
+        return -1;
     }
 
     ptr = sndbuf;
@@ -194,7 +194,7 @@ int ccidT1SendBlock(scr_t *ctx,
     rc = PC_to_RDR_XfrBlock(ctx, BuffLen + 4, sndbuf);
 
     if (rc < 0) {
-        return rc;
+        return -1;
     }
 
 #ifdef DEBUG
@@ -202,7 +202,7 @@ int ccidT1SendBlock(scr_t *ctx,
     ccidT1BlockInfo(Nad, Pcb, BuffLen, Buffer);
 #endif
 
-    return(0);
+    return 0;
 }
 
 
@@ -224,7 +224,7 @@ int ccidT1Resynch(scr_t *ctx, int SrcNode, int DestNode) {
                               NULL,0);
 
         if (ret < 0) {
-            return(-1);
+            return -1;
         }
 
         ret = ccidT1ReceiveBlock(ctx);
@@ -233,11 +233,11 @@ int ccidT1Resynch(scr_t *ctx, int SrcNode, int DestNode) {
                 ISSBLOCK(ctx->t1->Pcb) &&
                 (SBLOCKFUNC(ctx->t1->Pcb) == RESYNCHRES)) {
             ccidT1InitProtocol(ctx);
-            return(0);
+            return 0;
         }
     }
 
-    return(-1);
+    return -1;
 }
 
 
@@ -258,17 +258,17 @@ int ccidT1AbortChain(scr_t *ctx, int SrcNode, int DestNode) {
                               NULL, 0);
 
         if (ret < 0) {
-            return(-1);
+            return -1;
         }
 
         ret = ccidT1ReceiveBlock(ctx);
 
         if (!ret && ISSBLOCK(ctx->t1->Pcb) && (SBLOCKFUNC(ctx->t1->Pcb) == ABORTRES)) {
-            return(0);
+            return 0;
         }
     }
 
-    return(-1);
+    return -1;
 }
 
 
@@ -288,7 +288,7 @@ int ccidT1GetBlock(scr_t *ctx, int SrcNode, int DestNode) {
 
         if (ret < 0) {
             if (!retry) {
-                return(ret);
+                return -1;
             }
 
             /* The receiver did not understand our transmission block.             */
@@ -302,7 +302,7 @@ int ccidT1GetBlock(scr_t *ctx, int SrcNode, int DestNode) {
                                   0);
 
             if (ret < 0) {
-                return(ret);
+                return -1;
             }
 
             ctx->t1->WorkBWT = ctx->t1->BlockWaitTime;
@@ -315,7 +315,7 @@ int ccidT1GetBlock(scr_t *ctx, int SrcNode, int DestNode) {
             switch(SBLOCKFUNC(ctx->t1->Pcb)) {
             case RESYNCHRES :               /* Request to synchronize again      */
                 ccidT1InitProtocol(ctx);
-                return(1);
+                return 1;
                 break;
 
             case IFSREQ :                   /* Request to change the buffer size */
@@ -339,7 +339,7 @@ int ccidT1GetBlock(scr_t *ctx, int SrcNode, int DestNode) {
                                 0);
 
                 ccidT1ReceiveBlock(ctx);
-                return(-1);
+                return -1;
                 break;
 
             case WTXREQ :                   /* Request to extend timeout         */
@@ -357,7 +357,7 @@ int ccidT1GetBlock(scr_t *ctx, int SrcNode, int DestNode) {
                 break;
 
             default :
-                return(-1);
+                return -1;
             }
         }
 
@@ -366,7 +366,7 @@ int ccidT1GetBlock(scr_t *ctx, int SrcNode, int DestNode) {
         }
     }
 
-    return(0);
+    return 0;
 }
 
 
@@ -400,18 +400,18 @@ int ccidT1SendData(scr_t *ctx,
                                   Length);
 
             if (ret < 0) {
-                return(ret);
+                return -1;
             }
 
             if (!more & HostMode) {
                 ctx->t1->SSequenz = 1 - ctx->t1->SSequenz;
-                return(0);
+                return 0;
             }
 
             ret = ccidT1GetBlock(ctx, SrcNode, DestNode);
 
             if (ret < 0) {                    /* Something went wrong              */
-                return(ret);
+                return ret;
             }
 
             if (ret > 0) {                     /* Send block again                  */
@@ -427,7 +427,7 @@ int ccidT1SendData(scr_t *ctx,
                     }
 
                     if (ccidT1Resynch(ctx,SrcNode,DestNode)) {
-                        return(-1);
+                        return -1;
                     }
 
                     continue;
@@ -442,7 +442,7 @@ int ccidT1SendData(scr_t *ctx,
                     printf("Error: Unexpected R-Block.\n");
 #endif
                     if (ccidT1Resynch(ctx,SrcNode,DestNode)) {
-                        return(-1);
+                        return -1;
                     }
                 }
             }
@@ -453,7 +453,7 @@ int ccidT1SendData(scr_t *ctx,
                     printf("Asynchronous I-Block received as response.\n");
 #endif
                     if (ccidT1Resynch(ctx,SrcNode,DestNode)) {
-                        return(-1);
+                        return -1;
                     }
                 } else {
                     ctx->t1->SSequenz = 1 - ctx->t1->SSequenz;
@@ -465,7 +465,7 @@ int ccidT1SendData(scr_t *ctx,
         Buffer += Length;
     }
 
-    return(0);
+    return 0;
 }
 
 
@@ -506,13 +506,13 @@ int ccidT1ReceiveData(scr_t *ctx,
                                       NULL, 0);
 
                 if (ret < 0) {
-                    return(ret);
+                    return ret;
                 }
 
                 ret = ccidT1GetBlock(ctx, SrcNode, DestNode);
 
                 if (ret < 0) {
-                    return(ret);
+                    return ret;
                 }
 
                 if (ISRBLOCK(ctx->t1->Pcb)) {
@@ -523,7 +523,7 @@ int ccidT1ReceiveData(scr_t *ctx,
 #endif
 
                         if (ccidT1Resynch(ctx,SrcNode,DestNode)) {
-                            return(-1);
+                            return -1;
                         }
                     }
                     continue;
@@ -534,7 +534,7 @@ int ccidT1ReceiveData(scr_t *ctx,
         }
     } while (more);
 
-    return(Length);
+    return Length;
 }
 
 
@@ -563,7 +563,7 @@ int ccidT1Transport(scr_t *ctx,
 #ifdef DEBUG
         printf("ccidT1SendData failed with rc = %i\n", ret);
 #endif
-        return(ret);
+        return ret;
     }
 
     ret = ccidT1ReceiveData(ctx, SrcNode, DestNode, IBuffer, IBuffLen);
@@ -574,7 +574,7 @@ int ccidT1Transport(scr_t *ctx,
     }
 #endif
 
-    return(ret);
+    return ret;
 }
 
 

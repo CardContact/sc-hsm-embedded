@@ -47,6 +47,10 @@
  */
 #define USB_READ_TIMEOUT  (3 * 1000)
 
+#define USB_OK               0             /* Successful completion           */
+#define ERR_NO_READER       -1             /* Invalid parameter or value      */
+#define ERR_USB             -2             /* USB error                       */
+
 /**
  * Data structure encapsulating all information necessary
  * to perform USB communication with a device, e.g. device handles,
