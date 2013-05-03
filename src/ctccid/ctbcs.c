@@ -25,6 +25,7 @@
 #include "ctapi.h"
 #include "ccid_usb.h"
 
+extern int ccidT1Init (struct scr *ctx);
 
 int setResponse(struct scr *ctx, unsigned char *cmd, unsigned int *lr,
                 unsigned char *rsp) {
@@ -148,8 +149,8 @@ int RequestICC(struct scr *ctx, unsigned int lc, unsigned char *cmd,
 
 int EjectICC(struct scr *ctx, unsigned int lc, unsigned char *cmd,
              unsigned int *lr, unsigned char *rsp) {
-    int response, status;
-    unsigned char value, save_timeout;
+    int status;
+    unsigned char save_timeout;
     unsigned char timeout;
 
     /* Reader has no display or other goodies, so check for correct P2 parameter */
@@ -232,7 +233,6 @@ int EjectICC(struct scr *ctx, unsigned int lc, unsigned char *cmd,
 
 
 int GetICCStatus(struct scr *ctx, unsigned int *lr, unsigned char *rsp) {
-    unsigned char response;
     int status;
 
     status = PC_to_RDR_GetSlotStatus(ctx);

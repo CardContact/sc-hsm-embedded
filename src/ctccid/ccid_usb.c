@@ -92,13 +92,13 @@ int PC_to_RDR_IccPowerOn(scr_t *ctx) {
     CCIDDump(msg, 10);
 #endif
 
-    rc = Write(ctx->device, 10, msg);
+    rc = USB_Write(ctx->device, 10, msg);
 
     if (rc < 0) {
         return rc;
     }
 
-    rc = Read(ctx->device, &l, msg);
+    rc = USB_Read(ctx->device, &l, msg);
 
     if (rc < 0) {
         return rc;
@@ -118,7 +118,7 @@ int PC_to_RDR_IccPowerOn(scr_t *ctx) {
     memcpy(ctx->ATR, (msg + 10), atrlen);
     ctx->LenOfATR = atrlen;
 
-    rc = DecodeATR(ctx);
+    rc = DecodeATRValues(ctx);
 
     if (rc < 0) {
         return rc;
@@ -135,7 +135,7 @@ int PC_to_RDR_IccPowerOn(scr_t *ctx) {
 
 
 
-static int DetermineBaudrate(int F, int D) {
+int DetermineBaudrate(int F, int D) {
     int br;
 
     br = 14318000 * D / (F * 4);
@@ -164,15 +164,13 @@ static int DetermineBaudrate(int F, int D) {
 
 
 
-static int DecodeATR(scr_t *ctx) {
+int DecodeATRValues(scr_t *ctx) {
 
-    int atrp,rc;
-    int F,Fi;
+    int atrp;
     unsigned char i;
     unsigned char temp;
     unsigned char help;
 
-    F = Fi = 372;
     ctx->FI = 1;
     ctx->DI = 1;
 
@@ -270,14 +268,14 @@ int PC_to_RDR_SetParameters(scr_t *ctx) {
     CCIDDump(msg, 17);
 #endif
 
-    rc = Write(ctx->device, 17, msg);
+    rc = USB_Write(ctx->device, 17, msg);
 
     if (rc < 0) {
         return rc;
     }
 
     len = 17;
-    rc = Read(ctx->device, &len, msg);
+    rc = USB_Read(ctx->device, &len, msg);
 
     if (rc < 0) {
         return rc;
@@ -305,13 +303,13 @@ int PC_to_RDR_GetSlotStatus(scr_t *ctx) {
     CCIDDump(msg, 10);
 #endif
 
-    rc = Write(ctx->device, 10, msg);
+    rc = USB_Write(ctx->device, 10, msg);
 
     if (rc < 0) {
         return rc;
     }
 
-    rc = Read(ctx->device, &len, buf);
+    rc = USB_Read(ctx->device, &len, buf);
 
     if (rc < 0) {
         return rc;
@@ -336,7 +334,7 @@ int PC_to_RDR_IccPowerOff(scr_t *ctx) {
 
     unsigned char msg[10];
     unsigned char buf[10];
-    unsigned int len = 10, rc, slotstatus;
+    unsigned int len = 10, rc;
 
     memset(msg, 0, 10);
     msg[0] = MSG_TYPE_PC_to_RDR_IccPowerOff;
@@ -345,13 +343,13 @@ int PC_to_RDR_IccPowerOff(scr_t *ctx) {
     CCIDDump(msg, 10);
 #endif
 
-    rc = Write(ctx->device, 10, msg);
+    rc = USB_Write(ctx->device, 10, msg);
 
     if (rc < 0) {
         return rc;
     }
 
-    rc = Read(ctx->device, &len, buf);
+    rc = USB_Read(ctx->device, &len, buf);
 
     if (rc < 0) {
         return rc;
@@ -387,7 +385,7 @@ int PC_to_RDR_XfrBlock(scr_t *ctx, unsigned int outlen, unsigned char *outbuf) {
 #ifdef DEBUG
     CCIDDump(msg, (10 + outlen));
 #endif
-    rc = Write(ctx->device, (10 + outlen), msg);
+    rc = USB_Write(ctx->device, (10 + outlen), msg);
 
     if (rc < 0) {
         return rc;
@@ -404,7 +402,7 @@ int RDR_to_PC_DataBlock(scr_t *ctx, unsigned int *inlen, unsigned char *inbuf) {
     unsigned int l = 10 + *inlen;
     unsigned char msg[10 + *inlen];
 
-    rc = Read(ctx->device, &l, msg);
+    rc = USB_Read(ctx->device, &l, msg);
 
     if (rc < 0) {
         *inlen = 0;

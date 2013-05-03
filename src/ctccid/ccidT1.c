@@ -171,7 +171,7 @@ int ccidT1SendBlock(scr_t *ctx,
                     unsigned char *Buffer,
                     int BuffLen) {
     int rc, len;
-    unsigned char sndbuf[BUFFMAX], rcvbuf[BUFFMAX];
+    unsigned char sndbuf[BUFFMAX];
     unsigned char *ptr, lrc;
 
     if (BuffLen > 254) {
@@ -403,7 +403,7 @@ int ccidT1SendData(scr_t *ctx,
                 return -1;
             }
 
-            if (!more & HostMode) {
+            if (!more && HostMode) {
                 ctx->t1->SSequenz = 1 - ctx->t1->SSequenz;
                 return 0;
             }
@@ -607,7 +607,6 @@ int ccidT1Process (struct scr *ctx,
  *
  */
 int ccidT1Init (struct scr *ctx) {
-    int rc;
 
     ctx->t1 = malloc(sizeof(ccidT1_t));
 

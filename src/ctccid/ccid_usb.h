@@ -52,9 +52,9 @@ int RDR_to_PC_DataBlock(scr_t *ctx, unsigned int *inlen, unsigned char *inbuf);
 
 int PC_to_RDR_GetSlotStatus(scr_t *ctx);
 
-static int DetermineBaudrate(int F, int D);
+int DetermineBaudrate(int F, int D);
 
-static int DecodeATR(scr_t *ctx);
+int DecodeATRValues(scr_t *ctx);
 
 int PC_to_RDR_SetParameters(scr_t *ctx);
 

@@ -67,10 +67,10 @@ typedef struct usb_device {
 
 } usb_device_t;
 
-int Open(unsigned short pn, usb_device_t **device);
-int Close(usb_device_t **device);
-int Write(usb_device_t *device, unsigned int length, unsigned char *buffer);
-int Read(usb_device_t *device, unsigned int *length, unsigned char *buffer);
+int USB_Open(unsigned short pn, usb_device_t **device);
+int USB_Close(usb_device_t **device);
+int USB_Write(usb_device_t *device, unsigned int length, unsigned char *buffer);
+int USB_Read(usb_device_t *device, unsigned int *length, unsigned char *buffer);
 
 #endif
 

@@ -24,6 +24,8 @@
 #include <ctbcs.h>
 #include "scr.h"
 
+extern int ccidT1Term (struct scr *ctx);
+
 /* Handle up to 8 USB CCID readers */
 
 scr_t *readerTable[MAX_READER] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
@@ -82,7 +84,7 @@ signed char CT_init(unsigned short ctn, unsigned short pn) {
         /*
          * No active reader yet - try to find one
          */
-        rc = Open(pn, &(ctx->device));
+        rc = USB_Open(pn, &(ctx->device));
 
         if (rc != USB_OK) {
             free(ctx);
@@ -131,7 +133,7 @@ signed char CT_close(unsigned short ctn) {
         ccidT1Term(ctx);
     }
 
-    Close(&(ctx->device));
+    USB_Close(&(ctx->device));
 
     free(ctx);
     readerTable[rc] = NULL;

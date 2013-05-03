@@ -31,11 +31,10 @@
  * @param device Structure holding device specific data
  * @return Status code \ref USB_OK, \ref ERR_NO_READER, \ref ERR_USB
  */
-int Open(unsigned short pn, usb_device_t **device) {
+int USB_Open(unsigned short pn, usb_device_t **device) {
 
     int rc, cnt, i;
     libusb_device **devs, *dev;
-    const unsigned char *extra;
 
     rc = libusb_init(NULL);
 
@@ -59,8 +58,6 @@ int Open(unsigned short pn, usb_device_t **device) {
 
     while ((dev = devs[i++]) != NULL ) {
         struct libusb_device_descriptor desc;
-        uint8_t bus_number = libusb_get_bus_number(dev);
-        uint8_t device_address = libusb_get_device_address(dev);
 
         rc = libusb_get_device_descriptor(dev, &desc);
 
@@ -178,7 +175,7 @@ int Open(unsigned short pn, usb_device_t **device) {
  * @param device Structure with device specific data
  * @return Status code \ref USB_OK, \ref ERR_USB
  */
-int Close(usb_device_t **device) {
+int USB_Close(usb_device_t **device) {
 
 	int rc;
 
@@ -208,7 +205,7 @@ int Close(usb_device_t **device) {
  * @param buffer Data buffer
  * @return Status code \ref USB_OK, \ref ERR_USB
  */
-int Write(usb_device_t *device, unsigned int length, unsigned char *buffer) {
+int USB_Write(usb_device_t *device, unsigned int length, unsigned char *buffer) {
     int rc;
     int send;
 
@@ -234,7 +231,7 @@ int Write(usb_device_t *device, unsigned int length, unsigned char *buffer) {
  * @param buffer Data buffer
  * @return Status code \ref USB_OK, \ref ERR_USB
  */
-int Read(usb_device_t *device, unsigned int *length, unsigned char *buffer) {
+int USB_Read(usb_device_t *device, unsigned int *length, unsigned char *buffer) {
     int rc;
     int read;
 
