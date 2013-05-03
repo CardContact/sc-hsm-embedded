@@ -35,10 +35,17 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 
 #endif
 
+static struct attributesForObject_t attributesCertificateObject[NEEDED_ATTRIBUTES_CERTIFICATEOBJECT] = {
+	    {{CKA_CERTIFICATE_TYPE, NULL, 0}, FALSE},
+	    {{CKA_ID, NULL, 0}, FALSE},
+	    {{CKA_VALUE, NULL, 0}, FALSE}
+};
+
+
+
 /**
  *  Constructor for the certificate object
  */
-
 int createCertificateObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject)
 
 {

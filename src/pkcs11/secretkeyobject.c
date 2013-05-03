@@ -35,10 +35,25 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 
 #endif
 
+static struct attributesForObject_t attributesSecretKeyObject[] = {
+    {{CKA_SENSITIVE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
+    {{CKA_ENCRYPT, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
+    {{CKA_DECRYPT, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
+    {{CKA_SIGN, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
+    {{CKA_VERIFY, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
+    {{CKA_WRAP, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
+    {{CKA_UNWRAP, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
+    {{CKA_EXTRACTABLE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
+    {{CKA_ALWAYS_SENSITIVE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
+    {{CKA_NEVER_EXTRACTABLE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
+    {{CKA_VALUE, 0, 0}, FALSE},
+    {{CKA_VALUE_LEN, 0, 0}, TRUE}
+};
+
+
 /**
  *  Constructor for the secret key object
  */
-
 int createSecretKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject)
 
 {

@@ -22,6 +22,7 @@
  *
  */
 
+#include <string.h>
 #include "token-sc-hsm.h"
 
 #include <pkcs11/object.h>
@@ -162,7 +163,108 @@ static int addCertificateObject(struct p11Token_t *token, unsigned char id) {
     // ToDo: Fill CKA_ID from PKCS15 structure or set based on key id
 	rc = createCertificateObject(template, 7, pObject);
 
+	if (rc != CKR_OK) {
+		free(pObject);
+		FUNC_FAILS(rc, "Could not create certificate key object");
+	}
+
+	pObject->tokenid = (int)id;
 	addObject(token, pObject, TRUE);
+    FUNC_RETURNS(CKR_OK);
+}
+
+
+
+static int sc_hsm_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech) {
+	FUNC_CALLED();
+    FUNC_RETURNS(CKR_OK);
+}
+
+
+
+static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen) {
+	int rc;
+	unsigned short SW1SW2;
+	FUNC_CALLED();
+
+	if (pSignature == NULL) {
+		*pulSignatureLen = 256;
+	    FUNC_RETURNS(CKR_OK);
+	}
+
+    rc = transmitAPDU(pObject->token->slot, 0x80, 0x68, (unsigned char)pObject->tokenid, 0xA0,
+                     ulDataLen, pData,
+                     0, pSignature, *pulSignatureLen, &SW1SW2);
+
+    if (rc < 0) {
+    	FUNC_FAILS(rc, "transmitAPDU failed");
+    }
+
+    if (SW1SW2 != 0x9000) {
+    	FUNC_FAILS(-1, "Signature operation failed");
+    }
+
+    *pulSignatureLen = rc;
+    FUNC_RETURNS(CKR_OK);
+}
+
+
+
+static int addPrivateKeyObject(struct p11Token_t *token, unsigned char id) {
+	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
+	CK_KEY_TYPE keyType = CKK_RSA;
+	CK_UTF8CHAR label[10];
+	CK_MECHANISM_TYPE genMechType = CKM_RSA_PKCS_KEY_PAIR_GEN;
+	CK_BBOOL true = CK_TRUE;
+	CK_BBOOL false = CK_FALSE;
+	CK_ATTRIBUTE template[] = {
+			{ CKA_CLASS, &class, sizeof(class) },
+			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
+			{ CKA_TOKEN, &true, sizeof(true) },
+			{ CKA_PRIVATE, &true, sizeof(true) },
+			{ CKA_LABEL, label, sizeof(label) - 1 },
+			{ CKA_ID, &id, sizeof(id) },
+			{ CKA_LOCAL, &true, sizeof(true) },
+			{ CKA_KEY_GEN_MECHANISM, &genMechType, sizeof(genMechType) },
+			{ CKA_SENSITIVE, &true, sizeof(true) },
+			{ CKA_DECRYPT, &true, sizeof(true) },
+			{ CKA_SIGN, &true, sizeof(true) },
+			{ CKA_SIGN_RECOVER, &true, sizeof(true) },
+			{ CKA_UNWRAP, &false, sizeof(false) },
+			{ CKA_EXTRACTABLE, &false, sizeof(false) },
+			{ CKA_ALWAYS_SENSITIVE, &true, sizeof(true) },
+			{ CKA_NEVER_EXTRACTABLE, &true, sizeof(true) }
+	};
+	struct p11Object_t *pObject;
+	int rc;
+
+	FUNC_CALLED();
+
+    pObject = calloc(sizeof(struct p11Object_t), 1);
+
+    if (pObject == NULL) {
+    	FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+    }
+
+    // ToDo: Fill CKA_LABEL from PKCS15 structure
+    sprintf(label, "Key#%d", id);
+    template[4].ulValueLen = strlen(label);
+
+    // ToDo: Fill CKA_ID from PKCS15 structure or set based on key id
+    // ToDo: Set CKA_EXTRACTABLE based on KCV
+
+	rc = createPrivateKeyObject(template, sizeof(template) / sizeof(CK_ATTRIBUTE), pObject);
+
+	if (rc != CKR_OK) {
+		free(pObject);
+		FUNC_FAILS(rc, "Could not create private key object");
+	}
+
+	pObject->C_SignInit = sc_hsm_C_SignInit;
+	pObject->C_Sign = sc_hsm_C_Sign;
+
+	pObject->tokenid = (int)id;
+	addObject(token, pObject, FALSE);
     FUNC_RETURNS(CKR_OK);
 }
 
@@ -171,7 +273,7 @@ static int addCertificateObject(struct p11Token_t *token, unsigned char id) {
 int sc_hsm_loadObjects(struct p11Token_t *token, int publicObjects) {
 	unsigned char filelist[MAX_FILES * 2];
 	struct p11Slot_t *slot = token->slot;
-	int rc,listlen,i;
+	int rc,listlen,i,id,prefix;
 
 	FUNC_CALLED();
 
@@ -182,19 +284,29 @@ int sc_hsm_loadObjects(struct p11Token_t *token, int publicObjects) {
 
     listlen = rc;
     for (i = 0; i < listlen; i += 2) {
+    	prefix = filelist[i];
+    	id = filelist[i + 1];
+
     	if (publicObjects) {
-    		switch(filelist[i]) {
+    		switch(prefix) {
     		case EE_CERTIFICATE_PREFIX:
-    			rc = addCertificateObject(token, filelist[i + 1]);
-    		    if (rc != CKR_OK) {
-    		    	FUNC_FAILS(rc, "addCertificateObject failed");
-    		    }
+    			if (id != 0) {				// Skip Device Authentication Key
+    				rc = addCertificateObject(token, id);
+    				if (rc != CKR_OK) {
+    					FUNC_FAILS(rc, "addCertificateObject failed");
+    				}
+    			}
     			break;
     		}
     	} else {
-    		switch(filelist[i]) {
+    		switch(prefix) {
     		case KEY_PREFIX:
-    			// Add private key object
+    			if (id != 0) {				// Skip Device Authentication Key
+    				rc = addPrivateKeyObject(token, id);
+    				if (rc != CKR_OK) {
+    					FUNC_FAILS(rc, "addPrivateKeyObject failed");
+    				}
+    			}
     			break;
     		}
     	}
@@ -311,7 +423,3 @@ struct p11Token_t *newSmartCardHSMToken(struct p11Slot_t *slot) {
 
    	return ptoken;
 }
-
-
-
-

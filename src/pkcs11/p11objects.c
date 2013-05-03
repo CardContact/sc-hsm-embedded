@@ -103,7 +103,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
                 
         addObject(slot->token, pObject, pObject->publicObj);
         
-        rv = synchronizeTokenToDisk(slot, slot->token);
+        rv = synchronizeToken(slot, slot->token);
 
         if (rv < 0) {
             removeObject(slot->token, pObject->handle, pObject->publicObj);
@@ -201,7 +201,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DestroyObject)(
         /* remove the object from the list */
         removeObject(slot->token, hObject, pObject->publicObj);
 
-        rv = synchronizeTokenToDisk(slot, slot->token);
+        rv = synchronizeToken(slot, slot->token);
 
         if (rv < 0) {
             return CKR_FUNCTION_FAILED;        
@@ -460,7 +460,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
                 /* insert new private object */
                 addObject(slot->token, tmp, FALSE);
 
-                rv = synchronizeTokenToDisk(slot, slot->token);
+                rv = synchronizeToken(slot, slot->token);
             
                 if (rv < 0) {
                     return rv;
@@ -481,7 +481,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
             
             pObject->dirtyFlag = 1;    
             
-            rv = synchronizeTokenToDisk(slot, slot->token);
+            rv = synchronizeToken(slot, slot->token);
             
             if (rv < 0) {
                 return rv;
@@ -592,96 +592,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
             pObject = pObject->next;
         }
     }
-#if 0
-    if (ulCount == 0) {
-       /* return all objects in the token */
-        
-        /* session objects */
-        pObject = session->sessionObjList;
-
-        while (pObject != NULL) {
-        
-            addObjectToSearchList(session, pObject);
-            pObject = pObject->next;
-        }
-        
-        /* public token objects */
-        pObject = slot->token->tokenObjList;
-
-        while (pObject != NULL) {
-        
-            addObjectToSearchList(session, pObject);
-            pObject = pObject->next;
-        }
-        
-        /* private token objects */
-        if (session->state == CKS_RW_USER_FUNCTIONS) {
-         
-            pObject = slot->token->tokenPrivObjList;
-
-            while (pObject != NULL) {
-        
-                addObjectToSearchList(session, pObject);
-                pObject = pObject->next;
-            }
-        }
-        
-    } else if ((ulCount == 1) && (pTemplate[0].type == CKA_LABEL)) {
-       /* return only objects that match a specific template - we only support the label! */
-        
-        /* session objects */
-        pObject = session->sessionObjList;
-
-        while (pObject != NULL) {
-            
-            rv = findAttribute(pObject, pTemplate, &pAttribute);
-
-            if (rv >= 0) {                
-                if (!memcmp(pAttribute->attrData.pValue, pTemplate[0].pValue, pAttribute->attrData.ulValueLen)) {
-                    addObjectToSearchList(session, pObject);            
-                }
-            }
-            pObject = pObject->next;
-        
-        }
-        
-        /* public token objects */
-        pObject = slot->token->tokenObjList;
-
-        while (pObject != NULL) {
-        
-            rv = findAttribute(pObject, pTemplate, &pAttribute);
-
-            if (rv >= 0) {                
-                if (!memcmp(pAttribute->attrData.pValue, pTemplate[0].pValue, pAttribute->attrData.ulValueLen)) {
-                    addObjectToSearchList(session, pObject);            
-                }
-            }
-            pObject = pObject->next;
-        }
-        
-        /* private token objects */
-        if (session->state == CKS_RW_USER_FUNCTIONS) {
-         
-            pObject = slot->token->tokenPrivObjList;
-
-            while (pObject != NULL) {
-        
-                rv = findAttribute(pObject, pTemplate, &pAttribute);
-
-                if (rv >= 0) {                
-                    if (!memcmp(pAttribute->attrData.pValue, pTemplate[0].pValue, pAttribute->attrData.ulValueLen)) {
-                        addObjectToSearchList(session, pObject);            
-                    }
-                }
-                pObject = pObject->next;
-            }
-        }
-        
-    } else {
-        return CKR_FUNCTION_NOT_SUPPORTED;
-    }
-#endif
 
     return CKR_OK;
 }

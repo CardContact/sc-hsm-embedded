@@ -21,25 +21,6 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
-#ifdef WIN32
-#include <direct.h>
-#else
-#include <sys/types.h>
-#include <sys/stat.h>
-#endif
-
-#ifndef _O_RDONLY
-#define _O_RDONLY O_RDONLY
-#endif
-
-#ifndef _O_TEXT
-#define _O_TEXT 0
-#endif
-
-#ifndef _MAX_PATH
-#define _MAX_PATH FILENAME_MAX
-#endif
-
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/p11generic.h>
 #include <pkcs11/slotpool.h>

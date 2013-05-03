@@ -29,31 +29,6 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#ifdef WIN32
-#include <io.h>
-#else
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <dirent.h>
-#endif
-
-#ifndef _O_RDONLY
-#define _O_RDONLY O_RDONLY
-#endif
-
-#ifndef _O_BINARY
-#define _O_BINARY 0
-#endif
-
-#ifndef _S_IREAD
-#define _S_IREAD S_IREAD
-#endif
-
-#ifndef _MAX_PATH
-#define _MAX_PATH FILENAME_MAX
-#endif
-
 #include <pkcs11/slot.h>
 #include <pkcs11/token.h>
 #include <pkcs11/slotpool.h>
@@ -355,8 +330,6 @@ int checkForToken(struct p11Slot_t *slot, struct p11Token_t **token)
     unsigned short lr;
     unsigned char dad, sad;
     char scr[_MAX_PATH];
-    DIR *dir;
-    struct dirent *dirent;
     int fh, rc, i;
     unsigned short SW1SW2;
 

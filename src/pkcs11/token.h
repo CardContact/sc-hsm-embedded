@@ -39,6 +39,6 @@ int saveObjects(struct p11Slot_t *slot, struct p11Token_t *token, int publicObje
 
 int destroyObject(struct p11Slot_t *slot, struct p11Token_t *token, struct p11Object_t *object);
 
-int synchronizeTokenToDisk(struct p11Slot_t *slot, struct p11Token_t *token);
+int synchronizeToken(struct p11Slot_t *slot, struct p11Token_t *token);
 
 #endif /* ___TOKEN_H_INC___ */

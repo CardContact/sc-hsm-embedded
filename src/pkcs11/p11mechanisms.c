@@ -395,9 +395,46 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignInit)(
     CK_OBJECT_HANDLE hKey
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+    int rv;
+    struct p11Object_t *pObject;
+    struct p11Slot_t *pSlot;
+    struct p11Session_t *pSession;
 
 	FUNC_CALLED();
+
+    rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+
+    if (rv < 0) {
+        return CKR_SESSION_HANDLE_INVALID;
+    }
+
+    if (pSession->activeObjectHandle != -1) {
+        return CKR_OPERATION_ACTIVE;
+    }
+
+    rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+
+    if (pSlot == NULL) {
+        return CKR_GENERAL_ERROR;
+    }
+
+    rv = findObject(pSlot->token, hKey, &pObject, FALSE);
+
+    if (rv < 0) {
+        return CKR_GENERAL_ERROR;
+    }
+
+    if (pObject->C_SignInit != NULL) {
+        rv = pObject->C_SignInit(pObject, pMechanism);
+    } else {
+        return CKR_FUNCTION_NOT_SUPPORTED;
+    }
+
+    if (!rv) {
+        pSession->activeObjectHandle = pObject->handle;
+        pSession->activeMechanism = pMechanism->mechanism;
+        rv = CKR_OK;
+    }
 
     return rv;
 }
@@ -413,9 +450,44 @@ CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
     CK_ULONG_PTR pulSignatureLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+    int rv;
+    struct p11Object_t *pObject;
+    struct p11Slot_t *pSlot;
+    struct p11Session_t *pSession;
 
 	FUNC_CALLED();
+
+	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+
+    if (rv < 0) {
+        return CKR_SESSION_HANDLE_INVALID;
+    }
+
+    if (pSession->activeObjectHandle == -1) {
+        return CKR_GENERAL_ERROR;
+    }
+
+    rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+
+    if (pSlot == NULL) {
+        return CKR_GENERAL_ERROR;
+    }
+
+    rv = findObject(pSlot->token, pSession->activeObjectHandle, &pObject, FALSE);
+
+    if (rv < 0) {
+        return CKR_GENERAL_ERROR;
+    }
+
+    if (pSignature != NULL) {
+        pSession->activeObjectHandle = -1;
+    }
+
+    if (pObject->C_Sign != NULL) {
+        rv = pObject->C_Sign(pObject, pSession->activeMechanism, pData, ulDataLen, pSignature, pulSignatureLen);
+    } else {
+        return CKR_FUNCTION_NOT_SUPPORTED;
+    }
 
     return rv;
 }

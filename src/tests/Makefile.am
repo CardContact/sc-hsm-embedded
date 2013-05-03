@@ -10,4 +10,5 @@ testctapi_LDADD = $(top_builddir)/src/ctccid/libctccid.la
 
 testpkcs11_SOURCES = testpkcs11.c
 
-testpkcs11_LDADD = $(top_builddir)/src/pkcs11/libsc-hsm-pkcs11.la
+#testpkcs11_LDADD = $(top_builddir)/src/pkcs11/libsc-hsm-pkcs11.la
+testpkcs11_LDFLAGS = -ldl

@@ -9,14 +9,14 @@
  * The Smart Card Development Platform (SCDP) provides a basic framework to
  * implement smartcard aware applications.
  *
- * Abstract :       Functions for secret key object management
+ * Abstract :       Functions for private key object management
  *
  * Author :         Frank Thater (FTH)
  *
  *****************************************************************************/
 
-#ifndef ___CERTIFICATEOBJECT_H_INC___
-#define ___CERTIFICATEOBJECT_H_INC___
+#ifndef ___PRIVATEKEYOBJECT_H_INC___
+#define ___PRIVATEKEYOBJECT_H_INC___
 
 
 #include <pkcs11/p11generic.h>
@@ -24,9 +24,8 @@
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/object.h>
 
-#define NEEDED_ATTRIBUTES_CERTIFICATEOBJECT   3
+#define NEEDED_ATTRIBUTES_PRIVATEKEYOBJECT   12
 
-int createCertificateObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);
+int createPrivateKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);
 
-
-#endif /* ___SECRETKEYOBJECT_H_INC___ */
+#endif /* ___PRIVATEKEYOBJECT_H_INC___ */

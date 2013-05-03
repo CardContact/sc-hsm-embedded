@@ -18,27 +18,6 @@
 #include <stdio.h>
 #include <memory.h>
 
-#ifdef WIN32
-#include <direct.h>
-#else
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <dirent.h>
-#endif
-
-#ifndef _MAX_PATH
-#define _MAX_PATH FILENAME_MAX
-#endif
-
-#ifndef _mkdir
-#define _mkdir mkdir
-#endif
-
-#ifndef _rmdir
-#define _rmdir rmdir
-#endif
-
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/p11generic.h>
 #include <pkcs11/slotpool.h>
@@ -293,7 +272,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitToken)(
     struct p11Slot_t *slot = NULL;
     struct p11Token_t *token = NULL;
     struct p11Session_t *session = NULL;
-    DIR *dir;
     struct dirent *dirent;
     unsigned char dirname[_MAX_PATH];
     unsigned char scr[256];
@@ -315,97 +293,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitToken)(
         return CKR_SESSION_EXISTS;
     }
 
-    token = slot->token;
-
 #if 0
-    /* 
-     * if a token is present, it should be reininitialized.
-     * all data is lost.
-     */
-
-    if (token != NULL) {
-        
-        memset(dirname, 0x00, sizeof(dirname));
-        strcat(dirname, context->slotDirectory);
-        strcat(dirname, "/");
-        strcat(dirname, slot->slotDir);
-        strcat(dirname, "/");
-        strcat(dirname, token->tokenDir);
-        strcat(dirname, "/");
-        
-        dir = opendir(dirname);
-
-#ifdef WIN32
-        if (dir->handle == -1) {
-            return CKR_GENERAL_ERROR;
-        }      
-#else
-        if (dir == NULL) {
-            return CKR_GENERAL_ERROR;
-        }
-#endif
-
-        while((dirent = readdir(dir)) != NULL) {
-    
-            if (memcmp(dirent->d_name, ".", 1)) {
-                
-                memset(scr, 0x00, sizeof(scr));
-                
-                strcat(scr, dirname);
-                strcat(scr, dirent->d_name);
-                remove(scr);    
-            
-            }
-
-            dirent = NULL;
-        }
-    
-        closedir(dir);   
-
-        if (_rmdir(dirname)) {
-            return CKR_GENERAL_ERROR;
-        }
-
-        removeToken(slot, token);
-    }
- 
-    memset(dirname, 0x00, sizeof(dirname));
-    strcat(dirname, context->slotDirectory);
-    strcat(dirname, "/");
-    strcat(dirname, slot->slotDir);
-    strcat(dirname, "/");
-    
-    /* remove all blanks from the label (for use with ERACOM browser) */
-    memset(noBlankLabel, 0x00, sizeof(noBlankLabel));
-    removeBlanks(noBlankLabel, pLabel);
-    
-    strcat(dirname, noBlankLabel);
-    
-#ifdef WIN32
-    if (_mkdir(dirname)) {
-        return CKR_GENERAL_ERROR;
-    }
-#else
-    if (_mkdir(dirname, S_IEXEC | S_IWRITE | S_IREAD)) {
-        return CKR_GENERAL_ERROR;
-    }
-#endif
-
-    token = (struct p11Token_t *) malloc(sizeof(struct p11Token_t));
-
-    if (token == NULL) {
-        return CKR_HOST_MEMORY;
-    }
-
-    memset(token, 0x00, sizeof(struct p11Token_t));
-
-    strcpy(token->tokenDir, noBlankLabel);
-    
-    memset(tmp, 0x00, 8);
-    l = ulPinLen > 8 ? 8 : ulPinLen;
-    memcpy(tmp, pPin, l);
-
-    computePINReferenceValue((des_cblock *) &tmp, (des_cblock *) &tmp, (des_cblock *) token->pinSO);
+    token = slot->token;
 
     // Determine the length of the label
     l = 0;
@@ -433,16 +322,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitToken)(
     
     token->freeObjectNumber = 1;
 
-    if(synchronizeTokenToDisk(slot, token)) {
-        free(token);
-        return CKR_GENERAL_ERROR;
-    }
+    addToken(slot, token);
 #endif
 
-    addToken(slot, token);
-
-    return rv;
-
+    return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 
@@ -512,7 +395,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitPIN)(
     }
 #endif
     
-    return CKR_OK;
+    return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 
@@ -556,45 +439,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetPIN)(
             return CKR_USER_PIN_NOT_INITIALIZED;
     }
 
-#if 0
-    l = ulOldLen > 8 ? 8 : ulOldLen;
-    memset(tmp, 0x00, 8);    
-    memcpy(tmp, pOldPin, l);
-
-    computePINReferenceValue((des_cblock *) &tmp, (des_cblock *) &tmp, (des_cblock *) &tmp);
-
-    rv = memcmp(session->user == CKU_SO ? slot->token->pinSO : slot->token->pinUser, tmp, 8);
-
-    if (rv != 0) {
-        return CKR_PIN_INCORRECT;      
-    }
-   
-    if ((session->user == CKU_USER) || (session->user = 0xFF)) {
-        decryptTransportKey((des_cblock *) token->pinUser, (des_cblock *) token->transportKey1, (des_cblock *) token->transportKey1);
-        decryptTransportKey((des_cblock *) token->pinUser, (des_cblock *) token->transportKey2, (des_cblock *) token->transportKey2);
-    }
-    
-    memset(tmp, 0x00, 8);    
-    l = ulNewLen > 8 ? 8 : ulNewLen;
-    memcpy(tmp, pNewPin, l);
-
-    computePINReferenceValue((des_cblock *) &tmp, (des_cblock *) &tmp, (des_cblock *) &tmp);
-    
-    if (session->user == CKU_SO) {
-        memcpy(slot->token->pinSO, tmp, 8);
-    } else {
-        memcpy(slot->token->pinUser, tmp, 8);
-        /* Encrypt the transport keys */
-        encryptTransportKey((des_cblock *) token->pinUser, (des_cblock *) token->transportKey1, (des_cblock *) token->transportKey1);
-        encryptTransportKey((des_cblock *) token->pinUser, (des_cblock *) token->transportKey2, (des_cblock *) token->transportKey2);
-    }     
-   
-    if(synchronizeTokenToDisk(slot, token)) {
-        return CKR_GENERAL_ERROR;
-    }
-#endif
-    
-    return CKR_OK;
-
+    return CKR_FUNCTION_NOT_SUPPORTED;
 }
 

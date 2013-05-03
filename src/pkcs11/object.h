@@ -36,6 +36,9 @@ struct p11Attribute_t {
 };
 
 
+
+struct p11Token_t;				// Forward declaration
+
 /**
  * Internal structure to store common attributes of an object.
  *
@@ -51,6 +54,10 @@ struct p11Object_t {
     int tokenObj;
     int sensitiveObj;
 
+    int tokenid;
+
+    struct p11Token_t *token;
+
     int (*C_EncryptInit)  (CK_MECHANISM_PTR);
     int (*C_Encrypt)      (CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
     int (*C_EncryptUpdate)(CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
@@ -60,6 +67,11 @@ struct p11Object_t {
     int (*C_Decrypt)      (CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
     int (*C_DecryptUpdate)(CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
     int (*C_DecryptFinal) (CK_BYTE_PTR, CK_ULONG_PTR);
+
+    int (*C_SignInit)		(struct p11Object_t *, CK_MECHANISM_PTR);
+    int (*C_Sign)			(struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+    int (*C_SignUpdate)		(struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
+    int (*C_SignFinal)		(struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
 
     struct p11Attribute_t *attrList;    /**< The list of attributes              */
     struct p11Object_t *next;       /**< Pointer to next object              */
@@ -75,21 +87,23 @@ struct attributesForObject_t {
 };
 
 #define NEEDED_ATTRIBUTES_OBJECT             1
-#define NEEDED_ATTRIBUTES_STORAGEOBJECT      4
-#define NEEDED_ATTRIBUTES_KEYOBJECT          7
 
-static struct attributesForObject_t attributesObject[] = {
+static struct attributesForObject_t attributesObject[NEEDED_ATTRIBUTES_OBJECT] = {
     {{CKA_CLASS, 0, 0}, FALSE}
 };
 
-static struct attributesForObject_t attributesStorageObject[] = {
+#define NEEDED_ATTRIBUTES_STORAGEOBJECT      4
+
+static struct attributesForObject_t attributesStorageObject[NEEDED_ATTRIBUTES_STORAGEOBJECT] = {
     {{CKA_TOKEN, 0, 0}, FALSE},
     {{CKA_PRIVATE, 0, 0}, FALSE},
     {{CKA_MODIFIABLE, &ckTrue, sizeof(CK_BBOOL)}, TRUE},
     {{CKA_LABEL, NULL, 0}, TRUE}
 };                                           
 
-static struct attributesForObject_t attributesKeyObject[] = {
+#define NEEDED_ATTRIBUTES_KEYOBJECT          7
+
+static struct attributesForObject_t attributesKeyObject[NEEDED_ATTRIBUTES_KEYOBJECT] = {
     {{CKA_KEY_TYPE, 0, 0}, FALSE},
     {{CKA_ID, NULL, 0}, TRUE},
     {{CKA_START_DATE, NULL, 0}, TRUE},
