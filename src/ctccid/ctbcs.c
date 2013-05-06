@@ -27,6 +27,16 @@
 
 extern int ccidT1Init (struct scr *ctx);
 
+
+/**
+ * Set requested response of CT-BCS command
+ *
+ * @param ctx Reader context
+ * @param cmd Command
+ * @param lr Length of response
+ * @param rsp Response buffer
+ * @return \ref OK, \ref ERR_MEMORY
+ */
 int setResponse(struct scr *ctx, unsigned char *cmd, unsigned int *lr,
                 unsigned char *rsp) {
     unsigned char index = 0;
@@ -69,6 +79,16 @@ int setResponse(struct scr *ctx, unsigned char *cmd, unsigned int *lr,
 
 
 
+/**
+ * CT-BCS Reset Card command
+ *
+ * @param ctx Reader context
+ * @param lc Length of command
+ * @param cmd Command
+ * @param lr Length of response
+ * @param rsp Response buffer
+ * @return \ref OK, \ref ERR_MEMORY
+ */
 int ResetCard(struct scr *ctx, unsigned int lc, unsigned char *cmd,
               unsigned int *lr, unsigned char *rsp) {
     int response = 0;
@@ -91,6 +111,16 @@ int ResetCard(struct scr *ctx, unsigned int lc, unsigned char *cmd,
 
 
 
+/**
+ * CT-BCS Request ICC command
+ *
+ * @param ctx Reader context
+ * @param lc Length of command
+ * @param cmd Command
+ * @param lr Length of response
+ * @param rsp Response buffer
+ * @return \ref OK, \ref ERR_CT, \ref ERR_MEMORY
+ */
 int RequestICC(struct scr *ctx, unsigned int lc, unsigned char *cmd,
                unsigned int *lr, unsigned char *rsp) {
     int status, timeout;
@@ -147,6 +177,16 @@ int RequestICC(struct scr *ctx, unsigned int lc, unsigned char *cmd,
 
 
 
+/**
+ * CT-BCS Eject ICC command
+ *
+ * @param ctx Reader context
+ * @param lc Length of command
+ * @param cmd Command
+ * @param lr Length of response
+ * @param rsp Response buffer
+ * @return \ref OK, \ref ERR_CT
+ */
 int EjectICC(struct scr *ctx, unsigned int lc, unsigned char *cmd,
              unsigned int *lr, unsigned char *rsp) {
     int status;
@@ -183,7 +223,6 @@ int EjectICC(struct scr *ctx, unsigned int lc, unsigned char *cmd,
     ctx->CTModFunc = NULL;
     ctx->LenOfATR = 0;
     ctx->NumOfHB = 0;
-    ctx->Protocol = 0;
 
     save_timeout *= 4;
 
@@ -232,6 +271,14 @@ int EjectICC(struct scr *ctx, unsigned int lc, unsigned char *cmd,
 
 
 
+/**
+ * Get ICC status
+ *
+ * @param ctx Reader context
+ * @param lr Length of response
+ * @param rsp Response buffer
+ * @return \ref OK, \ref ERR_CT, \ref ERR_MEMORY
+ */
 int GetICCStatus(struct scr *ctx, unsigned int *lr, unsigned char *rsp) {
     int status;
 
@@ -269,6 +316,15 @@ int GetICCStatus(struct scr *ctx, unsigned int *lr, unsigned char *rsp) {
 
 
 
+/**
+ * CT-BCS Get Status command
+ *
+ * @param ctx Reader context
+ * @param cmd Command
+ * @param lr Length of response
+ * @param rsp Response buffer
+ * @return \ref OK, \ref ERR_CT, \ref ERR_MEMORY
+ */
 int GetStatus(struct scr *ctx, unsigned char *cmd, unsigned int *lr,
               unsigned char *rsp) {
     int response;

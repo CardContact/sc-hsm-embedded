@@ -21,31 +21,57 @@
 
 #include "usb_device.h"
 
+/**
+ * Maximum number of readers
+ */
 #define MAX_READER  8
-#define MAX_ATR     34
-#define HBSIZE      15
-#define FWSIZE      5
 
+/**
+ * Maximum size of ATR
+ */
+#define MAX_ATR     34
+
+/**
+ * Maximum number of historical bytes
+ */
+#define HBSIZE      15
+
+/**
+ * Data structure encapsulating all necessary data elements of the reader interface
+ * and the communication protocol
+ */
 typedef struct scr {
 
+	/** Card terminal number */
     unsigned short ctn;
+    /** Port number */
     unsigned short pn;
 
+    /** Context structure for USB device */
     struct usb_device	*device;
 
-    unsigned char     ATR[MAX_ATR];      /* Last ATR received from the card    */
-    unsigned char     LenOfATR;          /* Length of ATR                      */
-    unsigned char     NumOfHB;           /* Number of HB                       */
-    unsigned char     HCC[HBSIZE];       /* History Bytes                      */
-    int	                AvailProt;         /* Protocols indicated in ATR         */
-    int 		        Protocol;          /* Handler module providing protocol  */
-    unsigned char		FI;                /* Clock rate conversion integer	  	 */
-    unsigned char		DI;                /* Baud rate adjustement integer      */
-    unsigned char		CWI;               /* Char waiting time                  */
-    unsigned char		BWI;               /* Block waiting time                 */
-    unsigned char		EXTRA_GUARD_TIME;  /* Extra guard time                   */
-    unsigned char     IFSC;              /* Maximum length of INF field        */
-    int                Baud;              /* Current baudrate                   */
+    /** Last ATR received from the card    */
+    unsigned char     ATR[MAX_ATR];
+    /** Length of ATR                      */
+    unsigned char     LenOfATR;
+    /** Number of historical bytes         */
+    unsigned char     NumOfHB;
+    /** Historical bytes                   */
+    unsigned char     HCC[HBSIZE];
+    /** Clock rate conversion integer	  */
+    unsigned char		FI;
+    /** Baud rate adjustment integer      */
+    unsigned char		DI;
+    /** Character waiting time            */
+    unsigned char		CWI;
+    /** Block waiting time                 */
+    unsigned char		BWI;
+    /** Extra guard time                   */
+    unsigned char		EXTRA_GUARD_TIME;
+    /** Maximum length of INF field        */
+    unsigned char     IFSC;
+    /** Current baudrate                   */
+    int                Baud;
 
     int               (*CTModFunc)(struct scr *,
                                    unsigned int,         /* length of command  */
@@ -53,7 +79,7 @@ typedef struct scr {
                                    unsigned int *,       /* length of response */
                                    unsigned char *);     /* response           */
 
-    struct ccidT1      *t1;
+    struct ccidT1      *t1;             /** Context structure for T=1 protocol  */
 
 } scr_t;
 

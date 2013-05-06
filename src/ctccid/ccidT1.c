@@ -26,11 +26,11 @@
 #include "ccidT1.h"
 #include "ccid_usb.h"
 
-/*
+/**
  * Initialize all T=1 protocol parameter to its default values
  *
+ * @param ctx Reader context
  */
-
 void ccidT1InitProtocol(scr_t *ctx) {
     ctx->t1->BlockWaitTime = 200 + (1 << ctx->BWI) * 100 + 11000 / ctx->Baud;
     ctx->t1->WorkBWT = ctx->t1->BlockWaitTime;
@@ -41,11 +41,11 @@ void ccidT1InitProtocol(scr_t *ctx) {
 
 
 
-/*
+/**
  * Terminate driver module and release memory
  *
+ * @param ctx Reader context
  */
-
 int ccidT1Term (struct scr *ctx) {
     free(ctx->t1);
     ctx->t1 = NULL;
@@ -56,9 +56,13 @@ int ccidT1Term (struct scr *ctx) {
 
 
 #ifdef DEBUG
-/*
+/**
  * Print the block information of a T=1 transmission block
  *
+ * @param Nad Node address
+ * @param Pcb PCB of received blocks
+ * @param InBuffLength Length of incoming data
+ * @param InBuff Incomonf data
  */
 void ccidT1BlockInfo(unsigned char Nad, unsigned char Pcb, int InBuffLength, unsigned char *InBuff) {
     unsigned char *ptr;
@@ -116,9 +120,11 @@ void ccidT1BlockInfo(unsigned char Nad, unsigned char Pcb, int InBuffLength, uns
 
 
 
-/*
+/**
  * Receive a block in T=1 protocol
  *
+ * @param ctx Reader context
+ * @return 0 on success, -1 or \ref ERR_EDC on error
  */
 int ccidT1ReceiveBlock(scr_t *ctx) {
     int rc = 0, i;
@@ -161,9 +167,15 @@ int ccidT1ReceiveBlock(scr_t *ctx) {
 
 
 
-/*
+/**
  * Send a block in T=1 protocol
  *
+ * @param ctx Reader context
+ * @param Nad Node address
+ * @param Pcb PCB address
+ * @param Buffer Outgoing buffer
+ * @param BuffLen Length of outgoing data
+ * @return 0 on success, -1 on error
  */
 int ccidT1SendBlock(scr_t *ctx,
                     unsigned char Nad,
@@ -207,10 +219,13 @@ int ccidT1SendBlock(scr_t *ctx,
 
 
 
-/*
- * Synchronize sequence counter in both sender and receiver
- * after a transmission error has occured
+/**
+ * Synchronize sequence counter in both sender and receiver after a transmission error has occurred
  *
+ * @param ctx Reader context
+ * @param SrcNode Source node
+ * @param DestNode Destination node
+ * @return 0 on success, -1 on error
  */
 int ccidT1Resynch(scr_t *ctx, int SrcNode, int DestNode) {
     int ret,retry;
@@ -242,9 +257,13 @@ int ccidT1Resynch(scr_t *ctx, int SrcNode, int DestNode) {
 
 
 
-/*
+/**
  * Abort a sequence of chained transmission blocks
  *
+ * @param ctx Reader context
+ * @param SrcNode Source node
+ * @param DestNode Destination node
+ * @return 0 on success, -1 on error
  */
 int ccidT1AbortChain(scr_t *ctx, int SrcNode, int DestNode) {
     int ret,retry;
@@ -273,9 +292,13 @@ int ccidT1AbortChain(scr_t *ctx, int SrcNode, int DestNode) {
 
 
 
-/*
+/**
  * Receive a transmission block and handle all S-block requests
  *
+ * @param ctx Reader context
+ * @param SrcNode Source node
+ * @param DestNode Destination node
+ * @return 0 on success, -1 on error
  */
 int ccidT1GetBlock(scr_t *ctx, int SrcNode, int DestNode) {
     int retry,ret;
@@ -371,10 +394,16 @@ int ccidT1GetBlock(scr_t *ctx, int SrcNode, int DestNode) {
 
 
 
-/*
- * Send a block of data using T=1 protocol
- * Handle large block with the chaining mechanism
+/**
+ * Send a block of data using T=1 protocol and handle large block with the chaining mechanism
  *
+ * @param ctx Reader context
+ * @param HostMode Indicator for host mode
+ * @param SrcNode Source node
+ * @param DestNode Destination node
+ * @param Buffer Outgoing data buffer
+ * @param BuffLen Length of outgoing data
+ * @return 0 on success, -1 on error
  */
 int ccidT1SendData(scr_t *ctx,
                    int HostMode,
@@ -470,9 +499,15 @@ int ccidT1SendData(scr_t *ctx,
 
 
 
-/*
+/**
  * Decode a received block into the data buffer passed to the application
  *
+ * @param ctx Reader context
+ * @param SrcNode Source node
+ * @param DestNode Destination node
+ * @param Buffer Incoming data buffer
+ * @param BuffLen Length of incoming data buffer
+ * @return Length of data received
  */
 int ccidT1ReceiveData(scr_t *ctx,
                       int SrcNode,
@@ -539,9 +574,17 @@ int ccidT1ReceiveData(scr_t *ctx,
 
 
 
-/*
+/**
  * Transport a data block using T=1 transmission protocol
  *
+ * @param ctx Reader context
+ * @param SrcNode Source node
+ * @param DestNode Destination node
+ * @param OBuffer Outgoing data buffer
+ * @param OBuffLen Length of outgoig data buffer
+ * @param IBuffer Incoming data buffer
+ * @param IBuffLen Length of incoming data buffer
+ * @return Number of incoming bytes, negative value on error
  */
 int ccidT1Transport(scr_t *ctx,
                     int SrcNode,
@@ -579,9 +622,14 @@ int ccidT1Transport(scr_t *ctx,
 
 
 
-/*
+/**
  * Process a APDU using T=1 protocol
- *
+ * @param ctx Reader context
+ * @param lc Length of command APDU
+ * @param cmd Command APDU
+ * @param lr Length of response APDU
+ * @param rsp Response APDU
+ * @return 0 on success, -1 on error
  */
 int ccidT1Process (struct scr *ctx,
                    unsigned int  lc,
@@ -602,9 +650,10 @@ int ccidT1Process (struct scr *ctx,
 
 
 
-/*
+/**
  * Initialize T=1 protocol driver module
  *
+ * @param ctx Reader context
  */
 int ccidT1Init (struct scr *ctx) {
 

@@ -22,21 +22,40 @@
 #include "scr.h"
 #include "ctapi.h"
 
+/**
+ * Maximum size of receive buffer
+ */
 #define BUFFMAX    261
 
+/**
+ * Data structure encapsulating all data needed for T=1 protocol
+ */
 typedef struct ccidT1 {
-    unsigned int    CharWaitTime;        /* Character Wait Time in ETU        */
-    unsigned int    BlockWaitTime;       /* Block Wait Time in ETU            */
-    long             WorkBWT;             /* Working Block Wait Time in ETU    */
-    unsigned char   IFSC;                /* Maximum length of INF field       */
-    int              RSequenz;            /* Receiver sequence number          */
-    int              SSequenz;            /* Transmitter sequence number       */
-    unsigned char   Nad;                 /* NAD unsigned char of received block        */
-    unsigned char   Pcb;                 /* PCB unsigned char of received blocks       */
-    int              InBuffLength;        /* Length of received data block     */
-    unsigned char   InBuff[BUFFMAX];     /* Buffer for incoming data          */
+	/** Character Wait Time in ETU        */
+    unsigned int    CharWaitTime;
+    /** Block Wait Time in ETU            */
+    unsigned int    BlockWaitTime;
+    /** Working Block Wait Time in ETU    */
+    long             WorkBWT;
+    /** Maximum length of INF field       */
+    unsigned char   IFSC;
+    /** Receiver sequence number          */
+    int              RSequenz;
+    /** Transmitter sequence number       */
+    int              SSequenz;
+    /** NAD unsigned char of received block        */
+    unsigned char   Nad;
+    /** PCB unsigned char of received blocks       */
+    unsigned char   Pcb;
+    /** Length of received data block     */
+    int              InBuffLength;
+    /** Buffer for incoming data          */
+    unsigned char   InBuff[BUFFMAX];
 } ccidT1_t;
 
+/**
+ * CRC invalid
+ */
 #define ERR_EDC     -11
 
 #ifndef TRUE

@@ -32,9 +32,10 @@ int FTable[]  = { 372, 372, 558, 744, 1116, 1488, 1860, -1, -1, 512, 768, 1024, 
 int DTable[]  = { -1, 1, 2, 4, 8, 16, 32, -1, 12, 20, -1, -1, -1, -1, -1, -1};
 
 #ifdef DEBUG
-/*
- * Dump the content any type of CCID message
- *
+/**
+ * Dump the content of a CCID message
+ * @param mem Pointer to array holding the message
+ * @param len Length of message
  */
 void CCIDDump(unsigned char *mem, int len) {
 
@@ -79,6 +80,12 @@ void CCIDDump(unsigned char *mem, int len) {
 
 
 
+/**
+ * Power on the ICC in the reader and set the ATR and the communication parameters as specified
+ *
+ * @param ctx Reader context
+ * @return 0 on success, negative value otherwise
+ */
 int PC_to_RDR_IccPowerOn(scr_t *ctx) {
 
     int rc;
@@ -135,6 +142,13 @@ int PC_to_RDR_IccPowerOn(scr_t *ctx) {
 
 
 
+/**
+ * Calculate the current baudrate depending on the values of F and D
+ *
+ * @param F Clock rate conversion integer
+ * @param D Baud rate adjustment integer
+ * @return Calculated baudrate
+ */
 int DetermineBaudrate(int F, int D) {
     int br;
 
@@ -164,6 +178,12 @@ int DetermineBaudrate(int F, int D) {
 
 
 
+/**
+ * Decode protocol specified ATR values and store them in the reader context
+ *
+ * @param ctx Reader context
+ * @return 0 on success, negative value otherwise
+ */
 int DecodeATRValues(scr_t *ctx) {
 
     int atrp;
@@ -245,6 +265,12 @@ int DecodeATRValues(scr_t *ctx) {
 
 
 
+/**
+ * Set communication protocol parameters (guard time, FI, DI, IFSC)
+ *
+ * @param ctx Reader context
+ * @return 0 on success, negative value otherwise
+ */
 int PC_to_RDR_SetParameters(scr_t *ctx) {
 
     unsigned char msg[17];
@@ -290,6 +316,12 @@ int PC_to_RDR_SetParameters(scr_t *ctx) {
 
 
 
+/**
+ * Get the current state of the reader slot
+ *
+ * @param ctx Reader context
+ * @return \ref ICC_PRESENT_AND_INACTIVE, \ref ICC_PRESENT_AND_ACTIVE, \ref NO_ICC_PRESENT or -1 on error
+ */
 int PC_to_RDR_GetSlotStatus(scr_t *ctx) {
 
     unsigned char msg[10];
@@ -330,6 +362,12 @@ int PC_to_RDR_GetSlotStatus(scr_t *ctx) {
 
 
 
+/**
+ * Power off the ICC in the reader
+ *
+ * @param ctx Reader context
+ * @return 0 on success, negative value otherwise
+ */
 int PC_to_RDR_IccPowerOff(scr_t *ctx) {
 
     unsigned char msg[10];
@@ -368,6 +406,14 @@ int PC_to_RDR_IccPowerOff(scr_t *ctx) {
 
 
 
+/**
+ * Exchange data block between PC and reader
+ *
+ * @param ctx Reader context
+ * @param outlen Length of outgoing data
+ * @param outbuf Outgoing data buffer
+ * @return 0 on success, negative value otherwise
+ */
 int PC_to_RDR_XfrBlock(scr_t *ctx, unsigned int outlen, unsigned char *outbuf) {
 
     int rc;
@@ -396,6 +442,14 @@ int PC_to_RDR_XfrBlock(scr_t *ctx, unsigned int outlen, unsigned char *outbuf) {
 
 
 
+/**
+ * Exchange data block between reader and PC
+ *
+ * @param ctx Reader context
+ * @param inlen Length of data buffer/actual length of incoming data
+ * @param inbuf Incoming data buffer
+ * @return 0 on success, negative value otherwise
+ */
 int RDR_to_PC_DataBlock(scr_t *ctx, unsigned int *inlen, unsigned char *inbuf) {
 
     int rc;
