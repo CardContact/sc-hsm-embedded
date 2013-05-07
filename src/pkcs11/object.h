@@ -55,6 +55,7 @@ struct p11Object_t {
     int sensitiveObj;
 
     int tokenid;
+    int keysize;
 
     struct p11Token_t *token;
 

@@ -44,62 +44,62 @@
  */
 
 int initSessionPool(struct p11SessionPool_t *pool)
+{
+	pool->list = NULL;
+	pool->nextSessionHandle = 1;     /* Set initial value of session handles to 1 */
+	                                 /* Valid handles have a non-zero value       */
+	pool->numberOfSessions = 0;
 
-{       
-    pool->list = NULL;
-    pool->nextSessionHandle = 1;     /* Set initial value of session handles to 1 */
-                                     /* Valid handles have a non-zero value       */
-    pool->numberOfSessions = 0; 
-
-    return CKR_OK;
+	return CKR_OK;
 }
+
 
 
 int terminateSessionPool(struct p11SessionPool_t *pool)
-
 {
-    struct p11Session_t *pSession, *pFreeSession;
-    struct p11Object_t *pObject, *tmp;
+	struct p11Session_t *pSession, *pFreeSession;
+	struct p11Object_t *pObject, *tmp;
 
-    pSession = pool->list;
+	pSession = pool->list;
 
-    /* clear the session pool */
-    while (pSession) {
-        
-        /* clear the search objects */
-        pObject = pSession->searchObj.searchList;
+	/* clear the session pool */
+	while (pSession) {
 
-        while (pObject) {
-            tmp = pObject->next;
+		/* clear the search objects */
+		pObject = pSession->searchObj.searchList;
 
-            removeAllAttributes(pObject);
-            free(pObject);
+		while (pObject) {
+			tmp = pObject->next;
 
-            pObject = tmp;
-        }
+			removeAllAttributes(pObject);
+			free(pObject);
 
-        /* clear the session */
-        pObject = pSession->sessionObjList;
+			pObject = tmp;
+		}
 
-        while (pObject) {
-            tmp = pObject->next;
+		/* clear the session */
+		pObject = pSession->sessionObjList;
 
-            removeAllAttributes(pObject);
-            free(pObject);
+		while (pObject) {
+			tmp = pObject->next;
 
-            pObject = tmp;
-        }
+			removeAllAttributes(pObject);
+			free(pObject);
 
-        pFreeSession = pSession;
+			pObject = tmp;
+		}
 
-        pSession = pSession->next;
+		pFreeSession = pSession;
 
-        free(pFreeSession);
+		pSession = pSession->next;
 
-    }
+		free(pFreeSession);
 
-    return 0;
+	}
+
+	return 0;
 }
+
 
 
 /**
@@ -119,35 +119,35 @@ int terminateSessionPool(struct p11SessionPool_t *pool)
  *                   </TR>
  *                   </TABLE></P>
  */
-
 int addSession(struct p11SessionPool_t *pool, struct p11Session_t *session)
-
 {
-    struct p11Session_t *prevSession;
+	struct p11Session_t *prevSession;
 
-    session->next = NULL;
+	session->next = NULL;
 
-    if (pool->list == NULL) {
+	if (pool->list == NULL) {
 
-        pool->list = session;
+		pool->list = session;
 
-    } else {
+	} else {
 
-        prevSession = pool->list;
+		prevSession = pool->list;
 
-        while (prevSession->next != NULL) {
-            prevSession = prevSession->next;
-        }
-        
-        prevSession->next = session;
+		while (prevSession->next != NULL) {
+			prevSession = prevSession->next;
+		}
 
-    }
+		prevSession->next = session;
 
-    session->handle = pool->nextSessionHandle++;
-    pool->numberOfSessions++;
+	}
 
-    return CKR_OK;
+	session->handle = pool->nextSessionHandle++;
+	pool->numberOfSessions++;
+
+	return CKR_OK;
 }
+
+
 
 /**
  * findSessionByHandle finds a slot in the slot-pool. 
@@ -171,31 +171,30 @@ int addSession(struct p11SessionPool_t *pool, struct p11Session_t *session)
  *                   </TR>
  *                   </TABLE></P>
  */
-
 int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle, struct p11Session_t **session)
-
 {
-    struct p11Session_t *psession;
-    int pos;
-    
-    psession = pool->list;
-    pos = 0;
+	struct p11Session_t *psession;
+	int pos;
 
-    while (psession != NULL) {
-    
-        if (psession->handle == handle) {
+	psession = pool->list;
+	pos = 0;
 
-            *session = psession;
-            return pos;
-        }
-        
-        psession = psession->next;
-        pos++;
-    }
+	while (psession != NULL) {
 
-    return -1;
-    
+		if (psession->handle == handle) {
+
+			*session = psession;
+			return pos;
+		}
+
+		psession = psession->next;
+		pos++;
+	}
+
+	return -1;
 }
+
+
 
 /**
  * findSessionBySlotID finds a slot in the slot-pool. 
@@ -219,31 +218,31 @@ int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle,
  *                   </TR>
  *                   </TABLE></P>
  */
-
 int findSessionBySlotID(struct p11SessionPool_t *pool, CK_SLOT_ID slotID, struct p11Session_t **session)
-
 {
-    struct p11Session_t *psession;
-    int pos;
-    
-    psession = pool->list;
-    pos = 0;
+	struct p11Session_t *psession;
+	int pos;
 
-    while (psession != NULL) {
-    
-        if (psession->slotID == slotID) {
+	psession = pool->list;
+	pos = 0;
 
-            *session = psession;
-            return pos;
-        }
-        
-        psession = psession->next;
-        pos++;
-    }
+	while (psession != NULL) {
 
-    return -1;
-    
+		if (psession->slotID == slotID) {
+
+			*session = psession;
+			return pos;
+		}
+
+		psession = psession->next;
+		pos++;
+	}
+
+	return -1;
+
 }
+
+
 
 /**
  * removeSession removes a session from the session-pool. 
@@ -265,180 +264,180 @@ int findSessionBySlotID(struct p11SessionPool_t *pool, CK_SLOT_ID slotID, struct
  *                   </TR>
  *                   </TABLE></P>
  */
-
 int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle)
-
 {
-    struct p11Session_t *session;
-    struct p11Session_t *prevSession;
-    int rc;
+	struct p11Session_t *session;
+	struct p11Session_t *prevSession;
+	int rc;
 
-    rc = findSessionByHandle(pool, handle, &session);
-    
-    /* no slot with this ID found */
-    if (rc < 0) {
-        return rc;
-    }
+	rc = findSessionByHandle(pool, handle, &session);
 
-    if (rc > 0) {      /* there is more than one element in the pool */
-        
-        prevSession = pool->list;
+	/* no slot with this ID found */
+	if (rc < 0) {
+		return rc;
+	}
 
-        while (prevSession->next->handle != handle) {
-            prevSession = prevSession->next;
-        }
-    
-        prevSession->next = session->next;
-        
-    }
+	if (rc > 0) {      /* there is more than one element in the pool */
 
-    if (rc == 0) {      /* We removed the last element from the list */
-        pool->list = NULL;
-    }
+		prevSession = pool->list;
 
-    free(session);
-    
-    pool->numberOfSessions--;
+		while (prevSession->next->handle != handle) {
+			prevSession = prevSession->next;
+		}
 
-    return CKR_OK;
+		prevSession->next = session->next;
+
+	}
+
+	if (rc == 0) {      /* We removed the last element from the list */
+		pool->list = NULL;
+	}
+
+	free(session);
+
+	pool->numberOfSessions--;
+
+	return CKR_OK;
 
 }
+
 
 
 int addSessionObject(struct p11Session_t *session, struct p11Object_t *object)
+{
+	struct p11Object_t *obj;
 
-{   
-    struct p11Object_t *obj;
+	if (session->sessionObjList == NULL) {
 
-    if (session->sessionObjList == NULL) {
-        
-        session->sessionObjList = object;
-        object->next = NULL;
-        session->numberOfSessionObjects = 1;
-        session->freeSessionObjNumber = 0xA000;
-        object->handle = session->freeSessionObjNumber++;
-        
-    } else {
+		session->sessionObjList = object;
+		object->next = NULL;
+		session->numberOfSessionObjects = 1;
+		session->freeSessionObjNumber = 0xA000;
+		object->handle = session->freeSessionObjNumber++;
 
-        obj = session->sessionObjList;
+	} else {
 
-        while (obj->next != NULL) {
-            obj = obj->next;
-        }
+		obj = session->sessionObjList;
 
-        obj->next = object;
-        session->numberOfSessionObjects++;
-        object->handle = session->freeSessionObjNumber++;
-        object->next = NULL;
+		while (obj->next != NULL) {
+			obj = obj->next;
+		}
 
-    }
+		obj->next = object;
+		session->numberOfSessionObjects++;
+		object->handle = session->freeSessionObjNumber++;
+		object->next = NULL;
 
-    object->dirtyFlag = 0;
+	}
 
-    return CKR_OK;
+	object->dirtyFlag = 0;
+
+	return CKR_OK;
 }
+
+
 
 int findSessionObject(struct p11Session_t *session, CK_OBJECT_HANDLE handle, struct p11Object_t **object)
-
 {
-    struct p11Object_t *obj;
-    int pos = 0;            /* remember the current position in the list */
+	struct p11Object_t *obj;
+	int pos = 0;            /* remember the current position in the list */
 
-    obj = session->sessionObjList;
-    *object = NULL;
+	obj = session->sessionObjList;
+	*object = NULL;
 
-    while (obj != NULL) {
-    
-        if (obj->handle == handle) {
+	while (obj != NULL) {
 
-            *object = obj;
-            return pos;
-        }
-        
-        obj = obj->next;
-        pos++;
-    }
+		if (obj->handle == handle) {
 
-    return -1;
+			*object = obj;
+			return pos;
+		}
+
+		obj = obj->next;
+		pos++;
+	}
+
+	return -1;
 }
+
+
 
 int removeSessionObject(struct p11Session_t *session, CK_OBJECT_HANDLE handle)
-
 {
-    struct p11Object_t *object = NULL;
-    struct p11Object_t *prev = NULL;
-    int rc;
+	struct p11Object_t *object = NULL;
+	struct p11Object_t *prev = NULL;
+	int rc;
 
-    rc = findSessionObject(session, handle, &object);
-    
-    /* no object with this handle found */
-    if (rc < 0) {
-        return rc;
-    }
+	rc = findSessionObject(session, handle, &object);
 
-    if (rc > 0) {      /* there is more than one element in the pool */
-        
-        prev = session->sessionObjList;
+	/* no object with this handle found */
+	if (rc < 0) {
+		return rc;
+	}
 
-        while (prev->next->handle != handle) {
-            prev = prev->next;
-        }
-    
-        prev->next = object->next;
-        
-    }
+	if (rc > 0) {      /* there is more than one element in the pool */
 
-    removeAllAttributes(object);
+		prev = session->sessionObjList;
 
-    free(object);
-    
-    session->numberOfSessionObjects--;
+		while (prev->next->handle != handle) {
+			prev = prev->next;
+		}
 
-    if (rc == 0) {      /* We removed the last element from the list */
-        session->sessionObjList = NULL;
-    }
+		prev->next = object->next;
 
-    object->dirtyFlag = 0;
+	}
 
-    return CKR_OK;
+	removeAllAttributes(object);
+
+	free(object);
+
+	session->numberOfSessionObjects--;
+
+	if (rc == 0) {      /* We removed the last element from the list */
+		session->sessionObjList = NULL;
+	}
+
+	object->dirtyFlag = 0;
+
+	return CKR_OK;
 }
+
 
 
 int addObjectToSearchList(struct p11Session_t *session, struct p11Object_t *object)
+{
+	struct p11Object_t *obj;
+	struct p11Object_t *tmp;
 
-{   
-    struct p11Object_t *obj;
-    struct p11Object_t *tmp;
+	tmp = (struct p11Object_t *) malloc(sizeof(*object));
 
-    tmp = (struct p11Object_t *) malloc(sizeof(*object));
+	if (tmp == NULL) {
+		return -1;
+	}
 
-    if (tmp == NULL) {
-        return -1;
-    }
+	memset(tmp, 0x00, sizeof(*tmp));
+	memcpy(tmp, object, sizeof(*object));
 
-    memset(tmp, 0x00, sizeof(*tmp));
-    memcpy(tmp, object, sizeof(*object));
+	if (session->searchObj.searchList == NULL) {
 
-    if (session->searchObj.searchList == NULL) {
-        
-        session->searchObj.searchList = tmp;
-        tmp->next = NULL;
-        session->searchObj.searchNumOfObjects = 1;
-        session->searchObj.objectsCollected = 0;
-        
-    } else {
+		session->searchObj.searchList = tmp;
+		tmp->next = NULL;
+		session->searchObj.searchNumOfObjects = 1;
+		session->searchObj.objectsCollected = 0;
 
-        obj = session->searchObj.searchList;
+	} else {
 
-        while (obj->next != NULL) {
-            obj = obj->next;
-        }
+		obj = session->searchObj.searchList;
 
-        obj->next = tmp;
-        session->searchObj.searchNumOfObjects++;
-        tmp->next = NULL;
+		while (obj->next != NULL) {
+			obj = obj->next;
+		}
 
-    }
+		obj->next = tmp;
+		session->searchObj.searchNumOfObjects++;
+		tmp->next = NULL;
 
-    return CKR_OK;
+	}
+
+	return CKR_OK;
 }

@@ -39,43 +39,42 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
  */
 
 int createDataObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject)
-
 {
-    unsigned int i;
-    int index, rc;
+	unsigned int i;
+	int index, rc;
 
-    rc = createStorageObject(pTemplate, ulCount, pObject);
+	rc = createStorageObject(pTemplate, ulCount, pObject);
 
-    if (rc) {
-        return rc;
-    }
-    
-    for (i = 0; i < NEEDED_ATTRIBUTES_DATAOBJECT; i++) {
+	if (rc) {
+		return rc;
+	}
 
-        index = findAttributeInTemplate(attributesDataObject[i].attribute.type, pTemplate, ulCount);
-    
-        if (index == -1) { /* The attribute is not present - is it optional? */
-            
-            if (attributesDataObject[i].optional) {
-            
-                addAttribute(pObject, &attributesDataObject[i].attribute);
-            
-            } else { /* the attribute is not optional */
+	for (i = 0; i < NEEDED_ATTRIBUTES_DATAOBJECT; i++) {
 
-                removeAllAttributes(pObject);
-                memset(pObject, 0x00, sizeof(*pObject));
-                return CKR_TEMPLATE_INCOMPLETE;
-            
-            }
-        
-        } else {
-            addAttribute(pObject, &pTemplate[index]);   
-        }
-    }
+		index = findAttributeInTemplate(attributesDataObject[i].attribute.type, pTemplate, ulCount);
+
+		if (index == -1) { /* The attribute is not present - is it optional? */
+
+			if (attributesDataObject[i].optional) {
+
+				addAttribute(pObject, &attributesDataObject[i].attribute);
+
+			} else { /* the attribute is not optional */
+
+				removeAllAttributes(pObject);
+				memset(pObject, 0x00, sizeof(*pObject));
+				return CKR_TEMPLATE_INCOMPLETE;
+
+			}
+
+		} else {
+			addAttribute(pObject, &pTemplate[index]);
+		}
+	}
 
 #ifdef DEBUG
-    dumpAttributeList(pObject);
+	dumpAttributeList(pObject);
 #endif
 
-    return 0;
+	return 0;
 }

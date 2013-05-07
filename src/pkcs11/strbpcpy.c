@@ -35,28 +35,26 @@
  * @param dstsize   The size of the destination buffer.
  *
  */
-
 void strbpcpy(CK_CHAR *dst, const char *src, int dstsize)
-
 {
 	int c = strlen(src) > (unsigned int) dstsize ? dstsize : strlen(src);
-	
+
 	memcpy((char *) dst, src, c);
 	dstsize -= c;
 	memset((char *) dst + c, ' ', dstsize);
 }
 
 
+
 void removeBlanks(unsigned char *dst, const unsigned char *src)
-
 {
-    int i = 0; /* the maximum length of the label */
+	int i = 0; /* the maximum length of the label */
 
-    memcpy(dst, src, 32);
+	memcpy(dst, src, 32);
 
-    while (dst[i] != 0x20) { /* search for the first blank */
-        i++;
-    }
+	while (dst[i] != 0x20) { /* search for the first blank */
+		i++;
+	}
 
-    dst[i] = '\0';	
+	dst[i] = '\0';
 }

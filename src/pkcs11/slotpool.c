@@ -25,14 +25,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef WIN32
-#include <io.h>
-#else
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#endif
-
 #include <pkcs11/p11generic.h>
 #include <pkcs11/slotpool.h>
 #include <pkcs11/slot.h>
@@ -42,6 +34,7 @@
 #include <ctccid/ctapi.h>
 
 extern struct p11Context_t *context;
+
 
 
 /**
@@ -78,119 +71,137 @@ extern struct p11Context_t *context;
  *                   </TR>
  *                   </TABLE></P>
  */
-
 int initSlotPool(struct p11SlotPool_t *pool)
-
 { 
-    char scr[10];
-    int rc, i;
-    
-    struct p11Slot_t *slot;
-    struct p11Token_t *token;
+	char scr[10];
+	int rc, i;
 
-    if (context == NULL)
-        return CKR_CRYPTOKI_NOT_INITIALIZED;
+	struct p11Slot_t *slot;
+	struct p11Token_t *token;
 
-    pool->list = NULL;
-    pool->numberOfSlots = 0;
-    pool->nextSlotID = 1;
+	FUNC_CALLED();
 
-    for (i = 0; i < MAX_SLOTS; i++) {
-    	rc = CT_init(pool->nextSlotID, i);
+	if (context == NULL) {
+		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "Not initialized");
+	}
 
-    	if (rc != OK) {
-    		break;
-    	}
+	pool->list = NULL;
+	pool->numberOfSlots = 0;
+	pool->nextSlotID = 1;
 
-        slot = (struct p11Slot_t *) malloc(sizeof(struct p11Slot_t));
+	for (i = 0; i < MAX_SLOTS; i++) {
+		rc = CT_init((unsigned short)pool->nextSlotID, i);
 
-        if (slot == NULL) {
-            return CKR_HOST_MEMORY;
-        }
+		if (rc != OK) {
+#ifdef DEBUG
+			debug("CT_init returns %d\n", rc);
+#endif
+			break;
+		}
 
-        memset(slot, 0x00, sizeof(struct p11Slot_t));
+		slot = (struct p11Slot_t *) malloc(sizeof(struct p11Slot_t));
 
-        sprintf(scr, "Slot#%d", i);
-        strbpcpy(slot->info.slotDescription,
-                 scr,
-                 sizeof(slot->info.slotDescription));
+		if (slot == NULL) {
+			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+		}
 
-        strbpcpy(slot->info.manufacturerID,
-                 "CardContact",
-                 sizeof(slot->info.manufacturerID));
+		memset(slot, 0x00, sizeof(struct p11Slot_t));
 
-        slot->info.hardwareVersion.minor = 0;
-        slot->info.hardwareVersion.major = 0;
+		sprintf(scr, "Slot#%d", i);
+		strbpcpy(slot->info.slotDescription,
+				scr,
+				sizeof(slot->info.slotDescription));
 
-        slot->info.firmwareVersion.minor = 0;
-        slot->info.firmwareVersion.major = 0;
+		strbpcpy(slot->info.manufacturerID,
+				"CardContact",
+				sizeof(slot->info.manufacturerID));
 
-        slot->info.flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
-        addSlot(context->slotPool, slot);
+		slot->info.hardwareVersion.minor = 0;
+		slot->info.hardwareVersion.major = 0;
 
-        rc = checkForToken(slot, &token);
+		slot->info.firmwareVersion.minor = 0;
+		slot->info.firmwareVersion.major = 0;
 
-        if (rc != CKR_OK) {
-            removeSlot(context->slotPool, slot->id);
-            return CKR_GENERAL_ERROR;
-        }
+		slot->info.flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
+		addSlot(context->slotPool, slot);
 
-        if (token != NULL) {
-            addToken(slot, token);
-        }
-    }
-    
-    return CKR_OK;
+		rc = checkForToken(slot, &token);
+
+		if (rc != CKR_OK) {
+			removeSlot(context->slotPool, slot->id);
+			FUNC_FAILS(CKR_GENERAL_ERROR, "token check failed");
+		}
+
+		if (token != NULL) {
+			addToken(slot, token);
+		}
+	}
+
+	FUNC_RETURNS(CKR_OK);
 }
+
 
 
 int terminateSlotPool(struct p11SlotPool_t *pool)
+{
+	struct p11Slot_t *pSlot, *pFreeSlot;
+	struct p11Object_t *pObject, *tmp;
+	int rc;
 
-{   struct p11Slot_t *pSlot, *pFreeSlot;
-    struct p11Object_t *pObject, *tmp;
+	pSlot = pool->list;
 
-    pSlot = pool->list;
+	/* clear the slot pool */
+	while (pSlot) {
 
-    /* clear the slot pool */
-    while (pSlot) {
-               
-        if (pSlot->token) {
+		if (pSlot->token) {
 
-            /* clear the public token objects */
-            pObject = pSlot->token->tokenObjList;
+			/* clear the public token objects */
+			pObject = pSlot->token->tokenObjList;
 
-            while (pObject) {
-                tmp = pObject->next;
+			while (pObject) {
+				tmp = pObject->next;
 
-                removeAllAttributes(pObject);
-                free(pObject);
+				removeAllAttributes(pObject);
+				free(pObject);
 
-                pObject = tmp;
-            }
+				pObject = tmp;
+			}
 
-            /* clear the private token objects */
-            pObject = pSlot->token->tokenPrivObjList;
+			/* clear the private token objects */
+			pObject = pSlot->token->tokenPrivObjList;
 
-            while (pObject) {
-                tmp = pObject->next;
+			while (pObject) {
+				tmp = pObject->next;
 
-                removeAllAttributes(pObject);
-                free(pObject);
+				removeAllAttributes(pObject);
+				free(pObject);
 
-                pObject = tmp;
-            }
-        }
+				pObject = tmp;
+			}
+		}
 
-        pFreeSlot = pSlot;
+#ifdef DEBUG
+		debug("calling CT_close()\n", rc);
+#endif
+		rc = CT_close((unsigned short)pSlot->id);
 
-        pSlot = pSlot->next;
+		if (rc != OK) {
+#ifdef DEBUG
+			debug("CT_close returns %d\n", rc);
+#endif
+		}
 
-        free(pFreeSlot->token);
-        free(pFreeSlot);
-    }
+		pFreeSlot = pSlot;
 
-    return 0;
+		pSlot = pSlot->next;
+
+		free(pFreeSlot->token);
+		free(pFreeSlot);
+	}
+
+	return 0;
 }
+
 
 
 /**
@@ -208,37 +219,36 @@ int terminateSlotPool(struct p11SlotPool_t *pool)
  *                   </TR>
  *                   </TABLE></P>
  */
-
 int addSlot(struct p11SlotPool_t *pool, struct p11Slot_t *slot)
-
 {
-    struct p11Slot_t *prevSlot;
-    
-    slot->next = NULL;
-        
-    if (pool->list == NULL) {
-                
-        pool->list = slot;
-   
-    } else {
-        
-        prevSlot = pool->list;
+	struct p11Slot_t *prevSlot;
 
-        while (prevSlot->next != NULL) {
-            prevSlot = prevSlot->next;
-        }
+	slot->next = NULL;
 
-        prevSlot->next = slot;
-    }
+	if (pool->list == NULL) {
 
-    
-    pool->numberOfSlots++;
+		pool->list = slot;
 
-    slot->id = pool->nextSlotID++;
-    
-    return CKR_OK;
+	} else {
 
+		prevSlot = pool->list;
+
+		while (prevSlot->next != NULL) {
+			prevSlot = prevSlot->next;
+		}
+
+		prevSlot->next = slot;
+	}
+
+
+	pool->numberOfSlots++;
+
+	slot->id = pool->nextSlotID++;
+
+	return CKR_OK;
 }
+
+
 
 /**
  * findSlot finds a slot in the slot-pool. 
@@ -262,30 +272,30 @@ int addSlot(struct p11SlotPool_t *pool, struct p11Slot_t *slot)
  *                   </TR>
  *                   </TABLE></P>
  */
-
 int findSlot(struct p11SlotPool_t *pool, CK_SLOT_ID slotID, struct p11Slot_t **slot)
-
 {
-    struct p11Slot_t *pslot;
-    int pos = 0;            /* remember the current position in the list */
+	struct p11Slot_t *pslot;
+	int pos = 0;            /* remember the current position in the list */
 
-    pslot = pool->list;
-    *slot = NULL;
+	pslot = pool->list;
+	*slot = NULL;
 
-    while (pslot != NULL) {
-    
-        if (pslot->id == slotID) {
+	while (pslot != NULL) {
 
-            *slot = pslot;
-            return pos;
-        }
-        
-        pslot = pslot->next;
-        pos++;
-    }
+		if (pslot->id == slotID) {
 
-    return -1;
+			*slot = pslot;
+			return pos;
+		}
+
+		pslot = pslot->next;
+		pos++;
+	}
+
+	return -1;
 }
+
+
 
 /**
  * removeSlot removes a slot from the slot-pool. 
@@ -307,41 +317,39 @@ int findSlot(struct p11SlotPool_t *pool, CK_SLOT_ID slotID, struct p11Slot_t **s
  *                   </TR>
  *                   </TABLE></P>
  */
-
 int removeSlot(struct p11SlotPool_t *pool, CK_SLOT_ID slotID)
 
 {
-    struct p11Slot_t *slot = NULL;
-    struct p11Slot_t *prev = NULL;
-    int rc;
+	struct p11Slot_t *slot = NULL;
+	struct p11Slot_t *prev = NULL;
+	int rc;
 
-    rc = findSlot(pool, slotID, &slot);
-    
-    /* no slot with this ID found */
-    if (rc < 0) {
-        return rc;
-    }
+	rc = findSlot(pool, slotID, &slot);
 
-    if (rc > 0) {      /* there is more than one element in the pool */
-        
-        prev = pool->list;
+	/* no slot with this ID found */
+	if (rc < 0) {
+		return rc;
+	}
 
-        while (prev->next->id != slotID) {
-            prev = prev->next;
-        }
-    
-        prev->next = slot->next;
-        
-    }
+	if (rc > 0) {      /* there is more than one element in the pool */
 
-    free(slot);
-    
-    pool->numberOfSlots--;
+		prev = pool->list;
 
-    if (rc == 0) {      /* We removed the last element from the list */
-        pool->list = NULL;
-    }
+		while (prev->next->id != slotID) {
+			prev = prev->next;
+		}
 
-    return CKR_OK;
+		prev->next = slot->next;
+
+	}
+
+	free(slot);
+
+	pool->numberOfSlots--;
+
+	if (rc == 0) {      /* We removed the last element from the list */
+		pool->list = NULL;
+	}
+
+	return CKR_OK;
 }
-

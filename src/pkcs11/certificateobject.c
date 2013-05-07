@@ -36,9 +36,9 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 #endif
 
 static struct attributesForObject_t attributesCertificateObject[NEEDED_ATTRIBUTES_CERTIFICATEOBJECT] = {
-	    {{CKA_CERTIFICATE_TYPE, NULL, 0}, FALSE},
-	    {{CKA_ID, NULL, 0}, FALSE},
-	    {{CKA_VALUE, NULL, 0}, FALSE}
+		{{CKA_CERTIFICATE_TYPE, NULL, 0}, FALSE},
+		{{CKA_ID, NULL, 0}, FALSE},
+		{{CKA_VALUE, NULL, 0}, FALSE}
 };
 
 
@@ -47,43 +47,42 @@ static struct attributesForObject_t attributesCertificateObject[NEEDED_ATTRIBUTE
  *  Constructor for the certificate object
  */
 int createCertificateObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject)
-
 {
-    unsigned int i;
-    int index, rc;
+	unsigned int i;
+	int index, rc;
 
-    rc = createStorageObject(pTemplate, ulCount, pObject);
+	rc = createStorageObject(pTemplate, ulCount, pObject);
 
-    if (rc) {
-        return rc;
-    }
-    
-    for (i = 0; i < NEEDED_ATTRIBUTES_CERTIFICATEOBJECT; i++) {
+	if (rc) {
+		return rc;
+	}
 
-        index = findAttributeInTemplate(attributesCertificateObject[i].attribute.type, pTemplate, ulCount);
-    
-        if (index == -1) { /* The attribute is not present - is it optional? */
-            
-            if (attributesCertificateObject[i].optional) {
-            
-                addAttribute(pObject, &attributesCertificateObject[i].attribute);
-            
-            } else { /* the attribute is not optional */
+	for (i = 0; i < NEEDED_ATTRIBUTES_CERTIFICATEOBJECT; i++) {
 
-                removeAllAttributes(pObject);
-                memset(pObject, 0x00, sizeof(*pObject));
-                return CKR_TEMPLATE_INCOMPLETE;
-            
-            }
-        
-        } else {
-            addAttribute(pObject, &pTemplate[index]);   
-        }
-    }
+		index = findAttributeInTemplate(attributesCertificateObject[i].attribute.type, pTemplate, ulCount);
+
+		if (index == -1) { /* The attribute is not present - is it optional? */
+
+			if (attributesCertificateObject[i].optional) {
+
+				addAttribute(pObject, &attributesCertificateObject[i].attribute);
+
+			} else { /* the attribute is not optional */
+
+				removeAllAttributes(pObject);
+				memset(pObject, 0x00, sizeof(*pObject));
+				return CKR_TEMPLATE_INCOMPLETE;
+
+			}
+
+		} else {
+			addAttribute(pObject, &pTemplate[index]);
+		}
+	}
 
 #ifdef DEBUG
-    dumpAttributeList(pObject);
+	dumpAttributeList(pObject);
 #endif
 
-    return 0;
+	return 0;
 }

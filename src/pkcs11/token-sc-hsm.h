@@ -32,6 +32,7 @@
 #define MAX_EXT_APDU_LENGTH		1014
 #define MAX_FILES				128
 #define MAX_CERTIFICATE_SIZE	4096
+#define MAX_P15_SIZE			1024
 
 #define PRKD_PREFIX				0xC4		/* Hi byte in file identifier for PKCS#15 PRKD objects */
 #define CD_PREFIX				0xC8		/* Hi byte in file identifier for PKCS#15 CD objects */

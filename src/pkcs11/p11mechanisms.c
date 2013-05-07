@@ -16,7 +16,7 @@
  *****************************************************************************/
 
 #include <stdlib.h>
-#include <fcntl.h>      
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -35,101 +35,101 @@ extern struct p11Context_t *context;
 /*  C_EncryptInit initializes an encryption operation. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
-    CK_SESSION_HANDLE hSession,
-    CK_MECHANISM_PTR pMechanism,
-    CK_OBJECT_HANDLE hKey
+		CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hKey
 )
-{   
-    int rv;
-    struct p11Object_t *pObject;
-    struct p11Slot_t *pSlot;
-    struct p11Session_t *pSession;
+{
+	int rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
 
-    rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
-    
-    if (rv < 0) {
-        return CKR_SESSION_HANDLE_INVALID;
-    }
+	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
-    if (pSession->activeObjectHandle != -1) {
-        return CKR_OPERATION_ACTIVE;
-    }
-           
-    rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
 
-    if (pSlot == NULL) {
-        return CKR_GENERAL_ERROR;
-    }
+	if (pSession->activeObjectHandle != -1) {
+		return CKR_OPERATION_ACTIVE;
+	}
 
-    rv = findObject(pSlot->token, hKey, &pObject, FALSE);
+	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
-    if (rv < 0) {
-        return CKR_GENERAL_ERROR;
-    }
+	if (pSlot == NULL) {
+		return CKR_GENERAL_ERROR;
+	}
 
-    if (pObject->C_EncryptInit != NULL) {
-        rv = pObject->C_EncryptInit(pMechanism);
-    } else {
-        return CKR_FUNCTION_NOT_SUPPORTED;
-    }
+	rv = findObject(pSlot->token, hKey, &pObject, FALSE);
 
-    if (!rv) {
-        pSession->activeObjectHandle = pObject->handle;
-        rv = CKR_OK;
-    }
+	if (rv < 0) {
+		return CKR_GENERAL_ERROR;
+	}
 
-    return rv;
+	if (pObject->C_EncryptInit != NULL) {
+		rv = pObject->C_EncryptInit(pMechanism);
+	} else {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+
+	if (!rv) {
+		pSession->activeObjectHandle = pObject->handle;
+		rv = CKR_OK;
+	}
+
+	return rv;
 }
 
 
 /*  C_Encrypt encrypts single-part data. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pData,
-    CK_ULONG ulDataLen,
-    CK_BYTE_PTR pEncryptedData,
-    CK_ULONG_PTR pulEncryptedDataLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pData,
+		CK_ULONG ulDataLen,
+		CK_BYTE_PTR pEncryptedData,
+		CK_ULONG_PTR pulEncryptedDataLen
 )
-{   
-    int rv;
-    struct p11Object_t *pObject;
-    struct p11Slot_t *pSlot;
-    struct p11Session_t *pSession;
+{
+	int rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
-    
-    if (rv < 0) {
-        return CKR_SESSION_HANDLE_INVALID;
-    }
-    
-    if (pSession->activeObjectHandle == -1) {
-        return CKR_GENERAL_ERROR;
-    }
 
-    rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
 
-    if (pSlot == NULL) {
-        return CKR_GENERAL_ERROR;
-    }
+	if (pSession->activeObjectHandle == -1) {
+		return CKR_GENERAL_ERROR;
+	}
 
-    rv = findObject(pSlot->token, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
-    if (rv < 0) {
-        return CKR_GENERAL_ERROR;
-    }
+	if (pSlot == NULL) {
+		return CKR_GENERAL_ERROR;
+	}
 
-    if (pObject->C_Encrypt != NULL) {
-        rv = pObject->C_Encrypt(pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
-    } else {
-        return CKR_FUNCTION_NOT_SUPPORTED;
-    }
+	rv = findObject(pSlot->token, pSession->activeObjectHandle, &pObject, FALSE);
 
-    return rv;
+	if (rv < 0) {
+		return CKR_GENERAL_ERROR;
+	}
+
+	if (pObject->C_Encrypt != NULL) {
+		rv = pObject->C_Encrypt(pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
+	} else {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+
+	return rv;
 }
 
 
@@ -137,135 +137,135 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
     processing another data part. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_EncryptUpdate)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pPart,
-    CK_ULONG ulPartLen,
-    CK_BYTE_PTR pEncryptedPart,
-    CK_ULONG_PTR pulEncryptedPartLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pPart,
+		CK_ULONG ulPartLen,
+		CK_BYTE_PTR pEncryptedPart,
+		CK_ULONG_PTR pulEncryptedPartLen
 )
 {
-    int rv;
-    struct p11Object_t *pObject;
-    struct p11Slot_t *pSlot;
-    struct p11Session_t *pSession;
+	int rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
 
-    rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
-    
-    if (rv < 0) {
-        return CKR_SESSION_HANDLE_INVALID;
-    }
-    
-    if (pSession->activeObjectHandle == -1) {
-        return CKR_GENERAL_ERROR;
-    }
+	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
-    rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
 
-    if (pSlot == NULL) {
-        return CKR_GENERAL_ERROR;
-    }
+	if (pSession->activeObjectHandle == -1) {
+		return CKR_GENERAL_ERROR;
+	}
 
-    rv = findObject(pSlot->token, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
-    if (rv < 0) {
-        return CKR_GENERAL_ERROR;
-    }
+	if (pSlot == NULL) {
+		return CKR_GENERAL_ERROR;
+	}
 
-    if (pObject->C_EncryptUpdate != NULL) {
-        rv = pObject->C_EncryptUpdate(pPart, ulPartLen, pEncryptedPart, pulEncryptedPartLen);
-    } else {
-        return CKR_FUNCTION_NOT_SUPPORTED;
-    }
+	rv = findObject(pSlot->token, pSession->activeObjectHandle, &pObject, FALSE);
 
-    return rv;
+	if (rv < 0) {
+		return CKR_GENERAL_ERROR;
+	}
+
+	if (pObject->C_EncryptUpdate != NULL) {
+		rv = pObject->C_EncryptUpdate(pPart, ulPartLen, pEncryptedPart, pulEncryptedPartLen);
+	} else {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+
+	return rv;
 }
 
 
 /*  C_EncryptFinal finishes a multiple-part encryption operation. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_EncryptFinal)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pLastEncryptedPart,
-    CK_ULONG_PTR pulLastEncryptedPartLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pLastEncryptedPart,
+		CK_ULONG_PTR pulLastEncryptedPartLen
 )
 {
-    int rv;
-    struct p11Object_t *pObject;
-    struct p11Slot_t *pSlot;
-    struct p11Session_t *pSession;
+	int rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
 
-    rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
-    
-    if (rv < 0) {
-        return CKR_SESSION_HANDLE_INVALID;
-    }
-    
-    if (pSession->activeObjectHandle == -1) {
-        return CKR_GENERAL_ERROR;
-    }
+	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
-    rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
 
-    if (pSlot == NULL) {
-        return CKR_GENERAL_ERROR;
-    }
+	if (pSession->activeObjectHandle == -1) {
+		return CKR_GENERAL_ERROR;
+	}
 
-    rv = findObject(pSlot->token, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
-    if (rv < 0) {
-        return CKR_GENERAL_ERROR;
-    }
+	if (pSlot == NULL) {
+		return CKR_GENERAL_ERROR;
+	}
 
-    if (pObject->C_EncryptFinal != NULL) {
-        rv = pObject->C_EncryptFinal(pLastEncryptedPart, pulLastEncryptedPartLen);
-    } else {
-        return CKR_FUNCTION_NOT_SUPPORTED;
-    }
+	rv = findObject(pSlot->token, pSession->activeObjectHandle, &pObject, FALSE);
 
-    if (!rv) {
-        pSession->activeObjectHandle = -1;
-        rv = CKR_OK;
-    }
+	if (rv < 0) {
+		return CKR_GENERAL_ERROR;
+	}
 
-    return rv;
+	if (pObject->C_EncryptFinal != NULL) {
+		rv = pObject->C_EncryptFinal(pLastEncryptedPart, pulLastEncryptedPartLen);
+	} else {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+
+	if (!rv) {
+		pSession->activeObjectHandle = -1;
+		rv = CKR_OK;
+	}
+
+	return rv;
 }
 
 
 /*  C_DecryptInit initializes a decryption operation. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_DecryptInit)(
-    CK_SESSION_HANDLE hSession,
-    CK_MECHANISM_PTR pMechanism,
-    CK_OBJECT_HANDLE hKey
+		CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hKey
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
 /*  C_Decrypt decrypts encrypted data in a single part. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_Decrypt)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pEncryptedData,
-    CK_ULONG ulEncryptedDataLen,
-    CK_BYTE_PTR pData,
-    CK_ULONG_PTR pulDataLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pEncryptedData,
+		CK_ULONG ulEncryptedDataLen,
+		CK_BYTE_PTR pData,
+		CK_ULONG_PTR pulDataLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -273,67 +273,67 @@ CK_DECLARE_FUNCTION(CK_RV, C_Decrypt)(
     processing another encrypted data part. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_DecryptUpdate)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pEncryptedPart,
-    CK_ULONG ulEncryptedPartLen,
-    CK_BYTE_PTR pPart,
-    CK_ULONG_PTR pulPartLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pEncryptedPart,
+		CK_ULONG ulEncryptedPartLen,
+		CK_BYTE_PTR pPart,
+		CK_ULONG_PTR pulPartLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
 /*  C_DecryptFinal finishes a multiple-part decryption operation. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_DecryptFinal)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pLastPart,
-    CK_ULONG_PTR pulLastPartLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pLastPart,
+		CK_ULONG_PTR pulLastPartLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
 /*  C_DigestInit initializes a message-digesting operation. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_DigestInit)(
-    CK_SESSION_HANDLE hSession,
-    CK_MECHANISM_PTR pMechanism
+		CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
 /*  C_Digest digests data in a single part. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_Digest)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pData,
-    CK_ULONG ulDataLen,
-    CK_BYTE_PTR pDigest,
-    CK_ULONG_PTR pulDigestLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pData,
+		CK_ULONG ulDataLen,
+		CK_BYTE_PTR pDigest,
+		CK_ULONG_PTR pulDigestLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -341,16 +341,16 @@ CK_DECLARE_FUNCTION(CK_RV, C_Digest)(
     processing another data part. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_DigestUpdate)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pPart,
-    CK_ULONG ulPartLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pPart,
+		CK_ULONG ulPartLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -358,31 +358,31 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestUpdate)(
     digesting the value of a secret key. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_DigestKey)(
-    CK_SESSION_HANDLE hSession,
-    CK_OBJECT_HANDLE hKey
+		CK_SESSION_HANDLE hSession,
+		CK_OBJECT_HANDLE hKey
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
 /*  C_DigestFinal finishes a multiple-part message-digesting operation. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_DigestFinal)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pDigest,
-    CK_ULONG_PTR pulDigestLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pDigest,
+		CK_ULONG_PTR pulDigestLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -390,106 +390,106 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestFinal)(
     here the signature is an appendix to the data. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_SignInit)(
-    CK_SESSION_HANDLE hSession,
-    CK_MECHANISM_PTR pMechanism,
-    CK_OBJECT_HANDLE hKey
+		CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hKey
 )
 {
-    int rv;
-    struct p11Object_t *pObject;
-    struct p11Slot_t *pSlot;
-    struct p11Session_t *pSession;
+	int rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
 
-    rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
-    if (rv < 0) {
-        return CKR_SESSION_HANDLE_INVALID;
-    }
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
 
-    if (pSession->activeObjectHandle != -1) {
-        return CKR_OPERATION_ACTIVE;
-    }
+	if (pSession->activeObjectHandle != -1) {
+		return CKR_OPERATION_ACTIVE;
+	}
 
-    rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
-    if (pSlot == NULL) {
-        return CKR_GENERAL_ERROR;
-    }
+	if (pSlot == NULL) {
+		return CKR_GENERAL_ERROR;
+	}
 
-    rv = findObject(pSlot->token, hKey, &pObject, FALSE);
+	rv = findObject(pSlot->token, hKey, &pObject, FALSE);
 
-    if (rv < 0) {
-        return CKR_GENERAL_ERROR;
-    }
+	if (rv < 0) {
+		return CKR_GENERAL_ERROR;
+	}
 
-    if (pObject->C_SignInit != NULL) {
-        rv = pObject->C_SignInit(pObject, pMechanism);
-    } else {
-        return CKR_FUNCTION_NOT_SUPPORTED;
-    }
+	if (pObject->C_SignInit != NULL) {
+		rv = pObject->C_SignInit(pObject, pMechanism);
+	} else {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
 
-    if (!rv) {
-        pSession->activeObjectHandle = pObject->handle;
-        pSession->activeMechanism = pMechanism->mechanism;
-        rv = CKR_OK;
-    }
+	if (!rv) {
+		pSession->activeObjectHandle = pObject->handle;
+		pSession->activeMechanism = pMechanism->mechanism;
+		rv = CKR_OK;
+	}
 
-    return rv;
+	return rv;
 }
 
 
 /*  C_Sign signs data in a single part, where the signature is an appendix to the data. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pData,
-    CK_ULONG ulDataLen,
-    CK_BYTE_PTR pSignature,
-    CK_ULONG_PTR pulSignatureLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pData,
+		CK_ULONG ulDataLen,
+		CK_BYTE_PTR pSignature,
+		CK_ULONG_PTR pulSignatureLen
 )
 {
-    int rv;
-    struct p11Object_t *pObject;
-    struct p11Slot_t *pSlot;
-    struct p11Session_t *pSession;
+	int rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
-    if (rv < 0) {
-        return CKR_SESSION_HANDLE_INVALID;
-    }
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
 
-    if (pSession->activeObjectHandle == -1) {
-        return CKR_GENERAL_ERROR;
-    }
+	if (pSession->activeObjectHandle == -1) {
+		return CKR_GENERAL_ERROR;
+	}
 
-    rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
-    if (pSlot == NULL) {
-        return CKR_GENERAL_ERROR;
-    }
+	if (pSlot == NULL) {
+		return CKR_GENERAL_ERROR;
+	}
 
-    rv = findObject(pSlot->token, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findObject(pSlot->token, pSession->activeObjectHandle, &pObject, FALSE);
 
-    if (rv < 0) {
-        return CKR_GENERAL_ERROR;
-    }
+	if (rv < 0) {
+		return CKR_GENERAL_ERROR;
+	}
 
-    if (pSignature != NULL) {
-        pSession->activeObjectHandle = -1;
-    }
+	if (pSignature != NULL) {
+		pSession->activeObjectHandle = -1;
+	}
 
-    if (pObject->C_Sign != NULL) {
-        rv = pObject->C_Sign(pObject, pSession->activeMechanism, pData, ulDataLen, pSignature, pulSignatureLen);
-    } else {
-        return CKR_FUNCTION_NOT_SUPPORTED;
-    }
+	if (pObject->C_Sign != NULL) {
+		rv = pObject->C_Sign(pObject, pSession->activeMechanism, pData, ulDataLen, pSignature, pulSignatureLen);
+	} else {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
 
-    return rv;
+	return rv;
 }
 
 
@@ -497,32 +497,32 @@ CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
     processing another data part. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_SignUpdate)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pPart,
-    CK_ULONG ulPartLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pPart,
+		CK_ULONG ulPartLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
 /*  C_SignFinal finishes a multiple-part signature operation. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pSignature,
-    CK_ULONG_PTR pulSignatureLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pSignature,
+		CK_ULONG_PTR pulSignatureLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -530,16 +530,16 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
     can be recovered from the signature. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_SignRecoverInit)(
-    CK_SESSION_HANDLE hSession,
-    CK_MECHANISM_PTR pMechanism,
-    CK_OBJECT_HANDLE hKey
+		CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hKey
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -547,18 +547,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignRecoverInit)(
     recovered from the signature. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_SignRecover)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pData,
-    CK_ULONG ulDataLen,
-    CK_BYTE_PTR pSignature,
-    CK_ULONG_PTR pulSignatureLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pData,
+		CK_ULONG ulDataLen,
+		CK_BYTE_PTR pSignature,
+		CK_ULONG_PTR pulSignatureLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -566,16 +566,16 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignRecover)(
     an appendix to the data. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_VerifyInit)(
-    CK_SESSION_HANDLE hSession,
-    CK_MECHANISM_PTR pMechanism,
-    CK_OBJECT_HANDLE hKey
+		CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hKey
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -583,18 +583,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyInit)(
     is an appendix to the data. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_Verify)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pData,
-    CK_ULONG ulDataLen,
-    CK_BYTE_PTR pSignature,
-    CK_ULONG ulSignatureLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pData,
+		CK_ULONG ulDataLen,
+		CK_BYTE_PTR pSignature,
+		CK_ULONG ulSignatureLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -602,16 +602,16 @@ CK_DECLARE_FUNCTION(CK_RV, C_Verify)(
     processing another data part. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_VerifyUpdate)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pPart,
-    CK_ULONG ulPartLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pPart,
+		CK_ULONG ulPartLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -619,16 +619,16 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyUpdate)(
     checking the signature. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_VerifyFinal)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pSignature,
-    CK_ULONG ulSignatureLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pSignature,
+		CK_ULONG ulSignatureLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -636,16 +636,16 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyFinal)(
     where the data is recovered from the signature. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_VerifyRecoverInit)(
-    CK_SESSION_HANDLE hSession,
-    CK_MECHANISM_PTR pMechanism,
-    CK_OBJECT_HANDLE hKey
+		CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hKey
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -653,18 +653,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyRecoverInit)(
     where the data is recovered from the signature. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_VerifyRecover)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pSignature,
-    CK_ULONG ulSignatureLen,
-    CK_BYTE_PTR pData,
-    CK_ULONG_PTR pulDataLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pSignature,
+		CK_ULONG ulSignatureLen,
+		CK_BYTE_PTR pData,
+		CK_ULONG_PTR pulDataLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -672,18 +672,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyRecover)(
     operations, processing another data part. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_DigestEncryptUpdate)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pPart,
-    CK_ULONG ulPartLen,
-    CK_BYTE_PTR pEncryptedPart,
-    CK_ULONG_PTR pulEncryptedPartLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pPart,
+		CK_ULONG ulPartLen,
+		CK_BYTE_PTR pEncryptedPart,
+		CK_ULONG_PTR pulEncryptedPartLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -691,18 +691,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestEncryptUpdate)(
     digest operation, processing another data part. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_DecryptDigestUpdate)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pEncryptedPart,
-    CK_ULONG ulEncryptedPartLen,
-    CK_BYTE_PTR pPart,
-    CK_ULONG_PTR pulPartLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pEncryptedPart,
+		CK_ULONG ulEncryptedPartLen,
+		CK_BYTE_PTR pPart,
+		CK_ULONG_PTR pulPartLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -710,18 +710,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptDigestUpdate)(
     encryption operation, processing another data part. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_SignEncryptUpdate)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pPart,
-    CK_ULONG ulPartLen,
-    CK_BYTE_PTR pEncryptedPart,
-    CK_ULONG_PTR pulEncryptedPartLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pPart,
+		CK_ULONG ulPartLen,
+		CK_BYTE_PTR pEncryptedPart,
+		CK_ULONG_PTR pulEncryptedPartLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -729,18 +729,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignEncryptUpdate)(
     operation, processing another data part. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_DecryptVerifyUpdate)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pEncryptedPart,
-    CK_ULONG ulEncryptedPartLen,
-    CK_BYTE_PTR pPart,
-    CK_ULONG_PTR pulPartLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pEncryptedPart,
+		CK_ULONG ulEncryptedPartLen,
+		CK_BYTE_PTR pPart,
+		CK_ULONG_PTR pulPartLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -748,58 +748,58 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptVerifyUpdate)(
     creating a new object. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_GenerateKey)(
-    CK_SESSION_HANDLE hSession,
-    CK_MECHANISM_PTR pMechanism,
-    CK_ATTRIBUTE_PTR pTemplate,
-    CK_ULONG ulCount,
-    CK_OBJECT_HANDLE_PTR phKey
+		CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulCount,
+		CK_OBJECT_HANDLE_PTR phKey
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
 /*  C_GenerateKeyPair generates a public/private key pair, creating new key objects. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_GenerateKeyPair)(
-    CK_SESSION_HANDLE hSession,
-    CK_MECHANISM_PTR pMechanism,
-    CK_ATTRIBUTE_PTR pPublicKeyTemplate,
-    CK_ULONG ulPublicKeyAttributeCount,
-    CK_ATTRIBUTE_PTR pPrivateKeyTemplate,
-    CK_ULONG ulPrivateKeyAttributeCount,
-    CK_OBJECT_HANDLE_PTR phPublicKey,
-    CK_OBJECT_HANDLE_PTR phPrivateKey
+		CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_ATTRIBUTE_PTR pPublicKeyTemplate,
+		CK_ULONG ulPublicKeyAttributeCount,
+		CK_ATTRIBUTE_PTR pPrivateKeyTemplate,
+		CK_ULONG ulPrivateKeyAttributeCount,
+		CK_OBJECT_HANDLE_PTR phPublicKey,
+		CK_OBJECT_HANDLE_PTR phPrivateKey
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
 /*  C_WrapKey wraps (i.e., encrypts) a private or secret key. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_WrapKey)(
-    CK_SESSION_HANDLE hSession,
-    CK_MECHANISM_PTR pMechanism,
-    CK_OBJECT_HANDLE hWrappingKey,
-    CK_OBJECT_HANDLE hKey,
-    CK_BYTE_PTR pWrappedKey,
-    CK_ULONG_PTR pulWrappedKeyLen
+		CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hWrappingKey,
+		CK_OBJECT_HANDLE hKey,
+		CK_BYTE_PTR pWrappedKey,
+		CK_ULONG_PTR pulWrappedKeyLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -807,72 +807,72 @@ CK_DECLARE_FUNCTION(CK_RV, C_WrapKey)(
     or secret key object. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_UnwrapKey)(
-    CK_SESSION_HANDLE hSession,
-    CK_MECHANISM_PTR pMechanism,
-    CK_OBJECT_HANDLE hUnwrappingKey,
-    CK_BYTE_PTR pWrappedKey,
-    CK_ULONG ulWrappedKeyLen,
-    CK_ATTRIBUTE_PTR pTemplate,
-    CK_ULONG ulAttributeCount,
-    CK_OBJECT_HANDLE_PTR phKey
+		CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hUnwrappingKey,
+		CK_BYTE_PTR pWrappedKey,
+		CK_ULONG ulWrappedKeyLen,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulAttributeCount,
+		CK_OBJECT_HANDLE_PTR phKey
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
 /*  C_DeriveKey derives a key from a base key, creating a new key object. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_DeriveKey)(
-    CK_SESSION_HANDLE hSession,
-    CK_MECHANISM_PTR pMechanism,
-    CK_OBJECT_HANDLE hBaseKey,
-    CK_ATTRIBUTE_PTR pTemplate,
-    CK_ULONG ulAttributeCount,
-    CK_OBJECT_HANDLE_PTR phKey
+		CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hBaseKey,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulAttributeCount,
+		CK_OBJECT_HANDLE_PTR phKey
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
 /*  C_SeedRandom mixes additional seed material into the token�s random number generator. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_SeedRandom)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pSeed,
-    CK_ULONG ulSeedLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pSeed,
+		CK_ULONG ulSeedLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
 /*  C_GenerateRandom generates random or pseudo-random data. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_GenerateRandom)(
-    CK_SESSION_HANDLE hSession,
-    CK_BYTE_PTR pRandomData,
-    CK_ULONG ulRandomLen
+		CK_SESSION_HANDLE hSession,
+		CK_BYTE_PTR pRandomData,
+		CK_ULONG ulRandomLen
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
@@ -880,12 +880,12 @@ CK_DECLARE_FUNCTION(CK_RV, C_GenerateRandom)(
     running in parallel with an application. Now legacy! */
 
 CK_DECLARE_FUNCTION(CK_RV, C_GetFunctionStatus)(
-    CK_SESSION_HANDLE hSession
+		CK_SESSION_HANDLE hSession
 )
 {
 	FUNC_CALLED();
 
-    return CKR_FUNCTION_NOT_PARALLEL;
+	return CKR_FUNCTION_NOT_PARALLEL;
 }
 
 
@@ -893,10 +893,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetFunctionStatus)(
     with an application. Now legacy! */
 
 CK_DECLARE_FUNCTION(CK_RV, C_CancelFunction)(
-    CK_SESSION_HANDLE hSession
+		CK_SESSION_HANDLE hSession
 )
 {
 	FUNC_CALLED();
 
-    return CKR_FUNCTION_NOT_PARALLEL; 
+	return CKR_FUNCTION_NOT_PARALLEL;
 }

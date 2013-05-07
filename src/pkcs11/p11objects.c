@@ -37,459 +37,459 @@ extern struct p11Context_t *context;
 /*  C_CreateObject creates a new object. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
-    CK_SESSION_HANDLE hSession,
-    CK_ATTRIBUTE_PTR pTemplate,
-    CK_ULONG ulCount,
-    CK_OBJECT_HANDLE_PTR phObject
+		CK_SESSION_HANDLE hSession,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulCount,
+		CK_OBJECT_HANDLE_PTR phObject
 )
 {
-    int rv = 0;
-    struct p11Object_t *pObject;
-    struct p11Session_t *session;
-    struct p11Slot_t *slot;
-    int pos;
+	int rv = 0;
+	struct p11Object_t *pObject;
+	struct p11Session_t *session;
+	struct p11Slot_t *slot;
+	int pos;
 
 	FUNC_CALLED();
 
-    rv = findSessionByHandle(context->sessionPool, hSession, &session);
-    
-    if (rv < 0) {
-        return CKR_SESSION_HANDLE_INVALID;
-    }
+	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
-    pObject = (struct p11Object_t *) malloc(sizeof(struct p11Object_t));
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
 
-    if (pObject == NULL) {       
-        return CKR_HOST_MEMORY;
-    }
-    
-    memset(pObject, 0x00, sizeof(struct p11Object_t));
+	pObject = (struct p11Object_t *) malloc(sizeof(struct p11Object_t));
 
-    pos = findAttributeInTemplate(CKA_CLASS, pTemplate, ulCount);
-    
-    if (pos == -1) {
-        free(pObject);
-        return CKR_TEMPLATE_INCOMPLETE;
-    }
+	if (pObject == NULL) {
+		return CKR_HOST_MEMORY;
+	}
 
-    switch (*(CK_LONG *)pTemplate[pos].pValue) {
-        case CKO_DATA:
-            rv = createDataObject(pTemplate, ulCount, pObject);
-            break;
+	memset(pObject, 0x00, sizeof(struct p11Object_t));
 
-        case CKO_SECRET_KEY:
-            rv = createSecretKeyObject(pTemplate, ulCount, pObject);
-            break;
-        
-        default:
-            rv = CKR_FUNCTION_FAILED;
-    }
+	pos = findAttributeInTemplate(CKA_CLASS, pTemplate, ulCount);
 
-    if (rv != CKR_OK) {
-        free(pObject);
-        return rv;
-    }
+	if (pos == -1) {
+		free(pObject);
+		return CKR_TEMPLATE_INCOMPLETE;
+	}
 
-    rv = findSlot(context->slotPool, session->slotID, &slot);
-    
-    if (rv < 0) {
-        return CKR_FUNCTION_FAILED;        
-    }
-    
-    /* Check if this is a session or a token object */
-    
-    /* Token object */
-    if ((session->state == CKS_RW_USER_FUNCTIONS) && pObject->tokenObj) {    
-                
-        addObject(slot->token, pObject, pObject->publicObj);
-        
-        rv = synchronizeToken(slot, slot->token);
+	switch (*(CK_LONG *)pTemplate[pos].pValue) {
+	case CKO_DATA:
+		rv = createDataObject(pTemplate, ulCount, pObject);
+		break;
 
-        if (rv < 0) {
-            removeObject(slot->token, pObject->handle, pObject->publicObj);
-            return CKR_FUNCTION_FAILED;        
-        }        
-        
-        
-       
-    } else {
+	case CKO_SECRET_KEY:
+		rv = createSecretKeyObject(pTemplate, ulCount, pObject);
+		break;
 
-        if (pObject->tokenObj) {
-            removeAllAttributes(pObject);
-            free(pObject);
-            return CKR_SESSION_READ_ONLY;
+	default:
+		rv = CKR_FUNCTION_FAILED;
+	}
 
-        }
-        
-        addSessionObject(session, pObject);    
-    
-    }
-    
-    *phObject = pObject->handle;
+	if (rv != CKR_OK) {
+		free(pObject);
+		return rv;
+	}
 
-    return rv;
+	rv = findSlot(context->slotPool, session->slotID, &slot);
+
+	if (rv < 0) {
+		return CKR_FUNCTION_FAILED;
+	}
+
+	/* Check if this is a session or a token object */
+
+	/* Token object */
+	if ((session->state == CKS_RW_USER_FUNCTIONS) && pObject->tokenObj) {
+
+		addObject(slot->token, pObject, pObject->publicObj);
+
+		rv = synchronizeToken(slot, slot->token);
+
+		if (rv < 0) {
+			removeObject(slot->token, pObject->handle, pObject->publicObj);
+			return CKR_FUNCTION_FAILED;
+		}
+
+
+
+	} else {
+
+		if (pObject->tokenObj) {
+			removeAllAttributes(pObject);
+			free(pObject);
+			return CKR_SESSION_READ_ONLY;
+
+		}
+
+		addSessionObject(session, pObject);
+
+	}
+
+	*phObject = pObject->handle;
+
+	return rv;
 }
 
 
 /*  C_CopyObject copies an object. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_CopyObject)(
-    CK_SESSION_HANDLE hSession,
-    CK_OBJECT_HANDLE hObject,
-    CK_ATTRIBUTE_PTR pTemplate,
-    CK_ULONG ulCount,
-    CK_OBJECT_HANDLE_PTR phNewObject
+		CK_SESSION_HANDLE hSession,
+		CK_OBJECT_HANDLE hObject,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulCount,
+		CK_OBJECT_HANDLE_PTR phNewObject
 )
 {
-    CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
-    return rv;
+	return rv;
 }
 
 
 /*  C_DestroyObject destroys an object. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_DestroyObject)(
-    CK_SESSION_HANDLE hSession,
-    CK_OBJECT_HANDLE hObject
+		CK_SESSION_HANDLE hSession,
+		CK_OBJECT_HANDLE hObject
 )
 {
-    int rv;
-    struct p11Session_t *session = NULL;
-    struct p11Slot_t *slot = NULL;
-    struct p11Object_t *pObject = NULL;
+	int rv;
+	struct p11Session_t *session = NULL;
+	struct p11Slot_t *slot = NULL;
+	struct p11Object_t *pObject = NULL;
 
 	FUNC_CALLED();
 
-    rv = findSessionByHandle(context->sessionPool, hSession, &session);
-    
-    if (rv < 0) {
-        return CKR_SESSION_HANDLE_INVALID;
-    }
+	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
-    rv = findSlot(context->slotPool, session->slotID, &slot);
-    
-    if (rv < 0) {
-        return CKR_FUNCTION_FAILED;        
-    }
-   
-    rv = findSessionObject(session, hObject, &pObject);
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
 
-    if (rv < 0) {
-        
-        rv = findObject(slot->token, hObject, &pObject, TRUE);
-        
-        if (rv < 0) {
-                  
-            if (session->state == CKS_RW_USER_FUNCTIONS) {
-                rv = findObject(slot->token, hObject, &pObject, FALSE);      
+	rv = findSlot(context->slotPool, session->slotID, &slot);
 
-                if (rv < 0) {
-                    return CKR_OBJECT_HANDLE_INVALID;
-                }
+	if (rv < 0) {
+		return CKR_FUNCTION_FAILED;
+	}
 
-            } else {
-                return CKR_OBJECT_HANDLE_INVALID;
-            }        
-        }
+	rv = findSessionObject(session, hObject, &pObject);
 
-        /* remove the object from the storage media */
-        destroyObject(slot, slot->token, pObject);
+	if (rv < 0) {
 
-        /* remove the object from the list */
-        removeObject(slot->token, hObject, pObject->publicObj);
+		rv = findObject(slot->token, hObject, &pObject, TRUE);
 
-        rv = synchronizeToken(slot, slot->token);
+		if (rv < 0) {
 
-        if (rv < 0) {
-            return CKR_FUNCTION_FAILED;        
-        }
+			if (session->state == CKS_RW_USER_FUNCTIONS) {
+				rv = findObject(slot->token, hObject, &pObject, FALSE);
 
-    } else {
-    
-        removeSessionObject(session, hObject);
-    
-    }
-    
-    return CKR_OK;
+				if (rv < 0) {
+					return CKR_OBJECT_HANDLE_INVALID;
+				}
+
+			} else {
+				return CKR_OBJECT_HANDLE_INVALID;
+			}
+		}
+
+		/* remove the object from the storage media */
+		destroyObject(slot, slot->token, pObject);
+
+		/* remove the object from the list */
+		removeObject(slot->token, hObject, pObject->publicObj);
+
+		rv = synchronizeToken(slot, slot->token);
+
+		if (rv < 0) {
+			return CKR_FUNCTION_FAILED;
+		}
+
+	} else {
+
+		removeSessionObject(session, hObject);
+
+	}
+
+	return CKR_OK;
 }
 
 
 /*  C_GetObjectSize gets the size of an object. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_GetObjectSize)(
-    CK_SESSION_HANDLE hSession,
-    CK_OBJECT_HANDLE hObject,
-    CK_ULONG_PTR pulSize
+		CK_SESSION_HANDLE hSession,
+		CK_OBJECT_HANDLE hObject,
+		CK_ULONG_PTR pulSize
 )
 {
-    int rv;
-    struct p11Object_t *pObject;
-    struct p11Session_t *session;
-    struct p11Slot_t *slot;
-    unsigned int size;
-    unsigned char *tmp;
+	int rv;
+	struct p11Object_t *pObject;
+	struct p11Session_t *session;
+	struct p11Slot_t *slot;
+	unsigned int size;
+	unsigned char *tmp;
 
 	FUNC_CALLED();
 
-    rv = findSessionByHandle(context->sessionPool, hSession, &session);
-    
-    if (rv < 0) {
-        return CKR_SESSION_HANDLE_INVALID;
-    }
-    
-    rv = findSlot(context->slotPool, session->slotID, &slot);
-    
-    if (rv < 0) {
-        return CKR_FUNCTION_FAILED;        
-    }
-    
-    rv = findSessionObject(session, hObject, &pObject);
+	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
-    if (rv < 0) {
-        
-        rv = findObject(slot->token, hObject, &pObject, TRUE);
-        
-        if (rv < 0) {
-                  
-            if (session->state == CKS_RW_USER_FUNCTIONS) {
-                rv = findObject(slot->token, hObject, &pObject, FALSE);      
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
 
-                if (rv < 0) {
-                    return CKR_OBJECT_HANDLE_INVALID;
-                }    
-            } else {
-                return CKR_OBJECT_HANDLE_INVALID;
-            }
-        
-        }
-    }
-    
-    serializeObject(pObject, &tmp, &size);
-    free(tmp);
+	rv = findSlot(context->slotPool, session->slotID, &slot);
 
-    *pulSize = size;
+	if (rv < 0) {
+		return CKR_FUNCTION_FAILED;
+	}
 
-    return CKR_OK;
+	rv = findSessionObject(session, hObject, &pObject);
+
+	if (rv < 0) {
+
+		rv = findObject(slot->token, hObject, &pObject, TRUE);
+
+		if (rv < 0) {
+
+			if ((session->state == CKS_RW_USER_FUNCTIONS) || (session->state == CKS_RO_USER_FUNCTIONS)) {
+				rv = findObject(slot->token, hObject, &pObject, FALSE);
+
+				if (rv < 0) {
+					return CKR_OBJECT_HANDLE_INVALID;
+				}
+			} else {
+				return CKR_OBJECT_HANDLE_INVALID;
+			}
+
+		}
+	}
+
+	serializeObject(pObject, &tmp, &size);
+	free(tmp);
+
+	*pulSize = size;
+
+	return CKR_OK;
 }
 
 
 /*  C_GetAttributeValue obtains the value of one or more attributes of an object. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_GetAttributeValue)(
-    CK_SESSION_HANDLE hSession,
-    CK_OBJECT_HANDLE hObject,
-    CK_ATTRIBUTE_PTR pTemplate,
-    CK_ULONG ulCount
+		CK_SESSION_HANDLE hSession,
+		CK_OBJECT_HANDLE hObject,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulCount
 )
 {
-    int rv;
-    CK_ULONG i;
-    struct p11Object_t *pObject;
-    struct p11Session_t *session;
-    struct p11Slot_t *slot;
-    struct p11Attribute_t *attribute;
+	int rv;
+	CK_ULONG i;
+	struct p11Object_t *pObject;
+	struct p11Session_t *session;
+	struct p11Slot_t *slot;
+	struct p11Attribute_t *attribute;
 
 	FUNC_CALLED();
 
-    rv = findSessionByHandle(context->sessionPool, hSession, &session);
-    
-    if (rv < 0) {
-        return CKR_SESSION_HANDLE_INVALID;
-    }
-    
-    rv = findSlot(context->slotPool, session->slotID, &slot);
-    
-    if (rv < 0) {
-        return CKR_FUNCTION_FAILED;        
-    }
-    
-    
-    rv = findSessionObject(session, hObject, &pObject);
+	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
-    if (rv < 0) {
-        
-        rv = findObject(slot->token, hObject, &pObject, TRUE);
-        
-        if (rv < 0) {
-                  
-            if (session->state == CKS_RW_USER_FUNCTIONS) {
-                rv = findObject(slot->token, hObject, &pObject, FALSE);      
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
 
-                if (rv < 0) {
-                    return CKR_OBJECT_HANDLE_INVALID;
-                }
-            } else {
-                return CKR_OBJECT_HANDLE_INVALID;
-            }        
-        }
-    }
+	rv = findSlot(context->slotPool, session->slotID, &slot);
+
+	if (rv < 0) {
+		return CKR_FUNCTION_FAILED;
+	}
+
+
+	rv = findSessionObject(session, hObject, &pObject);
+
+	if (rv < 0) {
+
+		rv = findObject(slot->token, hObject, &pObject, TRUE);
+
+		if (rv < 0) {
+
+			if ((session->state == CKS_RW_USER_FUNCTIONS) || (session->state == CKS_RO_USER_FUNCTIONS)) {
+				rv = findObject(slot->token, hObject, &pObject, FALSE);
+
+				if (rv < 0) {
+					return CKR_OBJECT_HANDLE_INVALID;
+				}
+			} else {
+				return CKR_OBJECT_HANDLE_INVALID;
+			}
+		}
+	}
 
 #ifdef DEBUG
-    debug("[C_GetAttributeValue] Trying to get %u attributes ...\n", ulCount);
+debug("[C_GetAttributeValue] Trying to get %u attributes ...\n", ulCount);
 #endif
 
-    rv = CKR_OK;
+rv = CKR_OK;
 
-    for (i = 0; i < ulCount; i++) {
-        
-        attribute = pObject->attrList;
+for (i = 0; i < ulCount; i++) {
 
-        while (attribute && (attribute->attrData.type != pTemplate[i].type)) {
-            attribute = attribute->next;       
-        }
+	attribute = pObject->attrList;
 
-        if (!attribute) {
-            pTemplate[i].ulValueLen = (CK_LONG) -1;
-            rv = CKR_ATTRIBUTE_TYPE_INVALID;
-            continue;
-        }
+	while (attribute && (attribute->attrData.type != pTemplate[i].type)) {
+		attribute = attribute->next;
+	}
 
-        if ((attribute->attrData.type == CKA_VALUE) && (pObject->sensitiveObj)) {
-            pTemplate[i].ulValueLen = (CK_LONG) -1;
-            rv = CKR_ATTRIBUTE_SENSITIVE;
-            continue;
-        }
+	if (!attribute) {
+		pTemplate[i].ulValueLen = (CK_LONG) -1;
+		rv = CKR_ATTRIBUTE_TYPE_INVALID;
+		continue;
+	}
 
-        if (pTemplate[i].pValue == NULL_PTR) {
-            pTemplate[i].ulValueLen = attribute->attrData.ulValueLen;
-            continue;
-        }
+	if ((attribute->attrData.type == CKA_VALUE) && (pObject->sensitiveObj)) {
+		pTemplate[i].ulValueLen = (CK_LONG) -1;
+		rv = CKR_ATTRIBUTE_SENSITIVE;
+		continue;
+	}
 
-        if (pTemplate[i].ulValueLen >= attribute->attrData.ulValueLen) {
-            memcpy(pTemplate[i].pValue, attribute->attrData.pValue, attribute->attrData.ulValueLen); 
-            pTemplate[i].ulValueLen = attribute->attrData.ulValueLen;
-        } else {
-            pTemplate[i].ulValueLen = attribute->attrData.ulValueLen;
-            rv = CKR_BUFFER_TOO_SMALL;
-        }            
-    }
+	if (pTemplate[i].pValue == NULL_PTR) {
+		pTemplate[i].ulValueLen = attribute->attrData.ulValueLen;
+		continue;
+	}
 
-    return rv;
+	if (pTemplate[i].ulValueLen >= attribute->attrData.ulValueLen) {
+		memcpy(pTemplate[i].pValue, attribute->attrData.pValue, attribute->attrData.ulValueLen);
+		pTemplate[i].ulValueLen = attribute->attrData.ulValueLen;
+	} else {
+		pTemplate[i].ulValueLen = attribute->attrData.ulValueLen;
+		rv = CKR_BUFFER_TOO_SMALL;
+	}
+}
+
+return rv;
 }
 
 
 /*  C_SetAttributeValue modifies the value of one or more attributes of an object. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
-    CK_SESSION_HANDLE hSession,
-    CK_OBJECT_HANDLE hObject,
-    CK_ATTRIBUTE_PTR pTemplate,
-    CK_ULONG ulCount
+		CK_SESSION_HANDLE hSession,
+		CK_OBJECT_HANDLE hObject,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulCount
 )
 {
-    int rv;
-    CK_ULONG i;
-    struct p11Object_t *pObject, *tmp;
-    struct p11Session_t *session;
-    struct p11Slot_t *slot;
-    struct p11Attribute_t *attribute;
-    
+	int rv;
+	CK_ULONG i;
+	struct p11Object_t *pObject, *tmp;
+	struct p11Session_t *session;
+	struct p11Slot_t *slot;
+	struct p11Attribute_t *attribute;
+
 	FUNC_CALLED();
 
-    rv = findSessionByHandle(context->sessionPool, hSession, &session);
-    
-    if (rv < 0) {
-        return CKR_SESSION_HANDLE_INVALID;
-    }
-    
-    rv = findSlot(context->slotPool, session->slotID, &slot);
-    
-    if (rv < 0) {
-        return CKR_FUNCTION_FAILED;        
-    }
-        
-    rv = findSessionObject(session, hObject, &pObject);
+	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
-    /* only session objects can be modified without user authentication */
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
 
-    if ((rv < 0) && (session->state == CKS_RW_USER_FUNCTIONS)) {
-        
-        rv = findObject(slot->token, hObject, &pObject, TRUE);
-        
-        if (rv < 0) {
-                  
-            rv = findObject(slot->token, hObject, &pObject, FALSE);      
+	rv = findSlot(context->slotPool, session->slotID, &slot);
 
-            if (rv < 0) {
-                return CKR_OBJECT_HANDLE_INVALID;
-            }
-        } 
-    } 
-        
-    for (i = 0; i < ulCount; i++) {
-        
-        attribute = pObject->attrList;
+	if (rv < 0) {
+		return CKR_FUNCTION_FAILED;
+	}
 
-        while (attribute && (attribute->attrData.type != pTemplate[i].type)) {
-            attribute = attribute->next;       
-        }
+	rv = findSessionObject(session, hObject, &pObject);
 
-        if (!attribute) {
-            return CKR_TEMPLATE_INCOMPLETE; /* we do not allow manufacturer specific attributes ! */
-        }
-        
-        /* Check if the value of CKA_PRIVATE changes */        
-        if (pTemplate[i].type == CKA_PRIVATE) {
-        
-            /* changed from TRUE to FALSE */
-            if ((*(CK_BBOOL *)pTemplate[i].pValue == CK_FALSE) && (*(CK_BBOOL *)attribute->attrData.pValue == CK_TRUE)) {
-               return CKR_TEMPLATE_INCONSISTENT;
-            }
-            
-            /* changed from FALSE to TRUE */
-            if ((*(CK_BBOOL *)pTemplate[i].pValue == CK_TRUE) && (*(CK_BBOOL *)attribute->attrData.pValue == CK_FALSE)) {
-            
-                memcpy(attribute->attrData.pValue, pTemplate[i].pValue, pTemplate[i].ulValueLen); 
+	/* only session objects can be modified without user authentication */
 
-                tmp = (struct p11Object_t *) malloc(sizeof(struct p11Object_t));
-                memset(tmp, 0x00, sizeof(*tmp));
-                
-                memcpy(tmp, pObject, sizeof(*pObject));
+	if ((rv < 0) && (session->state == CKS_RW_USER_FUNCTIONS)) {
 
-                tmp->next = NULL;
-                tmp->publicObj = FALSE;
-                tmp->dirtyFlag = 1;
-                
-                /* remove the public object */
-                destroyObject(slot, slot->token, pObject);         
-                removeObjectLeavingAttributes(slot->token, pObject->handle, TRUE);
-                
-                /* insert new private object */
-                addObject(slot->token, tmp, FALSE);
+		rv = findObject(slot->token, hObject, &pObject, TRUE);
 
-                rv = synchronizeToken(slot, slot->token);
-            
-                if (rv < 0) {
-                    return rv;
-                }
-            }
+		if (rv < 0) {
 
-        } else {
-            
-            if (pTemplate[i].ulValueLen > attribute->attrData.ulValueLen) {
-                
-                free(attribute->attrData.pValue);
-                
-                attribute->attrData.pValue = malloc(pTemplate[i].ulValueLen);
-            }
+			rv = findObject(slot->token, hObject, &pObject, FALSE);
 
-            attribute->attrData.ulValueLen = pTemplate[i].ulValueLen;
-            memcpy(attribute->attrData.pValue, pTemplate[i].pValue, pTemplate[i].ulValueLen);
-            
-            pObject->dirtyFlag = 1;    
-            
-            rv = synchronizeToken(slot, slot->token);
-            
-            if (rv < 0) {
-                return rv;
-            }
-        }
-    }
+			if (rv < 0) {
+				return CKR_OBJECT_HANDLE_INVALID;
+			}
+		}
+	}
 
-    return rv;
+	for (i = 0; i < ulCount; i++) {
+
+		attribute = pObject->attrList;
+
+		while (attribute && (attribute->attrData.type != pTemplate[i].type)) {
+			attribute = attribute->next;
+		}
+
+		if (!attribute) {
+			return CKR_TEMPLATE_INCOMPLETE; /* we do not allow manufacturer specific attributes ! */
+		}
+
+		/* Check if the value of CKA_PRIVATE changes */
+		if (pTemplate[i].type == CKA_PRIVATE) {
+
+			/* changed from TRUE to FALSE */
+			if ((*(CK_BBOOL *)pTemplate[i].pValue == CK_FALSE) && (*(CK_BBOOL *)attribute->attrData.pValue == CK_TRUE)) {
+				return CKR_TEMPLATE_INCONSISTENT;
+			}
+
+			/* changed from FALSE to TRUE */
+			if ((*(CK_BBOOL *)pTemplate[i].pValue == CK_TRUE) && (*(CK_BBOOL *)attribute->attrData.pValue == CK_FALSE)) {
+
+				memcpy(attribute->attrData.pValue, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+
+				tmp = (struct p11Object_t *) malloc(sizeof(struct p11Object_t));
+				memset(tmp, 0x00, sizeof(*tmp));
+
+				memcpy(tmp, pObject, sizeof(*pObject));
+
+				tmp->next = NULL;
+				tmp->publicObj = FALSE;
+				tmp->dirtyFlag = 1;
+
+				/* remove the public object */
+				destroyObject(slot, slot->token, pObject);
+				removeObjectLeavingAttributes(slot->token, pObject->handle, TRUE);
+
+				/* insert new private object */
+				addObject(slot->token, tmp, FALSE);
+
+				rv = synchronizeToken(slot, slot->token);
+
+				if (rv < 0) {
+					return rv;
+				}
+			}
+
+		} else {
+
+			if (pTemplate[i].ulValueLen > attribute->attrData.ulValueLen) {
+
+				free(attribute->attrData.pValue);
+
+				attribute->attrData.pValue = malloc(pTemplate[i].ulValueLen);
+			}
+
+			attribute->attrData.ulValueLen = pTemplate[i].ulValueLen;
+			memcpy(attribute->attrData.pValue, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+
+			pObject->dirtyFlag = 1;
+
+			rv = synchronizeToken(slot, slot->token);
+
+			if (rv < 0) {
+				return rv;
+			}
+		}
+	}
+
+	return rv;
 }
 
 
@@ -497,7 +497,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 static int isMatchingObject(struct p11Object_t *pObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount)
 
 {
-    struct p11Attribute_t *pAttribute;
+	struct p11Attribute_t *pAttribute;
 	int i, rv;
 
 	for (i = 0; i < ulCount; i++) {
@@ -509,9 +509,9 @@ static int isMatchingObject(struct p11Object_t *pObject, CK_ATTRIBUTE_PTR pTempl
 		if (pTemplate[i].ulValueLen != pAttribute->attrData.ulValueLen) {
 			return CK_FALSE;
 		}
-        if (memcmp(pAttribute->attrData.pValue, pTemplate[i].pValue, pAttribute->attrData.ulValueLen)) {
+		if (memcmp(pAttribute->attrData.pValue, pTemplate[i].pValue, pAttribute->attrData.ulValueLen)) {
 			return CK_FALSE;
-        }
+		}
 	}
 	return CK_TRUE;
 }
@@ -522,155 +522,165 @@ static int isMatchingObject(struct p11Object_t *pObject, CK_ATTRIBUTE_PTR pTempl
     that match a template. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
-    CK_SESSION_HANDLE hSession,
-    CK_ATTRIBUTE_PTR pTemplate,
-    CK_ULONG ulCount
+		CK_SESSION_HANDLE hSession,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulCount
 )
 {
-    int rv;
-    int i;
-    struct p11Object_t *pObject;
-    // , *pNewSearchObject, *pTempObject;
-    struct p11Session_t *session;
-    struct p11Slot_t *slot;
-    struct p11Attribute_t *pAttribute;
-    
+	int rv;
+	int i;
+	struct p11Object_t *pObject;
+	// , *pNewSearchObject, *pTempObject;
+	struct p11Session_t *session;
+	struct p11Slot_t *slot;
+	struct p11Attribute_t *pAttribute;
+
 	FUNC_CALLED();
 
-    rv = findSessionByHandle(context->sessionPool, hSession, &session);
-    
-    if (rv < 0) {
-        return CKR_SESSION_HANDLE_INVALID;
-    }
+	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
-    rv = findSlot(context->slotPool, session->slotID, &slot);
-    
-    if (rv < 0) {
-        return CKR_FUNCTION_FAILED;        
-    }
-     
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
+
+	rv = findSlot(context->slotPool, session->slotID, &slot);
+
+	if (rv < 0) {
+		return CKR_FUNCTION_FAILED;
+	}
+
 #ifdef DEBUG
-    debug("Search Filter:\n");
-    for (i = 0; i < ulCount; i++) {
-    	dumpAttribute(&pTemplate[i]);
-    }
+debug("Search Filter:\n");
+for (i = 0; i < ulCount; i++) {
+	dumpAttribute(&pTemplate[i]);
+}
 #endif
 
-    if (session->searchObj.searchList != NULL) {
-    	C_FindObjectsFinal(hSession);
-    }
+if (session->searchObj.searchList != NULL) {
+	C_FindObjectsFinal(hSession);
+}
 
-    /* session objects */
-    pObject = session->sessionObjList;
+/* session objects */
+pObject = session->sessionObjList;
 
-    while (pObject != NULL) {
-    	if (isMatchingObject(pObject, pTemplate, ulCount)) {
-    		addObjectToSearchList(session, pObject);
-    	}
-        pObject = pObject->next;
-    }
+while (pObject != NULL) {
+	if (isMatchingObject(pObject, pTemplate, ulCount)) {
+		addObjectToSearchList(session, pObject);
+	}
+	pObject = pObject->next;
+}
 
-    /* public token objects */
-    pObject = slot->token->tokenObjList;
+/* public token objects */
+pObject = slot->token->tokenObjList;
 
-    while (pObject != NULL) {
-    	if (isMatchingObject(pObject, pTemplate, ulCount)) {
-    		addObjectToSearchList(session, pObject);
-    	}
-        pObject = pObject->next;
-    }
+while (pObject != NULL) {
+	if (isMatchingObject(pObject, pTemplate, ulCount)) {
+		addObjectToSearchList(session, pObject);
+	}
+	pObject = pObject->next;
+}
 
-    /* private token objects */
-    if (session->state == CKS_RW_USER_FUNCTIONS) {
+/* private token objects */
+if ((session->state == CKS_RW_USER_FUNCTIONS) ||
+		(session->state == CKS_RO_USER_FUNCTIONS)) {
 
-        pObject = slot->token->tokenPrivObjList;
+	pObject = slot->token->tokenPrivObjList;
 
-        while (pObject != NULL) {
-        	if (isMatchingObject(pObject, pTemplate, ulCount)) {
-        		addObjectToSearchList(session, pObject);
-        	}
-            pObject = pObject->next;
-        }
-    }
+	while (pObject != NULL) {
+		if (isMatchingObject(pObject, pTemplate, ulCount)) {
+			addObjectToSearchList(session, pObject);
+		}
+		pObject = pObject->next;
+	}
+}
 
-    return CKR_OK;
+return CKR_OK;
 }
 
 
 /*  C_FindObjects continues a search for token and session objects that match a template, */
 
 CK_DECLARE_FUNCTION(CK_RV, C_FindObjects)(
-    CK_SESSION_HANDLE hSession,
-    CK_OBJECT_HANDLE_PTR phObject,
-    CK_ULONG ulMaxObjectCount,
-    CK_ULONG_PTR pulObjectCount
+		CK_SESSION_HANDLE hSession,
+		CK_OBJECT_HANDLE_PTR phObject,
+		CK_ULONG ulMaxObjectCount,
+		CK_ULONG_PTR pulObjectCount
 )
 {
-    int rv;
-    struct p11Session_t *session;
-    struct p11Object_t *pObject;
-    int i = 0;
-    
+	int rv;
+	struct p11Session_t *session;
+	struct p11Object_t *pObject;
+	int i = 0, cnt;
+
 	FUNC_CALLED();
 
-    rv = findSessionByHandle(context->sessionPool, hSession, &session);
-    
-    if (rv < 0) {
-        return CKR_SESSION_HANDLE_INVALID;
-    }
+	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
-    if (session->searchObj.objectsCollected == session->searchObj.searchNumOfObjects) {
-        *pulObjectCount = 0;
-        return CKR_OK;
-    }
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
 
-    pObject = session->searchObj.searchList;
+	if (session->searchObj.objectsCollected == session->searchObj.searchNumOfObjects) {
+		*pulObjectCount = 0;
+		return CKR_OK;
+	}
 
-    i = session->searchObj.objectsCollected;
+	pObject = session->searchObj.searchList;
 
-    while (i > 0) {      
-        pObject = pObject->next;
-        i--;    
-    }
+	i = session->searchObj.objectsCollected;
 
-    *phObject = pObject->handle;
-    *pulObjectCount = 1;
+	while (i > 0) {
+		pObject = pObject->next;
+		i--;
+	}
 
-    session->searchObj.objectsCollected++;
+	cnt = session->searchObj.searchNumOfObjects - session->searchObj.objectsCollected;
+	if (cnt > ulMaxObjectCount) {
+		cnt = ulMaxObjectCount;
+	}
 
-    return CKR_OK;
+	for (i = cnt; i > 0; i--) {
+		*phObject = pObject->handle;
+		phObject++;
+		pObject = pObject->next;
+	}
+
+	*pulObjectCount = cnt;
+	session->searchObj.objectsCollected += cnt;
+
+	return CKR_OK;
 }
 
 
 /*  C_FindObjectsFinal terminates a search for token and session objects. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsFinal)(
-    CK_SESSION_HANDLE hSession
+		CK_SESSION_HANDLE hSession
 )
 {
-    int rv;
-    struct p11Object_t *pObject, *pTempObject;
-    struct p11Session_t *session;
- 
+	int rv;
+	struct p11Object_t *pObject, *pTempObject;
+	struct p11Session_t *session;
+
 	FUNC_CALLED();
 
-    rv = findSessionByHandle(context->sessionPool, hSession, &session);
-    
-    if (rv < 0) {
-        return CKR_SESSION_HANDLE_INVALID;
-    }
+	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
-    pObject = session->searchObj.searchList;
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
 
-    while (pObject) {      
-        pTempObject = pObject->next;
-        free(pObject);
-        pObject = pTempObject;
-    }
+	pObject = session->searchObj.searchList;
 
-    session->searchObj.searchNumOfObjects = 0;
-    session->searchObj.objectsCollected = 0;
-    session->searchObj.searchList = NULL;
+	while (pObject) {
+		pTempObject = pObject->next;
+		free(pObject);
+		pObject = pTempObject;
+	}
 
-    return CKR_OK;
+	session->searchObj.searchNumOfObjects = 0;
+	session->searchObj.objectsCollected = 0;
+	session->searchObj.searchList = NULL;
+
+	return CKR_OK;
 }

@@ -24,34 +24,34 @@
 
 
 struct p11ObjectSearch_t {
-    int searchNumOfObjects;
-    int objectsCollected;
-    struct p11Object_t *searchList;
+	int searchNumOfObjects;
+	int objectsCollected;
+	struct p11Object_t *searchList;
 };
- 
- 
- /**
+
+
+/**
  * Internal structure to store information about specific session.
  *
  */
 
 struct p11Session_t {
 
-    CK_SLOT_ID slotID;                  /**< The id of the slot for this session                */
-    CK_FLAGS flags;                     /**< The flags of this session                          */
-    CK_STATE state;                     /**< The session state                                  */
-    CK_USER_TYPE user;                  /**< The user of this session                           */
-    CK_SESSION_HANDLE handle;           /**< The handle of the session                          */
-    int activeObjectHandle;             /**< The handle of the active object, -1 if no object   */
-    CK_MECHANISM_TYPE activeMechanism;	/**< The currenty active mechanism						*/
+	CK_SLOT_ID slotID;                  /**< The id of the slot for this session                */
+	CK_FLAGS flags;                     /**< The flags of this session                          */
+	CK_STATE state;                     /**< The session state                                  */
+	CK_USER_TYPE user;                  /**< The user of this session                           */
+	CK_SESSION_HANDLE handle;           /**< The handle of the session                          */
+	int activeObjectHandle;             /**< The handle of the active object, -1 if no object   */
+	CK_MECHANISM_TYPE activeMechanism;	/**< The currenty active mechanism						*/
 
-    struct p11ObjectSearch_t searchObj; /**< Store the result of a search operation */
+	struct p11ObjectSearch_t searchObj; /**< Store the result of a search operation */
 
-    int numberOfSessionObjects;
-    CK_LONG freeSessionObjNumber;
-    struct p11Object_t *sessionObjList; /**< Pointer to first object in pool     */
-    
-    struct p11Session_t *next;          /**< Pointer to next active session      */
+	int numberOfSessionObjects;
+	CK_LONG freeSessionObjNumber;
+	struct p11Object_t *sessionObjList; /**< Pointer to first object in pool     */
+
+	struct p11Session_t *next;          /**< Pointer to next active session      */
 };
 
 /**
@@ -61,11 +61,11 @@ struct p11Session_t {
  */
 
 struct p11SessionPool_t {
-    
-    CK_ULONG numberOfSessions;              /**< Number of active sessions             */
-    CK_SESSION_HANDLE nextSessionHandle;    /**< Value of next assigned session handle */
-    
-    struct p11Session_t *list;              /**< Pointer to first session in pool      */
+
+	CK_ULONG numberOfSessions;              /**< Number of active sessions             */
+	CK_SESSION_HANDLE nextSessionHandle;    /**< Value of next assigned session handle */
+
+	struct p11Session_t *list;              /**< Pointer to first session in pool      */
 
 };
 
