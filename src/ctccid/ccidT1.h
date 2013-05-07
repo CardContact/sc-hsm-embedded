@@ -32,25 +32,25 @@
  */
 typedef struct ccidT1 {
 	/** Character Wait Time in ETU        */
-    unsigned int    CharWaitTime;
-    /** Block Wait Time in ETU            */
-    unsigned int    BlockWaitTime;
-    /** Working Block Wait Time in ETU    */
-    long             WorkBWT;
-    /** Maximum length of INF field       */
-    unsigned char   IFSC;
-    /** Receiver sequence number          */
-    int              RSequenz;
-    /** Transmitter sequence number       */
-    int              SSequenz;
-    /** NAD unsigned char of received block        */
-    unsigned char   Nad;
-    /** PCB unsigned char of received blocks       */
-    unsigned char   Pcb;
-    /** Length of received data block     */
-    int              InBuffLength;
-    /** Buffer for incoming data          */
-    unsigned char   InBuff[BUFFMAX];
+	unsigned int    CharWaitTime;
+	/** Block Wait Time in ETU            */
+	unsigned int    BlockWaitTime;
+	/** Working Block Wait Time in ETU    */
+	long             WorkBWT;
+	/** Maximum length of INF field       */
+	unsigned char   IFSC;
+	/** Receiver sequence number          */
+	int              RSequenz;
+	/** Transmitter sequence number       */
+	int              SSequenz;
+	/** NAD unsigned char of received block        */
+	unsigned char   Nad;
+	/** PCB unsigned char of received blocks       */
+	unsigned char   Pcb;
+	/** Length of received data block     */
+	int              InBuffLength;
+	/** Buffer for incoming data          */
+	unsigned char   InBuff[BUFFMAX];
 } ccidT1_t;
 
 /**

@@ -22,9 +22,9 @@
 
 #include "scr.h"
 
-#define ERR_ICC_MUTE					0xFE
-#define ERR_XFR_OVERRUN					0xFC
-#define ERR_HW_ERROR					0xFB
+#define ERR_ICC_MUTE				0xFE
+#define ERR_XFR_OVERRUN				0xFC
+#define ERR_HW_ERROR				0xFB
 
 #define MSG_TYPE_PC_to_RDR_SetParameters	0x61
 #define MSG_TYPE_PC_to_RDR_IccPowerOn 		0x62
@@ -33,12 +33,12 @@
 #define MSG_TYPE_PC_to_RDR_XfrBlock			0x6F
 #define MSG_TYPE_RDR_to_PC_DataBlock		0x80
 #define MSG_TYPE_RDR_to_PC_SlotStatus		0x81
-#define MSG_TYPE_RDR_to_PC_Parameters      0x82
+#define MSG_TYPE_RDR_to_PC_Parameters      	0x82
 
-#define ICC_PRESENT_AND_ACTIVE				0x00
-#define ICC_PRESENT_AND_INACTIVE			0x01
-#define NO_ICC_PRESENT						0x02
-#define ICC_STATUS_MASK						0x03
+#define ICC_PRESENT_AND_ACTIVE		0x00
+#define ICC_PRESENT_AND_INACTIVE	0x01
+#define NO_ICC_PRESENT				0x02
+#define ICC_STATUS_MASK				0x03
 
 #define MATCH(x,y) ((x >= (y - y / 20)) && (x <= (y + y / 20)))
 

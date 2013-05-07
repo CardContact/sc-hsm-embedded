@@ -3,7 +3,7 @@
  * |.**> <**.|  CardContact
  * |*       *|  Software & System Consulting
  * |*       *|  Minden, Germany
- * |�**> <**�|  Copyright (c) 2013. All rights reserved
+ * |.**> <**.|  Copyright (c) 2013. All rights reserved
  *  ---------
  *
  * See file LICENSE for details on licensing
@@ -61,26 +61,26 @@ typedef struct usb_device {
 	/**
 	 * Libusb device handle
 	 */
-    struct libusb_device_handle *handle;
-    /**
-     * Libusb device configuration descriptor
-     */
-    struct libusb_config_descriptor *configuration_descriptor;
+	struct libusb_device_handle *handle;
+	/**
+	 * Libusb device configuration descriptor
+	 */
+	struct libusb_config_descriptor *configuration_descriptor;
 
-    /**
-     * ID of bulk in
-     */
-    uint8_t bulk_in;
+	/**
+	 * ID of bulk in
+	 */
+	uint8_t bulk_in;
 
-    /**
-     * ID of bulk out
-     */
-    uint8_t bulk_out;
+	/**
+	 * ID of bulk out
+	 */
+	uint8_t bulk_out;
 
-    /**
-     * ID of bulk interrupt - ignored
-     */
-    uint8_t interrupt;
+	/**
+	 * ID of bulk interrupt - ignored
+	 */
+	uint8_t interrupt;
 
 } usb_device_t;
 

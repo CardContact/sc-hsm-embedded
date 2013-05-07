@@ -26,16 +26,16 @@
 int ResetTerminal(struct scr *ctx, unsigned int *lr, unsigned char *rsp);
 
 int ResetCard(struct scr *ctx, unsigned int lc, unsigned char *cmd,
-              unsigned int *lr, unsigned char *rsp);
+			  unsigned int *lr, unsigned char *rsp);
 
 int RequestICC(struct scr *ctx, unsigned int lc, unsigned char *cmd,
-               unsigned int *lr, unsigned char *rsp);
+			   unsigned int *lr, unsigned char *rsp);
 
 int EjectICC(struct scr *ctx, unsigned int lc, unsigned char *cmd,
-             unsigned int *lr, unsigned char *rsp);
+			 unsigned int *lr, unsigned char *rsp);
 
 int GetStatus(struct scr *ctx, unsigned char *cmd, unsigned int *lr,
-              unsigned char *rsp);
+			  unsigned char *rsp);
 
 #endif
 

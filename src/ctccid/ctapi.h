@@ -23,46 +23,46 @@
 extern "C" {
 #endif
 
-/** Maximum length of APDU            */
+	/** Maximum length of APDU            */
 #define MAX_APDULEN     1040
 
-signed char CT_init (
-	unsigned short ctn,                 /* Number assigned to terminal       */
-	unsigned short pn                   /* Port allocated for terminal       */
-);
+	signed char CT_init (
+		unsigned short ctn,                 /* Number assigned to terminal       */
+		unsigned short pn                   /* Port allocated for terminal       */
+	);
 
-signed char CT_close(
-	unsigned short ctn                  /* Number assigned to terminal       */
-);
+	signed char CT_close(
+		unsigned short ctn                  /* Number assigned to terminal       */
+	);
 
-signed char CT_data(
-	unsigned short ctn,                /* Number assigned to terminal       */
-	unsigned char  *dad,               /* Destination ADdress               */
-	unsigned char  *sad,               /* Source ADdress                    */
-	unsigned short lc,                 /* Length of command in cmd          */
-	unsigned char  *cmd,               /* Command APDU buffer               */
-	unsigned short *lr,                /* Length of response APDU           */
-	unsigned char  *rsp                /* Response APDU buffer              */
-);
+	signed char CT_data(
+		unsigned short ctn,                /* Number assigned to terminal       */
+		unsigned char  *dad,               /* Destination ADdress               */
+		unsigned char  *sad,               /* Source ADdress                    */
+		unsigned short lc,                 /* Length of command in cmd          */
+		unsigned char  *cmd,               /* Command APDU buffer               */
+		unsigned short *lr,                /* Length of response APDU           */
+		unsigned char  *rsp                /* Response APDU buffer              */
+	);
 
-/* CTAPI - response codes                                                   */
+	/* CTAPI - response codes                                                   */
 
-/** Successful completion            */
+	/** Successful completion            */
 #define OK               0
-/** Invalid parameter or value       */
+	/** Invalid parameter or value       */
 #define ERR_INVALID     -1
-/** Cardterminal error               */
+	/** Cardterminal error               */
 #define ERR_CT          -8
-/** Transmission error               */
+	/** Transmission error               */
 #define ERR_TRANS       -10
-/** Memory allocate error            */
+	/** Memory allocate error            */
 #define ERR_MEMORY      -11
-/** Function aborted by host os      */
+	/** Function aborted by host os      */
 #define ERR_HOST        -127
-/** 'HTSI' error                     */
+	/** 'HTSI' error                     */
 #define ERR_HTSI        -128
 
-/* CTAPI / CTBCS SW1/2 states                                               */
+	/* CTAPI / CTBCS SW1/2 states                                               */
 #define SMARTCARD_SUCCESS           0x9000
 #define SMARTCARD_SUCCESS_ASYNC     0X9001
 #define NOT_SUCCESSFUL              0x6400
@@ -90,23 +90,11 @@ signed char CT_data(
 #define LOW(x)    ((x & 0xff))
 #endif
 
-
 #define CT              1
 #define HOST            2
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
