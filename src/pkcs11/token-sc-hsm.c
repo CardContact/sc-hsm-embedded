@@ -180,12 +180,17 @@ static int addEECertificateObject(struct p11Token_t *token, unsigned char id)
 		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
-	if (p15->label) {
-		template[4].pValue = p15->label;
+	if (p15->coa.label) {
+		template[4].pValue = p15->coa.label;
 	} else {
 		sprintf(label, "Cert#%d", id);
 	}
 	template[4].ulValueLen = strlen(template[4].pValue);
+
+	if (p15->id) {
+		template[5].pValue = p15->id;
+		template[5].ulValueLen = p15->idlen;
+	}
 
 	rc = createCertificateObject(template, 7, pObject);
 
@@ -196,7 +201,7 @@ static int addEECertificateObject(struct p11Token_t *token, unsigned char id)
 	}
 
 	pObject->tokenid = (int)id;
-	pObject->keysize = 2048;
+	pObject->keysize = p15->keysize;
 
 	addObject(token, pObject, TRUE);
 	freePrivateKeyDescription(&p15);
@@ -216,7 +221,7 @@ static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 		return pObject->keysize >> 3;
 	case CKM_ECDSA:
 	case CKM_ECDSA_SHA1:
-		return (pObject->keysize >> 3) + 8;
+		return pObject->keysize >> 2;
 	default:
 		return -1;
 	}
@@ -434,12 +439,21 @@ static int addPrivateKeyObject(struct p11Token_t *token, unsigned char id)
 		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
-	if (p15->label) {
-		template[4].pValue = p15->label;
+	if (p15->coa.label) {
+		template[4].pValue = p15->coa.label;
 	} else {
 		sprintf(label, "Key#%d", id);
 	}
 	template[4].ulValueLen = strlen(template[4].pValue);
+
+	if (p15->id) {
+		template[5].pValue = p15->id;
+		template[5].ulValueLen = p15->idlen;
+
+		template[9].pValue = p15->usage & P15_DECIPHER ? &true : &false;
+		template[10].pValue = p15->usage & P15_SIGN ? &true : &false;
+		template[11].pValue = p15->usage & P15_SIGNRECOVER ? &true : &false;
+	}
 
 	switch(p15->keytype) {
 	case P15_KEYTYPE_RSA:
@@ -454,7 +468,6 @@ static int addPrivateKeyObject(struct p11Token_t *token, unsigned char id)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Unknown key type in PRKD");
 	}
 
-	// ToDo: Fill CKA_ID from PKCS15 structure or set based on key id
 	// ToDo: Set CKA_EXTRACTABLE based on KCV
 
 	rc = createPrivateKeyObject(template, sizeof(template) / sizeof(CK_ATTRIBUTE), pObject);
@@ -469,7 +482,7 @@ static int addPrivateKeyObject(struct p11Token_t *token, unsigned char id)
 	pObject->C_Sign = sc_hsm_C_Sign;
 
 	pObject->tokenid = (int)id;
-	pObject->keysize = 2048;
+	pObject->keysize = p15->keysize;
 	addObject(token, pObject, FALSE);
 
 	freePrivateKeyDescription(&p15);

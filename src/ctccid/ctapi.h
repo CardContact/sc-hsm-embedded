@@ -23,8 +23,8 @@
 extern "C" {
 #endif
 
-	/** Maximum length of APDU            */
-#define MAX_APDULEN     1040
+/** Maximum length of APDU            */
+#define MAX_APDULEN     4098
 
 	signed char CT_init (
 		unsigned short ctn,                 /* Number assigned to terminal       */

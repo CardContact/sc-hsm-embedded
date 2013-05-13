@@ -137,7 +137,7 @@ struct id2name_t p11CKAName[P11CKA] = {
 		{ CKA_WRAP                               , "CKA_WRAP", CKT_BBOOL },
 		{ CKA_UNWRAP                             , "CKA_UNWRAP", CKT_BBOOL },
 		{ CKA_SIGN                               , "CKA_SIGN", CKT_BBOOL },
-		{ CKA_SIGN_RECOVER                       , "CKA_SIGN_RECOVER", 0 },
+		{ CKA_SIGN_RECOVER                       , "CKA_SIGN_RECOVER", CKT_BBOOL },
 		{ CKA_VERIFY                             , "CKA_VERIFY", CKT_BBOOL },
 		{ CKA_VERIFY_RECOVER                     , "CKA_VERIFY_RECOVER", 0 },
 		{ CKA_DERIVE                             , "CKA_DERIVE", CKT_BBOOL },
@@ -460,6 +460,12 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 		printf("Calling C_Sign()");
 
+		len = 0;
+		rc = p11->C_Sign(session, tbs, strlen(tbs), NULL, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), rc == CKR_OK ? "Passed" : "Failed");
+
+		printf("Signature size = %d\n", len);
+
 		len = sizeof(signature);
 		rc = p11->C_Sign(session, tbs, strlen(tbs), signature, &len);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), rc == CKR_OK ? "Passed" : "Failed");
@@ -502,6 +508,12 @@ int testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), rc == CKR_OK ? "Passed" : "Failed");
 
 		printf("Calling C_Sign()");
+
+		len = 0;
+		rc = p11->C_Sign(session, tbs, strlen(tbs), NULL, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), rc == CKR_OK ? "Passed" : "Failed");
+
+		printf("Signature size = %d\n", len);
 
 		len = sizeof(signature);
 		rc = p11->C_Sign(session, tbs, strlen(tbs), signature, &len);

@@ -21,13 +21,13 @@
 
 
 
-static int decodeCommonObjectAttributes(unsigned char *prkd, size_t prkdlen, struct p15PrivateKeyDescription *p15)
+static int decodeCommonObjectAttributes(unsigned char *coa, int coalen, struct p15CommonObjectAttributes *p15)
 {
 	int rc,tag,len;
 	unsigned char *po;
 	char *label;
 
-	po = prkd;
+	po = coa;
 	tag = asn1Tag(&po);
 
 	if (tag == ASN1_UTF8String) {
@@ -45,44 +45,160 @@ static int decodeCommonObjectAttributes(unsigned char *prkd, size_t prkdlen, str
 
 
 
-static int decodeRSAPrivateKeyDescription(unsigned char *prkd, size_t prkdlen, struct p15PrivateKeyDescription *p15)
+static int decodeCommonKeyAttributes(unsigned char *cka, int ckalen, struct p15PrivateKeyDescription *p15)
 {
 	int rc,tag,len;
-	unsigned char *po;
+	unsigned char *po, *obj, *id;
 
-	po = prkd;
-
+	po = obj = cka;
 	tag = asn1Tag(&po);
 	len = asn1Length(&po);
 
-	rc = decodeCommonObjectAttributes(po, len, p15);
-	if (rc < 0) {
-		return rc;
+	if ((tag != ASN1_OCTET_STRING) || (len <= 0)) {
+		return -1;
 	}
+
+	id = calloc(len, 1);
+	if (id == NULL) {
+		return -1;
+	}
+	memcpy(id, po, len);
+	p15->id = id;
+	p15->idlen = len;
 
 	po += len;
 
+	if ((po - cka) >= ckalen) {
+		return 0;
+	}
+
+	obj = po;
+	tag = asn1Tag(&po);
+	len = asn1Length(&po);
+
+	if ((tag != ASN1_BIT_STRING) || (len <= 1)) {
+		return -1;
+	}
+
+	asn1DecodeFlags(po + 1, len - 1, &p15->usage);
 	return 0;
 }
 
 
 
-static int decodeECPrivateKeyDescription(unsigned char *prkd, size_t prkdlen, struct p15PrivateKeyDescription *p15)
+static int decodeKeyAttributes(unsigned char *ka, int kalen, struct p15PrivateKeyDescription *p15)
 {
 	int rc,tag,len;
-	unsigned char *po;
+	unsigned char *po, *obj;
+	char *label;
 
-	po = prkd;
-
+	po = obj = ka;
 	tag = asn1Tag(&po);
 	len = asn1Length(&po);
 
-	rc = decodeCommonObjectAttributes(po, len, p15);
+	if ((tag != ASN1_SEQUENCE) || (len <= 0)) {
+		return -1;
+	}
+
+	po += len;
+
+	if ((po - ka) >= kalen) {
+		return 0;
+	}
+
+	obj = po;
+	tag = asn1Tag(&po);
+	len = asn1Length(&po);
+
+	if ((tag == ASN1_INTEGER) && (len > 0)) {
+		if (asn1DecodeInteger(po, len, &p15->keysize) < 0) {
+			return -1;
+		}
+	} else {
+		p15->keysize = 2048;		// Save default for key size
+	}
+	return 0;
+}
+
+
+
+static int decodePrivateKeyAttributes(unsigned char *prkd, int prkdlen, struct p15PrivateKeyDescription *p15)
+{
+	int rc,tag,len;
+	unsigned char *po, *obj;
+
+	if (prkdlen <= 0) {				// Nothing to decode
+		return 0;
+	}
+
+	po = obj = prkd;
+
+	tag = asn1Tag(&po);
+	if (tag != ASN1_SEQUENCE) {
+		return -1;
+	}
+
+	len = asn1Length(&po);
+
+	rc = decodeCommonObjectAttributes(po, len, &p15->coa);
 	if (rc < 0) {
 		return rc;
 	}
 
 	po += len;
+
+	if ((po - prkd) >= prkdlen) {
+		return 0;
+	}
+
+	obj = po;
+	tag = asn1Tag(&po);
+	if (tag != ASN1_SEQUENCE) {
+		return -1;
+	}
+
+	len = asn1Length(&po);
+
+	rc = decodeCommonKeyAttributes(po, len, p15);
+	if (rc < 0) {
+		return rc;
+	}
+
+	po += len;
+
+	if ((po - prkd) >= prkdlen) {
+		return 0;
+	}
+
+	obj = po;
+	tag = asn1Tag(&po);
+	if (tag == 0xA0) {
+		len = asn1Length(&po);
+		po += len;
+
+		if ((po - prkd) >= prkdlen) {
+			return 0;
+		}
+		obj = po;
+		tag = asn1Tag(&po);
+	}
+
+	len = asn1Length(&po);
+	if ((tag != 0xA1) || (len <= 0)) {
+		return -1;
+	}
+
+	tag = asn1Tag(&po);
+	len = asn1Length(&po);
+
+	if ((tag != ASN1_SEQUENCE) || (len <= 0)) {
+		return -1;
+	}
+
+	rc = decodeKeyAttributes(po, len, p15);
+	if (rc < 0) {
+		return rc;
+	}
 
 	return 0;
 }
@@ -110,18 +226,24 @@ int decodePrivateKeyDescription(unsigned char *prkd, size_t prkdlen, struct p15P
 	tag = asn1Tag(&po);
 	len = asn1Length(&po);
 
-	(*p15)->keytype = (int)tag;
-	switch(tag) {
-	case ASN1_SEQUENCE:
-		rc = decodeRSAPrivateKeyDescription(po, len, *p15);
-		break;
-	case 0xA0:
-		rc = decodeECPrivateKeyDescription(po, len, *p15);
-		break;
-	default:
+	if ((tag != ASN1_SEQUENCE) && (tag != 0xA0)) {
 		return -1;
 	}
-	return 0;
+
+	(*p15)->keytype = (int)tag;
+	rc = decodePrivateKeyAttributes(po, len, *p15);
+
+	return rc;
+}
+
+
+
+void freeCommonObjectAttributes(struct p15CommonObjectAttributes *coa)
+{
+	if (coa->label != NULL) {
+		free(coa->label);
+		coa->label = NULL;
+	}
 }
 
 
@@ -129,9 +251,10 @@ int decodePrivateKeyDescription(unsigned char *prkd, size_t prkdlen, struct p15P
 void freePrivateKeyDescription(struct p15PrivateKeyDescription **p15)
 {
 	if (*p15 != NULL) {
-		if ((*p15)->label != NULL) {
-			free((*p15)->label);
-			(*p15)->label = NULL;
+		freeCommonObjectAttributes(&(*p15)->coa);
+		if ((*p15)->id) {
+			free((*p15)->id);
+			(*p15)->id = NULL;
 		}
 		free(*p15);
 	}

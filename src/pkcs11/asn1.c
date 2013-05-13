@@ -232,7 +232,7 @@ unsigned char *asn1Find(unsigned char *data, unsigned char *path, int level)
 		datalen = asn1Length(&data);
 		p = asn1Tag(&path);
 
-		do  {
+		do	{
 			obj = data;
 			d = asn1Tag(&data);
 			data += asn1Length(&data);
@@ -338,6 +338,38 @@ int asn1Validate(unsigned char *data, size_t length)
 				}
 			}
 		}
+	}
+	return 0;
+}
+
+
+
+void asn1DecodeFlags(unsigned char *data, size_t length, unsigned long *flags)
+{
+	int c = 4;
+
+	*flags = 0;
+	while ((c-- > 0) && (length > 0)) {
+		*flags |= *data << (c << 3);
+		data++;
+		length--;
+	}
+}
+
+
+
+int asn1DecodeInteger(unsigned char *data, size_t length, int *value)
+{
+	int c = sizeof(int);
+
+	*value = 0;
+	while ((c-- > 0) && (length > 0)) {
+		*value = (*value << 8) | *data;
+		data++;
+		length--;
+	}
+	if (length > 0) {
+		return -1;
 	}
 	return 0;
 }

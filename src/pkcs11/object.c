@@ -347,7 +347,7 @@ struct id2name_t p11CKAName[] = {
 { CKA_WRAP                               , "CKA_WRAP", CKT_BBOOL },
 { CKA_UNWRAP                             , "CKA_UNWRAP", CKT_BBOOL },
 { CKA_SIGN                               , "CKA_SIGN", CKT_BBOOL },
-{ CKA_SIGN_RECOVER                       , "CKA_SIGN_RECOVER", 0 },
+{ CKA_SIGN_RECOVER                       , "CKA_SIGN_RECOVER", CKT_BBOOL },
 { CKA_VERIFY                             , "CKA_VERIFY", CKT_BBOOL },
 { CKA_VERIFY_RECOVER                     , "CKA_VERIFY_RECOVER", 0 },
 { CKA_DERIVE                             , "CKA_DERIVE", CKT_BBOOL },
@@ -410,457 +410,458 @@ struct id2name_t p11CKKName[] = {
 { CKK_AES                                , "CKK_AES", 0 },
 };
 
+
+
 char *id2name(struct id2name_t *p, unsigned long id, unsigned long *attr)
-
 {
-    static char scr[40];
+	static char scr[40];
 
-    if (attr)
-        *attr = 0;
+	if (attr)
+		*attr = 0;
 
-    if (id & 0x80000000) {
-        sprintf(scr, "Vendor defined 0x%lx", id);
-    } else {
-        while (p->name && (p->id != id))
-            p++;
+	if (id & 0x80000000) {
+		sprintf(scr, "Vendor defined 0x%lx", id);
+	} else {
+		while (p->name && (p->id != id))
+			p++;
 
-        if (p->name) {
-            strcpy(scr, p->name);
-            if (attr)
-                *attr = p->attr;
-        } else {
-            sprintf(scr, "*** Undefined 0x%lx ***", id);
-        }
-    }
-    return scr;
+		if (p->name) {
+			strcpy(scr, p->name);
+			if (attr)
+				*attr = p->attr;
+		} else {
+			sprintf(scr, "*** Undefined 0x%lx ***", id);
+		}
+	}
+	return scr;
 }
 
 
 
 static void bin2str(char *st, int stlen, unsigned char *data, int datalen)
-
 {
-    int ascii, i;
-    unsigned char *d;
+	int ascii, i;
+	unsigned char *d;
 
-    ascii = 1;
-    d = data;
-    i = datalen;
+	ascii = 1;
+	d = data;
+	i = datalen;
 
-    while (i && (stlen > 2)) {
-        sprintf(st, "%02X", *d);
+	while (i && (stlen > 2)) {
+		sprintf(st, "%02X", *d);
 
-        if (ascii && !isprint(*d) && *d)
-            ascii = 0;
+		if (ascii && !isprint(*d) && *d)
+			ascii = 0;
 
-        st += 2;
-        stlen -= 2;
-        i--;
-        d++;
-    }
-    
-    if (ascii && (stlen > datalen + 3)) {
-        *st++ = ' ';
-        *st++ = '"';
-        memcpy(st, data, datalen);
-        st += datalen;
-        *st++ = '"';
-    }
+		st += 2;
+		stlen -= 2;
+		i--;
+		d++;
+	}
 
-    *st = '\0';
+	if (ascii && (stlen > datalen + 3)) {
+		*st++ = ' ';
+		*st++ = '"';
+		memcpy(st, data, datalen);
+		st += datalen;
+		*st++ = '"';
+	}
+
+	*st = '\0';
 }
+
+
 
 void dumpAttribute(CK_ATTRIBUTE_PTR attr)
-
 {
-    char attribute[30], scr[100];
-    unsigned long atype;
-   
-    strcpy(attribute, id2name(p11CKAName, attr->type, &atype));
+	char attribute[30], scr[100];
+	unsigned long atype;
 
-    // printf("\n %s", attribute);
+	strcpy(attribute, id2name(p11CKAName, attr->type, &atype));
 
-    switch(attr->type) {
-            
-        case CKA_KEY_TYPE:
-            debug("\n  %s = %s\n", attribute, id2name(p11CKKName, *(CK_KEY_TYPE *)attr->pValue, NULL));
-            break;
+	// printf("\n %s", attribute);
 
-        default: 
-            switch(atype) {
-                case CKT_BBOOL: 
-                	if (attr->pValue) {
-                		debug("\n  %s = %s [%d]\n", attribute, *(CK_BBOOL *)attr->pValue ? "TRUE" : "FALSE", *(CK_BBOOL *)attr->pValue);
-                	} else {
-                		debug("\n  %s\n", attribute);
-                	}
-                    break;
-                case CKT_DATE:
-                    // pdate = (CK_DATE *)attr->pValue;
-                    // if (pdate != NULL) {
-                    //     sprintf(res, "  %s = %4s-%2s-%2s", attribute, pdate->year, pdate->month, pdate->day);
-                    // }
-                    debug("\n  %s\n", attribute);                    
-                    break;
-                case CKT_LONG:
-                    debug("\n  %s = %d [0x%X]\n", attribute, *(CK_LONG *)attr->pValue, *(CK_LONG *)attr->pValue);
-                    break;
-                case CKT_ULONG:
-                    debug("\n  %s = %u [0x%X]\n", attribute, *(CK_ULONG *)attr->pValue, *(CK_ULONG *)attr->pValue);
-                    break;
-                case CKT_BIN:
-                default:
-                    bin2str(scr, sizeof(scr), attr->pValue, attr->ulValueLen);
-                    debug("\n  %s = %s\n", attribute, scr);
-                    break;
-            }
+	switch(attr->type) {
 
-    }
+	case CKA_KEY_TYPE:
+		debug("\n  %s = %s\n", attribute, id2name(p11CKKName, *(CK_KEY_TYPE *)attr->pValue, NULL));
+		break;
 
+	default:
+		switch(atype) {
+		case CKT_BBOOL:
+			if (attr->pValue) {
+				debug("\n  %s = %s [%d]\n", attribute, *(CK_BBOOL *)attr->pValue ? "TRUE" : "FALSE", *(CK_BBOOL *)attr->pValue);
+			} else {
+				debug("\n  %s\n", attribute);
+			}
+			break;
+		case CKT_DATE:
+			// pdate = (CK_DATE *)attr->pValue;
+			// if (pdate != NULL) {
+			//     sprintf(res, "  %s = %4s-%2s-%2s", attribute, pdate->year, pdate->month, pdate->day);
+			// }
+			debug("\n  %s\n", attribute);
+			break;
+		case CKT_LONG:
+			debug("\n  %s = %d [0x%X]\n", attribute, *(CK_LONG *)attr->pValue, *(CK_LONG *)attr->pValue);
+			break;
+		case CKT_ULONG:
+			debug("\n  %s = %u [0x%X]\n", attribute, *(CK_ULONG *)attr->pValue, *(CK_ULONG *)attr->pValue);
+			break;
+		case CKT_BIN:
+		default:
+			bin2str(scr, sizeof(scr), attr->pValue, attr->ulValueLen);
+			debug("\n  %s = %s\n", attribute, scr);
+			break;
+		}
+	}
 }
-
 #endif
 
+
+
 int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate)
-
 {
-    struct p11Attribute_t *attr;
-    struct p11Attribute_t *pAttribute;
+	struct p11Attribute_t *attr;
+	struct p11Attribute_t *pAttribute;
 
-    pAttribute = (struct p11Attribute_t *) malloc (sizeof(struct p11Attribute_t));
+	pAttribute = (struct p11Attribute_t *) malloc (sizeof(struct p11Attribute_t));
 
-    if (pAttribute == NULL) {
-        return -1;
-    }   
+	if (pAttribute == NULL) {
+		return -1;
+	}
 
-    memset(pAttribute, 0x00, sizeof(struct p11Attribute_t));
-    memcpy(&pAttribute->attrData, pTemplate, sizeof(CK_ATTRIBUTE));
+	memset(pAttribute, 0x00, sizeof(struct p11Attribute_t));
+	memcpy(&pAttribute->attrData, pTemplate, sizeof(CK_ATTRIBUTE));
 
-    pAttribute->attrData.pValue = malloc(pAttribute->attrData.ulValueLen);
+	pAttribute->attrData.pValue = malloc(pAttribute->attrData.ulValueLen);
 
-    if (pAttribute->attrData.pValue == NULL) {
-    	free(pAttribute);
-        return -1;
-    }
+	if (pAttribute->attrData.pValue == NULL) {
+		free(pAttribute);
+		return -1;
+	}
 
-    memcpy(pAttribute->attrData.pValue, pTemplate->pValue, pAttribute->attrData.ulValueLen);
+	memcpy(pAttribute->attrData.pValue, pTemplate->pValue, pAttribute->attrData.ulValueLen);
 
-    if (object->attrList == NULL) {
-        
-        object->attrList = pAttribute;
+	if (object->attrList == NULL) {
 
-    } else {
+		object->attrList = pAttribute;
 
-        attr = object->attrList;
+	} else {
 
-        while (attr->next != NULL) {
-            attr = attr->next;
-        }
+		attr = object->attrList;
 
-        attr->next = pAttribute;
-    }
-    
-    return CKR_OK;
+		while (attr->next != NULL) {
+			attr = attr->next;
+		}
+
+		attr->next = pAttribute;
+	}
+
+	return CKR_OK;
 }
+
 
 
 int findAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTemplate, struct p11Attribute_t **attribute)
-
 {
 	struct p11Attribute_t *attr;
-    int pos = 0;            /* remember the current position in the list */
+	int pos = 0;            /* remember the current position in the list */
 
-    attr = object->attrList;
-    *attribute = NULL;
+	attr = object->attrList;
+	*attribute = NULL;
 
-    while (attr != NULL) {
-    
-        if (attr->attrData.type == attributeTemplate->type) {
+	while (attr != NULL) {
 
-            *attribute = attr;
-            return pos;
-        }
-        
-        attr = attr->next;
-        pos++;
-    }
+		if (attr->attrData.type == attributeTemplate->type) {
 
-    return -1;
+			*attribute = attr;
+			return pos;
+		}
+
+		attr = attr->next;
+		pos++;
+	}
+
+	return -1;
 }
+
 
 
 int findAttributeInTemplate(CK_ATTRIBUTE_TYPE attributeType, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) 
+{
+	unsigned int i;
 
-{   
-    unsigned int i;
+	for (i = 0; i < ulCount; i++) {
+		if (pTemplate[i].type == attributeType) {
+			return i;
+		}
+	}
 
-    for (i = 0; i < ulCount; i++) {
-        if (pTemplate[i].type == attributeType) {
-            return i;    
-        }
-    }
-
-    return -1;
+	return -1;
 }
+
 
 
 int removeAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTemplate)
-
 {
-    struct p11Attribute_t *attr = NULL;
-    struct p11Attribute_t *prev = NULL;
-    int rc;
+	struct p11Attribute_t *attr = NULL;
+	struct p11Attribute_t *prev = NULL;
+	int rc;
 
-    rc = findAttribute(object, attributeTemplate, &attr);
-    
-    /* no object for this template found */
-    if (rc < 0) {
-        return rc;
-    }
+	rc = findAttribute(object, attributeTemplate, &attr);
 
-    if (rc > 0) {      /* there is more than one element in the pool */
-        
-        prev = object->attrList;
-        
-        while (prev->next->attrData.type != attributeTemplate->type) {
-            prev = prev->next;
-        }
-    
-        prev->next = attr->next;
-        
-    }
+	/* no object for this template found */
+	if (rc < 0) {
+		return rc;
+	}
 
-    free(attr->attrData.pValue);
-    free(attr);
-    
-    if (rc == 0) {      /* We removed the last element from the list */
-        object->attrList = NULL;
-    }
+	if (rc > 0) {      /* there is more than one element in the pool */
 
-    return CKR_OK;
+		prev = object->attrList;
+
+		while (prev->next->attrData.type != attributeTemplate->type) {
+			prev = prev->next;
+		}
+
+		prev->next = attr->next;
+
+	}
+
+	free(attr->attrData.pValue);
+	free(attr);
+
+	if (rc == 0) {      /* We removed the last element from the list */
+		object->attrList = NULL;
+	}
+
+	return CKR_OK;
 }
+
 
 
 int removeAllAttributes(struct p11Object_t *object) 
-
 {
-    struct p11Attribute_t *pAttr, *pAttr2;
-    
-    pAttr = object->attrList;
+	struct p11Attribute_t *pAttr, *pAttr2;
 
-    while (pAttr) {
-        
-        pAttr2 = pAttr;
-        pAttr = pAttr->next;
+	pAttr = object->attrList;
 
-        free(pAttr2);
-    }
-        
-    return 0;
+	while (pAttr) {
+
+		pAttr2 = pAttr;
+		pAttr = pAttr->next;
+
+		free(pAttr2);
+	}
+
+	return 0;
 
 }
+
+
 
 #ifdef DEBUG
 
 int dumpAttributeList(struct p11Object_t *pObject)
-
 {
-    CK_ATTRIBUTE_PTR attr;
-    struct p11Attribute_t *p11Attr;
+	CK_ATTRIBUTE_PTR attr;
+	struct p11Attribute_t *p11Attr;
 
-    
-    debug("\n******** attribute list for object ********\n");
 
-    p11Attr = pObject->attrList;
+	debug("\n******** attribute list for object ********\n");
 
-    while (p11Attr != NULL) {
+	p11Attr = pObject->attrList;
 
-        attr = &p11Attr->attrData;
+	while (p11Attr != NULL) {
 
-        dumpAttribute(attr);
+		attr = &p11Attr->attrData;
 
-        p11Attr = p11Attr->next;
-    }
+		dumpAttribute(attr);
 
-    debug("\n******** end attribute list ********\n");
+		p11Attr = p11Attr->next;
+	}
 
-    return 0;
+	debug("\n******** end attribute list ********\n");
+
+	return 0;
 }
 
 #endif
+
+
 
 int createObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject)
-
 {
-    int index;
-    unsigned int i = 0;
+	int index;
+	unsigned int i = 0;
 
-    /* Check if the attribute is present */
+	/* Check if the attribute is present */
 
-    index = findAttributeInTemplate(CKA_CLASS, pTemplate, ulCount);
-    
-    
-    if (index == -1) { /* Attribute is not present */
-    
+	index = findAttributeInTemplate(CKA_CLASS, pTemplate, ulCount);
+
+
+	if (index == -1) { /* Attribute is not present */
+
 #ifdef DEBUG
-        debug("[createObject] Error creating object - the attribute CKA_CLASS is not present!");
+		debug("[createObject] Error creating object - the attribute CKA_CLASS is not present!");
 #endif
 
-        return CKR_TEMPLATE_INCOMPLETE;
-    
-    } else {
-                         
-        addAttribute(pObject, &pTemplate[index]);     
-    }    
-    
-    return 0;
+		return CKR_TEMPLATE_INCOMPLETE;
+
+	} else {
+
+		addAttribute(pObject, &pTemplate[index]);
+	}
+
+	return 0;
 }
+
 
 
 int createStorageObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject)
+{
+	int index;
+	unsigned int i, rc;
 
-{   
-    int index;
-    unsigned int i, rc;
-    
-    rc = createObject(pTemplate, ulCount, pObject);
+	rc = createObject(pTemplate, ulCount, pObject);
 
-    if (rc) {
-        return rc;
-    }
-    
-    for (i = 0; i < NEEDED_ATTRIBUTES_STORAGEOBJECT; i++) {
+	if (rc) {
+		return rc;
+	}
 
-        index = findAttributeInTemplate(attributesStorageObject[i].attribute.type, pTemplate, ulCount);
-    
-        if (index == -1) { /* The attribute is not present - is it optional? */
-            
-            if (attributesStorageObject[i].optional) {
-            
-                addAttribute(pObject, &attributesStorageObject[i].attribute);
-            
-            } else { /* the attribute is not optional */
+	for (i = 0; i < NEEDED_ATTRIBUTES_STORAGEOBJECT; i++) {
+
+		index = findAttributeInTemplate(attributesStorageObject[i].attribute.type, pTemplate, ulCount);
+
+		if (index == -1) { /* The attribute is not present - is it optional? */
+
+			if (attributesStorageObject[i].optional) {
+
+				addAttribute(pObject, &attributesStorageObject[i].attribute);
+
+			} else { /* the attribute is not optional */
 #ifdef DEBUG
-                debug("[createStorageObject] Error creating storage object - the following attribute is not present!");
-                dumpAttribute(&(attributesStorageObject[i].attribute));
+				debug("[createStorageObject] Error creating storage object - the following attribute is not present!");
+				dumpAttribute(&(attributesStorageObject[i].attribute));
 #endif
-            
-                removeAllAttributes(pObject);
-                return CKR_TEMPLATE_INCOMPLETE;
-            
-            }
-        } else {
 
-            addAttribute(pObject, &pTemplate[index]);
-            
-            /* The object is public */
-            if ((pTemplate[index].type == CKA_PRIVATE ) &&
-                (*(CK_BBOOL *)pTemplate[index].pValue == CK_FALSE)) {
-                pObject->publicObj = TRUE;
-            }
+				removeAllAttributes(pObject);
+				return CKR_TEMPLATE_INCOMPLETE;
 
-            /* The object is a token object */
-            if ((pTemplate[index].type == CKA_TOKEN ) &&
-                (*(CK_BBOOL *)pTemplate[index].pValue == CK_TRUE)) {
-                pObject->tokenObj = TRUE;
-            }
-            
-        }
-    }
+			}
+		} else {
 
-    return 0;
+			addAttribute(pObject, &pTemplate[index]);
+
+			/* The object is public */
+			if ((pTemplate[index].type == CKA_PRIVATE ) &&
+					(*(CK_BBOOL *)pTemplate[index].pValue == CK_FALSE)) {
+				pObject->publicObj = TRUE;
+			}
+
+			/* The object is a token object */
+			if ((pTemplate[index].type == CKA_TOKEN ) &&
+					(*(CK_BBOOL *)pTemplate[index].pValue == CK_TRUE)) {
+				pObject->tokenObj = TRUE;
+			}
+
+		}
+	}
+
+	return 0;
 }
+
 
 
 int createKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject)
-
 {
-    unsigned int i;
-    int index, rc;
-    
-    rc = createStorageObject(pTemplate, ulCount, pObject);
+	unsigned int i;
+	int index, rc;
 
-    if (rc) {
-        return rc;
-    }
-   
-    for (i = 0; i < NEEDED_ATTRIBUTES_KEYOBJECT; i++) {
+	rc = createStorageObject(pTemplate, ulCount, pObject);
 
-        index = findAttributeInTemplate(attributesKeyObject[i].attribute.type, pTemplate, ulCount);
-    
-        if (index == -1) { /* The attribute is not present - is it optional? */
-            
-            if (attributesKeyObject[i].optional) {
-            
-                addAttribute(pObject, &attributesKeyObject[i].attribute);
-            
-            } else { /* the attribute is not optional */
-    
+	if (rc) {
+		return rc;
+	}
+
+	for (i = 0; i < NEEDED_ATTRIBUTES_KEYOBJECT; i++) {
+
+		index = findAttributeInTemplate(attributesKeyObject[i].attribute.type, pTemplate, ulCount);
+
+		if (index == -1) { /* The attribute is not present - is it optional? */
+
+			if (attributesKeyObject[i].optional) {
+
+				addAttribute(pObject, &attributesKeyObject[i].attribute);
+
+			} else { /* the attribute is not optional */
+
 #ifdef DEBUG
-                debug("[createKeyObject] Error creating key object - the following attribute is not present!");
-                dumpAttribute(&(attributesKeyObject[i].attribute));
+				debug("[createKeyObject] Error creating key object - the following attribute is not present!");
+				dumpAttribute(&(attributesKeyObject[i].attribute));
 #endif
-                 
-                return CKR_TEMPLATE_INCOMPLETE;
-            
-            }
-        } else {
 
-            addAttribute(pObject, &pTemplate[index]);   
-        
-        }
-    }
+				return CKR_TEMPLATE_INCOMPLETE;
 
-    return 0;
+			}
+		} else {
+
+			addAttribute(pObject, &pTemplate[index]);
+
+		}
+	}
+
+	return 0;
 }
+
 
 
 /**
  * Serialize all attributes of the object to an unsigned char array 
  */
-
 int serializeObject(struct p11Object_t *pObject, unsigned char **pBuffer, unsigned int *bufLength)
+{
+	struct p11Attribute_t *pAttribute;
+	unsigned char *buf;
+	unsigned int l, i;
 
-{   struct p11Attribute_t *pAttribute;    
-    unsigned char *buf;
-    unsigned int l, i;
+	l = 0;
 
-    l = 0;
+	pAttribute = pObject->attrList;
 
-    pAttribute = pObject->attrList;
+	/* Determine the size of the object */
+	while (pAttribute) {
+		l += sizeof(CK_ATTRIBUTE);
+		l += pAttribute->attrData.ulValueLen;
+		pAttribute = pAttribute->next;
+	}
 
-    /* Determine the size of the object */
-    while (pAttribute) {       
-        l += sizeof(CK_ATTRIBUTE);
-        l += pAttribute->attrData.ulValueLen;
-        pAttribute = pAttribute->next;
-    }
+	buf = (unsigned char *) malloc(l);
 
-    buf = (unsigned char *) malloc(l);
+	if (buf == NULL) {
+		return -1;
+	}
 
-    if (buf == NULL) {
-        return -1;
-    }
+	memset(buf, 0x00, l);
 
-    memset(buf, 0x00, l);
+	pAttribute = pObject->attrList;
+	i = 0;
 
-    pAttribute = pObject->attrList;
-    i = 0;
+	/* Fill the buffer */
+	while (pAttribute) {
 
-    /* Fill the buffer */
-    while (pAttribute) {       
-        
-        memcpy(buf + i, &(pAttribute->attrData), sizeof(CK_ATTRIBUTE));        
-        i += sizeof(CK_ATTRIBUTE);
+		memcpy(buf + i, &(pAttribute->attrData), sizeof(CK_ATTRIBUTE));
+		i += sizeof(CK_ATTRIBUTE);
 
-        memcpy(buf + i, pAttribute->attrData.pValue, pAttribute->attrData.ulValueLen);
-        i += pAttribute->attrData.ulValueLen;
-        
-        pAttribute = pAttribute->next;
-    }
-    
-    *pBuffer = buf;
-    *bufLength = l;
-    
-    return 0;
+		memcpy(buf + i, pAttribute->attrData.pValue, pAttribute->attrData.ulValueLen);
+		i += pAttribute->attrData.ulValueLen;
+
+		pAttribute = pAttribute->next;
+	}
+
+	*pBuffer = buf;
+	*bufLength = l;
+
+	return 0;
 }

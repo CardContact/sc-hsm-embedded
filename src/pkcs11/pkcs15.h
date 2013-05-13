@@ -24,13 +24,31 @@
 extern "C" {
 #endif
 
-#define P15_KEYTYPE_RSA		0x30
-#define P15_KEYTYPE_ECC		0xA0
+#define P15_KEYTYPE_RSA     0x30
+#define P15_KEYTYPE_ECC     0xA0
+
+#define P15_ENCIPHER        0x80000000
+#define P15_DECIPHER        0x40000000
+#define P15_SIGN            0x20000000
+#define P15_SIGNRECOVER     0x10000000
+#define P15_KEYENCIPHER     0x08000000
+#define P15_KEYDECIPHER     0x04000000
+#define P15_VERIFY          0x02000000
+#define P15_VERIFYRECOVER   0x01000000
+#define P15_DERIVE          0x00800000
+#define P15_NONREPUDIATION  0x00400000
+
+struct p15CommonObjectAttributes {
+	char			*label;
+};
 
 struct p15PrivateKeyDescription {
 	int				keytype;
-	char			*label;
+	struct p15CommonObjectAttributes
+					coa;
+	size_t			idlen;
 	unsigned char	*id;
+	unsigned long	usage;
 	int				keysize;
 };
 
