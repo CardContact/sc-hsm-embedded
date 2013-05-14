@@ -441,6 +441,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	};
 	CK_OBJECT_HANDLE hnd;
 	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
+//	CK_MECHANISM mech = { CKM_RSA_PKCS, 0, 0 };
 	char *tbs = "Hello World";
 	CK_BYTE signature[256];
 	CK_ULONG len;

@@ -250,6 +250,30 @@ unsigned char *asn1Find(unsigned char *data, unsigned char *path, int level)
 
 
 
+int asn1Next(unsigned char **ref, int *reflen, unsigned int *tag, int *length, unsigned char **value)
+{
+	unsigned char *base;
+
+	if (*reflen == 0) {
+		return 0;
+	}
+	base = *ref;
+	*tag = asn1Tag(ref);
+	*length = asn1Length(ref);
+
+	if ((reflen == -1) && (*tag == 0)) {
+		return 0;
+	}
+
+	*value = *ref;
+	*ref += *length;
+	*reflen -= *ref - base;
+
+	return 1;
+}
+
+
+
 /**
  * Validate a TLV structure, traversing into nested objects recursively
  *

@@ -30,6 +30,7 @@ extern struct p11Context_t *context;
 
 static const CK_MECHANISM_TYPE p11MechanismList[] = {
 		CKM_RSA_X_509,
+		CKM_RSA_PKCS,
 		CKM_SHA1_RSA_PKCS,
 		CKM_SHA256_RSA_PKCS,
 		CKM_SHA1_RSA_PKCS_PSS,
@@ -261,6 +262,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismInfo)(
 	switch (type) {
 
 	case CKM_RSA_X_509:
+	case CKM_RSA_PKCS:
 	case CKM_SHA1_RSA_PKCS:
 	case CKM_SHA256_RSA_PKCS:
 	case CKM_SHA1_RSA_PKCS_PSS:

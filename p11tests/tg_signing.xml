@@ -104,7 +104,76 @@ try	{
 
 
 
-	<testcase id="101_CKM_SHA1_RSA_PKCS_2048">
+	<testcase id="101_CKM_RSA_PKCS_2048">
+		<name>RSA Signature with external digest info and PKCS#1 V1.5 padding</name>
+		<description>
+			<p>Perform a RSA signature using a externally provided DigestInfo</p>
+		</description>
+		<requirement>
+			<p>Use Case Signing</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p);
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (RSA2048)");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (RSA2048)");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+		
+	var msg = new ByteString("Hello World", ASCII);
+	
+	var crypto = new Crypto();
+
+	var digest = crypto.digest(Crypto.SHA_1, msg);
+	
+	var di = new ByteString("3021300906052B0E03021A05000414", HEX).concat(digest);
+	print(new ASN1(di));
+	
+	// Test with single step C_Sign
+	s.signInit(PKCS11Session.CKM_RSA_PKCS, privateKey);
+	
+	var signature = s.sign(di);
+	print("Signature : " + signature);
+	
+	var ok = crypto.decrypt(publicKey, Crypto.RSA, signature);
+	print("Decrypted signature block:");
+	print(ok);
+	
+	var ok = crypto.verify(publicKey, Crypto.RSA_SHA1, msg, signature);
+	print("Verification " + (ok ? "OK" : "Failed !"));
+	
+	this.assertTrue(ok, "Signature verification failed !");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="102_CKM_SHA1_RSA_PKCS_2048">
 		<name>RSA Signature with SHA-1 and PKCS#1 V1.5</name>
 		<description>
 			<p>Perform a SHA-1 hash and RSA PKCS#1 V1.5 signature</p>
@@ -167,7 +236,7 @@ try	{
 
 
 
-	<testcase id="102_CKM_SHA256_RSA_PKCS_2048">
+	<testcase id="103_CKM_SHA256_RSA_PKCS_2048">
 		<name>RSA Signature with SHA-256 and PKCS#1 V1.5</name>
 		<description>
 			<p>Perform a SHA-256 hash and RSA PKCS#1 V1.5 signature</p>
@@ -230,7 +299,7 @@ try	{
 
 
 
-	<testcase id="103_CKM_SHA1_RSA_PKCS_PSS_2048">
+	<testcase id="104_CKM_SHA1_RSA_PKCS_PSS_2048">
 		<name>RSA Signature with SHA-1 and PKCS#1 PSS</name>
 		<description>
 			<p>Perform a SHA-1 hash and RSA PKCS#1 PSS signature</p>
@@ -293,7 +362,7 @@ try	{
 
 
 
-	<testcase id="104_CKM_SHA256_RSA_PKCS_PSS_2048">
+	<testcase id="105_CKM_SHA256_RSA_PKCS_PSS_2048">
 		<name>RSA Signature with SHA-256 and PKCS#1 PSS</name>
 		<description>
 			<p>Perform a SHA-256 hash and RSA PKCS#1 PSS signature</p>
@@ -566,7 +635,76 @@ try	{
 
 
 
-	<testcase id="131_CKM_SHA1_RSA_PKCS_1536">
+	<testcase id="131_CKM_RSA_PKCS_1536">
+		<name>RSA Signature with external digest info and PKCS#1 V1.5 padding</name>
+		<description>
+			<p>Perform a RSA signature using a externally provided DigestInfo</p>
+		</description>
+		<requirement>
+			<p>Use Case Signing</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p);
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (RSA1536)");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (RSA1536)");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+		
+	var msg = new ByteString("Hello World", ASCII);
+	
+	var crypto = new Crypto();
+
+	var digest = crypto.digest(Crypto.SHA_1, msg);
+	
+	var di = new ByteString("3021300906052B0E03021A05000414", HEX).concat(digest);
+	print(new ASN1(di));
+	
+	// Test with single step C_Sign
+	s.signInit(PKCS11Session.CKM_RSA_PKCS, privateKey);
+	
+	var signature = s.sign(di);
+	print("Signature : " + signature);
+	
+	var ok = crypto.decrypt(publicKey, Crypto.RSA, signature);
+	print("Decrypted signature block:");
+	print(ok);
+	
+	var ok = crypto.verify(publicKey, Crypto.RSA_SHA1, msg, signature);
+	print("Verification " + (ok ? "OK" : "Failed !"));
+	
+	this.assertTrue(ok, "Signature verification failed !");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="132_CKM_SHA1_RSA_PKCS_1536">
 		<name>RSA Signature with SHA-1 and PKCS#1 V1.5</name>
 		<description>
 			<p>Perform a SHA-1 hash and RSA PKCS#1 V1.5 signature</p>
@@ -629,7 +767,7 @@ try	{
 
 
 
-	<testcase id="132_CKM_SHA256_RSA_PKCS_1536">
+	<testcase id="133_CKM_SHA256_RSA_PKCS_1536">
 		<name>RSA Signature with SHA-256 and PKCS#1 V1.5</name>
 		<description>
 			<p>Perform a SHA-256 hash and RSA PKCS#1 V1.5 signature</p>
@@ -692,7 +830,7 @@ try	{
 
 
 
-	<testcase id="133_CKM_SHA1_RSA_PKCS_PSS_1536">
+	<testcase id="134_CKM_SHA1_RSA_PKCS_PSS_1536">
 		<name>RSA Signature with SHA-1 and PKCS#1 PSS</name>
 		<description>
 			<p>Perform a SHA-1 hash and RSA PKCS#1 PSS signature</p>
@@ -755,7 +893,7 @@ try	{
 
 
 
-	<testcase id="134_CKM_SHA256_RSA_PKCS_PSS_1536">
+	<testcase id="135_CKM_SHA256_RSA_PKCS_PSS_1536">
 		<name>RSA Signature with SHA-256 and PKCS#1 PSS</name>
 		<description>
 			<p>Perform a SHA-256 hash and RSA PKCS#1 PSS signature</p>
@@ -879,7 +1017,76 @@ try	{
 
 
 
-	<testcase id="141_CKM_SHA1_RSA_PKCS_1024">
+	<testcase id="141_CKM_RSA_PKCS_1024">
+		<name>RSA Signature with external digest info and PKCS#1 V1.5 padding</name>
+		<description>
+			<p>Perform a RSA signature using a externally provided DigestInfo</p>
+		</description>
+		<requirement>
+			<p>Use Case Signing</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p);
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (RSA1024)");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (RSA1024)");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+		
+	var msg = new ByteString("Hello World", ASCII);
+	
+	var crypto = new Crypto();
+
+	var digest = crypto.digest(Crypto.SHA_1, msg);
+	
+	var di = new ByteString("3021300906052B0E03021A05000414", HEX).concat(digest);
+	print(new ASN1(di));
+	
+	// Test with single step C_Sign
+	s.signInit(PKCS11Session.CKM_RSA_PKCS, privateKey);
+	
+	var signature = s.sign(di);
+	print("Signature : " + signature);
+	
+	var ok = crypto.decrypt(publicKey, Crypto.RSA, signature);
+	print("Decrypted signature block:");
+	print(ok);
+	
+	var ok = crypto.verify(publicKey, Crypto.RSA_SHA1, msg, signature);
+	print("Verification " + (ok ? "OK" : "Failed !"));
+	
+	this.assertTrue(ok, "Signature verification failed !");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="142_CKM_SHA1_RSA_PKCS_1024">
 		<name>RSA Signature with SHA-1 and PKCS#1 V1.5</name>
 		<description>
 			<p>Perform a SHA-1 hash and RSA PKCS#1 V1.5 signature</p>
@@ -942,7 +1149,7 @@ try	{
 
 
 
-	<testcase id="142_CKM_SHA256_RSA_PKCS_1024">
+	<testcase id="143_CKM_SHA256_RSA_PKCS_1024">
 		<name>RSA Signature with SHA-256 and PKCS#1 V1.5</name>
 		<description>
 			<p>Perform a SHA-256 hash and RSA PKCS#1 V1.5 signature</p>
@@ -1005,7 +1212,7 @@ try	{
 
 
 
-	<testcase id="143_CKM_SHA1_RSA_PKCS_PSS_1024">
+	<testcase id="144_CKM_SHA1_RSA_PKCS_PSS_1024">
 		<name>RSA Signature with SHA-1 and PKCS#1 PSS</name>
 		<description>
 			<p>Perform a SHA-1 hash and RSA PKCS#1 PSS signature</p>
@@ -1068,7 +1275,7 @@ try	{
 
 
 
-	<testcase id="144_CKM_SHA256_RSA_PKCS_PSS_1024">
+	<testcase id="145_CKM_SHA256_RSA_PKCS_PSS_1024">
 		<name>RSA Signature with SHA-256 and PKCS#1 PSS</name>
 		<description>
 			<p>Perform a SHA-256 hash and RSA PKCS#1 PSS signature</p>

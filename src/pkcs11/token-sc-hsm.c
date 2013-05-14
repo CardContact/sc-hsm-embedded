@@ -173,6 +173,10 @@ static int addEECertificateObject(struct p11Token_t *token, unsigned char id)
 	}
 	template[6].ulValueLen = rc;
 
+	if (certValue[0] != ASN1_SEQUENCE) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error not a certificate");
+	}
+
 	pObject = calloc(sizeof(struct p11Object_t), 1);
 
 	if (pObject == NULL) {
@@ -200,6 +204,14 @@ static int addEECertificateObject(struct p11Token_t *token, unsigned char id)
 		FUNC_FAILS(rc, "Could not create certificate key object");
 	}
 
+	rc = populateIssuerSubjectSerial(pObject);
+
+	if (rc != CKR_OK) {
+#ifdef DEBUG
+		debug("populateIssuerSubjectSerial() failed\n");
+#endif
+	}
+
 	pObject->tokenid = (int)id;
 	pObject->keysize = p15->keysize;
 
@@ -214,6 +226,7 @@ static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 {
 	switch(mech) {
 	case CKM_RSA_X_509:
+	case CKM_RSA_PKCS:
 	case CKM_SHA1_RSA_PKCS:
 	case CKM_SHA256_RSA_PKCS:
 	case CKM_SHA1_RSA_PKCS_PSS:
@@ -233,6 +246,7 @@ static int getAlgorithmId(CK_MECHANISM_TYPE mech)
 {
 	switch(mech) {
 	case CKM_RSA_X_509:
+	case CKM_RSA_PKCS:
 		return ALGO_RSA_RAW;
 	case CKM_SHA1_RSA_PKCS:
 		return ALGO_RSA_PKCS1_SHA1;
@@ -339,11 +353,31 @@ static int sc_hsm_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 
 
 
+static void applyPKCSPadding(unsigned char *di, int dilen, unsigned char *buff, int bufflen)
+{
+	int i;
+
+	if (dilen + 4 > bufflen) {
+		return;
+	}
+
+	*buff++ = 0x00;
+	*buff++ = 0x01;
+	for (i = bufflen - dilen - 3; i > 0; i--) {
+		*buff++ = 0xFF;
+	}
+
+	*buff++ = 0x00;
+	memcpy(buff, di, dilen);
+}
+
+
+
 static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
 {
 	int rc, algo, len;
 	unsigned short SW1SW2;
-	unsigned char ecsig[90];
+	unsigned char scr[256];
 	FUNC_CALLED();
 
 	if (pSignature == NULL) {
@@ -359,11 +393,22 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 	if ((algo == ALGO_EC_RAW) || (algo == ALGO_EC_SHA1)) {
 		rc = transmitAPDU(pObject->token->slot, 0x80, 0x68, (unsigned char)pObject->tokenid, (unsigned char)algo,
 				ulDataLen, pData,
-				0, ecsig, sizeof(ecsig), &SW1SW2);
+				0, scr, sizeof(scr), &SW1SW2);
 	} else {
-		rc = transmitAPDU(pObject->token->slot, 0x80, 0x68, (unsigned char)pObject->tokenid, (unsigned char)algo,
+		if (mech == CKM_RSA_PKCS) {
+			len = getSignatureSize(mech, pObject);
+			if (len > sizeof(scr)) {
+				FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Signature length is larger than buffer");
+			}
+			applyPKCSPadding(pData, ulDataLen, scr, len);
+			rc = transmitAPDU(pObject->token->slot, 0x80, 0x68, (unsigned char)pObject->tokenid, (unsigned char)algo,
+				len, scr,
+				0, pSignature, *pulSignatureLen, &SW1SW2);
+		} else {
+			rc = transmitAPDU(pObject->token->slot, 0x80, 0x68, (unsigned char)pObject->tokenid, (unsigned char)algo,
 				ulDataLen, pData,
 				0, pSignature, *pulSignatureLen, &SW1SW2);
+		}
 	}
 
 	if (rc < 0) {
@@ -375,7 +420,7 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 	}
 
 	if ((algo == ALGO_EC_RAW) || (algo == ALGO_EC_SHA1)) {
-		rc = decodeECDSASignature(ecsig, rc, pSignature, *pulSignatureLen);
+		rc = decodeECDSASignature(scr, rc, pSignature, *pulSignatureLen);
 		if (rc < 0) {
 			FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "transmitAPDU failed");
 		}
