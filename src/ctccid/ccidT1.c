@@ -141,6 +141,11 @@ int ccidT1ReceiveBlock(scr_t *ctx)
 		return -1;
 	}
 
+#ifdef DEBUG
+	printf("Received : ");
+	ccidT1BlockInfo(buf[0], buf[1], buf[2], buf + 3);
+#endif
+
 	lrc = 0;
 
 	if (len != 0) {
@@ -529,8 +534,12 @@ int ccidT1ReceiveData(scr_t *ctx,
 
 	do  {
 
+		more = MORE(ctx->t1->Pcb);     /* More block following ?            */
+
 		if ((ctx->t1->InBuffLength > BuffLen) || (ctx->t1->InBuffLength == -1)) {
-			ccidT1AbortChain(ctx,SrcNode,DestNode);
+			if (more) {
+				ccidT1AbortChain(ctx,SrcNode,DestNode);
+			}
 			return(ERR_MEMORY);                       /* Out of space in buffer            */
 		}
 
@@ -540,8 +549,6 @@ int ccidT1ReceiveData(scr_t *ctx,
 		Length += ctx->t1->InBuffLength;
 
 		ctx->t1->RSequenz = 1 - ctx->t1->RSequenz;
-
-		more = MORE(ctx->t1->Pcb);     /* More block following ?            */
 
 		if (more) {
 			while (TRUE) {
