@@ -11,39 +11,45 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\ctccid\ccidT1.c">
+    <ClCompile Include="..\src\ctccid\ccidT1.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\ctccid\ccid_usb.c">
+    <ClCompile Include="..\src\ctccid\utils.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\ctccid\ctapi.c">
+    <ClCompile Include="..\src\ctccid\usb_device.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\ctccid\ctbcs.c">
+    <ClCompile Include="..\src\ctccid\ctbcs.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\ctccid\usb_device.c">
+    <ClCompile Include="..\src\ctccid\ctapi.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ctccid\ccid_usb.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\ctccid\ccidT1.h">
+    <ClInclude Include="..\src\ctccid\ccid_usb.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\ctccid\ccid_usb.h">
+    <ClInclude Include="..\src\ctccid\ccidT1.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\ctccid\ctapi.h">
+    <ClInclude Include="..\src\ctccid\ctapi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\ctccid\ctbcs.h">
+    <ClInclude Include="..\src\ctccid\ctbcs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\ctccid\scr.h">
+    <ClInclude Include="..\src\ctccid\scr.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\ctccid\usb_device.h">
+    <ClInclude Include="..\src\ctccid\usb_device.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ctccid\utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

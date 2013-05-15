@@ -11,21 +11,36 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\tests\testctapi.c" />
+    <ClCompile Include="..\src\ctccid\ccidT1.c" />
+    <ClCompile Include="..\src\ctccid\ccid_usb.c" />
+    <ClCompile Include="..\src\ctccid\ctapi.c" />
+    <ClCompile Include="..\src\ctccid\ctbcs.c" />
+    <ClCompile Include="..\src\ctccid\usb_device.c" />
+    <ClCompile Include="..\src\ctccid\utils.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\ctccid\ccidT1.h" />
+    <ClInclude Include="..\src\ctccid\ccid_usb.h" />
+    <ClInclude Include="..\src\ctccid\ctapi.h" />
+    <ClInclude Include="..\src\ctccid\ctbcs.h" />
+    <ClInclude Include="..\src\ctccid\scr.h" />
+    <ClInclude Include="..\src\ctccid\usb_device.h" />
+    <ClInclude Include="..\src\ctccid\utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{58AF235F-FEA6-4D0D-AC64-FEE4C0A25222}</ProjectGuid>
+    <ProjectGuid>{CEEAF173-F9EC-4306-BBE4-A85E2641541D}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>testctapi</RootNamespace>
+    <RootNamespace>ctccid</RootNamespace>
+    <ProjectName>ctccid</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
@@ -44,15 +59,11 @@
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>..;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)</OutDir>
-    <LibraryPath>..\..\libusb-1.0;$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSdkDir)lib;$(FrameworkSDKDir)\lib</LibraryPath>
-    <ReferencePath>$(VCInstallDir)atlmfc\lib;$(VCInstallDir)lib</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..;$(IncludePath)</IncludePath>
+    <IncludePath>..\..;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)</OutDir>
-    <ReferencePath>$(VCInstallDir)atlmfc\lib;$(VCInstallDir)lib</ReferencePath>
-    <LibraryPath>..\..\libusb-1.0;$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSdkDir)lib;$(FrameworkSDKDir)\lib</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -60,14 +71,12 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;libusb.lib;ctccid.lib</AdditionalDependencies>
-      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
-      <IgnoreSpecificDefaultLibraries>libcmtd.lib</IgnoreSpecificDefaultLibraries>
+      <AdditionalDependencies>kernel32.lib;user32.lib;libusb-1.0.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -85,9 +94,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>kernel32.lib;user32.lib;libusb.lib;ctccid.lib</AdditionalDependencies>
-      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
-      <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
+      <AdditionalDependencies>kernel32.lib;user32.lib;libusb-1.0.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
