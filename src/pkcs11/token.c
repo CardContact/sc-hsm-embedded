@@ -28,7 +28,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <strbpcpy.h>
+#include <pkcs11/strbpcpy.h>
 
 #include <pkcs11/token.h>
 #include <pkcs11/object.h>

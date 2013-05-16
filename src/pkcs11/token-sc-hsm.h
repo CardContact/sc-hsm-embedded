@@ -62,6 +62,7 @@
 #define ID_SO_PIN				0x88		/* Security officer PIN identifier */
 
 typedef struct token_sc_hsm {
+	long dummy;
 } token_sc_hsm_t;
 
 struct p11Token_t *newSmartCardHSMToken(struct p11Slot_t *slot);
