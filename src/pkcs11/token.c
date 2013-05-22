@@ -46,54 +46,6 @@
 
 extern struct p11Context_t *context;
 
-//return the length of result string. support only 10 radix for easy use and better performance
-char *my_itoa(int val, char* buf)
-{
-	const unsigned int radix = 10;
-
-	char* p;
-	unsigned int a;        //every digit
-	int len;
-	char* b;            //start of the digit char
-	char temp;
-	unsigned int u;
-
-	p = buf;
-
-	if (val < 0)
-	{
-		*p++ = '-';
-		val = 0 - val;
-	}
-	u = (unsigned int)val;
-
-	b = p;
-
-	do {
-		a = u % radix;
-		u /= radix;
-
-		*p++ = a + '0';
-
-	} while (u > 0);
-
-	len = (int)(p - buf);
-
-	*p-- = 0;
-
-	//swap
-	do {
-		temp = *p;
-		*p = *b;
-		*b = temp;
-		--p;
-		++b;
-
-	} while (b < p);
-
-	return buf;
-}
-
 
 
 int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicObject)
@@ -205,7 +157,11 @@ int removeObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicOb
 
 	free(object);
 
-	token->numberOfTokenObjects--;
+	if (publicObject) {
+		token->numberOfTokenObjects--;
+	} else {
+		token->numberOfPrivateTokenObjects--;
+	}
 
 	if (rc == 0) {      /* We removed the last element from the list */
 		if (publicObject) {
@@ -220,9 +176,37 @@ int removeObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicOb
 
 
 
-int token_login(struct p11Slot_t *slot, int userType, unsigned char *pPin, int ulPinLen)
+static void removeAllObjects(struct p11Token_t *token)
 {
-	return sc_hsm_login(slot, userType, pPin, ulPinLen);
+	struct p11Object_t *pObject = NULL;
+	struct p11Object_t *tmp = NULL;
+
+	/* clear the public token objects */
+	pObject = token->tokenObjList;
+
+	while (pObject) {
+		tmp = pObject->next;
+
+		removeAllAttributes(pObject);
+		free(pObject);
+
+		pObject = tmp;
+	}
+
+	/* clear the private token objects */
+	pObject = token->tokenPrivObjList;
+
+	while (pObject) {
+		tmp = pObject->next;
+
+		removeAllAttributes(pObject);
+		free(pObject);
+
+		pObject = tmp;
+	}
+
+	token->numberOfTokenObjects = 0;
+	token->numberOfPrivateTokenObjects = 0;
 }
 
 
@@ -287,3 +271,29 @@ int synchronizeToken(struct p11Slot_t *slot, struct p11Token_t *token)
 {
 	return 0;
 }
+
+
+
+int logIn(struct p11Slot_t *slot, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen)
+{
+	return sc_hsm_login(slot, userType, pPin, ulPinLen);
+}
+
+
+
+int newToken(struct p11Slot_t *slot, struct p11Token_t **token)
+{
+	return newSmartCardHSMToken(slot, token);
+}
+
+
+
+int freeToken(struct p11Slot_t *slot)
+{
+	if (slot->token) {
+		removeAllObjects(slot->token);
+		free(slot->token);
+		slot->token = NULL;
+	}
+}
+

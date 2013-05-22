@@ -646,7 +646,7 @@ int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 
 
 
-struct p11Token_t *newSmartCardHSMToken(struct p11Slot_t *slot)
+int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 {
 	struct p11Token_t *ptoken;
 	token_sc_hsm_t *sc;
@@ -656,18 +656,18 @@ struct p11Token_t *newSmartCardHSMToken(struct p11Slot_t *slot)
 
 	rc = checkPINStatus(slot);
 	if (rc < 0) {
-		FUNC_FAILS(NULL, "checkPINStatus failed");
+		FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "checkPINStatus failed");
 	}
 
 	if ((rc != 0x9000) && ((rc && 0xFF00) != 0x6300) && ((rc && 0xFF00) != 0x6900) ) {
 		rc = selectApplet(slot);
 		if (rc < 0) {
-			FUNC_FAILS(NULL, "applet selection failed");
+			FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "applet selection failed");
 		}
 
 		rc = checkPINStatus(slot);
 		if (rc < 0) {
-			FUNC_FAILS(NULL, "checkPINStatus failed");
+			FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "checkPINStatus failed");
 		}
 	}
 	pinstatus = rc;
@@ -675,7 +675,7 @@ struct p11Token_t *newSmartCardHSMToken(struct p11Slot_t *slot)
 	ptoken = (struct p11Token_t *)calloc(sizeof(struct p11Token_t) + sizeof(token_sc_hsm_t), 1);
 
 	if (ptoken == NULL) {
-		return NULL;
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
 	ptoken->slot = slot;
@@ -691,5 +691,7 @@ struct p11Token_t *newSmartCardHSMToken(struct p11Slot_t *slot)
 
 	sc_hsm_loadObjects(ptoken, TRUE);
 
-	return ptoken;
+	*token = ptoken;
+	return CKR_OK;
 }
+

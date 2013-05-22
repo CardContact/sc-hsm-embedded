@@ -65,7 +65,7 @@ typedef struct token_sc_hsm {
 	long dummy;
 } token_sc_hsm_t;
 
-struct p11Token_t *newSmartCardHSMToken(struct p11Slot_t *slot);
+int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token);
 int sc_hsm_loadObjects(struct p11Token_t *token, int publicObjects);
 int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin, int pinlen);
 

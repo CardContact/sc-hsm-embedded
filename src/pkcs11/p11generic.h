@@ -88,6 +88,7 @@ struct p11Slot_t {
 
 	CK_SLOT_ID id;                  /**< The id of the slot                  */
 	CK_SLOT_INFO info;              /**< General information about the slot  */
+	int closed;                     /**< Slot hardware currently absent      */
 	char slotDir[_MAX_PATH];        /**< The directory that holds this slot  */
 
 	struct p11Token_t *token;       /**< Pointer to token in the slot        */

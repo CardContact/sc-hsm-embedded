@@ -73,12 +73,6 @@ extern struct p11Context_t *context;
  */
 int initSlotPool(struct p11SlotPool_t *pool)
 { 
-	char scr[10];
-	int rc, i;
-
-	struct p11Slot_t *slot;
-	struct p11Token_t *token;
-
 	FUNC_CALLED();
 
 	if (context == NULL) {
@@ -89,8 +83,41 @@ int initSlotPool(struct p11SlotPool_t *pool)
 	pool->numberOfSlots = 0;
 	pool->nextSlotID = 1;
 
-	for (i = 0; i < MAX_SLOTS; i++) {
-		rc = CT_init((unsigned short)pool->nextSlotID, i);
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+int updateSlots(struct p11SlotPool_t *pool)
+{
+	struct p11Slot_t *slot;
+	unsigned short ctn;
+	char scr[20];
+	int rc;
+
+	FUNC_CALLED();
+
+	slot = pool->list;
+	while (slot) {
+		if (slot->closed) {
+			ctn = (unsigned short)slot->id;
+			rc = CT_init(ctn, ctn - 1);
+
+			if (rc != OK) {
+#ifdef DEBUG
+				debug("CT_init returns %d\n", rc);
+#endif
+			} else {
+				slot->closed = FALSE;
+			}
+		}
+		slot = slot->next;
+	}
+
+	while (pool->numberOfSlots < MAX_SLOTS) {
+		ctn = (unsigned short)pool->nextSlotID;
+
+		rc = CT_init(ctn, ctn - 1);
 
 		if (rc != OK) {
 #ifdef DEBUG
@@ -107,7 +134,7 @@ int initSlotPool(struct p11SlotPool_t *pool)
 
 		memset(slot, 0x00, sizeof(struct p11Slot_t));
 
-		sprintf(scr, "Slot#%d", i);
+		sprintf(scr, "CT-API Port #%d", ctn - 1);
 		strbpcpy(slot->info.slotDescription,
 				scr,
 				sizeof(slot->info.slotDescription));
@@ -124,18 +151,28 @@ int initSlotPool(struct p11SlotPool_t *pool)
 
 		slot->info.flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
 		addSlot(context->slotPool, slot);
-
-		rc = checkForToken(slot, &token);
-
-		if (rc != CKR_OK) {
-			removeSlot(context->slotPool, slot->id);
-			FUNC_FAILS(CKR_GENERAL_ERROR, "token check failed");
-		}
-
-		if (token != NULL) {
-			addToken(slot, token);
-		}
 	}
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+int closeSlot(struct p11Slot_t *slot)
+{
+	int rc;
+
+	FUNC_CALLED();
+
+	rc = CT_close((unsigned short)slot->id);
+
+	if (rc != OK) {
+#ifdef DEBUG
+		debug("CT_close returns %d\n", rc);
+#endif
+	}
+
+	slot->closed = TRUE;
 
 	FUNC_RETURNS(CKR_OK);
 }
@@ -148,58 +185,27 @@ int terminateSlotPool(struct p11SlotPool_t *pool)
 	struct p11Object_t *pObject, *tmp;
 	int rc;
 
+	FUNC_CALLED();
+
 	pSlot = pool->list;
 
 	/* clear the slot pool */
 	while (pSlot) {
 
 		if (pSlot->token) {
-
-			/* clear the public token objects */
-			pObject = pSlot->token->tokenObjList;
-
-			while (pObject) {
-				tmp = pObject->next;
-
-				removeAllAttributes(pObject);
-				free(pObject);
-
-				pObject = tmp;
-			}
-
-			/* clear the private token objects */
-			pObject = pSlot->token->tokenPrivObjList;
-
-			while (pObject) {
-				tmp = pObject->next;
-
-				removeAllAttributes(pObject);
-				free(pObject);
-
-				pObject = tmp;
-			}
+			freeToken(pSlot);
 		}
 
-#ifdef DEBUG
-		debug("calling CT_close()\n", rc);
-#endif
-		rc = CT_close((unsigned short)pSlot->id);
-
-		if (rc != OK) {
-#ifdef DEBUG
-			debug("CT_close returns %d\n", rc);
-#endif
-		}
+		closeSlot(pSlot);
 
 		pFreeSlot = pSlot;
 
 		pSlot = pSlot->next;
 
-		free(pFreeSlot->token);
 		free(pFreeSlot);
 	}
 
-	return 0;
+	FUNC_RETURNS(CKR_OK);
 }
 
 
@@ -223,6 +229,8 @@ int addSlot(struct p11SlotPool_t *pool, struct p11Slot_t *slot)
 {
 	struct p11Slot_t *prevSlot;
 
+	FUNC_CALLED();
+
 	slot->next = NULL;
 
 	if (pool->list == NULL) {
@@ -245,7 +253,7 @@ int addSlot(struct p11SlotPool_t *pool, struct p11Slot_t *slot)
 
 	slot->id = pool->nextSlotID++;
 
-	return CKR_OK;
+	FUNC_RETURNS(CKR_OK);
 }
 
 
@@ -277,6 +285,8 @@ int findSlot(struct p11SlotPool_t *pool, CK_SLOT_ID slotID, struct p11Slot_t **s
 	struct p11Slot_t *pslot;
 	int pos = 0;            /* remember the current position in the list */
 
+	FUNC_CALLED();
+
 	pslot = pool->list;
 	*slot = NULL;
 
@@ -285,14 +295,14 @@ int findSlot(struct p11SlotPool_t *pool, CK_SLOT_ID slotID, struct p11Slot_t **s
 		if (pslot->id == slotID) {
 
 			*slot = pslot;
-			return pos;
+			FUNC_RETURNS(pos);
 		}
 
 		pslot = pslot->next;
 		pos++;
 	}
 
-	return -1;
+	FUNC_RETURNS(-1);
 }
 
 
@@ -324,11 +334,13 @@ int removeSlot(struct p11SlotPool_t *pool, CK_SLOT_ID slotID)
 	struct p11Slot_t *prev = NULL;
 	int rc;
 
+	FUNC_CALLED();
+
 	rc = findSlot(pool, slotID, &slot);
 
 	/* no slot with this ID found */
 	if (rc < 0) {
-		return rc;
+		FUNC_RETURNS(rc);
 	}
 
 	if (rc > 0) {      /* there is more than one element in the pool */
@@ -351,5 +363,5 @@ int removeSlot(struct p11SlotPool_t *pool, CK_SLOT_ID slotID)
 		pool->list = NULL;
 	}
 
-	return CKR_OK;
+	FUNC_RETURNS(CKR_OK);
 }

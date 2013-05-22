@@ -40,8 +40,8 @@ static const CK_MECHANISM_TYPE p11MechanismList[] = {
 };
 
 
-/*  C_GetSlotList obtains a list of slots in the system. */
 
+/*  C_GetSlotList obtains a list of slots in the system. */
 CK_DECLARE_FUNCTION(CK_RV, C_GetSlotList)(
 		CK_BBOOL tokenPresent,
 		CK_SLOT_ID_PTR pSlotList,
@@ -50,86 +50,55 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotList)(
 {
 	CK_RV rv = CKR_OK;
 	struct p11Slot_t *slot;
-	CK_ULONG index;
-	int count;
+	struct p11Token_t *token;
+	CK_ULONG i;
 
 	FUNC_CALLED();
 
-	if (pSlotList == NULL) {    /* only a size inquiry */
+	updateSlots(context->slotPool);
 
-		slot = context->slotPool->list;
-		count = 0;
+	slot = context->slotPool->list;
+	i = 0;
 
-		while (slot != NULL) {
-
-			if (tokenPresent) {     /* only slot with an inserted token */
-
-				if (slot->token != NULL) {
-					count++;
-				}
-
-			} else {
-
-				count++;
-
+	while (slot != NULL) {
+		if (!tokenPresent || (getToken(slot, &token) == CKR_OK)) {
+			if (pSlotList && (i < *pulCount)) {
+				pSlotList[i] = slot->id;
 			}
-
-			slot = slot->next;
+			i++;
 		}
 
-#ifdef DEBUG
-		debug("Size inquiry returns %d slots\n", count);
-#endif
-
-		*pulCount = count;
-
-	} else {
-
-#if 0
-		if (*pulCount < context->slotPool->numberOfSlots) {   /* the given buffer is too small */
-
-			*pulCount = context->slotPool->numberOfSlots;
-			return CKR_BUFFER_TOO_SMALL;
-
-		}
-#endif
-
-		slot = context->slotPool->list;
-		index = 0;
-
-		while (slot != NULL) {
-
-			if (tokenPresent) {     /* only slot with an inserted token */
-
-				if (slot->token != NULL) {
-					pSlotList[index++] = slot->id;
-				}
-
-			} else {
-
-				pSlotList[index++] = slot->id;
-
-			}
-
-			slot = slot->next;
-		}
-
+		slot = slot->next;
 	}
+
+	if (pSlotList) {
+		if (i > *pulCount) {
+			rv = CKR_BUFFER_TOO_SMALL;
+		}
+	} else {
+#ifdef DEBUG
+		debug("Size inquiry returns %d slots\n", i);
+#endif
+	}
+	*pulCount = i;
 
 	return rv;
 }
 
 
-/*  C_GetSlotInfo obtains information about a particular slot. */
 
+/*  C_GetSlotInfo obtains information about a particular slot. */
 CK_DECLARE_FUNCTION(CK_RV, C_GetSlotInfo)(
 		CK_SLOT_ID slotID,
 		CK_SLOT_INFO_PTR pInfo
 )
 {
 	struct p11Slot_t *slot = NULL;
+	struct p11Token_t *token = NULL;
 
 	FUNC_CALLED();
+
+	updateSlots(context->slotPool);
 
 	findSlot(context->slotPool, slotID, &slot);
 
@@ -137,14 +106,16 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotInfo)(
 		return CKR_SLOT_ID_INVALID;
 	}
 
+	getToken(slot, &token);
+
 	memcpy(pInfo, &(slot->info), sizeof(CK_SLOT_INFO));
 
 	return CKR_OK;
 }
 
 
-/*  C_GetTokenInfo obtains information about a particular token in the system. */
 
+/*  C_GetTokenInfo obtains information about a particular token in the system. */
 CK_DECLARE_FUNCTION(CK_RV, C_GetTokenInfo)(
 		CK_SLOT_ID slotID,
 		CK_TOKEN_INFO_PTR pInfo
@@ -161,21 +132,17 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetTokenInfo)(
 	}
 
 	if (slot->token != NULL) {
-
 		memcpy(pInfo, &(slot->token->info), sizeof(CK_TOKEN_INFO));
-
 	} else {
-
 		return CKR_TOKEN_NOT_PRESENT;
-
 	}
 
 	return CKR_OK;
 }
 
 
-/*  C_WaitForSlotEvent waits for a slot event to occur. */
 
+/*  C_WaitForSlotEvent waits for a slot event to occur. */
 CK_DECLARE_FUNCTION(CK_RV, C_WaitForSlotEvent)(
 		CK_FLAGS flags,
 		CK_SLOT_ID_PTR pSlot,
@@ -190,8 +157,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_WaitForSlotEvent)(
 }
 
 
-/*  C_GetMechanismList obtains a list of mechanisms supported by a token. */
 
+/*  C_GetMechanismList obtains a list of mechanisms supported by a token. */
 CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismList)(
 		CK_SLOT_ID slotID,
 		CK_MECHANISM_TYPE_PTR pMechanismList,
@@ -216,17 +183,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismList)(
 	numberOfMechanisms = sizeof(p11MechanismList) / sizeof(p11MechanismList[0]);
 
 	if (pMechanismList == NULL) {
-
 		*pulCount = numberOfMechanisms;
 		return CKR_OK;
-
 	}
 
 	if (*pulCount < numberOfMechanisms) {
-
 		*pulCount = numberOfMechanisms;
 		return CKR_BUFFER_TOO_SMALL;
-
 	}
 
 	memcpy(pMechanismList, p11MechanismList, sizeof(p11MechanismList));
@@ -235,9 +198,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismList)(
 }
 
 
+
 /*  C_GetMechanismInfo obtains information about a particular mechanism 
     supported by a token. */
-
 CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismInfo)(
 		CK_SLOT_ID slotID,
 		CK_MECHANISM_TYPE type,
@@ -288,8 +251,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismInfo)(
 }
 
 
-/*  C_InitToken initializes a token. */
 
+/*  C_InitToken initializes a token. */
 CK_DECLARE_FUNCTION(CK_RV, C_InitToken)(
 		CK_SLOT_ID slotID,
 		CK_UTF8CHAR_PTR pPin,
@@ -360,8 +323,8 @@ return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 
-/*  C_InitPIN initializes the normal user�s pin. */
 
+/*  C_InitPIN initializes the normal user�s pin. */
 CK_DECLARE_FUNCTION(CK_RV, C_InitPIN)(
 		CK_SESSION_HANDLE hSession,
 		CK_UTF8CHAR_PTR pPin,
@@ -432,9 +395,9 @@ return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 
+
 /*  C_SetPIN modifies the PIN of the user that is currently logged in, 
     or the CKU_USER PIN if the session is not logged in. */
-
 CK_DECLARE_FUNCTION(CK_RV, C_SetPIN)(
 		CK_SESSION_HANDLE hSession,
 		CK_UTF8CHAR_PTR pOldPin,
@@ -476,4 +439,3 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetPIN)(
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
-

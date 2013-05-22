@@ -276,6 +276,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetObjectSize)(
 }
 
 
+
 /*  C_GetAttributeValue obtains the value of one or more attributes of an object. */
 
 CK_DECLARE_FUNCTION(CK_RV, C_GetAttributeValue)(
@@ -328,46 +329,46 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetAttributeValue)(
 	}
 
 #ifdef DEBUG
-debug("[C_GetAttributeValue] Trying to get %u attributes ...\n", ulCount);
+	debug("[C_GetAttributeValue] Trying to get %u attributes ...\n", ulCount);
 #endif
 
-rv = CKR_OK;
+	rv = CKR_OK;
 
-for (i = 0; i < ulCount; i++) {
+	for (i = 0; i < ulCount; i++) {
 
-	attribute = pObject->attrList;
+		attribute = pObject->attrList;
 
-	while (attribute && (attribute->attrData.type != pTemplate[i].type)) {
-		attribute = attribute->next;
+		while (attribute && (attribute->attrData.type != pTemplate[i].type)) {
+			attribute = attribute->next;
+		}
+
+		if (!attribute) {
+			pTemplate[i].ulValueLen = (CK_LONG) -1;
+			rv = CKR_ATTRIBUTE_TYPE_INVALID;
+			continue;
+		}
+
+		if ((attribute->attrData.type == CKA_VALUE) && (pObject->sensitiveObj)) {
+			pTemplate[i].ulValueLen = (CK_LONG) -1;
+			rv = CKR_ATTRIBUTE_SENSITIVE;
+			continue;
+		}
+
+		if (pTemplate[i].pValue == NULL_PTR) {
+			pTemplate[i].ulValueLen = attribute->attrData.ulValueLen;
+			continue;
+		}
+
+		if (pTemplate[i].ulValueLen >= attribute->attrData.ulValueLen) {
+			memcpy(pTemplate[i].pValue, attribute->attrData.pValue, attribute->attrData.ulValueLen);
+			pTemplate[i].ulValueLen = attribute->attrData.ulValueLen;
+		} else {
+			pTemplate[i].ulValueLen = attribute->attrData.ulValueLen;
+			rv = CKR_BUFFER_TOO_SMALL;
+		}
 	}
 
-	if (!attribute) {
-		pTemplate[i].ulValueLen = (CK_LONG) -1;
-		rv = CKR_ATTRIBUTE_TYPE_INVALID;
-		continue;
-	}
-
-	if ((attribute->attrData.type == CKA_VALUE) && (pObject->sensitiveObj)) {
-		pTemplate[i].ulValueLen = (CK_LONG) -1;
-		rv = CKR_ATTRIBUTE_SENSITIVE;
-		continue;
-	}
-
-	if (pTemplate[i].pValue == NULL_PTR) {
-		pTemplate[i].ulValueLen = attribute->attrData.ulValueLen;
-		continue;
-	}
-
-	if (pTemplate[i].ulValueLen >= attribute->attrData.ulValueLen) {
-		memcpy(pTemplate[i].pValue, attribute->attrData.pValue, attribute->attrData.ulValueLen);
-		pTemplate[i].ulValueLen = attribute->attrData.ulValueLen;
-	} else {
-		pTemplate[i].ulValueLen = attribute->attrData.ulValueLen;
-		rv = CKR_BUFFER_TOO_SMALL;
-	}
-}
-
-return rv;
+	return rv;
 }
 
 

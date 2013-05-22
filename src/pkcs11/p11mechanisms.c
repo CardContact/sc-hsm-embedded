@@ -63,10 +63,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 		return CKR_GENERAL_ERROR;
 	}
 
-	rv = findObject(pSlot->token, hKey, &pObject, FALSE);
+	rv = findSlotObject(pSlot, hKey, &pObject, FALSE);
 
-	if (rv < 0) {
-		return CKR_GENERAL_ERROR;
+	if (rv != CKR_OK) {
+		return rv;
 	}
 
 	if (pObject->C_EncryptInit != NULL) {
@@ -117,10 +117,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
 		return CKR_GENERAL_ERROR;
 	}
 
-	rv = findObject(pSlot->token, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
 
-	if (rv < 0) {
-		return CKR_GENERAL_ERROR;
+	if (rv != CKR_OK) {
+		return rv;
 	}
 
 	if (pObject->C_Encrypt != NULL) {
@@ -167,10 +167,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptUpdate)(
 		return CKR_GENERAL_ERROR;
 	}
 
-	rv = findObject(pSlot->token, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
 
-	if (rv < 0) {
-		return CKR_GENERAL_ERROR;
+	if (rv != CKR_OK) {
+		return rv;
 	}
 
 	if (pObject->C_EncryptUpdate != NULL) {
@@ -214,10 +214,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptFinal)(
 		return CKR_GENERAL_ERROR;
 	}
 
-	rv = findObject(pSlot->token, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
 
-	if (rv < 0) {
-		return CKR_GENERAL_ERROR;
+	if (rv != CKR_OK) {
+		return rv;
 	}
 
 	if (pObject->C_EncryptFinal != NULL) {
@@ -418,10 +418,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignInit)(
 		return CKR_GENERAL_ERROR;
 	}
 
-	rv = findObject(pSlot->token, hKey, &pObject, FALSE);
+	rv = findSlotObject(pSlot, hKey, &pObject, FALSE);
 
-	if (rv < 0) {
-		return CKR_GENERAL_ERROR;
+	if (rv != CKR_OK) {
+		return rv;
 	}
 
 	if (pObject->C_SignInit != NULL) {
@@ -473,10 +473,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
 		return CKR_GENERAL_ERROR;
 	}
 
-	rv = findObject(pSlot->token, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
 
-	if (rv < 0) {
-		return CKR_GENERAL_ERROR;
+	if (rv != CKR_OK) {
+		return rv;
 	}
 
 	if (pSignature != NULL) {

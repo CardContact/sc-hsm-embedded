@@ -41,6 +41,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 {
 	int rc;
 	struct p11Slot_t *slot;
+	struct p11Token_t *token;
 	struct p11Session_t *session;
 
 	if (!(flags & CKF_SERIAL_SESSION)) {
@@ -53,8 +54,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 		return CKR_SLOT_ID_INVALID;
 	}
 
-	if (slot->token == NULL) {
-		return CKR_TOKEN_NOT_PRESENT;
+	rc = getToken(slot, &token);
+
+	if (rc != CKR_OK) {
+		return rc;
 	}
 
 	rc = findSessionBySlotID(context->sessionPool, slotID, &session);
@@ -244,6 +247,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
 	int rv, l;
 	struct p11Session_t *session;
 	struct p11Slot_t *slot;
+	struct p11Token_t *token;
 	unsigned char tmp[8];
 
 	if (userType != CKU_USER && userType != CKU_SO) {
@@ -262,21 +266,23 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
 		return CKR_GENERAL_ERROR;   /* normally we should never be here */
 	}
 
-	if (slot->token == NULL) {
-		return CKR_GENERAL_ERROR;
+	rv = getToken(slot, &token);
+
+	if (rv != CKR_OK) {
+		return rv;
 	}
 
 	if ((session->user == CKU_USER) || (session->user == CKU_SO)) {
 		return CKR_USER_ALREADY_LOGGED_IN;
 	}
 
-	if (!(slot->token->info.flags & CKF_USER_PIN_INITIALIZED) && (userType == CKU_USER)) {
+	if (!(token->info.flags & CKF_USER_PIN_INITIALIZED) && (userType == CKU_USER)) {
 		return CKR_USER_PIN_NOT_INITIALIZED;
 	}
 
-	rv = token_login(slot, userType, pPin, ulPinLen);
+	rv = logIn(slot, userType, pPin, ulPinLen);
 
-	if (rv != 0) {
+	if (rv != CKR_OK) {
 		return rv;
 	}
 
@@ -301,6 +307,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Logout)(
 	int rv;
 	struct p11Session_t *session;
 	struct p11Slot_t *slot;
+	struct p11Token_t *token;
 	struct p11Object_t *object, *tmp;
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
@@ -315,12 +322,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_Logout)(
 		return CKR_GENERAL_ERROR;   /* normally we should never be here */
 	}
 
-	if (slot->token == NULL) {
-		return CKR_GENERAL_ERROR;
+	rv = getToken(slot, &token);
+
+	if (rv != CKR_OK) {
+		return rv;
 	}
 
 	/* remove the private objects - they are no longer available */
-	object = slot->token->tokenPrivObjList;
+	object = token->tokenPrivObjList;
 
 	while (object) {
 		tmp = object->next;
@@ -329,12 +338,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_Logout)(
 		object = tmp;
 	}
 
-	slot->token->tokenPrivObjList = NULL;
+	token->tokenPrivObjList = NULL;
 
 	// reset initital session state
 	session->state = (session->flags & CKF_RW_SESSION) ? CKS_RW_PUBLIC_SESSION : CKS_RO_PUBLIC_SESSION;
 	session->user = 0xFF;                       /* no user is logged in  */
-
 
 	return CKR_OK;
 }

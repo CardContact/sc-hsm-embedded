@@ -26,10 +26,8 @@ int transmitAPDU(struct p11Slot_t *slot,
 		int OutLen, unsigned char *OutData,
 		int InLen, unsigned char *InData, int InSize, unsigned short *SW1SW2);
 
-int addToken(struct p11Slot_t *slot, struct p11Token_t *token);
+int getToken(struct p11Slot_t *slot, struct p11Token_t **token);
 
-int removeToken(struct p11Slot_t *slot, struct p11Token_t *token);
-
-int checkForToken(struct p11Slot_t *slot, struct p11Token_t **token);
+int findSlotObject(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject);
 
 #endif /* ___SLOT_H_INC___ */

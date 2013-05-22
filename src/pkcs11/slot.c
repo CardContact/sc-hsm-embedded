@@ -32,7 +32,6 @@
 #include <pkcs11/slot.h>
 #include <pkcs11/token.h>
 #include <pkcs11/slotpool.h>
-#include <pkcs11/token-sc-hsm.h>
 
 #include <strbpcpy.h>
 
@@ -59,13 +58,13 @@ extern struct p11Context_t *context;
  *                   </TR>
  *                   </TABLE></P>
  */
-int addToken(struct p11Slot_t *slot, struct p11Token_t *token)
+static int addToken(struct p11Slot_t *slot, struct p11Token_t *token)
 {
 	if (slot->token != NULL) {
 		return CKR_FUNCTION_FAILED;
 	}
 
-	slot->token = token;                    /* Add token to slot                */
+	slot->token = token;                     /* Add token to slot                */
 	slot->info.flags |= CKF_TOKEN_PRESENT;   /* indicate the presence of a token */
 
 	return CKR_OK;
@@ -77,7 +76,6 @@ int addToken(struct p11Slot_t *slot, struct p11Token_t *token)
  * removeToken removes a token from the specified slot.
  *
  * @param slot       Pointer to slot structure.
- * @param token      Pointer to token structure.
  *
  * @return          
  *                   <P><TABLE>
@@ -92,19 +90,16 @@ int addToken(struct p11Slot_t *slot, struct p11Token_t *token)
  *                   </TR>
  *                   </TABLE></P>
  */
-int removeToken(struct p11Slot_t *slot, struct p11Token_t *token)
+static int removeToken(struct p11Slot_t *slot)
 {
 	if (slot->token == NULL) {
 		return CKR_FUNCTION_FAILED;
 	}
 
-	free(slot->token);
-
 	slot->info.flags &= ~CKF_TOKEN_PRESENT;
+	freeToken(slot);
 
-	slot->token = NULL;
-
-	return CKR_OK;
+	return CKR_TOKEN_NOT_PRESENT;
 }
 
 
@@ -296,11 +291,9 @@ return rc;
 
 
 /**
- * checkForToken looks into a specific slot for a token.
+ * checkForNewToken looks into a specific slot for a token.
  *
  * @param slot       Pointer to slot structure.
- * @param token      Pointer to pointer to token structure.
- *                   If a token is found, this pointer holds the specific token structure - otherwise NULL.
  *
  * @return          
  *                   <P><TABLE>
@@ -319,7 +312,86 @@ return rc;
  *                   </TR>
  *                   </TABLE></P>
  */
-int checkForToken(struct p11Slot_t *slot, struct p11Token_t **token)
+static int checkForNewToken(struct p11Slot_t *slot)
+{
+	struct p11Token_t *ptoken;
+	unsigned char rsp[260];
+	unsigned short lr;
+	unsigned char dad, sad;
+	char scr[_MAX_PATH];
+	int fh, rc, i;
+	unsigned short SW1SW2;
+
+	FUNC_CALLED();
+
+	if (slot->closed) {
+		FUNC_RETURNS(CKR_TOKEN_NOT_PRESENT);
+	}
+
+	rc = transmitAPDUwithCTAPI(slot, 1, 0x20, 0x13, 0x01, 0x80, 0, NULL, 0, rsp, sizeof(rsp), &SW1SW2);
+
+	if (rc == ERR_CT) {
+		closeSlot(slot);
+	}
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "GET_STATUS failed");
+	}
+
+	if ((SW1SW2 != 0x9000) || (rc < 3) || (rsp[0] != 0x80) || (rsp[1] == 0) || (rsp[1] > rc - 2)) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "GET_STATUS returned invalid response");
+	}
+
+	if (!(rsp[2] & 0x01)) {	// No Card in reader
+		FUNC_RETURNS(CKR_TOKEN_NOT_PRESENT);
+	}
+
+	rc = transmitAPDUwithCTAPI(slot, 1, 0x20, 0x12, 0x01, 0x01, 0, NULL, 0, rsp, sizeof(rsp), &SW1SW2);
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "REQUEST ICC failed");
+	}
+
+	if (SW1SW2 != 0x9001) {
+		FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "Reset failed");
+	}
+
+	rc = newToken(slot, &ptoken);
+
+	if (rc != CKR_OK) {
+		FUNC_FAILS(rc, "newSmartCardHSMToken failed()");
+	}
+
+	rc = addToken(slot, ptoken);
+
+	FUNC_RETURNS(rc);
+}
+
+
+
+/**
+ * checkForRemovedToken looks into a specific slot for a removed token.
+ *
+ * @param slot       Pointer to slot structure.
+ *
+ * @return
+ *                   <P><TABLE>
+ *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
+ *                   <TR>
+ *                   <TD>CKR_OK                                 </TD>
+ *                   <TD>Success                                </TD>
+ *                   </TR>
+ *                   <TR>
+ *                   <TD>CKR_HOST_MEMORY                        </TD>
+ *                   <TD>Error getting memory (malloc)          </TD>
+ *                   </TR>
+ *                   <TR>
+ *                   <TD>CKR_GENERAL_ERROR                      </TD>
+ *                   <TD>Error opening slot directory           </TD>
+ *                   </TR>
+ *                   </TABLE></P>
+ */
+static int checkForRemovedToken(struct p11Slot_t *slot)
 {
 	struct p11Token_t *ptoken;
 	unsigned char rsp[260];
@@ -333,6 +405,11 @@ int checkForToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 	rc = transmitAPDUwithCTAPI(slot, 1, 0x20, 0x13, 0x01, 0x80, 0, NULL, 0, rsp, sizeof(rsp), &SW1SW2);
 
+	if (rc == ERR_CT) {					// Reader or USB-Device removed
+		removeToken(slot);
+		closeSlot(slot);
+	}
+
 	if (rc < 0) {
 		FUNC_FAILS(CKR_GENERAL_ERROR, "GET_STATUS failed");
 	}
@@ -341,31 +418,45 @@ int checkForToken(struct p11Slot_t *slot, struct p11Token_t **token)
 		FUNC_FAILS(CKR_GENERAL_ERROR, "GET_STATUS returned invalid response");
 	}
 
-	*token = NULL;
-	if (!(rsp[2] & 0x01)) {	// No Card in reader
-		slot->info.flags &= ~CKF_TOKEN_PRESENT;
+	if (rsp[2] & 0x01) {	// Token still in reader
 		FUNC_RETURNS(CKR_OK);
 	}
 
-	rc = transmitAPDUwithCTAPI(slot, 1, 0x20, 0x12, 0x01, 0x01, 0, NULL, 0, rsp, sizeof(rsp), &SW1SW2);
+	rc = removeToken(slot);
 
-	if (rc < 0) {
-		FUNC_FAILS(CKR_GENERAL_ERROR, "REQUEST ICC failed");
-	}
-
-	if (SW1SW2 != 0x9001) {
-		FUNC_FAILS(CKR_GENERAL_ERROR, "Reset failed");
-	}
-
-	ptoken = newSmartCardHSMToken(slot);
-
-	if (ptoken == NULL) {
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
-	}
-
-	*token = ptoken;
-	slot->info.flags |= CKF_TOKEN_PRESENT;
-
-	FUNC_RETURNS(CKR_OK);
+	FUNC_RETURNS(rc);
 }
 
+
+
+int getToken(struct p11Slot_t *slot, struct p11Token_t **token)
+{
+	int rc;
+	FUNC_CALLED();
+
+	if (slot->token) {
+		rc = checkForRemovedToken(slot);
+	} else {
+		rc = checkForNewToken(slot);
+	}
+
+	*token = slot->token;
+	return rc;
+}
+
+
+
+int findSlotObject(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject)
+{
+	int rc;
+	struct p11Token_t *token;
+
+	rc = getToken(slot, &token);
+	if (rc != CKR_OK) {
+		return rc;
+	}
+
+	rc = findObject(token, handle, object, publicObject);
+
+	return rc < 0 ? CKR_GENERAL_ERROR : CKR_OK;
+}

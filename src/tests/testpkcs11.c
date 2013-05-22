@@ -465,7 +465,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		rc = p11->C_Sign(session, tbs, strlen(tbs), NULL, &len);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), rc == CKR_OK ? "Passed" : "Failed");
 
-		printf("Signature size = %d\n", len);
+		printf("Signature size = %lu\n", len);
 
 		len = sizeof(signature);
 		rc = p11->C_Sign(session, tbs, strlen(tbs), signature, &len);
@@ -514,7 +514,7 @@ int testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		rc = p11->C_Sign(session, tbs, strlen(tbs), NULL, &len);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), rc == CKR_OK ? "Passed" : "Failed");
 
-		printf("Signature size = %d\n", len);
+		printf("Signature size = %lu\n", len);
 
 		len = sizeof(signature);
 		rc = p11->C_Sign(session, tbs, strlen(tbs), signature, &len);
@@ -526,6 +526,57 @@ int testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	}
 
 	return CKR_OK;
+}
+
+
+
+void testInsertRemove(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
+{
+	CK_RV rc;
+	CK_SLOT_INFO slotinfo;
+	CK_TOKEN_INFO tokeninfo;
+	char *inp = NULL;
+	size_t inplen;
+	int loop;
+
+	for (loop = 0; loop < 2; loop++) {
+		printf("Please remove card and press <ENTER>\n");
+		getline(&inp, &inplen, stdin);
+		free(inp);
+
+		printf("Calling C_GetSlotInfo for slot %lu ", slotid);
+		rc = p11->C_GetSlotInfo(slotid, &slotinfo);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), rc == CKR_OK ? "Passed" : "Failed");
+
+		if (slotinfo.flags & CKF_TOKEN_PRESENT) {
+			printf("slotinfo.flags - Failed\n");
+		}
+
+		printf("Calling C_GetTokenInfo ");
+		rc = p11->C_GetTokenInfo(slotid, &tokeninfo);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), rc == CKR_TOKEN_NOT_PRESENT ? "No token" : "Failed");
+
+		printf("Please insert card and press <ENTER>\n");
+		inp = NULL;
+		getline(&inp, &inplen, stdin);
+		free(inp);
+
+		printf("Calling C_GetSlotInfo for slot %lu ", slotid);
+		rc = p11->C_GetSlotInfo(slotid, &slotinfo);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), rc == CKR_OK ? "Passed" : "Failed");
+
+		if (!(slotinfo.flags & CKF_TOKEN_PRESENT)) {
+			printf("slotinfo.flags - Failed\n");
+		}
+
+		printf("Calling C_GetTokenInfo ");
+		rc = p11->C_GetTokenInfo(slotid, &tokeninfo);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), rc == CKR_OK ? "Passed" : "Failed");
+
+		if (rc == CKR_OK) {
+			printf("Token label: %s\n", p11string(tokeninfo.label, sizeof(tokeninfo.label)));
+		}
+	}
 }
 
 
@@ -604,6 +655,8 @@ void main(int argc, char *argv[])
 
 	while (i < slots) {
 		slotid = *(slotlist + i);
+
+//		testInsertRemove(p11, slotid);
 
 		printf("Calling C_GetSlotInfo for slot %lu ", slotid);
 

@@ -21,9 +21,13 @@
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/p11generic.h>
 
-int logIn(struct p11Token_t *token, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen);
+int newToken(struct p11Slot_t *slot, struct p11Token_t **token);
 
-int logOut(struct p11Token_t *token);
+int freeToken(struct p11Slot_t *slot);
+
+int logIn(struct p11Slot_t *slot, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen);
+
+int logOut(struct p11Slot_t *slot);
 
 int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicObject);
 
