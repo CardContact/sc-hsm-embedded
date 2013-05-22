@@ -27,7 +27,7 @@
 
 #include "ccid_usb.h"
 #include "scr.h"
-#include "utils.h"
+
 
 int FTable[]  = { 372, 372, 558, 744, 1116, 1488, 1860, -1, -1, 512, 768, 1024, 1536, 2048, -1, -1};
 int DTable[]  = { -1, 1, 2, 4, 8, 16, 32, -1, 12, 20, -1, -1, -1, -1, -1, -1};
@@ -71,7 +71,7 @@ void CCIDDump(unsigned char *mem, int len)
 		break;
 	}
 
-	Dump(mem, len);
+	ctccidDump(mem, len);
 }
 #endif
 

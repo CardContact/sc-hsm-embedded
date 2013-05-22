@@ -21,7 +21,7 @@
 #include <stdlib.h>
 
 #include <ctccid/ctapi.h>
-#include <ctccid/utils.h>
+
 
 unsigned char requesticc[5] = {0x20,0x12,0x00,0x01,0x00};
 unsigned char getstatus[5] = {0x20,0x13,0x00,0x46,0x00};
@@ -35,6 +35,9 @@ char *prot[] = { "T=0",
 				 "T=1",
 			   };
 char *sprot[] = { "SDAP", "3WBP", "2WBP" };
+
+
+
 
 
 void DecodeATR(unsigned char *atr)
@@ -161,6 +164,148 @@ void DecodeATR(unsigned char *atr)
 
 
 /*
+ * MyDump the memory pointed to by <mem>
+ *
+ */
+
+static void MyDump(unsigned char *mem, int len)
+{
+	if (len >= 16)
+		printf("\n");
+
+	while(len--) {
+		printf("%02x ", *mem);
+		mem++;
+	}
+
+	printf("\n");
+}
+
+
+
+/*
+* Process an ISO 7816 APDU with the underlying terminal hardware.
+*
+* CLA : Class byte of instruction
+* INS : Instruction byte
+* P1 : Parameter P1
+* P2 : Parameter P2
+* OutLen : Length of outgoing data (Lc)
+* OutData : Outgoing data or NULL if none
+* InLen : Length of incoming data (Le)
+* InData : Input buffer for incoming data
+* InSize : buffer size
+* SW1SW2 : Address of short integer to receive SW1SW2
+*
+* Returns : < 0 Error > 0 Bytes read
+*/
+static int ProcessAPDU(int ctn, int todad,
+		unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
+		int OutLen, unsigned char *OutData,
+		int InLen, unsigned char *InData, int InSize, unsigned short *SW1SW2)
+{
+	int rv, rc, r, retry;
+	unsigned short lenr;
+	unsigned char dad, sad;
+	unsigned char scr[MAX_APDULEN], *po;
+
+	/* Reset status word */
+	*SW1SW2 = 0x0000;
+
+	retry = 2;
+
+	while (retry--) {
+		scr[0] = CLA;
+		scr[1] = INS;
+		scr[2] = P1;
+		scr[3] = P2;
+		po = scr + 4;
+		rv = 0;
+
+		if (OutData && OutLen) {
+			if ((OutLen <= 255) && (InLen <= 255)) {
+				*po++ = (unsigned char)OutLen;
+			} else {
+				*po++ = 0;
+				*po++ = (unsigned char)(OutLen >> 8);
+				*po++ = (unsigned char)(OutLen & 0xFF);
+			}
+
+			memcpy(po, OutData, OutLen);
+			po += OutLen;
+		}
+
+		if (InData && InSize) {
+			if ((InLen <= 255) && (OutLen <= 255)) {
+				*po++ = (unsigned char)InLen;
+			} else {
+				if (InLen >= 65556) {
+					InLen = 0;
+				}
+
+				if (!OutData) {
+					*po++ = 0;
+				}
+
+				*po++ = (unsigned char)(InLen >> 8);
+				*po++ = (unsigned char)(InLen & 0xFF);
+			}
+		}
+
+		sad = HOST;
+		dad = todad;
+		lenr = sizeof(scr);
+
+		rc = CT_data(ctn, &dad, &sad, po - scr, scr, &lenr, scr);
+
+		if (rc < 0) {
+			return rc;
+		}
+
+		if (scr[lenr - 2] == 0x6C) {
+			InLen = scr[lenr - 1];
+			continue;
+		}
+
+		rv = lenr - 2;
+
+		if (rv > InSize) {
+			rv = InSize;
+		}
+
+		if (InData) {
+			memcpy(InData, scr, rv);
+		}
+
+		if ((scr[lenr - 2] == 0x9F) || (scr[lenr - 2] == 0x61))
+			if (InData && InSize) { /* Get Response */
+				r = ProcessAPDU(ctn, todad,
+						(unsigned char)((CLA == 0xE0) || (CLA == 0x80) ?
+								0x00 : CLA), 0xC0, 0, 0,
+								0, NULL,
+								scr[1], InData + rv, InSize - rv, SW1SW2);
+
+				if (r < 0) {
+					return(r);
+				}
+
+				rv += r;
+			} else {
+				*SW1SW2 = 0x9000;
+			}
+		else {
+			*SW1SW2 = (scr[lenr - 2] << 8) + scr[lenr - 1];
+		}
+
+		break;
+	}
+
+	return(rv);
+}
+
+
+
+/*
  * Test the REQUEST ICC command
  *
  */
@@ -183,7 +328,7 @@ int TestRequestICC(int ctn)
 
 	printf("\nrc = %d - Print rsp: %d\n", rc, lr);
 
-	Dump(Brsp, lr);
+	MyDump(Brsp, lr);
 
 	if((Brsp[0] == 0x64) || (Brsp[0] == 0x62)) {
 		printf("No card present or error !! \n");
@@ -219,7 +364,7 @@ int TestStatus(int ctn)
 
 	printf("\nrc = %d - Print rsp: %d\n", rc, lr);
 
-	Dump(Brsp, lr);
+	MyDump(Brsp, lr);
 
 	printf("- STATUS CT (80) for ctn=%d ------------------\n", ctn);
 
@@ -230,7 +375,7 @@ int TestStatus(int ctn)
 
 	printf("\nrc = %d - Print rsp: %d\n", rc, lr);
 
-	Dump(Brsp, lr);
+	MyDump(Brsp, lr);
 
 	printf("- STATUS CT (81) for ctn=%d ------------------\n", ctn);
 
@@ -241,7 +386,7 @@ int TestStatus(int ctn)
 
 	printf("\nrc = %d - Print rsp: %d\n", rc, lr);
 
-	Dump(Brsp, lr);
+	MyDump(Brsp, lr);
 
 	printf("- STATUS ICC for ctn=%d ------------------\n", ctn);
 
@@ -252,7 +397,7 @@ int TestStatus(int ctn)
 
 	printf("\nrc = %d - Print rsp: %d\n", rc, lr);
 
-	Dump(Brsp, lr);
+	MyDump(Brsp, lr);
 
 	return(0);
 }
@@ -279,7 +424,7 @@ int TestProcessorCard(int ctn)
 	printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
 
 	if (rc >= 0) {
-		Dump(Brsp, rc);
+		MyDump(Brsp, rc);
 	}
 
 	printf("\n- SmartCard-HSM: VERIFY STATUS for ctn=%d ------------------\n\n", ctn);
@@ -299,7 +444,7 @@ int TestProcessorCard(int ctn)
 	printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
 
 	if (rc >= 0) {
-		Dump(Brsp, rc);
+		MyDump(Brsp, rc);
 	}
 
 	printf("\n- SmartCard-HSM: VERIFY PIN for ctn=%d ------------------\n\n", ctn);
@@ -319,7 +464,7 @@ int TestProcessorCard(int ctn)
 	printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
 
 	if (rc >= 0) {
-		Dump(Brsp, rc);
+		MyDump(Brsp, rc);
 	}
 
 	printf("\n- SmartCard-HSM: UPDATE EF for ctn=%d ------------------\n\n", ctn);
@@ -348,7 +493,7 @@ int TestProcessorCard(int ctn)
 	printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
 
 	if (rc >= 0) {
-		Dump(Brsp, rc);
+		MyDump(Brsp, rc);
 	}
 
 	printf("\n- SmartCard-HSM: SIGN for ctn=%d ------------------\n\n", ctn);
@@ -360,7 +505,7 @@ int TestProcessorCard(int ctn)
 	printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
 
 	if (rc >= 0) {
-		Dump(Brsp, rc);
+		MyDump(Brsp, rc);
 	}
 
 	return 0;
@@ -391,7 +536,7 @@ int TestEjectICC(int ctn)
 
 	printf("\nrc = %d - Print rsp: %d\n", rc, lr);
 
-	Dump(Brsp, lr);
+	MyDump(Brsp, lr);
 
 	if((Brsp[0] == 0x64) || (Brsp[0] == 0x62)) {
 		printf("No card present or error !! \n");
@@ -479,6 +624,3 @@ int main(int argc, char **argv)
 
 	return 0;
 }
-
-
-

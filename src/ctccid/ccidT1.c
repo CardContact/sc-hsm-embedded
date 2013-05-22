@@ -25,7 +25,7 @@
 
 #include "ccidT1.h"
 #include "ccid_usb.h"
-#include "utils.h"
+
 
 /**
  * Initialize all T=1 protocol parameter to its default values
@@ -76,7 +76,7 @@ void ccidT1BlockInfo(unsigned char Nad, unsigned char Pcb, int InBuffLength, uns
 
 	if (ISIBLOCK(Pcb)) {
 		printf("I(%d,%d):", NS(Pcb), MORE(Pcb));
-		Dump(InBuff, InBuffLength);
+		ctccidDump(InBuff, InBuffLength);
 	}
 
 	if (ISRBLOCK(Pcb)) {

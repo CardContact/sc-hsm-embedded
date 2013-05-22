@@ -19,43 +19,32 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <ctccid/ctapi.h>
 #include "utils.h"
 
 /*
  *  Process an ISO 7816 APDU with the underlying terminal hardware.
-
  *
  *  CLA     : Class byte of instruction
-
  *  INS     : Instruction byte
-
  *  P1      : Parameter P1
-
  *  P2      : Parameter P2
-
  *  OutLen  : Length of outgoing data (Lc)
-
  *  OutData : Outgoing data or NULL if none
-
  *  InLen   : Length of incoming data (Le)
-
  *  InData  : Input buffer for incoming data
-
  *  InSize  : buffer size
-
  *  SW1SW2  : Address of short integer to receive SW1SW2
-
  *
  *  Returns : < 0 Error >= 0 Bytes read
-
  */
-static int ProcessAPDUIntern(
+
+int ProcessAPDUIntern(
 	int ctn, int todad,
 	unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
 	int OutLen, unsigned char *OutData,
 	int InLen, unsigned char *InData, int InSize, unsigned short *SW1SW2,
-	unsigned char *scr)
-
+	unsigned char* scr, int srcSize)
 {
 	int  rv, rc, r, retry;
 	unsigned short lenr;
@@ -66,6 +55,10 @@ static int ProcessAPDUIntern(
 	*SW1SW2 = 0x0000;
 
 	retry = 2;
+
+	if (4 + 3 + 2 + OutLen > srcSize) { /* worst case */
+		return ERR_MEMORY;
+	}
 
 	while (retry--) {
 		scr[0] = CLA;
@@ -81,13 +74,8 @@ static int ProcessAPDUIntern(
 			} else {
 				*po++ = 0;
 				*po++ = (unsigned char)(OutLen >> 8);
-				*po++ = (unsigned char)(OutLen & 0xFF);
+				*po++ = (unsigned char)(OutLen >> 0);
 			}
-
-			if (OutLen > MAX_APDULEN - (po - scr)) {
-				return -1;
-			}
-
 			memcpy(po, OutData, OutLen);
 			po += OutLen;
 		}
@@ -96,26 +84,20 @@ static int ProcessAPDUIntern(
 			if (InLen <= 255 && OutLen <= 255) {
 				*po++ = (unsigned char)InLen;
 			} else {
-				if (InLen >= 0x10000) {
-					if (InLen == 0x10000) {
-						InLen = 0;
-					} else {
-						return -1;
-					}
-				}
-
 				if (!OutData) {
 					*po++ = 0;
 				}
-
+				if (InLen >= 0x10000) {
+					InLen = 0;
+				}
 				*po++ = (unsigned char)(InLen >> 8);
-				*po++ = (unsigned char)(InLen & 0xFF);
+				*po++ = (unsigned char)(InLen >> 0);
 			}
 		}
 
 		sad  = HOST;
 		dad  = todad;
-		lenr = MAX_APDULEN;
+		lenr = srcSize;
 
 		rc = CT_data(ctn, &dad, &sad, po - scr, scr, &lenr, scr);
 
@@ -129,6 +111,10 @@ static int ProcessAPDUIntern(
 		}
 
 		rv = lenr - 2;
+
+		if (rv < 0) {
+			return -1;
+		}
 
 		if (rv > InSize) {
 			rv = InSize;
@@ -145,7 +131,7 @@ static int ProcessAPDUIntern(
 						CLA == 0xE0 || CLA == 0x80 ? 0x00 : CLA, 0xC0, 0, 0,
 						0, NULL,
 						scr[1], InData + rv, InSize - rv, SW1SW2,
-						scr);
+						scr, srcSize);
 
 				if (r < 0) {
 					return r;
@@ -175,23 +161,35 @@ int ProcessAPDU(
 
 {
 	unsigned char scr[MAX_APDULEN];
+
 	return ProcessAPDUIntern(
 			   ctn, todad,
 			   CLA, INS, P1, P2,
 			   OutLen, OutData,
 			   InLen, InData, InSize, SW1SW2,
-			   scr);
+			   scr, MAX_APDULEN);
 }
-
-
 
 /*
  * Dump the memory pointed to by <ptr>
  *
  */
-void _Dump(unsigned char *ptr, int len)
+void Dump(void *_ptr, int len)
 {
+	unsigned char *ptr = (unsigned char *)_ptr;
 	int i;
+
+#ifdef DEBUG
+	static char *MinStack = (char *)-1;
+	static char *MaxStack; /* = 0; */
+	if (MinStack > (char *)&ptr)
+		MinStack = (char *)&ptr;
+	if (MaxStack < (char *)&ptr)
+		MaxStack = (char *)&ptr;
+	printf("Dump(%p, %d) stack used so far: %d", ptr, len, MaxStack - MinStack);
+#else
+	printf("Dump(%p, %d)", ptr, len);
+#endif
 
 	for (i = 0; i < len; i += 16) {
 		int i1 = i + 16;
@@ -223,7 +221,7 @@ void _Dump(unsigned char *ptr, int len)
 				ch = '.';
 			}
 
-			putchar(ch);
+			printf("%c", ch);
 		}
 	}
 
