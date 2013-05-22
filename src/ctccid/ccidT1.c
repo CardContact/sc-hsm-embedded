@@ -680,7 +680,7 @@ int ccidT1Process (struct scr *ctx,
 int ccidT1Init (struct scr *ctx)
 {
 
-	ctx->t1 = malloc(sizeof(ccidT1_t));
+	ctx->t1 = calloc(1, sizeof(ccidT1_t));
 
 	ctx->CTModFunc = (CTModFunc_t) ccidT1Process;
 

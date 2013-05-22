@@ -78,7 +78,7 @@ signed char CT_init(unsigned short ctn, unsigned short pn)
 			return ERR_MEMORY;
 		}
 
-		ctx = (scr_t *)malloc(sizeof(scr_t));
+		ctx = (scr_t *)calloc(1, sizeof(scr_t));
 
 		if (!ctx) {
 			return ERR_MEMORY;
