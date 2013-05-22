@@ -176,7 +176,30 @@ int removeObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicOb
 
 
 
-static void removeAllObjects(struct p11Token_t *token)
+static void removePrivateObjects(struct p11Token_t *token)
+{
+	struct p11Object_t *pObject = NULL;
+	struct p11Object_t *tmp = NULL;
+
+	/* clear the private token objects */
+	pObject = token->tokenPrivObjList;
+
+	while (pObject) {
+		tmp = pObject->next;
+
+		removeAllAttributes(pObject);
+		free(pObject);
+
+		pObject = tmp;
+	}
+
+	token->tokenPrivObjList = NULL;
+	token->numberOfPrivateTokenObjects = 0;
+}
+
+
+
+static void removePublicObjects(struct p11Token_t *token)
 {
 	struct p11Object_t *pObject = NULL;
 	struct p11Object_t *tmp = NULL;
@@ -193,20 +216,8 @@ static void removeAllObjects(struct p11Token_t *token)
 		pObject = tmp;
 	}
 
-	/* clear the private token objects */
-	pObject = token->tokenPrivObjList;
-
-	while (pObject) {
-		tmp = pObject->next;
-
-		removeAllAttributes(pObject);
-		free(pObject);
-
-		pObject = tmp;
-	}
-
+	token->tokenObjList = NULL;
 	token->numberOfTokenObjects = 0;
-	token->numberOfPrivateTokenObjects = 0;
 }
 
 
@@ -255,21 +266,21 @@ int removeObjectLeavingAttributes(struct p11Token_t *token, CK_OBJECT_HANDLE han
 
 int saveObjects(struct p11Slot_t *slot, struct p11Token_t *token, int publicObjects)
 {
-	return 0;
+	return CKR_OK;
 }
 
 
 
 int destroyObject(struct p11Slot_t *slot, struct p11Token_t *token, struct p11Object_t *object)
 {
-	return 0;
+	return CKR_OK;
 }
 
 
 
 int synchronizeToken(struct p11Slot_t *slot, struct p11Token_t *token)
 {
-	return 0;
+	return CKR_OK;
 }
 
 
@@ -277,6 +288,15 @@ int synchronizeToken(struct p11Slot_t *slot, struct p11Token_t *token)
 int logIn(struct p11Slot_t *slot, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen)
 {
 	return sc_hsm_login(slot, userType, pPin, ulPinLen);
+}
+
+
+
+int logOut(struct p11Slot_t *slot)
+{
+	removePrivateObjects(slot->token);
+
+	return sc_hsm_logout(slot);
 }
 
 
@@ -291,7 +311,8 @@ int newToken(struct p11Slot_t *slot, struct p11Token_t **token)
 int freeToken(struct p11Slot_t *slot)
 {
 	if (slot->token) {
-		removeAllObjects(slot->token);
+		removePrivateObjects(slot->token);
+		removePublicObjects(slot->token);
 		free(slot->token);
 		slot->token = NULL;
 	}

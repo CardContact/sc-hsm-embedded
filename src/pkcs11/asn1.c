@@ -400,7 +400,7 @@ int asn1DecodeInteger(unsigned char *data, size_t length, int *value)
 
 
 
-int testASN1()
+void testASN1()
 {
 	unsigned char t1[] = { 0x04, 0x00 };
 	unsigned char t2[] = { 0x1F, 0x80 };

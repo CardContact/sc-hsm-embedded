@@ -460,3 +460,94 @@ int findSlotObject(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Ob
 
 	return rc < 0 ? CKR_GENERAL_ERROR : CKR_OK;
 }
+
+
+
+int updateSlots(struct p11SlotPool_t *pool)
+{
+	struct p11Slot_t *slot;
+	unsigned short ctn;
+	char scr[20];
+	int rc;
+
+	FUNC_CALLED();
+
+	slot = pool->list;
+	while (slot) {
+		if (slot->closed) {
+			ctn = (unsigned short)slot->id;
+			rc = CT_init(ctn, ctn - 1);
+
+			if (rc != OK) {
+#ifdef DEBUG
+				debug("CT_init returns %d\n", rc);
+#endif
+			} else {
+				slot->closed = FALSE;
+			}
+		}
+		slot = slot->next;
+	}
+
+	while (pool->numberOfSlots < MAX_SLOTS) {
+		ctn = (unsigned short)pool->nextSlotID;
+
+		rc = CT_init(ctn, ctn - 1);
+
+		if (rc != OK) {
+#ifdef DEBUG
+			debug("CT_init returns %d\n", rc);
+#endif
+			break;
+		}
+
+		slot = (struct p11Slot_t *) malloc(sizeof(struct p11Slot_t));
+
+		if (slot == NULL) {
+			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+		}
+
+		memset(slot, 0x00, sizeof(struct p11Slot_t));
+
+		sprintf(scr, "CT-API Port #%d", ctn - 1);
+		strbpcpy(slot->info.slotDescription,
+				scr,
+				sizeof(slot->info.slotDescription));
+
+		strbpcpy(slot->info.manufacturerID,
+				"CardContact",
+				sizeof(slot->info.manufacturerID));
+
+		slot->info.hardwareVersion.minor = 0;
+		slot->info.hardwareVersion.major = 0;
+
+		slot->info.firmwareVersion.minor = 0;
+		slot->info.firmwareVersion.major = 0;
+
+		slot->info.flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
+		addSlot(context->slotPool, slot);
+	}
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+int closeSlot(struct p11Slot_t *slot)
+{
+	int rc;
+
+	FUNC_CALLED();
+
+	rc = CT_close((unsigned short)slot->id);
+
+	if (rc != OK) {
+#ifdef DEBUG
+		debug("CT_close returns %d\n", rc);
+#endif
+	}
+
+	slot->closed = TRUE;
+
+	FUNC_RETURNS(CKR_OK);
+}

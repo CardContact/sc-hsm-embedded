@@ -68,5 +68,6 @@ typedef struct token_sc_hsm {
 int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token);
 int sc_hsm_loadObjects(struct p11Token_t *token, int publicObjects);
 int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin, int pinlen);
+int sc_hsm_logout(struct p11Slot_t *slot);
 
 #endif /* ___TOKEN_SC_HSM_H_INC___ */

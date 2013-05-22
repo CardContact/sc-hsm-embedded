@@ -587,7 +587,7 @@ static int updatePinStatus(struct p11Token_t *token, int pinstatus)
 {
 	int rc = CKR_OK;
 
-	token->info.flags &= ~(CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED | CKF_USER_PIN_FINAL_TRY | CKF_USER_PIN_LOCKED);
+	token->info.flags &= ~(CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED | CKF_USER_PIN_FINAL_TRY | CKF_USER_PIN_LOCKED | CKF_USER_PIN_COUNT_LOW);
 
 	if (pinstatus != 0x6984) {
 		token->info.flags |= CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED;
@@ -605,11 +605,16 @@ static int updatePinStatus(struct p11Token_t *token, int pinstatus)
 		rc = CKR_PIN_LOCKED;
 		break;
 	case 0x63C1:
-		token->info.flags |= CKF_USER_PIN_FINAL_TRY;
+		token->info.flags |= CKF_USER_PIN_FINAL_TRY|CKF_USER_PIN_COUNT_LOW;
+		rc = CKR_PIN_INCORRECT;
+		break;
+	case 0x63C2:
+		token->info.flags |= CKF_USER_PIN_COUNT_LOW;
 		rc = CKR_PIN_INCORRECT;
 		break;
 	default:
 		rc = CKR_PIN_INCORRECT;
+		break;
 	}
 	return rc;
 }
@@ -642,6 +647,29 @@ int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 
 	sc_hsm_loadObjects(slot->token, FALSE);
 	FUNC_RETURNS(rc);
+}
+
+
+
+int sc_hsm_logout(struct p11Slot_t *slot)
+{
+	int rc;
+	unsigned short SW1SW2;
+	FUNC_CALLED();
+
+	rc = selectApplet(slot);
+	if (rc < 0) {
+		FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "applet selection failed");
+	}
+
+	rc = checkPINStatus(slot);
+	if (rc < 0) {
+		FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "checkPINStatus failed");
+	}
+
+	updatePinStatus(slot->token, rc);
+
+	FUNC_RETURNS(CKR_OK);
 }
 
 
@@ -682,6 +710,15 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	strbpcpy(ptoken->info.label, "SC-HSM", sizeof(ptoken->info.label));
 	strbpcpy(ptoken->info.manufacturerID, "CardContact", sizeof(ptoken->info.manufacturerID));
 	strbpcpy(ptoken->info.model, "SmartCard-HSM", sizeof(ptoken->info.model));
+	ptoken->info.ulFreePrivateMemory = CK_UNAVAILABLE_INFORMATION;
+	ptoken->info.ulFreePublicMemory = CK_UNAVAILABLE_INFORMATION;
+	ptoken->info.ulMinPinLen = 6;
+	ptoken->info.ulMaxPinLen = 16;
+	ptoken->info.ulTotalPrivateMemory = CK_UNAVAILABLE_INFORMATION;
+	ptoken->info.ulTotalPublicMemory = CK_UNAVAILABLE_INFORMATION;
+	ptoken->info.ulMaxSessionCount = CK_EFFECTIVELY_INFINITE;
+	ptoken->info.ulMaxRwSessionCount = CK_EFFECTIVELY_INFINITE;
+	ptoken->info.ulSessionCount = CK_UNAVAILABLE_INFORMATION;
 
 	ptoken->info.flags = CKF_WRITE_PROTECTED | CKF_LOGIN_REQUIRED;
 

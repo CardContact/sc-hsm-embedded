@@ -28,10 +28,6 @@ int initSlotPool(struct p11SlotPool_t *pool);
 
 int terminateSlotPool(struct p11SlotPool_t *pool);
 
-int updateSlots(struct p11SlotPool_t *pool);
-
-int closeSlot(struct p11Slot_t *slot);
-
 int addSlot(struct p11SlotPool_t *pool, struct p11Slot_t *slot);
 
 int findSlot(struct p11SlotPool_t *pool, CK_SLOT_ID slotID, struct p11Slot_t **slot);

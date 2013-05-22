@@ -30,4 +30,8 @@ int getToken(struct p11Slot_t *slot, struct p11Token_t **token);
 
 int findSlotObject(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject);
 
+int updateSlots(struct p11SlotPool_t *pool);
+
+int closeSlot(struct p11Slot_t *slot);
+
 #endif /* ___SLOT_H_INC___ */

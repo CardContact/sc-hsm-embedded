@@ -83,6 +83,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 
 	default:
 		rv = CKR_FUNCTION_FAILED;
+		break;
 	}
 
 	if (rv != CKR_OK) {

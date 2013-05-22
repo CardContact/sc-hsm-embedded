@@ -198,6 +198,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSessionInfo)(
 
 	default:
 		pInfo->state = (session->flags & CKF_RW_SESSION) ? CKS_RW_PUBLIC_SESSION : CKS_RO_PUBLIC_SESSION;
+		break;
 	}
 
 	return CKR_OK;
@@ -328,17 +329,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_Logout)(
 		return rv;
 	}
 
-	/* remove the private objects - they are no longer available */
-	object = token->tokenPrivObjList;
+	rv = logOut(slot);
 
-	while (object) {
-		tmp = object->next;
-		removeAllAttributes(object);
-		free(object);
-		object = tmp;
+	if (rv != CKR_OK) {
+		return rv;
 	}
-
-	token->tokenPrivObjList = NULL;
 
 	// reset initital session state
 	session->state = (session->flags & CKF_RW_SESSION) ? CKS_RW_PUBLIC_SESSION : CKS_RO_PUBLIC_SESSION;
