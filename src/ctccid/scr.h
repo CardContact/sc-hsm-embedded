@@ -24,9 +24,6 @@
 #include <windows.h>
 #include <malloc.h>
 #include <stdio.h>
-#ifdef _DEBUG
-#define DEBUG
-#endif
 #define usleep(us) Sleep((us) / 1000)
 #endif
 

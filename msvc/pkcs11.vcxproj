@@ -10,6 +10,51 @@
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\pkcs11\asn1.c" />
+    <ClCompile Include="..\src\pkcs11\certificateobject.c" />
+    <ClCompile Include="..\src\pkcs11\dataobject.c" />
+    <ClCompile Include="..\src\pkcs11\debug.c" />
+    <ClCompile Include="..\src\pkcs11\object.c" />
+    <ClCompile Include="..\src\pkcs11\p11generic.c" />
+    <ClCompile Include="..\src\pkcs11\p11mechanisms.c" />
+    <ClCompile Include="..\src\pkcs11\p11objects.c" />
+    <ClCompile Include="..\src\pkcs11\p11session.c" />
+    <ClCompile Include="..\src\pkcs11\p11slots.c" />
+    <ClCompile Include="..\src\pkcs11\pkcs15.c" />
+    <ClCompile Include="..\src\pkcs11\privatekeyobject.c" />
+    <ClCompile Include="..\src\pkcs11\secretkeyobject.c" />
+    <ClCompile Include="..\src\pkcs11\session.c" />
+    <ClCompile Include="..\src\pkcs11\slot-ctapi.c" />
+    <ClCompile Include="..\src\pkcs11\slotpool.c" />
+    <ClCompile Include="..\src\pkcs11\strbpcpy.c" />
+    <ClCompile Include="..\src\pkcs11\token-sc-hsm.c" />
+    <ClCompile Include="..\src\pkcs11\token.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\pkcs11\asn1.h" />
+    <ClInclude Include="..\src\pkcs11\certificateobject.h" />
+    <ClInclude Include="..\src\pkcs11\cryptoki.h" />
+    <ClInclude Include="..\src\pkcs11\dataobject.h" />
+    <ClInclude Include="..\src\pkcs11\debug.h" />
+    <ClInclude Include="..\src\pkcs11\object.h" />
+    <ClInclude Include="..\src\pkcs11\p11generic.h" />
+    <ClInclude Include="..\src\pkcs11\pkcs11.h" />
+    <ClInclude Include="..\src\pkcs11\pkcs11f.h" />
+    <ClInclude Include="..\src\pkcs11\pkcs11t.h" />
+    <ClInclude Include="..\src\pkcs11\pkcs15.h" />
+    <ClInclude Include="..\src\pkcs11\privatekeyobject.h" />
+    <ClInclude Include="..\src\pkcs11\secretkeyobject.h" />
+    <ClInclude Include="..\src\pkcs11\session.h" />
+    <ClInclude Include="..\src\pkcs11\slot.h" />
+    <ClInclude Include="..\src\pkcs11\slotpool.h" />
+    <ClInclude Include="..\src\pkcs11\strbpcpy.h" />
+    <ClInclude Include="..\src\pkcs11\token-sc-hsm.h" />
+    <ClInclude Include="..\src\pkcs11\token.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\src\pkcs11\libpkcs11.exports" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{B5F4F293-44EF-404E-848F-7985BFA63137}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
@@ -52,7 +97,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>CRYPTOKI_EXPORTS;WIN32;_DEBUG;_WINDOWS;_USRDLL;PKCS11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>CRYPTOKI_EXPORTS;WIN32;_USRDLL;PKCS11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>
       </AdditionalIncludeDirectories>
     </ClCompile>
@@ -80,48 +125,6 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="..\src\pkcs11\asn1.c" />
-    <ClCompile Include="..\src\pkcs11\certificateobject.c" />
-    <ClCompile Include="..\src\pkcs11\dataobject.c" />
-    <ClCompile Include="..\src\pkcs11\debug.c" />
-    <ClCompile Include="..\src\pkcs11\object.c" />
-    <ClCompile Include="..\src\pkcs11\p11generic.c" />
-    <ClCompile Include="..\src\pkcs11\p11mechanisms.c" />
-    <ClCompile Include="..\src\pkcs11\p11objects.c" />
-    <ClCompile Include="..\src\pkcs11\p11session.c" />
-    <ClCompile Include="..\src\pkcs11\p11slots.c" />
-    <ClCompile Include="..\src\pkcs11\pkcs15.c" />
-    <ClCompile Include="..\src\pkcs11\privatekeyobject.c" />
-    <ClCompile Include="..\src\pkcs11\secretkeyobject.c" />
-    <ClCompile Include="..\src\pkcs11\session.c" />
-    <ClCompile Include="..\src\pkcs11\slot.c" />
-    <ClCompile Include="..\src\pkcs11\slotpool.c" />
-    <ClCompile Include="..\src\pkcs11\strbpcpy.c" />
-    <ClCompile Include="..\src\pkcs11\token-sc-hsm.c" />
-    <ClCompile Include="..\src\pkcs11\token.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\src\pkcs11\asn1.h" />
-    <ClInclude Include="..\src\pkcs11\certificateobject.h" />
-    <ClInclude Include="..\src\pkcs11\cryptoki.h" />
-    <ClInclude Include="..\src\pkcs11\dataobject.h" />
-    <ClInclude Include="..\src\pkcs11\debug.h" />
-    <ClInclude Include="..\src\pkcs11\object.h" />
-    <ClInclude Include="..\src\pkcs11\p11generic.h" />
-    <ClInclude Include="..\src\pkcs11\pkcs11.h" />
-    <ClInclude Include="..\src\pkcs11\pkcs11f.h" />
-    <ClInclude Include="..\src\pkcs11\pkcs11t.h" />
-    <ClInclude Include="..\src\pkcs11\pkcs15.h" />
-    <ClInclude Include="..\src\pkcs11\privatekeyobject.h" />
-    <ClInclude Include="..\src\pkcs11\secretkeyobject.h" />
-    <ClInclude Include="..\src\pkcs11\session.h" />
-    <ClInclude Include="..\src\pkcs11\slot.h" />
-    <ClInclude Include="..\src\pkcs11\slotpool.h" />
-    <ClInclude Include="..\src\pkcs11\strbpcpy.h" />
-    <ClInclude Include="..\src\pkcs11\token-sc-hsm.h" />
-    <ClInclude Include="..\src\pkcs11\token.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

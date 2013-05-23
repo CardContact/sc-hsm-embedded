@@ -24,6 +24,9 @@
     <ClCompile Include="..\src\pkcs11\dataobject.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\pkcs11\debug.c">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\pkcs11\object.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -54,7 +57,7 @@
     <ClCompile Include="..\src\pkcs11\session.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\pkcs11\slot.c">
+    <ClCompile Include="..\src\pkcs11\slot-ctapi.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="..\src\pkcs11\slotpool.c">
@@ -63,13 +66,10 @@
     <ClCompile Include="..\src\pkcs11\strbpcpy.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\pkcs11\token-sc-hsm.c">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\pkcs11\token.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\pkcs11\debug.c">
+    <ClCompile Include="..\src\pkcs11\token-sc-hsm.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
@@ -131,5 +131,8 @@
     <ClInclude Include="..\src\pkcs11\token-sc-hsm.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\src\pkcs11\libpkcs11.exports" />
   </ItemGroup>
 </Project>

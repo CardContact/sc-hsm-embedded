@@ -15,17 +15,17 @@
     <ClCompile Include="..\src\ctccid\ccid_usb.c" />
     <ClCompile Include="..\src\ctccid\ctapi.c" />
     <ClCompile Include="..\src\ctccid\ctbcs.c" />
+    <ClCompile Include="..\src\ctccid\dump.c" />
     <ClCompile Include="..\src\ctccid\usb_device.c" />
-    <ClCompile Include="..\src\ctccid\utils.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\ctccid\ccidT1.h" />
     <ClInclude Include="..\src\ctccid\ccid_usb.h" />
     <ClInclude Include="..\src\ctccid\ctapi.h" />
     <ClInclude Include="..\src\ctccid\ctbcs.h" />
+    <ClInclude Include="..\src\ctccid\dump.h" />
     <ClInclude Include="..\src\ctccid\scr.h" />
     <ClInclude Include="..\src\ctccid\usb_device.h" />
-    <ClInclude Include="..\src\ctccid\utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{CEEAF173-F9EC-4306-BBE4-A85E2641541D}</ProjectGuid>
@@ -71,7 +71,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

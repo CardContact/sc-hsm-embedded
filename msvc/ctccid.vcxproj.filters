@@ -14,9 +14,6 @@
     <ClCompile Include="..\src\ctccid\ccidT1.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\ctccid\utils.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\ctccid\usb_device.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -27,6 +24,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\ctccid\ccid_usb.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ctccid\dump.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -49,7 +49,7 @@
     <ClInclude Include="..\src\ctccid\usb_device.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\ctccid\utils.h">
+    <ClInclude Include="..\src\ctccid\dump.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

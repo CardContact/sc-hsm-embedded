@@ -18,6 +18,7 @@
 
 #ifdef DEBUG
 #include <stdio.h>
+#include "dump.h"
 #endif
 
 #include <stdlib.h>
@@ -25,7 +26,6 @@
 
 #include "ccidT1.h"
 #include "ccid_usb.h"
-
 
 /**
  * Initialize all T=1 protocol parameter to its default values
