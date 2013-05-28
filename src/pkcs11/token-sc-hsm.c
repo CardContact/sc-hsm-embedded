@@ -148,8 +148,9 @@ static int addEECertificateObject(struct p11Token_t *token, unsigned char id)
 			{ CKA_VALUE, certValue, sizeof(certValue) }
 	};
 	struct p11Object_t *pObject;
+	token_sc_hsm_t *sc;
 	struct p15PrivateKeyDescription *p15 = NULL;
-	unsigned char prkd[MAX_P15_SIZE];
+	unsigned char prkd[MAX_P15_SIZE], *spk;
 	int rc;
 
 	FUNC_CALLED();
@@ -212,6 +213,11 @@ static int addEECertificateObject(struct p11Token_t *token, unsigned char id)
 #endif
 	}
 
+	if (getSubjectPublicKey(pObject, &spk) == CKR_OK) {
+		sc = getPrivateData(token);
+		sc->publickeys[id] = spk;
+	}
+
 	pObject->tokenid = (int)id;
 	pObject->keysize = p15->keysize;
 
@@ -242,7 +248,7 @@ static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 
 
 
-static int getAlgorithmId(CK_MECHANISM_TYPE mech)
+static int getAlgorithmIdForSigning(CK_MECHANISM_TYPE mech)
 {
 	switch(mech) {
 	case CKM_RSA_X_509:
@@ -260,6 +266,19 @@ static int getAlgorithmId(CK_MECHANISM_TYPE mech)
 		return ALGO_EC_RAW;
 	case CKM_ECDSA_SHA1:
 		return ALGO_EC_SHA1;
+	default:
+		return -1;
+	}
+}
+
+
+
+static int getAlgorithmIdForDecryption(CK_MECHANISM_TYPE mech)
+{
+	switch(mech) {
+	case CKM_RSA_X_509:
+	case CKM_RSA_PKCS:
+		return ALGO_RSA_DECRYPT;
 	default:
 		return -1;
 	}
@@ -343,7 +362,7 @@ static int sc_hsm_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 
 	FUNC_CALLED();
 
-	algo = getAlgorithmId(mech->mechanism);
+	algo = getAlgorithmIdForSigning(mech->mechanism);
 	if (algo < 0) {
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
 	}
@@ -385,7 +404,7 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 		FUNC_RETURNS(CKR_OK);
 	}
 
-	algo = getAlgorithmId(mech);
+	algo = getAlgorithmIdForSigning(mech);
 	if (algo < 0) {
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
 	}
@@ -422,11 +441,106 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 	if ((algo == ALGO_EC_RAW) || (algo == ALGO_EC_SHA1)) {
 		rc = decodeECDSASignature(scr, rc, pSignature, *pulSignatureLen);
 		if (rc < 0) {
-			FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "transmitAPDU failed");
+			FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "supplied buffer too small");
 		}
 	}
 
 	*pulSignatureLen = rc;
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+static int sc_hsm_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
+{
+	int algo;
+
+	FUNC_CALLED();
+
+	algo = getAlgorithmIdForSigning(mech->mechanism);
+	if (algo < 0) {
+		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
+	}
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+int stripPKCS15Padding(unsigned char *scr, int len, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+{
+	int c1,c2,c3;
+
+	c1 = *scr++ == 0x00;
+	c2 = *scr++ == 0x02;
+	len -= 2;
+	while ((len > 0) && *scr) {
+		scr++;
+		len--;
+	}
+	c3 = len > 0;
+
+	if (!(c1 && c2 && c3)) {
+		return CKR_ENCRYPTED_DATA_INVALID;
+	}
+
+	scr++;
+	len--;
+
+	if (len > *pulDataLen) {
+		return CKR_BUFFER_TOO_SMALL;
+	}
+
+	memcpy(pData, scr, len);
+	*pulDataLen = len;
+
+	return CKR_OK;
+}
+
+
+
+static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+{
+	int rc, algo, len;
+	unsigned short SW1SW2;
+	unsigned char scr[256];
+	FUNC_CALLED();
+
+	if (pData == NULL) {
+		*pulDataLen = pObject->keysize >> 3;
+		FUNC_RETURNS(CKR_OK);
+	}
+
+	algo = getAlgorithmIdForDecryption(mech);
+	if (algo < 0) {
+		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
+	}
+
+	rc = transmitAPDU(pObject->token->slot, 0x80, 0x62, (unsigned char)pObject->tokenid, (unsigned char)algo,
+			ulEncryptedDataLen, pEncryptedData,
+			0, scr, sizeof(scr), &SW1SW2);
+
+	if (rc < 0) {
+		FUNC_FAILS(rc, "transmitAPDU failed");
+	}
+
+	if (SW1SW2 != 0x9000) {
+		FUNC_FAILS(-1, "Decryption operation failed");
+	}
+
+	if (mech == CKM_RSA_X_509) {
+		if (rc > *pulDataLen) {
+			FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "supplied buffer too small");
+		}
+		*pulDataLen = rc;
+		memcpy(pData, scr, rc);
+	} else {
+		rc = stripPKCS15Padding(scr, rc, pData, pulDataLen);
+		if (rc < 0) {
+			FUNC_FAILS(CKR_ENCRYPTED_DATA_INVALID, "Invalid PKCS#1 padding");
+		}
+	}
+
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -456,12 +570,15 @@ static int addPrivateKeyObject(struct p11Token_t *token, unsigned char id)
 			{ CKA_UNWRAP, &false, sizeof(false) },
 			{ CKA_EXTRACTABLE, &false, sizeof(false) },
 			{ CKA_ALWAYS_SENSITIVE, &true, sizeof(true) },
-			{ CKA_NEVER_EXTRACTABLE, &true, sizeof(true) }
+			{ CKA_NEVER_EXTRACTABLE, &true, sizeof(true) },
+			{ 0, NULL, 0 },
+			{ 0, NULL, 0 }
 	};
+	token_sc_hsm_t *sc;
 	struct p11Object_t *pObject;
 	struct p15PrivateKeyDescription *p15 = NULL;
 	unsigned char prkd[MAX_P15_SIZE];
-	int rc;
+	int rc,attributes;
 
 	FUNC_CALLED();
 
@@ -500,9 +617,16 @@ static int addPrivateKeyObject(struct p11Token_t *token, unsigned char id)
 		template[11].pValue = p15->usage & P15_SIGNRECOVER ? &true : &false;
 	}
 
+	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE) - 2;
+
 	switch(p15->keytype) {
 	case P15_KEYTYPE_RSA:
 		keyType = CKK_RSA;
+		sc = getPrivateData(token);
+		if (sc->publickeys[id]) {
+			decodeModulusExponentFromSPK(sc->publickeys[id], &template[attributes], &template[attributes + 1]);
+			attributes += 2;
+		}
 		break;
 	case P15_KEYTYPE_ECC:
 		keyType = CKK_ECDSA;
@@ -515,7 +639,7 @@ static int addPrivateKeyObject(struct p11Token_t *token, unsigned char id)
 
 	// ToDo: Set CKA_EXTRACTABLE based on KCV
 
-	rc = createPrivateKeyObject(template, sizeof(template) / sizeof(CK_ATTRIBUTE), pObject);
+	rc = createPrivateKeyObject(template, attributes, pObject);
 
 	if (rc != CKR_OK) {
 		freePrivateKeyDescription(&p15);
@@ -525,6 +649,8 @@ static int addPrivateKeyObject(struct p11Token_t *token, unsigned char id)
 
 	pObject->C_SignInit = sc_hsm_C_SignInit;
 	pObject->C_Sign = sc_hsm_C_Sign;
+	pObject->C_DecryptInit = sc_hsm_C_DecryptInit;
+	pObject->C_Decrypt = sc_hsm_C_Decrypt;
 
 	pObject->tokenid = (int)id;
 	pObject->keysize = p15->keysize;
@@ -560,7 +686,9 @@ int sc_hsm_loadObjects(struct p11Token_t *token, int publicObjects)
 				if (id != 0) {				// Skip Device Authentication Key
 					rc = addEECertificateObject(token, id);
 					if (rc != CKR_OK) {
-						FUNC_FAILS(rc, "addCertificateObject failed");
+#ifdef DEBUG
+						debug("addCertificateObject failed with rc=%d\n", rc);
+#endif
 					}
 				}
 				break;
@@ -571,7 +699,9 @@ int sc_hsm_loadObjects(struct p11Token_t *token, int publicObjects)
 				if (id != 0) {				// Skip Device Authentication Key
 					rc = addPrivateKeyObject(token, id);
 					if (rc != CKR_OK) {
-						FUNC_FAILS(rc, "addPrivateKeyObject failed");
+#ifdef DEBUG
+						debug("addPrivateKeyObject failed with rc=%d\n", rc);
+#endif
 					}
 				}
 				break;

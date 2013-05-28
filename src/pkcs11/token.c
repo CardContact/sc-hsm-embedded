@@ -32,7 +32,6 @@
 
 #include <pkcs11/token.h>
 #include <pkcs11/object.h>
-#include <pkcs11/secretkeyobject.h>
 #include <pkcs11/dataobject.h>
 
 #include <token-sc-hsm.h>

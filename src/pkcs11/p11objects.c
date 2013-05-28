@@ -24,7 +24,6 @@
 #include <pkcs11/slot.h>
 #include <pkcs11/token.h>
 #include <pkcs11/object.h>
-#include <pkcs11/secretkeyobject.h>
 #include <pkcs11/dataobject.h>
 #include <pkcs11/session.h>
 
@@ -75,10 +74,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 	switch (*(CK_LONG *)pTemplate[pos].pValue) {
 	case CKO_DATA:
 		rv = createDataObject(pTemplate, ulCount, pObject);
-		break;
-
-	case CKO_SECRET_KEY:
-		rv = createSecretKeyObject(pTemplate, ulCount, pObject);
 		break;
 
 	default:

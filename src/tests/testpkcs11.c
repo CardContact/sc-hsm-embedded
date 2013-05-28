@@ -489,8 +489,105 @@ void testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 		bin2str(scr, sizeof(scr), signature, len);
 		printf("Signature:\n%s\n", scr);
+
+
+		printf("Calling C_SignInit()");
+		rc = p11->C_SignInit(session, &mech, hnd);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		printf("Calling C_SignUpdate(1)");
+		rc = p11->C_SignUpdate(session, tbs, 6);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		printf("Calling C_SignUpdate(2)");
+		rc = p11->C_SignUpdate(session, tbs + 6, strlen(tbs) - 6);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		len = 0;
+		rc = p11->C_SignFinal(session, NULL, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		printf("Signature size = %lu\n", len);
+
+		len = sizeof(signature);
+		rc = p11->C_SignFinal(session, signature, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		bin2str(scr, sizeof(scr), signature, len);
+		printf("Signature:\n%s\n", scr);
+
 		keyno++;
 	}
+}
+
+
+
+void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
+{
+	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
+	CK_KEY_TYPE keyType = CKK_RSA;
+	CK_CHAR label[] = "Joe Doe (RSA2048)";
+	CK_ATTRIBUTE template[] = {
+			{ CKA_CLASS, &class, sizeof(class) },
+			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
+			{ CKA_LABEL, &label, strlen(label) }
+	};
+	CK_OBJECT_HANDLE hnd;
+	CK_MECHANISM mech_raw = { CKM_RSA_X_509, 0, 0 };
+	CK_MECHANISM mech_p15 = { CKM_RSA_PKCS, 0, 0 };
+	unsigned char *raw_cryptogram = "\xCD\x6A\x28\xD1\x4A\x4A\x07\xED\x33\x24\x61\xFC\xF7\x3A\x51\x1B\x4F\x15\xF7\xC6\x95\xFC\xB4\xBE\x00\xE4\xA1\x17\x95\x98\x2F\xB5\x7A\x26\xB7\xDA\xF9\x31\x9F\xA9\xB0\xBE\xF9\xCB\x94\xFF\x88\xF1\x4D\x35\x57\xF8\x56\x51\xAF\xD9\x00\xB0\x3C\xE3\x82\x8E\xF1\xC9\xED\x68\x95\xAF\xDE\xF1\x6D\x7C\x67\x39\x3C\x68\xD9\x02\xFD\x39\x24\x15\xA3\x66\x03\xB9\x9E\x96\xAC\x28\x50\x02\xC9\x0E\x87\x92\xDC\x3B\x9E\x35\x6E\x06\x79\xB7\xBC\x9F\x68\x5A\xAA\xC0\x08\x0F\xB4\x92\xC7\xC1\xE6\xCE\x17\xBC\xB8\x16\xF5\xBD\x41\x7E\x10\xC6\x51\xC5\xA2\x12\x89\xE5\x8A\x7F\x98\xCA\x6A\x44\x5D\x9E\x5B\x9C\xA3\xB6\x64\x52\xD0\xF1\xA1\x9D\xC3\x81\x89\xB5\x6E\xB6\xB8\x0C\x4B\xB1\x31\xD1\x37\x68\x2F\xB4\x0F\x7F\x03\x2F\x8A\x65\x7F\x98\xDF\x05\x15\x78\xC5\x14\x00\xB9\xF2\x82\x3A\xDA\x62\x85\xAF\xAB\x7C\x5B\x7E\x2F\x7C\xE4\xCA\xB0\xE5\xD7\x3A\x6D\x68\x5C\x48\x16\x4B\x36\x2E\xD9\xF3\xC7\x88\x11\x0B\x6B\xBB\x50\x39\x3D\x6C\x20\x24\x5E\x1C\x83\x80\x13\x3E\x59\x62\xEF\x94\x1D\xC9\x9D\x40\x18\x14\x51\x1E\x80\x07\x30\x74\x4A\xD9\x16\xFA\xFF\x60\x4B\x5C\xE4";
+	unsigned char *p15_cryptogram = "\xAA\x80\xBF\x66\x99\x0A\x6E\xF3\x83\xA2\x7B\x2F\x89\x56\x0F\x7D\xC7\xFD\x44\x36\x86\x56\xC5\xC6\xA3\x3E\x89\xFC\x37\x87\x8A\xB0\xD5\xEB\x46\x20\x1D\xE4\xB7\xA7\xDE\xAC\x1E\x70\xBD\x66\x97\x91\xA3\xAC\xFA\x70\x80\x27\x8E\x7E\x8C\x06\x23\xA1\xB6\x83\x1A\x04\x96\xE7\x87\x1C\x61\xEC\xE0\x1A\x7D\xA9\x85\x85\x75\xBB\xDA\x77\x07\x65\x2A\x7A\x27\xCC\x14\xE4\x34\xBC\x70\xDF\x46\x67\xA0\x5B\x62\x2C\xF7\x2D\xFD\xF7\xA7\xFF\x89\x16\xC0\xE3\x2B\xEF\xDB\x1E\x11\x2A\xAE\x81\xDE\xDA\x96\xE4\xD3\xE4\x31\xE8\x31\xE9\xFD\xCD\x48\x0B\x9D\x95\xC0\x45\x14\x38\x03\x41\x00\xB0\xF9\xF0\x5A\x22\xBF\x2D\x81\xB4\x20\x7E\x05\x68\x90\x2D\x67\x9E\xEA\xC1\xFC\x7C\x92\x99\xD1\xDE\xE7\xEA\xE3\x0A\x14\x52\x19\xD0\x7C\xDE\x8C\x37\xBC\xA6\x52\xAB\x3D\x7A\xAE\x60\x11\xC7\x41\xAB\x53\x48\x08\xBA\xC6\x80\xC3\x72\xB7\x13\x15\xD7\x7E\x40\x8C\x0E\x29\x33\xB4\x11\xBB\x1B\x96\x7B\x2A\x52\x98\x24\xEE\xC0\x51\xD7\x55\x25\x59\x55\xD8\xB3\xAB\x06\x26\x28\x7F\x0F\xB2\x44\xF3\xBA\xEE\xA7\xA2\xDB\xAA\xD2\xE7\xB7\x79\x51\xB2\xFB\x1B\x7F\x1D\xE4\xA7\x08\x7D\xAF";
+	CK_BYTE plain[256];
+	CK_ULONG len;
+	char scr[1024];
+	int rc;
+
+	rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), 0, &hnd);
+
+	if (rc != CKR_OK) {
+		printf("Key %s not found\n", label);
+		return;
+	}
+
+	printf("Calling C_DecryptInit()");
+	rc = p11->C_DecryptInit(session, &mech_raw, hnd);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	printf("Calling C_Decrypt()");
+
+	len = 0;
+	rc = p11->C_Decrypt(session, raw_cryptogram, 256, NULL, &len);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	printf("Plain size = %lu\n", len);
+
+	len = sizeof(plain);
+	rc = p11->C_Decrypt(session, raw_cryptogram, 256, plain, &len);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	bin2str(scr, sizeof(scr), plain, len);
+	printf("Plain:\n%s\n", scr);
+
+
+	printf("Calling C_DecryptInit()");
+	rc = p11->C_DecryptInit(session, &mech_p15, hnd);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	printf("Calling C_Decrypt()");
+
+	len = 0;
+	rc = p11->C_Decrypt(session, p15_cryptogram, 256, NULL, &len);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	printf("Plain size = %lu\n", len);
+
+	len = sizeof(plain);
+	rc = p11->C_Decrypt(session, p15_cryptogram, 256, plain, &len);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	bin2str(scr, sizeof(scr), plain, len);
+	printf("Plain:\n%s\n", scr);
+
 }
 
 
@@ -539,6 +636,7 @@ void testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		keyno++;
 	}
 }
+
 
 
 
@@ -831,6 +929,7 @@ void main(int argc, char *argv[])
 	listObjects(p11, session, attr, 0);
 
 	testRSASigning(p11, session);
+	testRSADecryption(p11, session);
 
 	testECSigning(p11, session);
 

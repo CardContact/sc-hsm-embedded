@@ -293,6 +293,13 @@ int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle)
 		pool->list = NULL;
 	}
 
+	if (session->cryptoBuffer) {
+		free(session->cryptoBuffer);
+		session->cryptoBuffer = NULL;
+		session->cryptoBufferMax = 0;
+		session->cryptoBufferSize = 0;
+	}
+
 	free(session);
 
 	pool->numberOfSessions--;
@@ -440,4 +447,39 @@ int addObjectToSearchList(struct p11Session_t *session, struct p11Object_t *obje
 	}
 
 	return CKR_OK;
+}
+
+
+
+int appendToCryptoBuffer(struct p11Session_t *session, CK_BYTE_PTR data, CK_ULONG length)
+{
+	if (session->cryptoBufferMax < session->cryptoBufferSize + length) {
+		if (session->cryptoBufferMax == 0) {
+			session->cryptoBufferMax = 256;
+		}
+		while (session->cryptoBufferMax < session->cryptoBufferSize + length) {
+			session->cryptoBufferMax <<= 1;
+		}
+
+		session->cryptoBuffer = (CK_BYTE_PTR)realloc(session->cryptoBuffer, session->cryptoBufferMax);
+		if (session->cryptoBuffer == NULL) {
+			session->cryptoBufferMax = 0;
+			return CKR_HOST_MEMORY;
+		}
+	}
+
+	memcpy(session->cryptoBuffer + session->cryptoBufferSize, data, length);
+	session->cryptoBufferSize += length;
+
+	return CKR_OK;
+}
+
+
+
+int clearCryptoBuffer(struct p11Session_t *session)
+{
+	if (session->cryptoBuffer) {
+		memset(session->cryptoBuffer, 0, session->cryptoBufferMax);
+		session->cryptoBufferSize = 0;
+	}
 }

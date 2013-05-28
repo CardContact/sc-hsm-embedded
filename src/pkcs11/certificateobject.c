@@ -190,3 +190,166 @@ int populateIssuerSubjectSerial(struct p11Object_t *pObject)
 
 	return 0;
 }
+
+
+
+int getSubjectPublicKey(struct p11Object_t *pObject, unsigned char **spk)
+{
+	CK_ATTRIBUTE attr = { CKA_VALUE, NULL, 0 };
+	struct p11Attribute_t *pattr;
+	int tag, length, buflen;
+	unsigned char *value, *cursor, *obj;
+
+	attr.type = CKA_VALUE;
+	if (findAttribute(pObject, &attr, &pattr) < 0) {
+		return -1;
+	}
+
+	cursor = pattr->attrData.pValue;
+	buflen = pattr->attrData.ulValueLen;
+
+	if (asn1Validate(cursor, buflen)) {
+		return -1;
+	}
+
+	// Outer SEQUENCE
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {
+		return -1;
+	}
+
+	cursor = value;
+	buflen = length;
+
+	// TBS SEQUENCE
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {
+		return -1;
+	}
+
+	cursor = value;
+	buflen = length;
+
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {
+		return -1;
+	}
+
+	if (tag == 0xA0) {				// Skip optional cert type
+		if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {
+			return -1;
+		}
+	}
+
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {	// Skip SignatureAlgorithm
+		return -1;
+	}
+
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {	// Skip Issuer
+		return -1;
+	}
+
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {	// Skip validity dates
+		return -1;
+	}
+
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {	// Skip Subject
+		return -1;
+	}
+
+	*spk =cursor;
+
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {	// Skip Subject
+		return -1;
+	}
+
+	if (tag != ASN1_SEQUENCE) {
+		return -1;
+	}
+
+	return 0;
+}
+
+
+
+int decodeModulusExponentFromSPK(unsigned char *spk,
+                                 CK_ATTRIBUTE_PTR modulus,
+                                 CK_ATTRIBUTE_PTR exponent)
+{
+	int tag, length, buflen;
+	unsigned char *value, *cursor, *obj;
+
+	cursor = spk;				// spk is ASN.1 validated before, not need to check again
+
+	tag = asn1Tag(&cursor);
+
+	if (tag != ASN1_SEQUENCE) {
+		return -1;
+	}
+
+	buflen = asn1Length(&cursor);
+
+	// TBS SEQUENCE
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {
+		return -1;
+	}
+
+	if (tag != ASN1_SEQUENCE) {
+		return -1;
+	}
+
+	// TBS SEQUENCE
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {
+		return -1;
+	}
+
+	if (tag != ASN1_BIT_STRING) {
+		return -1;
+	}
+
+	if (length < 6) {
+		return -1;
+	}
+
+	cursor = value + 1;
+	buflen = length - 1;
+
+	if (asn1Validate(cursor, buflen) != 0) {
+		return -1;
+	}
+
+	// Outer SEQUENCE
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {
+		return -1;
+	}
+
+	if (tag != ASN1_SEQUENCE) {
+		return -1;
+	}
+
+	cursor = value;
+	buflen = length;
+
+	// Modulus
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {
+		return -1;
+	}
+
+	if (tag != ASN1_INTEGER) {
+		return -1;
+	}
+
+	modulus->type = CKA_MODULUS;
+	modulus->pValue = value;
+	modulus->ulValueLen = length;
+
+	// Exponent
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {
+		return -1;
+	}
+
+	if (tag != ASN1_INTEGER) {
+		return -1;
+	}
+
+	exponent->type = CKA_PUBLIC_EXPONENT;
+	exponent->pValue = value;
+	exponent->ulValueLen = length;
+}

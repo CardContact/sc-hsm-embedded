@@ -70,7 +70,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 	}
 
 	if (pObject->C_EncryptInit != NULL) {
-		rv = pObject->C_EncryptInit(pMechanism);
+		rv = pObject->C_EncryptInit(pObject, pMechanism);
 	} else {
 		return CKR_FUNCTION_NOT_SUPPORTED;
 	}
@@ -124,7 +124,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
 	}
 
 	if (pObject->C_Encrypt != NULL) {
-		rv = pObject->C_Encrypt(pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
+		rv = pObject->C_Encrypt(pObject, pSession->activeMechanism, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
 	} else {
 		return CKR_FUNCTION_NOT_SUPPORTED;
 	}
@@ -174,7 +174,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptUpdate)(
 	}
 
 	if (pObject->C_EncryptUpdate != NULL) {
-		rv = pObject->C_EncryptUpdate(pPart, ulPartLen, pEncryptedPart, pulEncryptedPartLen);
+		rv = pObject->C_EncryptUpdate(pObject, pSession->activeMechanism, pPart, ulPartLen, pEncryptedPart, pulEncryptedPartLen);
 	} else {
 		return CKR_FUNCTION_NOT_SUPPORTED;
 	}
@@ -221,7 +221,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptFinal)(
 	}
 
 	if (pObject->C_EncryptFinal != NULL) {
-		rv = pObject->C_EncryptFinal(pLastEncryptedPart, pulLastEncryptedPartLen);
+		rv = pObject->C_EncryptFinal(pObject, pSession->activeMechanism, pLastEncryptedPart, pulLastEncryptedPartLen);
 	} else {
 		return CKR_FUNCTION_NOT_SUPPORTED;
 	}
@@ -243,9 +243,46 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptInit)(
 		CK_OBJECT_HANDLE hKey
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	int rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
+
+	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
+
+	if (pSession->activeObjectHandle != -1) {
+		return CKR_OPERATION_ACTIVE;
+	}
+
+	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+
+	if (pSlot == NULL) {
+		return CKR_GENERAL_ERROR;
+	}
+
+	rv = findSlotObject(pSlot, hKey, &pObject, FALSE);
+
+	if (rv != CKR_OK) {
+		return rv;
+	}
+
+	if (pObject->C_DecryptInit != NULL) {
+		rv = pObject->C_DecryptInit(pObject, pMechanism);
+	} else {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+
+	if (!rv) {
+		pSession->activeObjectHandle = pObject->handle;
+		pSession->activeMechanism = pMechanism->mechanism;
+		rv = CKR_OK;
+	}
 
 	return rv;
 }
@@ -261,9 +298,44 @@ CK_DECLARE_FUNCTION(CK_RV, C_Decrypt)(
 		CK_ULONG_PTR pulDataLen
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	int rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
+
+	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
+
+	if (pSession->activeObjectHandle == -1) {
+		return CKR_GENERAL_ERROR;
+	}
+
+	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+
+	if (pSlot == NULL) {
+		return CKR_GENERAL_ERROR;
+	}
+
+	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
+
+	if (rv != CKR_OK) {
+		return rv;
+	}
+
+	if (pData != NULL) {
+		pSession->activeObjectHandle = -1;
+	}
+
+	if (pObject->C_Decrypt != NULL) {
+		rv = pObject->C_Decrypt(pObject, pSession->activeMechanism, pEncryptedData, ulEncryptedDataLen, pData, pulDataLen);
+	} else {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
 
 	return rv;
 }
@@ -280,9 +352,40 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptUpdate)(
 		CK_ULONG_PTR pulPartLen
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	int rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
+
+	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
+
+	if (pSession->activeObjectHandle == -1) {
+		return CKR_GENERAL_ERROR;
+	}
+
+	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+
+	if (pSlot == NULL) {
+		return CKR_GENERAL_ERROR;
+	}
+
+	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
+
+	if (rv != CKR_OK) {
+		return rv;
+	}
+
+	if (pObject->C_DecryptUpdate != NULL) {
+		rv = pObject->C_DecryptUpdate(pObject, pSession->activeMechanism, pEncryptedPart, ulEncryptedPartLen, pPart, pulPartLen);
+	} else {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
 
 	return rv;
 }
@@ -296,9 +399,45 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptFinal)(
 		CK_ULONG_PTR pulLastPartLen
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	int rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
+
+	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
+
+	if (pSession->activeObjectHandle == -1) {
+		return CKR_GENERAL_ERROR;
+	}
+
+	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+
+	if (pSlot == NULL) {
+		return CKR_GENERAL_ERROR;
+	}
+
+	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
+
+	if (rv != CKR_OK) {
+		return rv;
+	}
+
+	if (pObject->C_DecryptFinal != NULL) {
+		rv = pObject->C_DecryptFinal(pObject, pSession->activeMechanism, pLastPart, pulLastPartLen);
+	} else {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+
+	if (!rv) {
+		pSession->activeObjectHandle = -1;
+		rv = CKR_OK;
+	}
 
 	return rv;
 }
@@ -502,9 +641,40 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignUpdate)(
 		CK_ULONG ulPartLen
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
+
+	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
+
+	if (pSession->activeObjectHandle == -1) {
+		return CKR_GENERAL_ERROR;
+	}
+
+	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+
+	if (pSlot == NULL) {
+		return CKR_GENERAL_ERROR;
+	}
+
+	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
+
+	if (rv != CKR_OK) {
+		return rv;
+	}
+
+	if (pObject->C_SignUpdate != NULL) {
+		rv = pObject->C_SignUpdate(pObject, pSession->activeMechanism, pPart, ulPartLen);
+	} else {
+		rv = appendToCryptoBuffer(pSession, pPart, ulPartLen);
+	}
 
 	return rv;
 }
@@ -518,9 +688,52 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 		CK_ULONG_PTR pulSignatureLen
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
+
+	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+
+	if (rv < 0) {
+		return CKR_SESSION_HANDLE_INVALID;
+	}
+
+	if (pSession->activeObjectHandle == -1) {
+		return CKR_GENERAL_ERROR;
+	}
+
+	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+
+	if (pSlot == NULL) {
+		return CKR_GENERAL_ERROR;
+	}
+
+	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
+
+	if (rv != CKR_OK) {
+		return rv;
+	}
+
+	if (pSignature != NULL) {
+		pSession->activeObjectHandle = -1;
+	}
+
+	if (pObject->C_SignFinal != NULL) {
+		rv = pObject->C_SignFinal(pObject, pSession->activeMechanism, pSignature, pulSignatureLen);
+	} else {
+		if (pObject->C_Sign != NULL) {
+			rv = pObject->C_Sign(pObject, pSession->activeMechanism, pSession->cryptoBuffer, pSession->cryptoBufferSize, pSignature, pulSignatureLen);
+		} else {
+			return CKR_FUNCTION_NOT_SUPPORTED;
+		}
+	}
+
+	if (pSignature != NULL) {
+		clearCryptoBuffer(pSession);
+	}
 
 	return rv;
 }

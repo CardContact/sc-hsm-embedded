@@ -43,9 +43,12 @@ struct p11Session_t {
 	CK_USER_TYPE user;                  /**< The user of this session                           */
 	CK_SESSION_HANDLE handle;           /**< The handle of the session                          */
 	int activeObjectHandle;             /**< The handle of the active object, -1 if no object   */
-	CK_MECHANISM_TYPE activeMechanism;	/**< The currenty active mechanism						*/
+	CK_MECHANISM_TYPE activeMechanism;	/**< The currently active mechanism                     */
+	CK_BYTE_PTR cryptoBuffer;           /**< Buffer storing intermediate results                */
+	CK_ULONG cryptoBufferSize;          /**< Current content of crypto buffer                   */
+	CK_ULONG cryptoBufferMax;           /**< Current size of crypto buffer                      */
 
-	struct p11ObjectSearch_t searchObj; /**< Store the result of a search operation */
+	struct p11ObjectSearch_t searchObj; /**< Store the result of a search operation             */
 
 	int numberOfSessionObjects;
 	CK_LONG freeSessionObjNumber;
@@ -91,5 +94,9 @@ int findSessionObject(struct p11Session_t *session, CK_OBJECT_HANDLE handle, str
 int removeSessionObject(struct p11Session_t *session, CK_OBJECT_HANDLE handle);
 
 int addObjectToSearchList(struct p11Session_t *session, struct p11Object_t *object);
+
+int appendToCryptoBuffer(struct p11Session_t *session, CK_BYTE_PTR data, CK_ULONG length);
+
+int clearCryptoBuffer(struct p11Session_t *session);
 
 #endif /* ___SESSION_H_INC___ */

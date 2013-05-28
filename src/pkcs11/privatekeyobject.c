@@ -48,7 +48,9 @@ static struct attributesForObject_t attributesPrivateKeyObject[NEEDED_ATTRIBUTES
 		{{CKA_NEVER_EXTRACTABLE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
 		{{CKA_WRAP_WITH_TRUSTED, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
 		{{CKA_UNWRAP_TEMPLATE, 0, 0}, TRUE},
-		{{CKA_ALWAYS_AUTHENTICATE, &ckFalse, sizeof(CK_BBOOL)}, TRUE}
+		{{CKA_ALWAYS_AUTHENTICATE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
+		{{CKA_MODULUS, 0, 0}, TRUE},
+		{{CKA_PUBLIC_EXPONENT, 0, 0}, TRUE}
 };
 
 

@@ -62,6 +62,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 
 	rc = findSessionBySlotID(context->sessionPool, slotID, &session);
 
+	rc = -1;
 	if (rc < 0) {   /* there is no open session for this slot */
 
 		session = (struct p11Session_t *) malloc(sizeof(struct p11Session_t));
@@ -174,13 +175,27 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSessionInfo)(
 )
 {
 	int rv;
+	struct p11Slot_t *slot;
+	struct p11Token_t *token;
 	struct p11Session_t *session;
-
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv < 0) {
 		return CKR_SESSION_HANDLE_INVALID;
+	}
+
+	rv = findSlot(context->slotPool, session->slotID, &slot);
+
+	if (rv < 0) {
+		return CKR_GENERAL_ERROR;   /* normally we should never be here */
+	}
+
+	rv = getToken(slot, &token);
+
+	if (rv != CKR_OK) {
+		C_CloseSession(hSession);
+		return CKR_SESSION_CLOSED;
 	}
 
 	pInfo->slotID = session->slotID;
