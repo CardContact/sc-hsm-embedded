@@ -4,7 +4,7 @@
  * |*       *|  32429 Minden, Germany (www.cardcontact.de)
  * |*       *|  Copyright (c) 1999-2003. All rights reserved
  * |'**> <**'|  See file COPYING for details on licensing
- *  --------- 
+ *  ---------
  *
  * The Smart Card Development Platform (SCDP) provides a basic framework to
  * implement smartcard aware applications.
@@ -199,7 +199,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismList)(
 
 
 
-/*  C_GetMechanismInfo obtains information about a particular mechanism 
+/*  C_GetMechanismInfo obtains information about a particular mechanism
     supported by a token. */
 CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismInfo)(
 		CK_SLOT_ID slotID,
@@ -231,7 +231,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismInfo)(
 	case CKM_SHA1_RSA_PKCS_PSS:
 	case CKM_SHA256_RSA_PKCS_PSS:
 		pInfo->flags = CKF_SIGN;
-		pInfo->flags |= CKF_ENCRYPT|CKF_GENERATE_KEY_PAIR;	// Quick fix for Peter Gutmann's cryptlib
+		pInfo->flags |= CKF_HW|CKF_ENCRYPT|CKF_DECRYPT|CKF_GENERATE_KEY_PAIR;	// Quick fix for Peter Gutmann's cryptlib
 		pInfo->ulMinKeySize = 1024;
 		pInfo->ulMaxKeySize = 2048;
 		break;
@@ -239,7 +239,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismInfo)(
 	case CKM_ECDSA:
 	case CKM_ECDSA_SHA1:
 		pInfo->flags = CKF_SIGN;
-		pInfo->flags |= CKF_VERIFY|CKF_GENERATE_KEY_PAIR; // Quick fix for Peter Gutmann's cryptlib
+		pInfo->flags |= CKF_HW|CKF_VERIFY|CKF_GENERATE_KEY_PAIR; // Quick fix for Peter Gutmann's cryptlib
 		pInfo->ulMinKeySize = 192;
 		pInfo->ulMaxKeySize = 320;
 		break;
@@ -398,7 +398,7 @@ return CKR_FUNCTION_NOT_SUPPORTED;
 
 
 
-/*  C_SetPIN modifies the PIN of the user that is currently logged in, 
+/*  C_SetPIN modifies the PIN of the user that is currently logged in,
     or the CKU_USER PIN if the session is not logged in. */
 CK_DECLARE_FUNCTION(CK_RV, C_SetPIN)(
 		CK_SESSION_HANDLE hSession,
