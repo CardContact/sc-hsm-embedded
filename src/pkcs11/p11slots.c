@@ -231,6 +231,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismInfo)(
 	case CKM_SHA1_RSA_PKCS_PSS:
 	case CKM_SHA256_RSA_PKCS_PSS:
 		pInfo->flags = CKF_SIGN;
+		pInfo->flags |= CKF_ENCRYPT|CKF_GENERATE_KEY_PAIR;	// Quick fix for Peter Gutmann's cryptlib
 		pInfo->ulMinKeySize = 1024;
 		pInfo->ulMaxKeySize = 2048;
 		break;
@@ -238,6 +239,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismInfo)(
 	case CKM_ECDSA:
 	case CKM_ECDSA_SHA1:
 		pInfo->flags = CKF_SIGN;
+		pInfo->flags |= CKF_VERIFY|CKF_GENERATE_KEY_PAIR; // Quick fix for Peter Gutmann's cryptlib
 		pInfo->ulMinKeySize = 192;
 		pInfo->ulMaxKeySize = 320;
 		break;
