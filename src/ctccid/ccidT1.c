@@ -18,7 +18,6 @@
 
 #ifdef DEBUG
 #include <stdio.h>
-#include "dump.h"
 #endif
 
 #include <stdlib.h>
@@ -26,6 +25,8 @@
 
 #include "ccidT1.h"
 #include "ccid_usb.h"
+#include "dump.h"
+
 
 /**
  * Initialize all T=1 protocol parameter to its default values
@@ -69,9 +70,6 @@ int ccidT1Term (struct scr *ctx)
  */
 void ccidT1BlockInfo(unsigned char Nad, unsigned char Pcb, int InBuffLength, unsigned char *InBuff)
 {
-	unsigned char *ptr;
-	int cnt;
-
 	printf("SAD:%02d-DAD:%02d  ", SAD(Nad), DAD(Nad));
 
 	if (ISIBLOCK(Pcb)) {

@@ -106,10 +106,10 @@ typedef struct ccidT1 {
 
 #define VPPERRRES       0x24            /* S-block with VPPERR response      */
 
-#define CODENAD(sad,dad)    (unsigned char)(((dad & 0x0F) << 4) + (sad & 0x0F))
-#define CODESBLOCK(x)       (unsigned char)((x)|NONIBLOCK|SBLOCK)
-#define CODERBLOCK(nr,rc)   (unsigned char)(NONIBLOCK|((nr) << 4)|(rc))
-#define CODEIBLOCK(ns,mb)   (unsigned char)(((ns) << 6)|((mb) << 5))
+#define CODENAD(sad,dad)    (unsigned char)((((dad) & 0x0F) << 4) | (sad & 0x0F))
+#define CODESBLOCK(x)       (unsigned char)((x) | NONIBLOCK | SBLOCK)
+#define CODERBLOCK(nr,rc)   (unsigned char)(NONIBLOCK | ((nr) << 4) | (rc))
+#define CODEIBLOCK(ns,mb)   (unsigned char)(((ns) << 6) | ((mb) << 5))
 
 #define ISIBLOCK(x)     (!((x) & NONIBLOCK))                    /* I block   */
 #define ISRBLOCK(x)     (((x) & NONIBLOCK) && !((x) & SBLOCK))  /* R block   */

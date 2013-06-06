@@ -1,0 +1,6 @@
+EXPORTS
+	SignHash
+	ReleaseState
+	sha256_starts
+	sha256_update
+	sha256_finish

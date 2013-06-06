@@ -8,19 +8,21 @@
  *
  * See file LICENSE for details on licensing
  *
- * Abstract :       Set of utility functions
+ * Abstract :       Simple abstraction layer for USB devices using libusb
  *
- * Author :         Frank Thater
+ * Author :         Christoph Brunhuber
  *
- * Last modified:   2013-05-07
+ * Last modified:   2013-05-24
  *
  *****************************************************************************/
 
 #include <stdio.h>
 #include <string.h>
 
-#include <ctccid/ctapi.h>
 #include "utils.h"
+
+typedef unsigned char uint8;
+typedef unsigned short uint16;
 
 /*
  *  Process an ISO 7816 APDU with the underlying terminal hardware.
@@ -33,116 +35,106 @@
  *  OutData : Outgoing data or NULL if none
  *  InLen   : Length of incoming data (Le)
  *  InData  : Input buffer for incoming data
- *  InSize  : buffer size
  *  SW1SW2  : Address of short integer to receive SW1SW2
+ *  scr     : Internal buffer
+ *  scrSize : Size of internal buffer (>= 10 + OutLen AND >= InLen + 2 AND < 32768)
  *
  *  Returns : < 0 Error >= 0 Bytes read
  */
-
-int ProcessAPDUIntern(
-	int ctn, int todad,
-	unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
-	int OutLen, unsigned char *OutData,
-	int InLen, unsigned char *InData, int InSize, unsigned short *SW1SW2,
-	unsigned char* scr, int srcSize)
+int ProcessAPDU(int ctn, int todad,
+				uint8 CLA, uint8 INS, uint8 P1, uint8 P2,
+				int OutLen, uint8 *OutData,
+				int InLen, uint8 *InData, uint16 *SW1SW2, 
+				uint8 *scr, int scrLen)
 {
-	int  rv, rc, r, retry;
-	unsigned short lenr;
-	unsigned char dad, sad;
-	unsigned char *po;
+	int rv, rc, r, retry;
+	uint16 lenr;
+	uint8 dad, sad;
+	uint8 *po;
 
 	/* Reset status word */
 	*SW1SW2 = 0x0000;
 
-	retry = 2;
-
-	if (4 + 3 + 2 + OutLen > srcSize) { /* worst case */
+	if (!scr
+		|| 4 + 3 + 3 + OutLen > scrLen         /* worst case: long APDU and in and out */
+		|| InLen + 2 > scrLen                  /* need space for SW1SW2 */
+		|| !(0 <= InLen  && InLen  <= 0x10000) /* crazy - invalid in length */
+		|| !(0 <= OutLen && OutLen <= 0x10000) /* crazy - invalid out length */
+		|| OutLen > 0 && !OutData              /* no out buffer */
+		|| InLen  > 0 && !InData               /* no in buffer */
+	)
 		return ERR_MEMORY;
-	}
-
-	while (retry--) {
+	
+	for (retry = 0; retry < 2; retry++) {
 		scr[0] = CLA;
 		scr[1] = INS;
 		scr[2] = P1;
 		scr[3] = P2;
 		po = scr + 4;
-		rv = 0;
-
-		if (OutData && OutLen) {
-			if (OutLen <= 255 && InLen <= 255) {
-				*po++ = (unsigned char)OutLen;
-			} else {
-				*po++ = 0;
-				*po++ = (unsigned char)(OutLen >> 8);
-				*po++ = (unsigned char)(OutLen >> 0);
+		if (OutLen <= 255 && InLen <= 256) {
+			/*
+				use short APDU
+			 */
+			if (OutLen > 0) {                /* Lc present */
+				*po++ = (uint8)OutLen;			
+				memcpy(po, OutData, OutLen);
+				po += OutLen;
 			}
-			memcpy(po, OutData, OutLen);
-			po += OutLen;
+			if (InLen > 0)                   /* Le present */
+				*po++ = (uint8)InLen;        /* (uint8)256 == 0 */
+		} else {
+			/*
+				use long APDU
+			 */
+			*po++ = 0;                       /* indicate long APDU */
+			if (OutLen > 0) {                /* Lc present */
+				*po++ = (uint8)(OutLen >> 8);
+				*po++ = (uint8)(OutLen     );
+				memcpy(po, OutData, OutLen);
+				po += OutLen;
+			}
+			if (InLen > 0) {                 /* Le present */
+				*po++ = (uint8)(InLen >> 8);
+				*po++ = (uint8)(InLen     );
+			}
+
 		}
 
-		if (InData && InSize) {
-			if (InLen <= 255 && OutLen <= 255) {
-				*po++ = (unsigned char)InLen;
-			} else {
-				if (!OutData) {
-					*po++ = 0;
-				}
-				if (InLen >= 0x10000) {
-					InLen = 0;
-				}
-				*po++ = (unsigned char)(InLen >> 8);
-				*po++ = (unsigned char)(InLen >> 0);
-			}
-		}
-
-		sad  = HOST;
-		dad  = todad;
-		lenr = srcSize;
-
+		sad = HOST;
+		dad = todad;
+		lenr = scrLen;
 		rc = CT_data(ctn, &dad, &sad, po - scr, scr, &lenr, scr);
-
-		if (rc < 0) {
+		if (rc < 0)
 			return rc;
-		}
-
-		if (scr[lenr - 2] == 0x6C) {
-			InLen = scr[lenr - 1];
-			continue;
-		}
+		if (lenr < 2) /* SW1SW2 missing? */
+			return ERR_INVALID;
+		if (InLen < lenr - 2) /* never truncate */
+			return ERR_INVALID;
+		if (scr[lenr - 2] == 0x6C) /* not enough buffer supplied */
+			return ERR_MEMORY;
 
 		rv = lenr - 2;
-
-		if (rv < 0) {
-			return -1;
-		}
-
-		if (rv > InSize) {
-			rv = InSize;
-		}
-
-		if (InData) {
+		if (InLen > 0)
 			memcpy(InData, scr, rv);
-		}
 
-		if (scr[lenr - 2] == 0x9F || scr[lenr - 2] == 0x61) {
-			if (InData && InSize) {             /* Get Response             */
-				r = ProcessAPDUIntern(
-						ctn, todad,
-						CLA == 0xE0 || CLA == 0x80 ? 0x00 : CLA, 0xC0, 0, 0,
-						0, NULL,
-						scr[1], InData + rv, InSize - rv, SW1SW2,
-						scr, srcSize);
-
-				if (r < 0) {
+		if (scr[lenr - 2] == 0x9F || scr[lenr - 2] == 0x61) { /* check SW1 */
+			if (InLen > 0) { /* Get Response */
+				if (scr[lenr - 1] > InLen - rv)
+					return ERR_MEMORY;
+				if (CLA == 0xE0 || CLA == 0x80)
+					CLA = 0;
+				r = ProcessAPDU(ctn, todad, CLA, 0xC0, 0, 0,
+								0, NULL,
+								scr[lenr - 1], InData + rv, SW1SW2,
+								scr, scrLen);
+				if (r < 0)
 					return r;
-				}
-
 				rv += r;
-			} else {
+			} else { /* TODO: why success */
 				*SW1SW2 = 0x9000;
 			}
 		} else {
-			*SW1SW2 = (scr[lenr - 2] << 8) + scr[lenr - 1];
+			*SW1SW2 = (scr[lenr - 2] << 8) | scr[lenr - 1];
 		}
 
 		break;
@@ -153,22 +145,6 @@ int ProcessAPDUIntern(
 
 
 
-int ProcessAPDU(
-	int ctn, int todad,
-	unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
-	int OutLen, unsigned char *OutData,
-	int InLen, unsigned char *InData, int InSize, unsigned short *SW1SW2)
-
-{
-	unsigned char scr[MAX_APDULEN];
-
-	return ProcessAPDUIntern(
-			   ctn, todad,
-			   CLA, INS, P1, P2,
-			   OutLen, OutData,
-			   InLen, InData, InSize, SW1SW2,
-			   scr, MAX_APDULEN);
-}
 
 /*
  * Dump the memory pointed to by <ptr>
@@ -176,7 +152,7 @@ int ProcessAPDU(
  */
 void Dump(void *_ptr, int len)
 {
-	unsigned char *ptr = (unsigned char *)_ptr;
+	uint8 *ptr = (uint8 *)_ptr;
 	int i;
 
 #ifdef DEBUG
@@ -215,7 +191,7 @@ void Dump(void *_ptr, int len)
 		printf(" ");
 
 		for (j = i; j < i1; j++) {
-			unsigned char ch = ptr[j];
+			uint8 ch = ptr[j];
 
 			if (!isprint(ch)) {
 				ch = '.';

@@ -19,6 +19,12 @@
 #ifndef __DUMP_H__                     /* Prevent from including twice      */
 #define __DUMP_H__
 
+
+#if defined(_DEBUG) && !defined(DEBUG) /* msvc defines _DEBUG rather than DEBUG */
+#define DEBUG
+#endif
+
+
 #ifdef __cplusplus                      /* Support for C++ compiler          */
 extern "C" {
 #endif

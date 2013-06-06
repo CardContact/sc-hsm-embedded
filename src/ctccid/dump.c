@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "dump.h"
 
@@ -33,7 +34,6 @@ void ctccidDump(void *_ptr, int len)
 	unsigned char *ptr = (unsigned char *)_ptr;
 	int i;
 
-#ifdef DEBUG
 	static char *MinStack = (char *)-1;
 	static char *MaxStack; /* = 0; */
 	if (MinStack > (char *)&ptr)
@@ -41,9 +41,6 @@ void ctccidDump(void *_ptr, int len)
 	if (MaxStack < (char *)&ptr)
 		MaxStack = (char *)&ptr;
 	printf("Dump(%p, %d) stack used so far: %d", ptr, len, MaxStack - MinStack);
-#else
-	printf("Dump(%p, %d)", ptr, len);
-#endif
 
 	for (i = 0; i < len; i += 16) {
 		int i1 = i + 16;
@@ -81,4 +78,5 @@ void ctccidDump(void *_ptr, int len)
 
 	printf("\n");
 }
+
 #endif

@@ -22,6 +22,13 @@
 
 #include <ctccid/ctapi.h>
 
+#ifndef _WIN32
+#define PIN (unsigned char *)"648219"
+#define SOPINPIN (unsigned char *)"\x35\x37\x36\x32\x31\x38\x38\x30\x36\x34\x38\x32\x31\x39"
+#else
+#define PIN (unsigned char *)"123456"
+#define SOPINPIN (unsigned char *)"\x35\x37\x36\x32\x31\x38\x38\x30\x31\x32\x33\x34\x35\x36"
+#endif
 
 unsigned char requesticc[5] = {0x20,0x12,0x00,0x01,0x00};
 unsigned char getstatus[5] = {0x20,0x13,0x00,0x46,0x00};
@@ -450,10 +457,30 @@ int TestProcessorCard(int ctn)
 	printf("\n- SmartCard-HSM: VERIFY PIN for ctn=%d ------------------\n\n", ctn);
 
 	rc = ProcessAPDU(ctn, 0, 0x00,0x20,0x00,0x81,
-					 6, (unsigned char *)"648219",
+					 6, PIN,
 					 0, NULL, 0, &SW1SW2);
 
 	printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
+
+	if (SW1SW2 != 0x9000) { /* pin invalid */
+
+		printf("\n- SmartCard-HSM: RESET RETRY COUNTER for ctn=%d ------------------\n\n", ctn);
+
+		rc = ProcessAPDU(ctn, 0, 0x00,0x2C,0x00,0x81,
+						 14, SOPINPIN,
+						 0, NULL, 0, &SW1SW2);
+
+		printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
+
+		printf("\n- SmartCard-HSM: VERIFY PIN again for ctn=%d ------------------\n\n", ctn);
+
+		rc = ProcessAPDU(ctn, 0, 0x00,0x20,0x00,0x81,
+						 6, PIN,
+						 0, NULL, 0, &SW1SW2);
+
+		printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
+
+	}
 
 	printf("\n- SmartCard-HSM: READ EF_DevAut for ctn=%d ------------------\n\n", ctn);
 
@@ -484,9 +511,9 @@ int TestProcessorCard(int ctn)
 
 	printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
 
-	printf("\n- SmartCard-HSM: GAKP(RSA) for ctn=%d ------------------\n\n", ctn);
+	printf("\n- SmartCard-HSM: GAKP(RSA) key-id=0x10 for ctn=%d ------------------\n\n", ctn);
 
-	rc = ProcessAPDU(ctn, 0, 0x00,0x46,0x01,0x00,
+	rc = ProcessAPDU(ctn, 0, 0x00,0x46,0x10,0x00,
 					 63, (unsigned char*)"\x5F\x29\x01\x00\x42\x0E\x44\x45\x43\x41\x30\x30\x30\x30\x31\x30\x30\x30\x30\x31\x7F\x49\x15\x06\x0A\x04\x00\x7F\x00\x07\x02\x02\x02\x01\x02\x82\x03\x01\x00\x01\x02\x02\x08\x00\x5F\x20\x10\x55\x54\x54\x45\x53\x54\x4B\x45\x59\x30\x31\x30\x30\x30\x30\x30",
 					 65536, Brsp, sizeof(Brsp), &SW1SW2);
 
@@ -496,11 +523,24 @@ int TestProcessorCard(int ctn)
 		MyDump(Brsp, rc);
 	}
 
-	printf("\n- SmartCard-HSM: SIGN for ctn=%d ------------------\n\n", ctn);
+	printf("\n- SmartCard-HSM: SIGN key-id=0x10 for ctn=%d ------------------\n\n", ctn);
 
-	rc = ProcessAPDU(ctn, 0, 0x80,0x68,0x01,0xA0,
+	rc = ProcessAPDU(ctn, 0, 0x80,0x68,0x10,0xA0,
 					 11, (unsigned char*)"Hello World",
 					 0, Brsp, sizeof(Brsp), &SW1SW2);
+
+	printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
+
+	if (rc >= 0) {
+		MyDump(Brsp, rc);
+	}
+
+
+	printf("\n- SmartCard-HSM: DELETE OBJECT key-id=0x10 for ctn=%d ------------------\n\n", ctn);
+
+	rc = ProcessAPDU(ctn, 0, 0x00,0xE4,0x02,0x00,
+					 2, (unsigned char*)"\xCC\x10",
+					 0, NULL, 0, &SW1SW2);
 
 	printf("rc=%d, SW1SW2=%04X: ", rc, SW1SW2);
 

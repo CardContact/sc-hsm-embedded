@@ -24,6 +24,9 @@
 #include <windows.h>
 #include <malloc.h>
 #include <stdio.h>
+#if defined(_DEBUG) && !defined(DEBUG) /* msvc defines _DEBUG rather than DEBUG */
+#define DEBUG
+#endif
 #define usleep(us) Sleep((us) / 1000)
 #endif
 

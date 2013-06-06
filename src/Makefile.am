@@ -1,2 +1,2 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
-SUBDIRS = ctccid pkcs11 tests
+SUBDIRS = ctccid pkcs11 tests utils
