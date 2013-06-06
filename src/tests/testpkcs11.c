@@ -200,9 +200,17 @@ struct id2name_t p11CKKName[] = {
 };
 
 
+CK_UTF8CHAR pin[] = "648219";
+CK_UTF8CHAR wrongpin[] = "111111";
+CK_ULONG pinlen = 6;
+
+CK_UTF8CHAR sopin[] = "3537363231383830";
+CK_ULONG sopinlen = 16;
+
 
 int testscompleted = 0;
 int testsfailed = 0;
+
 
 static char *verdict(int condition) {
 	testscompleted++;
@@ -639,13 +647,110 @@ void testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 
 
+void testSessions(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
+{
+	int rc;
+	CK_SESSION_INFO sessioninfo;
+	CK_SESSION_HANDLE session1, session2, session3;
+
+	printf("Calling C_OpenSession ");
+	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session1);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	printf("Calling C_OpenSession ");
+	rc = p11->C_OpenSession(slotid, CKF_SERIAL_SESSION, NULL, NULL, &session2);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	printf("Calling C_GetSessionInfo ");
+	rc = p11->C_GetSessionInfo(session1, &sessioninfo);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_PUBLIC_SESSION));
+
+	printf("Calling C_GetSessionInfo ");
+	rc = p11->C_GetSessionInfo(session2, &sessioninfo);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RO_PUBLIC_SESSION));
+
+	printf("Calling C_CloseSession ");
+	rc = p11->C_CloseSession(session2);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	printf("Calling C_CloseSession with wrong handle ");
+	rc = p11->C_CloseSession(session2);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_SESSION_HANDLE_INVALID));
+
+	printf("Calling C_CloseSession ");
+	rc = p11->C_CloseSession(session1);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	// Sequence inspired by PKCS#11 example
+	printf("Calling C_OpenSession ");
+	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session1);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	printf("Calling C_OpenSession ");
+	rc = p11->C_OpenSession(slotid, CKF_SERIAL_SESSION, NULL, NULL, &session2);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	printf("Calling C_Login(SO) ");
+	rc = p11->C_Login(session1, CKU_SO, sopin, sopinlen);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_SESSION_READ_ONLY_EXISTS));
+
+	printf("Calling C_Login(SO) ");
+	rc = p11->C_Login(session2, CKU_SO, sopin, sopinlen);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_SESSION_READ_ONLY));
+
+	printf("Calling C_Login(USER) ");
+	rc = p11->C_Login(session1, CKU_USER, pin, pinlen);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	printf("Calling C_GetSessionInfo ");
+	rc = p11->C_GetSessionInfo(session1, &sessioninfo);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_USER_FUNCTIONS));
+
+	printf("Calling C_GetSessionInfo ");
+	rc = p11->C_GetSessionInfo(session2, &sessioninfo);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RO_USER_FUNCTIONS));
+
+	printf("Calling C_OpenSession ");
+	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session3);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	printf("Calling C_GetSessionInfo ");
+	rc = p11->C_GetSessionInfo(session3, &sessioninfo);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_USER_FUNCTIONS));
+
+	printf("Calling C_CloseSession ");
+	rc = p11->C_CloseSession(session3);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	printf("Calling C_Logout ");
+	rc = p11->C_Logout(session1);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	printf("Calling C_GetSessionInfo ");
+	rc = p11->C_GetSessionInfo(session1, &sessioninfo);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_PUBLIC_SESSION));
+
+	printf("Calling C_GetSessionInfo ");
+	rc = p11->C_GetSessionInfo(session2, &sessioninfo);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RO_PUBLIC_SESSION));
+
+	printf("Calling C_CloseAllSessions ");
+	rc = p11->C_CloseAllSessions(slotid);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+}
+
+
 
 void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
 	int rc;
-	CK_UTF8CHAR pin[] = "648219";
-	CK_UTF8CHAR wrongpin[] = "111111";
-	CK_ULONG pinlen = 6;
 	CK_SESSION_INFO sessioninfo;
 	CK_TOKEN_INFO tokeninfo;
 
@@ -908,6 +1013,8 @@ void main(int argc, char *argv[])
 
 	slotid = *(slotlist + j);
 	free(slotlist);
+
+	testSessions(p11, slotid);
 
 	printf("Calling C_OpenSession ");
 

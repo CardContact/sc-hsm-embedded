@@ -60,42 +60,32 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 		return rc;
 	}
 
-	rc = findSessionBySlotID(context->sessionPool, slotID, &session);
-
-	rc = -1;
-	if (rc < 0) {   /* there is no open session for this slot */
-
-		session = (struct p11Session_t *) malloc(sizeof(struct p11Session_t));
-
-		if (session == NULL) {
-			return CKR_HOST_MEMORY;
-		}
-
-		memset(session, 0x00, sizeof(struct p11Session_t));
-
-		session->slotID = slotID;
-		session->flags = flags;
-		session->activeObjectHandle = -1;
-
-		/* initial session state */
-		session->state = (session->flags & CKF_RW_SESSION) ? CKS_RW_PUBLIC_SESSION : CKS_RO_PUBLIC_SESSION;
-
-		session->user = 0xFF;                       /* no user is logged in  */
-
-		addSession(context->sessionPool, session);
-
-		*phSession = session->handle;               /* we got a valid handle by calling addSession() */
-
-
-	} else { /* there is an active session - check the state */
-
-		if ((session->flags & CKF_RW_SESSION) && (session->user == CKU_SO)) { /* there is already an active r/w session for SO */
-			return CKR_SESSION_READ_WRITE_SO_EXISTS;
-		}
-
-		return CKR_SESSION_EXISTS;
+	if (!(flags & CKF_RW_SESSION) && (token->user == CKU_SO)) { /* there is already an active r/w session for SO */
+		return CKR_SESSION_READ_WRITE_SO_EXISTS;
 	}
 
+	session = (struct p11Session_t *) malloc(sizeof(struct p11Session_t));
+
+	if (session == NULL) {
+		return CKR_HOST_MEMORY;
+	}
+
+	memset(session, 0x00, sizeof(struct p11Session_t));
+
+	session->slotID = slotID;
+	session->flags = flags;
+	session->activeObjectHandle = -1;
+
+	/* initial session state */
+	session->state = (session->flags & CKF_RW_SESSION) ? CKS_RW_PUBLIC_SESSION : CKS_RO_PUBLIC_SESSION;
+
+	addSession(context->sessionPool, session);
+
+	*phSession = session->handle;               /* we got a valid handle by calling addSession() */
+
+	if (!(flags & CKF_RW_SESSION)) {
+		token->rosessions++;
+	}
 	return CKR_OK;
 }
 
@@ -107,6 +97,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseSession)(
 )
 {
 	int rc;
+	struct p11Slot_t *slot;
+	struct p11Token_t *token;
 	struct p11Session_t *session;
 	struct p11Object_t *object, *tmp;
 
@@ -114,6 +106,22 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseSession)(
 
 	if (rc < 0) {
 		return CKR_SESSION_HANDLE_INVALID;
+	}
+
+	findSlot(context->slotPool, session->slotID, &slot);
+
+	if (slot == NULL) {
+		return CKR_SLOT_ID_INVALID;
+	}
+
+	rc = getToken(slot, &token);
+
+	if (rc != CKR_OK) {
+		return rc;
+	}
+
+	if (!(session->flags & CKF_RW_SESSION)) {
+		token->rosessions--;
 	}
 
 	object = session->sessionObjList;
@@ -148,19 +156,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseAllSessions)(
 		return CKR_SESSION_HANDLE_INVALID;
 	}
 
-	session = context->sessionPool->list;
-
-	while (session != NULL) {
-
-		tmp = session->next;
-
-		rc = removeSession(context->sessionPool, session->handle);
-
-		if (rc < 0) {
-			return CKR_SESSION_HANDLE_INVALID;
-		}
-
-		session = tmp;
+	while(session = context->sessionPool->list) {
+		C_CloseSession(session->handle);
 	}
 
 	return CKR_OK;
@@ -202,7 +199,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSessionInfo)(
 	pInfo->flags = session->flags;
 	pInfo->ulDeviceError = 0;
 
-	switch (session->user) {
+	switch (token->user) {
 	case CKU_USER:
 		pInfo->state = (session->flags & CKF_RW_SESSION) ? CKS_RW_USER_FUNCTIONS : CKS_RO_USER_FUNCTIONS;
 		break;
@@ -288,12 +285,21 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
 		return rv;
 	}
 
-	if ((session->user == CKU_USER) || (session->user == CKU_SO)) {
+	if ((token->user == CKU_USER) || (token->user == CKU_SO)) {
 		return CKR_USER_ALREADY_LOGGED_IN;
 	}
 
-	if (!(token->info.flags & CKF_USER_PIN_INITIALIZED) && (userType == CKU_USER)) {
-		return CKR_USER_PIN_NOT_INITIALIZED;
+	if (userType == CKU_USER) {
+		if (!(token->info.flags & CKF_USER_PIN_INITIALIZED)) {
+			return CKR_USER_PIN_NOT_INITIALIZED;
+		}
+	} else {
+		if (!(session->flags & CKF_RW_SESSION)) {
+			return CKR_SESSION_READ_ONLY;
+		}
+		if (token->rosessions) {
+			return CKR_SESSION_READ_ONLY_EXISTS;
+		}
 	}
 
 	rv = logIn(slot, userType, pPin, ulPinLen);
@@ -302,9 +308,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
 		return rv;
 	}
 
-	session->user = userType;
+	token->user = userType;
 
-	if (session->user == CKU_SO) {
+	if (token->user == CKU_SO) {
 		session->state = CKS_RW_SO_FUNCTIONS;
 	} else {
 		session->state = (session->flags & CKF_RW_SESSION) ? CKS_RW_USER_FUNCTIONS : CKS_RO_USER_FUNCTIONS;
@@ -344,6 +350,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_Logout)(
 		return rv;
 	}
 
+	slot->token->user = 0xFF;
+
 	rv = logOut(slot);
 
 	if (rv != CKR_OK) {
@@ -352,7 +360,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_Logout)(
 
 	// reset initital session state
 	session->state = (session->flags & CKF_RW_SESSION) ? CKS_RW_PUBLIC_SESSION : CKS_RO_PUBLIC_SESSION;
-	session->user = 0xFF;                       /* no user is logged in  */
 
 	return CKR_OK;
 }

@@ -108,7 +108,7 @@ int terminateSessionPool(struct p11SessionPool_t *pool)
  * This funcions sets the handle of the session object to a valid value.
  *
  * @param pool       Pointer to session-pool structure.
- * @param slot       Pointer to session structure.
+ * @param session    Pointer to session structure.
  *
  * @return          
  *                   <P><TABLE>
@@ -155,7 +155,7 @@ int addSession(struct p11SessionPool_t *pool, struct p11Session_t *session)
  *
  * @param pool       Pointer to slot-pool structure.
  * @param handle     The handle of the session.
- * @param slot       Pointer to pointer to session structure.
+ * @param session    Pointer to session structure.
  *                   If the session is found, this pointer holds the specific session structure - otherwise NULL.
  *
  * @return          
@@ -201,8 +201,8 @@ int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle,
  * The session is specified by the slotID of the used slot..
  *
  * @param pool       Pointer to slot-pool structure.
- * @param handle     The handle of the session.
- * @param slot       Pointer to pointer to session structure.
+ * @param slotID     The slot identifier.
+ * @param session    Pointer to session structure.
  *                   If the session is found, this pointer holds the specific session structure - otherwise NULL.
  *
  * @return          
@@ -249,7 +249,7 @@ int findSessionBySlotID(struct p11SessionPool_t *pool, CK_SLOT_ID slotID, struct
  * The session to remove is specified by the session handle.
  *
  * @param pool       Pointer to session-pool structure.
- * @param slotID     The handle of the session.
+ * @param handle     The handle of the session.
  *
  * @return          
  *                   <P><TABLE>
@@ -267,31 +267,21 @@ int findSessionBySlotID(struct p11SessionPool_t *pool, CK_SLOT_ID slotID, struct
 int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle)
 {
 	struct p11Session_t *session;
-	struct p11Session_t *prevSession;
+	struct p11Session_t **pSession;
 	int rc;
 
-	rc = findSessionByHandle(pool, handle, &session);
-
-	/* no slot with this ID found */
-	if (rc < 0) {
-		return rc;
+	pSession = &pool->list;
+	while (*pSession && (*pSession)->handle != handle) {
+		pSession = &((*pSession)->next);
 	}
 
-	if (rc > 0) {      /* there is more than one element in the pool */
+	session = *pSession;
 
-		prevSession = pool->list;
-
-		while (prevSession->next->handle != handle) {
-			prevSession = prevSession->next;
-		}
-
-		prevSession->next = session->next;
-
+	if (!session) {
+		return -1;
 	}
 
-	if (rc == 0) {      /* We removed the last element from the list */
-		pool->list = NULL;
-	}
+	*pSession = session->next;
 
 	if (session->cryptoBuffer) {
 		free(session->cryptoBuffer);

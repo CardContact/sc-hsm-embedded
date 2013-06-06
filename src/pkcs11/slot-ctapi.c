@@ -16,7 +16,7 @@
  *****************************************************************************/
 
 /**
- * \file    slot.c
+ * \file    slot-ctapi.c
  * \author  Frank Thater (fth)
  * \brief   Functions for token management in a specific slot
  *
@@ -476,7 +476,7 @@ int updateSlots(struct p11SlotPool_t *pool)
 	while (slot) {
 		if (slot->closed) {
 			ctn = (unsigned short)slot->id;
-			rc = CT_init(ctn, ctn - 1);
+			rc = CT_init(ctn, ctn);
 
 			if (rc != OK) {
 #ifdef DEBUG
@@ -492,7 +492,7 @@ int updateSlots(struct p11SlotPool_t *pool)
 	while (pool->numberOfSlots < MAX_SLOTS) {
 		ctn = (unsigned short)pool->nextSlotID;
 
-		rc = CT_init(ctn, ctn - 1);
+		rc = CT_init(ctn, ctn);
 
 		if (rc != OK) {
 #ifdef DEBUG
@@ -509,7 +509,7 @@ int updateSlots(struct p11SlotPool_t *pool)
 
 		memset(slot, 0x00, sizeof(struct p11Slot_t));
 
-		sprintf(scr, "CT-API Port #%d", ctn - 1);
+		sprintf(scr, "CT-API Port #%d", ctn);
 		strbpcpy(slot->info.slotDescription,
 				scr,
 				sizeof(slot->info.slotDescription));

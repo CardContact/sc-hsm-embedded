@@ -40,7 +40,6 @@ struct p11Session_t {
 	CK_SLOT_ID slotID;                  /**< The id of the slot for this session                */
 	CK_FLAGS flags;                     /**< The flags of this session                          */
 	CK_STATE state;                     /**< The session state                                  */
-	CK_USER_TYPE user;                  /**< The user of this session                           */
 	CK_SESSION_HANDLE handle;           /**< The handle of the session                          */
 	int activeObjectHandle;             /**< The handle of the active object, -1 if no object   */
 	CK_MECHANISM_TYPE activeMechanism;	/**< The currently active mechanism                     */

@@ -363,37 +363,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitPIN)(
 
 	token = slot->token;
 
-	if (token->pinUserInitialized) {
-		return CKR_FUNCTION_FAILED;
-	}
-
-#if 0
-memset(token->pinUser, 0x00, 8);
-memset(tmp, 0x00, 8);
-l = ulPinLen > 8 ? 8 : ulPinLen;
-memcpy(tmp, pPin, l);
-
-computePINReferenceValue((des_cblock *) &tmp, (des_cblock *) &tmp, (des_cblock *) token->pinUser);
-
-/* Now we compute the random transport keys - we use the user pin reference as seed */
-createRandomKey((des_cblock *) token->pinUser, (des_cblock *) token->transportKey1);
-createRandomKey((des_cblock *) token->pinUser, (des_cblock *) token->transportKey2);
-
-/* Encrypt the transport key */
-encryptTransportKey((des_cblock *) token->pinUser, (des_cblock *) token->transportKey1, (des_cblock *) token->transportKey1);
-encryptTransportKey((des_cblock *) token->pinUser, (des_cblock *) token->transportKey2, (des_cblock *) token->transportKey2);
-
-createRandomKey((des_cblock *) token->pinUser, (des_cblock *) token->objMACKey);
-
-token->pinUserInitialized = TRUE;
-token->info.flags |= CKF_USER_PIN_INITIALIZED;
-
-if(synchronizeTokenToDisk(slot, token)) {
-	return CKR_GENERAL_ERROR;
-}
-#endif
-
-return CKR_FUNCTION_NOT_SUPPORTED;
+	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 
@@ -433,11 +403,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetPIN)(
 	}
 
 	token = slot->token;
-
-	if ((session->user == CKU_USER) || (session->user == 0xFF)) {
-		if (!token->pinUserInitialized)
-			return CKR_USER_PIN_NOT_INITIALIZED;
-	}
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }

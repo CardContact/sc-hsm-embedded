@@ -16,7 +16,7 @@
  *****************************************************************************/
 
 /**
- * \file    slot.c
+ * \file    token-sc-hsm.c
  * \author  Andreas Schwier (ASC)
  * \brief   SmartCard-HSM functions
  *
@@ -753,29 +753,33 @@ static int updatePinStatus(struct p11Token_t *token, int pinstatus)
 
 int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin, int pinlen)
 {
-	int rc;
+	int rc = CKR_OK;
 	unsigned short SW1SW2;
 	FUNC_CALLED();
 
-	if (userType != CKU_USER) {
-		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "sc_hsm_login with other than user PIN not possible");
+	if (userType == CKU_SO) {
+		if (pinlen != 16) {
+			FUNC_FAILS(CKR_ARGUMENTS_BAD, "SO-PIN must be 16 characters long");
+		}
+		// Store SO PIN
+	} else {
+		rc = transmitAPDU(slot, 0x00, 0x20, 0x00, 0x081,
+				pinlen, pin,
+				0, NULL, 0, &SW1SW2);
+
+		if (rc < 0) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+		}
+
+		rc = updatePinStatus(slot->token, SW1SW2);
+
+		if (rc != CKR_OK) {
+			FUNC_FAILS(rc, "sc_hsm_login failed");
+		}
+
+		rc = sc_hsm_loadObjects(slot->token, FALSE);
 	}
 
-	rc = transmitAPDU(slot, 0x00, 0x20, 0x00, 0x081,
-			pinlen, pin,
-			0, NULL, 0, &SW1SW2);
-
-	if (rc < 0) {
-		FUNC_FAILS(rc, "transmitAPDU failed");
-	}
-
-	rc = updatePinStatus(slot->token, SW1SW2);
-
-	if (rc != CKR_OK) {
-		FUNC_FAILS(rc, "sc_hsm_login failed");
-	}
-
-	sc_hsm_loadObjects(slot->token, FALSE);
 	FUNC_RETURNS(rc);
 }
 
@@ -851,6 +855,7 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	ptoken->info.ulSessionCount = CK_UNAVAILABLE_INFORMATION;
 
 	ptoken->info.flags = CKF_WRITE_PROTECTED | CKF_LOGIN_REQUIRED;
+	ptoken->user = 0xFF;
 
 	updatePinStatus(ptoken, pinstatus);
 

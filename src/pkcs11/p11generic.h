@@ -60,14 +60,9 @@
 struct p11Token_t {
 
 	CK_TOKEN_INFO info;                 /**< General information about the token            */
-	struct p11Slot_t *slot;				/**< The slot where the token is inserted			*/
-	unsigned char pinSO[8];             /**< The encrypted pin of the SO                    */
-	unsigned char pinUser[8];           /**< The encrypted pin of the user                  */
-	int pinUserInitialized;
-	unsigned char transportKey1[8];     /**< The transport key #1                           */
-	unsigned char transportKey2[8];     /**< The transport key #2                           */
-	unsigned char objMACKey[8];         /**< The key for MAC calculation                  */
-	char tokenDir[_MAX_PATH];           /**< The directory that holds this token            */
+	struct p11Slot_t *slot;             /**< The slot where the token is inserted           */
+	CK_USER_TYPE user;                  /**< The user of this session                       */
+	int rosessions;                     /**< Number of read/only sessions                   */
 	CK_ULONG freeObjectNumber;          /**< The number of objects in this token            */
 
 	CK_MECHANISM_TYPE mechanism;        /**< Mechanisms supported by token                  */

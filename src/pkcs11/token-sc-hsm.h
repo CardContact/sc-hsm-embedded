@@ -16,7 +16,7 @@
  *****************************************************************************/
 
 /**
- * \file    slot.c
+ * \file    token-sc-hsm.h
  * \author  Andreas Schwier (ASC)
  * \brief   SmartCard-HSM functions
  *
