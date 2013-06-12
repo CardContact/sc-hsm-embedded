@@ -95,39 +95,9 @@ struct p11Object_t {
 
 };
 
-static CK_BBOOL ckTrue = CK_TRUE, ckFalse = CK_FALSE;
-static CK_MECHANISM_TYPE ckMechType = CK_UNAVAILABLE_INFORMATION;
-
 struct attributesForObject_t {
     CK_ATTRIBUTE        attribute;  /* The attribute and its default value */
     CK_BBOOL            optional;   /* Indicator - is the attribute optional (true or false) */
-};
-
-#define NEEDED_ATTRIBUTES_OBJECT             1
-
-static struct attributesForObject_t attributesObject[NEEDED_ATTRIBUTES_OBJECT] = {
-    {{CKA_CLASS, 0, 0}, FALSE}
-};
-
-#define NEEDED_ATTRIBUTES_STORAGEOBJECT      4
-
-static struct attributesForObject_t attributesStorageObject[NEEDED_ATTRIBUTES_STORAGEOBJECT] = {
-    {{CKA_TOKEN, 0, 0}, FALSE},
-    {{CKA_PRIVATE, 0, 0}, FALSE},
-    {{CKA_MODIFIABLE, &ckTrue, sizeof(CK_BBOOL)}, TRUE},
-    {{CKA_LABEL, NULL, 0}, TRUE}
-};                                           
-
-#define NEEDED_ATTRIBUTES_KEYOBJECT          7
-
-static struct attributesForObject_t attributesKeyObject[NEEDED_ATTRIBUTES_KEYOBJECT] = {
-    {{CKA_KEY_TYPE, 0, 0}, FALSE},
-    {{CKA_ID, NULL, 0}, TRUE},
-    {{CKA_START_DATE, NULL, 0}, TRUE},
-    {{CKA_END_DATE, NULL, 0}, TRUE},
-    {{CKA_DERIVE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-    {{CKA_LOCAL, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-    {{CKA_KEY_GEN_MECHANISM, &ckMechType, sizeof(CK_MECHANISM_TYPE)}, TRUE}
 };
 
 #ifdef DEBUG
@@ -139,6 +109,8 @@ struct id2name_t {
 
 char *id2name(struct id2name_t *p, unsigned long id, unsigned long *attr);
 #endif
+
+int isValidPtr(void *ptr);
 
 int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate);
 

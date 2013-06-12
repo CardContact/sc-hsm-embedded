@@ -34,8 +34,6 @@
 #ifndef ___DEBUG_H_INC___
 #define ___DEBUG_H_INC___
 
-#include <stdio.h>
-
 #include <pkcs11/p11generic.h>
 
 void decodeBCDString(unsigned char *Inbuff, int len, char *Outbuff);

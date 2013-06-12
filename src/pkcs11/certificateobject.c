@@ -45,6 +45,8 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 
 #endif
 
+#define NEEDED_ATTRIBUTES_CERTIFICATEOBJECT   3
+
 static struct attributesForObject_t attributesCertificateObject[NEEDED_ATTRIBUTES_CERTIFICATEOBJECT] = {
 		{{CKA_CERTIFICATE_TYPE, NULL, 0}, FALSE},
 		{{CKA_ID, NULL, 0}, FALSE},
@@ -68,23 +70,16 @@ int createCertificateObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct
 	}
 
 	for (i = 0; i < NEEDED_ATTRIBUTES_CERTIFICATEOBJECT; i++) {
-
 		index = findAttributeInTemplate(attributesCertificateObject[i].attribute.type, pTemplate, ulCount);
 
 		if (index == -1) { /* The attribute is not present - is it optional? */
-
 			if (attributesCertificateObject[i].optional) {
-
 				addAttribute(pObject, &attributesCertificateObject[i].attribute);
-
 			} else { /* the attribute is not optional */
-
 				removeAllAttributes(pObject);
 				memset(pObject, 0x00, sizeof(*pObject));
 				return CKR_TEMPLATE_INCOMPLETE;
-
 			}
-
 		} else {
 			addAttribute(pObject, &pTemplate[index]);
 		}
@@ -202,12 +197,12 @@ int populateIssuerSubjectSerial(struct p11Object_t *pObject)
 
 
 
-int getSubjectPublicKey(struct p11Object_t *pObject, unsigned char **spk)
+int getSubjectPublicKeyInfo(struct p11Object_t *pObject, unsigned char **spki)
 {
 	CK_ATTRIBUTE attr = { CKA_VALUE, NULL, 0 };
 	struct p11Attribute_t *pattr;
 	int tag, length, buflen;
-	unsigned char *value, *cursor, *obj;
+	unsigned char *value, *cursor;
 
 	attr.type = CKA_VALUE;
 	if (findAttribute(pObject, &attr, &pattr) < 0) {
@@ -263,9 +258,9 @@ int getSubjectPublicKey(struct p11Object_t *pObject, unsigned char **spk)
 		return -1;
 	}
 
-	*spk =cursor;
+	*spki =cursor;
 
-	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {	// Skip Subject
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {	// Skip SubjectPublicKeyInfo
 		return -1;
 	}
 
@@ -278,15 +273,16 @@ int getSubjectPublicKey(struct p11Object_t *pObject, unsigned char **spk)
 
 
 
-int decodeModulusExponentFromSPK(unsigned char *spk,
+int decodeModulusExponentFromSPKI(unsigned char *spki,
                                  CK_ATTRIBUTE_PTR modulus,
                                  CK_ATTRIBUTE_PTR exponent)
 {
 	int tag, length, buflen;
-	unsigned char *value, *cursor, *obj;
+	unsigned char *value, *cursor;
 
-	cursor = spk;				// spk is ASN.1 validated before, not need to check again
+	cursor = spki;				// spk is ASN.1 validated before, not need to check again
 
+	// subjectPublicKeyInfo
 	tag = asn1Tag(&cursor);
 
 	if (tag != ASN1_SEQUENCE) {
@@ -295,7 +291,7 @@ int decodeModulusExponentFromSPK(unsigned char *spk,
 
 	buflen = asn1Length(&cursor);
 
-	// TBS SEQUENCE
+	// algorithm
 	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {
 		return -1;
 	}
@@ -304,7 +300,7 @@ int decodeModulusExponentFromSPK(unsigned char *spk,
 		return -1;
 	}
 
-	// TBS SEQUENCE
+	// subjectPublicKey
 	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {
 		return -1;
 	}
@@ -361,4 +357,6 @@ int decodeModulusExponentFromSPK(unsigned char *spk,
 	exponent->type = CKA_PUBLIC_EXPONENT;
 	exponent->pValue = value;
 	exponent->ulValueLen = length;
+
+	return 0;
 }

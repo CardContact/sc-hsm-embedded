@@ -52,19 +52,19 @@
 } while (0)
 
 #define FUNC_RETURNS(rc) do { \
-		debug("Function %s completes with rc=%d.\n", __FUNCTION__, rc); \
+		debug("Function %s completes with rc=%d.\n", __FUNCTION__, (rc)); \
 		return rc; \
 } while (0)
 
 #define FUNC_FAILS(rc, msg) do { \
-		debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, rc, msg); \
+		debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, (rc), (msg)); \
 		return rc; \
 } while (0)
 
 #else
 #define FUNC_CALLED()
-#define FUNC_RETURNS(rc) return rc
-#define FUNC_FAILS(rc, msg) return rc
+#define FUNC_RETURNS(rc) return (rc)
+#define FUNC_FAILS(rc, msg) return (rc)
 #endif
 
 /**
@@ -132,8 +132,6 @@ struct p11Context_t {
 	CK_HW_FEATURE_TYPE hw_feature;          /**< Hardware feature type of device          */
 
 	FILE *debugFileHandle;
-
-	char slotDirectory[_MAX_PATH];          /**< The directory that holds the slots       */
 
 	struct p11SessionPool_t *sessionPool;   /**< Pointer to session pool                  */
 

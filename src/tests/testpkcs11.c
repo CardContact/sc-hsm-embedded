@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include <dlfcn.h>
 
@@ -284,7 +285,6 @@ static char *p11string(CK_UTF8CHAR *str, size_t len)
 {
 	static char buffer[81];
 	int i;
-	char *po;
 
 	if (len > sizeof(buffer) - 1)
 		return "**Input too long***";
@@ -930,6 +930,7 @@ void main(int argc, char *argv[])
 	CK_RV rc;
 	CK_LONG slots;
 	CK_SESSION_HANDLE session;
+	CK_INFO info;
 	CK_SLOT_ID_PTR slotlist;
 	CK_SLOT_ID slotid;
 	CK_SLOT_INFO slotinfo;
@@ -967,6 +968,15 @@ void main(int argc, char *argv[])
 	printf("Calling C_Initialize ");
 
 	rc = p11->C_Initialize(NULL);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	if (rc != CKR_OK) {
+		exit(-1);
+	}
+
+	printf("Calling C_GetInfo ");
+
+	rc = p11->C_GetInfo(&info);
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
 
 	if (rc != CKR_OK) {

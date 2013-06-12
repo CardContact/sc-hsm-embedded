@@ -41,7 +41,7 @@
 
 static int decodeCommonObjectAttributes(unsigned char *coa, int coalen, struct p15CommonObjectAttributes *p15)
 {
-	int rc,tag,len;
+	int tag,len;
 	unsigned char *po;
 	char *label;
 
@@ -65,7 +65,7 @@ static int decodeCommonObjectAttributes(unsigned char *coa, int coalen, struct p
 
 static int decodeCommonKeyAttributes(unsigned char *cka, int ckalen, struct p15PrivateKeyDescription *p15)
 {
-	int rc,tag,len;
+	int tag,len;
 	unsigned char *po, *obj, *id;
 
 	po = obj = cka;
@@ -106,9 +106,8 @@ static int decodeCommonKeyAttributes(unsigned char *cka, int ckalen, struct p15P
 
 static int decodeKeyAttributes(unsigned char *ka, int kalen, struct p15PrivateKeyDescription *p15)
 {
-	int rc,tag,len;
+	int tag,len;
 	unsigned char *po, *obj;
-	char *label;
 
 	po = obj = ka;
 	tag = asn1Tag(&po);

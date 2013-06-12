@@ -39,7 +39,7 @@
 
 int newToken(struct p11Slot_t *slot, struct p11Token_t **token);
 
-int freeToken(struct p11Slot_t *slot);
+void freeToken(struct p11Slot_t *slot);
 
 int logIn(struct p11Slot_t *slot, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen);
 

@@ -112,6 +112,6 @@ int addObjectToSearchList(struct p11Session_t *session, struct p11Object_t *obje
 
 int appendToCryptoBuffer(struct p11Session_t *session, CK_BYTE_PTR data, CK_ULONG length);
 
-int clearCryptoBuffer(struct p11Session_t *session);
+void clearCryptoBuffer(struct p11Session_t *session);
 
 #endif /* ___SESSION_H_INC___ */

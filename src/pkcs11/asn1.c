@@ -264,7 +264,7 @@ unsigned char *asn1Find(unsigned char *data, unsigned char *path, int level)
 
 
 
-int asn1Next(unsigned char **ref, int *reflen, unsigned int *tag, int *length, unsigned char **value)
+int asn1Next(unsigned char **ref, int *reflen, int *tag, int *length, unsigned char **value)
 {
 	unsigned char *base;
 

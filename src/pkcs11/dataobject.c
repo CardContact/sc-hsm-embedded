@@ -43,10 +43,19 @@
 
 extern int dumpAttributeList(struct p11Object_t *pObject);
 
+#define NEEDED_ATTRIBUTES_DATAOBJECT   3
+
+static struct attributesForObject_t attributesDataObject[] = {
+		{{CKA_APPLICATION, 0, 0}, TRUE},
+		{{CKA_OBJECT_ID, NULL, 0}, TRUE},
+		{{CKA_VALUE, NULL, 0}, FALSE}
+};
+
+
+
 /**
  *  Constructor for the data object
  */
-
 int createDataObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject)
 {
 	unsigned int i;
@@ -59,23 +68,16 @@ int createDataObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Obj
 	}
 
 	for (i = 0; i < NEEDED_ATTRIBUTES_DATAOBJECT; i++) {
-
 		index = findAttributeInTemplate(attributesDataObject[i].attribute.type, pTemplate, ulCount);
 
 		if (index == -1) { /* The attribute is not present - is it optional? */
-
 			if (attributesDataObject[i].optional) {
-
 				addAttribute(pObject, &attributesDataObject[i].attribute);
-
 			} else { /* the attribute is not optional */
-
 				removeAllAttributes(pObject);
 				memset(pObject, 0x00, sizeof(*pObject));
 				return CKR_TEMPLATE_INCOMPLETE;
-
 			}
-
 		} else {
 			addAttribute(pObject, &pTemplate[index]);
 		}

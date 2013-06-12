@@ -40,11 +40,9 @@
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/object.h>
 
-#define NEEDED_ATTRIBUTES_CERTIFICATEOBJECT   3
-
 int createCertificateObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);
 int populateIssuerSubjectSerial(struct p11Object_t *pObject);
-int getSubjectPublicKeyInfo(struct p11Object_t *pObject, unsigned char **spki);
-int decodeModulusExponentFromSPK(unsigned char *spk, CK_ATTRIBUTE_PTR modulus, CK_ATTRIBUTE_PTR exponent);
+int getSubjectPublicKey(struct p11Object_t *pObject, unsigned char **spk);
+int decodeModulusExponentFromSPKI(unsigned char *spk, CK_ATTRIBUTE_PTR modulus, CK_ATTRIBUTE_PTR exponent);
 
 #endif /* ___SECRETKEYOBJECT_H_INC___ */

@@ -37,6 +37,8 @@
 
 #include <pkcs11/session.h>
 
+
+
 /**
  * initSessionPool initializes the session-pool structure.
  *
@@ -51,7 +53,6 @@
  *                   </TR>
  *                   </TABLE></P>
  */
-
 int initSessionPool(struct p11SessionPool_t *pool)
 {
 	pool->list = NULL;
@@ -171,11 +172,11 @@ int addSession(struct p11SessionPool_t *pool, struct p11Session_t *session)
  *                   <P><TABLE>
  *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
  *                   <TR>
- *                   <TD>>=0                                    </TD>
+ *                   <TD>CKR_OK                                 </TD>
  *                   <TD>Success                                </TD>
  *                   </TR>
  *                   <TR>
- *                   <TD>-1                                     </TD>
+ *                   <TD>CKR_SESSION_HANDLE_INVALID             </TD>
  *                   <TD>The specified session was not found    </TD>
  *                   </TR>
  *                   </TABLE></P>
@@ -183,24 +184,20 @@ int addSession(struct p11SessionPool_t *pool, struct p11Session_t *session)
 int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle, struct p11Session_t **session)
 {
 	struct p11Session_t *psession;
-	int pos;
 
 	psession = pool->list;
-	pos = 0;
+	*session = NULL;
 
 	while (psession != NULL) {
-
 		if (psession->handle == handle) {
-
 			*session = psession;
-			return pos;
+			return CKR_OK;
 		}
 
 		psession = psession->next;
-		pos++;
 	}
 
-	return -1;
+	return CKR_SESSION_HANDLE_INVALID;
 }
 
 
@@ -268,8 +265,8 @@ int findSessionBySlotID(struct p11SessionPool_t *pool, CK_SLOT_ID slotID, struct
  *                   <TD>Success                             </TD>
  *                   </TR>
  *                   <TR>
- *                   <TD>-1                                  </TD>
- *                   <TD>The specified slot was not found    </TD>
+ *                   <TD>CKR_SESSION_HANDLE_INVALID          </TD>
+ *                   <TD>The specified session was not found </TD>
  *                   </TR>
  *                   </TABLE></P>
  */
@@ -277,7 +274,7 @@ int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle)
 {
 	struct p11Session_t *session;
 	struct p11Session_t **pSession;
-	int rc;
+	struct p11Object_t *object, *tmp;
 
 	pSession = &pool->list;
 	while (*pSession && (*pSession)->handle != handle) {
@@ -287,10 +284,19 @@ int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle)
 	session = *pSession;
 
 	if (!session) {
-		return -1;
+		return CKR_SESSION_HANDLE_INVALID;
 	}
 
 	*pSession = session->next;
+
+	object = session->sessionObjList;
+
+	while (object) {
+		tmp = object->next;
+		removeAllAttributes(object);
+		free(object);
+		object = tmp;
+	}
 
 	if (session->cryptoBuffer) {
 		free(session->cryptoBuffer);
@@ -475,7 +481,7 @@ int appendToCryptoBuffer(struct p11Session_t *session, CK_BYTE_PTR data, CK_ULON
 
 
 
-int clearCryptoBuffer(struct p11Session_t *session)
+void clearCryptoBuffer(struct p11Session_t *session)
 {
 	if (session->cryptoBuffer) {
 		memset(session->cryptoBuffer, 0, session->cryptoBufferMax);

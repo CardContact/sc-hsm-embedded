@@ -34,8 +34,12 @@
 #include <string.h>
 #include "token-sc-hsm.h"
 
+#include <pkcs11/slot.h>
 #include <pkcs11/object.h>
+#include <pkcs11/token.h>
 #include <pkcs11/certificateobject.h>
+#include <pkcs11/privatekeyobject.h>
+#include <pkcs11/strbpcpy.h>
 #include <pkcs11/asn1.h>
 #include <pkcs11/pkcs15.h>
 
@@ -197,7 +201,7 @@ static int addEECertificateObject(struct p11Token_t *token, unsigned char id)
 	if (p15->coa.label) {
 		template[4].pValue = p15->coa.label;
 	} else {
-		sprintf(label, "Cert#%d", id);
+		sprintf((char *)label, "Cert#%d", id);
 	}
 	template[4].ulValueLen = strlen(template[4].pValue);
 
@@ -322,8 +326,8 @@ static int decodeECDSASignature(unsigned char *data, int datalen,
 		fieldsizebytes = 64;
 	}
 
-#ifdef DEBUF
-	debug("Field size %d, signature buffer size %d", fieldsizebytes, outlen);
+#ifdef DEBUG
+	debug("Field size %d, signature buffer size %d\n", fieldsizebytes, outlen);
 #endif
 
 	if (outlen < (fieldsizebytes * 2)) {
@@ -510,7 +514,7 @@ int stripPKCS15Padding(unsigned char *scr, int len, CK_BYTE_PTR pData, CK_ULONG_
 
 static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
-	int rc, algo, len;
+	int rc, algo;
 	unsigned short SW1SW2;
 	unsigned char scr[256];
 	FUNC_CALLED();
@@ -613,7 +617,7 @@ static int addPrivateKeyObject(struct p11Token_t *token, unsigned char id)
 	if (p15->coa.label) {
 		template[4].pValue = p15->coa.label;
 	} else {
-		sprintf(label, "Key#%d", id);
+		sprintf((char *)label, "Key#%d", id);
 	}
 	template[4].ulValueLen = strlen(template[4].pValue);
 
@@ -633,7 +637,7 @@ static int addPrivateKeyObject(struct p11Token_t *token, unsigned char id)
 		keyType = CKK_RSA;
 		sc = getPrivateData(token);
 		if (sc->publickeys[id]) {
-			decodeModulusExponentFromSPK(sc->publickeys[id], &template[attributes], &template[attributes + 1]);
+			decodeModulusExponentFromSPKI(sc->publickeys[id], &template[attributes], &template[attributes + 1]);
 			attributes += 2;
 		}
 		break;
@@ -797,7 +801,6 @@ int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 int sc_hsm_logout(struct p11Slot_t *slot)
 {
 	int rc;
-	unsigned short SW1SW2;
 	FUNC_CALLED();
 
 	rc = selectApplet(slot);
@@ -820,7 +823,7 @@ int sc_hsm_logout(struct p11Slot_t *slot)
 int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 {
 	struct p11Token_t *ptoken;
-	token_sc_hsm_t *sc;
+//	token_sc_hsm_t *sc;
 	int rc, pinstatus;
 
 	FUNC_CALLED();
@@ -850,6 +853,7 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	}
 
 	ptoken->slot = slot;
+	ptoken->freeObjectNumber = 1;
 	strbpcpy(ptoken->info.label, "SC-HSM", sizeof(ptoken->info.label));
 	strbpcpy(ptoken->info.manufacturerID, "CardContact", sizeof(ptoken->info.manufacturerID));
 	strbpcpy(ptoken->info.model, "SmartCard-HSM", sizeof(ptoken->info.model));
@@ -868,7 +872,7 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 	updatePinStatus(ptoken, pinstatus);
 
-	sc = getPrivateData(ptoken);
+//	sc = getPrivateData(ptoken);
 
 	sc_hsm_loadObjects(ptoken, TRUE);
 

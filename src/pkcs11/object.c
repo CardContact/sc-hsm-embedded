@@ -36,6 +36,32 @@
 #include <string.h>
 #include <pkcs11/object.h>
 
+CK_BBOOL ckTrue = CK_TRUE, ckFalse = CK_FALSE;
+CK_MECHANISM_TYPE ckMechType = CK_UNAVAILABLE_INFORMATION;
+
+
+#define NEEDED_ATTRIBUTES_STORAGEOBJECT      4
+
+static struct attributesForObject_t attributesStorageObject[NEEDED_ATTRIBUTES_STORAGEOBJECT] = {
+		{{CKA_TOKEN, 0, 0}, FALSE},
+		{{CKA_PRIVATE, 0, 0}, FALSE},
+		{{CKA_MODIFIABLE, &ckTrue, sizeof(CK_BBOOL)}, TRUE},
+		{{CKA_LABEL, NULL, 0}, TRUE}
+};
+
+#define NEEDED_ATTRIBUTES_KEYOBJECT          7
+
+static struct attributesForObject_t attributesKeyObject[NEEDED_ATTRIBUTES_KEYOBJECT] = {
+		{{CKA_KEY_TYPE, 0, 0}, FALSE},
+		{{CKA_ID, NULL, 0}, TRUE},
+		{{CKA_START_DATE, NULL, 0}, TRUE},
+		{{CKA_END_DATE, NULL, 0}, TRUE},
+		{{CKA_DERIVE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
+		{{CKA_LOCAL, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
+		{{CKA_KEY_GEN_MECHANISM, &ckMechType, sizeof(CK_MECHANISM_TYPE)}, TRUE}
+};
+
+
 #ifdef DEBUG
 
 #include <pkcs11/debug.h>
@@ -530,6 +556,20 @@ void dumpAttribute(CK_ATTRIBUTE_PTR attr)
 
 
 
+int isValidPtr(void *ptr)
+{
+#ifdef CHECK_PTR_ABOVE_ETEXT
+	extern char _etext;
+
+	// This works on some architectures, but notably not on AMD64 systems
+	return ((ptr != NULL) && ((char *)ptr > &_etext));
+#else
+	return (ptr != NULL);
+#endif
+}
+
+
+
 int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate)
 {
 	struct p11Attribute_t *attr;
@@ -554,11 +594,8 @@ int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate)
 	memcpy(pAttribute->attrData.pValue, pTemplate->pValue, pAttribute->attrData.ulValueLen);
 
 	if (object->attrList == NULL) {
-
 		object->attrList = pAttribute;
-
 	} else {
-
 		attr = object->attrList;
 
 		while (attr->next != NULL) {
@@ -582,9 +619,7 @@ int findAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTemplate
 	*attribute = NULL;
 
 	while (attr != NULL) {
-
 		if (attr->attrData.type == attributeTemplate->type) {
-
 			*attribute = attr;
 			return pos;
 		}
@@ -627,7 +662,6 @@ int removeAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTempla
 	}
 
 	if (rc > 0) {      /* there is more than one element in the pool */
-
 		prev = object->attrList;
 
 		while (prev->next->attrData.type != attributeTemplate->type) {
@@ -635,7 +669,6 @@ int removeAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTempla
 		}
 
 		prev->next = attr->next;
-
 	}
 
 	free(attr->attrData.pValue);
@@ -657,10 +690,8 @@ int removeAllAttributes(struct p11Object_t *object)
 	pAttr = object->attrList;
 
 	while (pAttr) {
-
 		pAttr2 = pAttr;
 		pAttr = pAttr->next;
-
 		free(pAttr2);
 	}
 
@@ -703,23 +734,17 @@ int dumpAttributeList(struct p11Object_t *pObject)
 int createObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject)
 {
 	int index;
-	unsigned int i = 0;
 
 	/* Check if the attribute is present */
 
 	index = findAttributeInTemplate(CKA_CLASS, pTemplate, ulCount);
 
-
 	if (index == -1) { /* Attribute is not present */
-
 #ifdef DEBUG
 		debug("[createObject] Error creating object - the attribute CKA_CLASS is not present!");
 #endif
-
 		return CKR_TEMPLATE_INCOMPLETE;
-
 	} else {
-
 		addAttribute(pObject, &pTemplate[index]);
 	}
 
@@ -740,27 +765,20 @@ int createStorageObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11
 	}
 
 	for (i = 0; i < NEEDED_ATTRIBUTES_STORAGEOBJECT; i++) {
-
 		index = findAttributeInTemplate(attributesStorageObject[i].attribute.type, pTemplate, ulCount);
 
 		if (index == -1) { /* The attribute is not present - is it optional? */
-
 			if (attributesStorageObject[i].optional) {
-
 				addAttribute(pObject, &attributesStorageObject[i].attribute);
-
 			} else { /* the attribute is not optional */
 #ifdef DEBUG
 				debug("[createStorageObject] Error creating storage object - the following attribute is not present!");
 				dumpAttribute(&(attributesStorageObject[i].attribute));
 #endif
-
 				removeAllAttributes(pObject);
 				return CKR_TEMPLATE_INCOMPLETE;
-
 			}
 		} else {
-
 			addAttribute(pObject, &pTemplate[index]);
 
 			/* The object is public */
@@ -774,7 +792,6 @@ int createStorageObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11
 					(*(CK_BBOOL *)pTemplate[index].pValue == CK_TRUE)) {
 				pObject->tokenObj = TRUE;
 			}
-
 		}
 	}
 
@@ -795,29 +812,20 @@ int createKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Obje
 	}
 
 	for (i = 0; i < NEEDED_ATTRIBUTES_KEYOBJECT; i++) {
-
 		index = findAttributeInTemplate(attributesKeyObject[i].attribute.type, pTemplate, ulCount);
 
 		if (index == -1) { /* The attribute is not present - is it optional? */
-
 			if (attributesKeyObject[i].optional) {
-
 				addAttribute(pObject, &attributesKeyObject[i].attribute);
-
 			} else { /* the attribute is not optional */
-
 #ifdef DEBUG
 				debug("[createKeyObject] Error creating key object - the following attribute is not present!");
 				dumpAttribute(&(attributesKeyObject[i].attribute));
 #endif
-
 				return CKR_TEMPLATE_INCOMPLETE;
-
 			}
 		} else {
-
 			addAttribute(pObject, &pTemplate[index]);
-
 		}
 	}
 
@@ -859,7 +867,6 @@ int serializeObject(struct p11Object_t *pObject, unsigned char **pBuffer, unsign
 
 	/* Fill the buffer */
 	while (pAttribute) {
-
 		memcpy(buf + i, &(pAttribute->attrData), sizeof(CK_ATTRIBUTE));
 		i += sizeof(CK_ATTRIBUTE);
 

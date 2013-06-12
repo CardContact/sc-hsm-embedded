@@ -37,6 +37,7 @@
 #include <pkcs11/p11generic.h>
 #include <pkcs11/slotpool.h>
 #include <pkcs11/slot.h>
+#include <pkcs11/token.h>
 
 extern struct p11Context_t *context;
 
@@ -96,8 +97,6 @@ int initSlotPool(struct p11SlotPool_t *pool)
 int terminateSlotPool(struct p11SlotPool_t *pool)
 {
 	struct p11Slot_t *pSlot, *pFreeSlot;
-	struct p11Object_t *pObject, *tmp;
-	int rc;
 
 	FUNC_CALLED();
 
@@ -178,11 +177,11 @@ int addSlot(struct p11SlotPool_t *pool, struct p11Slot_t *slot)
  *                   <P><TABLE>
  *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
  *                   <TR>
- *                   <TD>>=0                                 </TD>
+ *                   <TD>>CKR_OK                             </TD>
  *                   <TD>Success                             </TD>
  *                   </TR>
  *                   <TR>
- *                   <TD>-1                                  </TD>
+ *                   <TD>CKR_SLOT_ID_INVALID                 </TD>
  *                   <TD>The specified slot was not found    </TD>
  *                   </TR>
  *                   </TABLE></P>
@@ -190,7 +189,6 @@ int addSlot(struct p11SlotPool_t *pool, struct p11Slot_t *slot)
 int findSlot(struct p11SlotPool_t *pool, CK_SLOT_ID slotID, struct p11Slot_t **slot)
 {
 	struct p11Slot_t *pslot;
-	int pos = 0;            /* remember the current position in the list */
 
 	FUNC_CALLED();
 
@@ -200,70 +198,11 @@ int findSlot(struct p11SlotPool_t *pool, CK_SLOT_ID slotID, struct p11Slot_t **s
 	while (pslot != NULL) {
 		if (pslot->id == slotID) {
 			*slot = pslot;
-			FUNC_RETURNS(pos);
+			FUNC_RETURNS(CKR_OK);
 		}
 
 		pslot = pslot->next;
-		pos++;
 	}
 
-	FUNC_RETURNS(-1);
-}
-
-
-
-/**
- * removeSlot removes a slot from the slot-pool. 
- * The slot to remove is specified by its slotID.
- *
- * @param pool       Pointer to slot-pool structure.
- * @param slotID     The id of the slot.
- *
- * @return          
- *                   <P><TABLE>
- *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
- *                   <TR>
- *                   <TD>CKR_OK                              </TD>
- *                   <TD>Success                             </TD>
- *                   </TR>
- *                   <TR>
- *                   <TD>-1                                  </TD>
- *                   <TD>The specified slot was not found    </TD>
- *                   </TR>
- *                   </TABLE></P>
- */
-int removeSlot(struct p11SlotPool_t *pool, CK_SLOT_ID slotID)
-{
-	struct p11Slot_t *slot = NULL;
-	struct p11Slot_t *prev = NULL;
-	int rc;
-
-	FUNC_CALLED();
-
-	rc = findSlot(pool, slotID, &slot);
-
-	/* no slot with this ID found */
-	if (rc < 0) {
-		FUNC_RETURNS(rc);
-	}
-
-	if (rc > 0) {      /* there is more than one element in the pool */
-		prev = pool->list;
-
-		while (prev->next->id != slotID) {
-			prev = prev->next;
-		}
-
-		prev->next = slot->next;
-	}
-
-	free(slot);
-
-	pool->numberOfSlots--;
-
-	if (rc == 0) {      /* We removed the last element from the list */
-		pool->list = NULL;
-	}
-
-	FUNC_RETURNS(CKR_OK);
+	FUNC_RETURNS(CKR_SLOT_ID_INVALID);
 }

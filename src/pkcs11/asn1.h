@@ -55,7 +55,7 @@ void            asn1StoreLength(unsigned char **Ref, int Length);
 int             asn1Encap(unsigned short Tag, unsigned char *Msg, int MsgLen);
 unsigned char  *asn1Find(unsigned char *data, unsigned char *path, int level);
 int             asn1Validate(unsigned char *data, size_t length);
-int             asn1Next(unsigned char **ref, int *reflen, unsigned int *tag, int *length, unsigned char **value);
+int             asn1Next(unsigned char **ref, int *reflen, int *tag, int *length, unsigned char **value);
 void            asn1DecodeFlags(unsigned char *data, size_t length, unsigned long *flags);
 int             asn1DecodeInteger(unsigned char *data, size_t length, int *value);
 

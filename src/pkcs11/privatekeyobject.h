@@ -40,8 +40,6 @@
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/object.h>
 
-#define NEEDED_ATTRIBUTES_PRIVATEKEYOBJECT   14
-
 int createPrivateKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);
 
 #endif /* ___PRIVATEKEYOBJECT_H_INC___ */

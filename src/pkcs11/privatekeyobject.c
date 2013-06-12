@@ -44,6 +44,9 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 
 #endif
 
+extern CK_BBOOL ckFalse;
+
+#define NEEDED_ATTRIBUTES_PRIVATEKEYOBJECT   14
 
 static struct attributesForObject_t attributesPrivateKeyObject[NEEDED_ATTRIBUTES_PRIVATEKEYOBJECT] = {
 		{{CKA_SUBJECT, 0, 0}, TRUE},
@@ -78,23 +81,16 @@ int createPrivateKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct 
 	}
 
 	for (i = 0; i < NEEDED_ATTRIBUTES_PRIVATEKEYOBJECT; i++) {
-
 		index = findAttributeInTemplate(attributesPrivateKeyObject[i].attribute.type, pTemplate, ulCount);
 
 		if (index == -1) { /* The attribute is not present - is it optional? */
-
 			if (attributesPrivateKeyObject[i].optional) {
-
 				addAttribute(pObject, &attributesPrivateKeyObject[i].attribute);
-
 			} else { /* the attribute is not optional */
-
 				removeAllAttributes(pObject);
 				memset(pObject, 0x00, sizeof(*pObject));
 				return CKR_TEMPLATE_INCOMPLETE;
-
 			}
-
 		} else {
 			addAttribute(pObject, &pTemplate[index]);
 		}

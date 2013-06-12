@@ -52,8 +52,6 @@
 #include <pkcs11/debug.h>
 #endif
 
-extern struct p11Context_t *context;
-
 
 
 int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicObject)
@@ -316,7 +314,7 @@ int newToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 
 
-int freeToken(struct p11Slot_t *slot)
+void freeToken(struct p11Slot_t *slot)
 {
 	if (slot->token) {
 		removePrivateObjects(slot->token);

@@ -48,6 +48,8 @@
 
 extern struct p11Context_t *context;
 
+
+
 /**
  * addToken adds a token to the specified slot.
  *
@@ -325,10 +327,7 @@ static int checkForNewToken(struct p11Slot_t *slot)
 {
 	struct p11Token_t *ptoken;
 	unsigned char rsp[260];
-	unsigned short lr;
-	unsigned char dad, sad;
-	char scr[_MAX_PATH];
-	int fh, rc, i;
+	int rc;
 	unsigned short SW1SW2;
 
 	FUNC_CALLED();
@@ -337,6 +336,7 @@ static int checkForNewToken(struct p11Slot_t *slot)
 		FUNC_RETURNS(CKR_TOKEN_NOT_PRESENT);
 	}
 
+	// GET STATUS
 	rc = transmitAPDUwithCTAPI(slot, 1, 0x20, 0x13, 0x01, 0x80, 0, NULL, 0, rsp, sizeof(rsp), &SW1SW2);
 
 	if (rc == ERR_CT) {
@@ -368,7 +368,7 @@ static int checkForNewToken(struct p11Slot_t *slot)
 	rc = newToken(slot, &ptoken);
 
 	if (rc != CKR_OK) {
-		FUNC_FAILS(rc, "newSmartCardHSMToken failed()");
+		FUNC_FAILS(rc, "newToken failed()");
 	}
 
 	rc = addToken(slot, ptoken);
@@ -402,12 +402,8 @@ static int checkForNewToken(struct p11Slot_t *slot)
  */
 static int checkForRemovedToken(struct p11Slot_t *slot)
 {
-	struct p11Token_t *ptoken;
 	unsigned char rsp[260];
-	unsigned short lr;
-	unsigned char dad, sad;
-	char scr[_MAX_PATH];
-	int fh, rc, i;
+	int rc;
 	unsigned short SW1SW2;
 
 	FUNC_CALLED();

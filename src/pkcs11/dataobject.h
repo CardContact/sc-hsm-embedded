@@ -40,14 +40,6 @@
 #include <pkcs11/session.h>
 #include <pkcs11/object.h>
 
-#define NEEDED_ATTRIBUTES_DATAOBJECT   3
-
-static struct attributesForObject_t attributesDataObject[] = {
-		{{CKA_APPLICATION, 0, 0}, TRUE},
-		{{CKA_OBJECT_ID, NULL, 0}, TRUE},
-		{{CKA_VALUE, NULL, 0}, FALSE}
-};
-
 int createDataObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);
 
 #endif /* ___DATAOBJECT_H_INC___ */

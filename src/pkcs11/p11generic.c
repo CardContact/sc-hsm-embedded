@@ -32,27 +32,20 @@
  */
 
 #include <string.h>
-#include <assert.h>
-#include <stdlib.h>
-#include <fcntl.h>
 
-#include <pkcs11/cryptoki.h>
 #include <pkcs11/p11generic.h>
 #include <pkcs11/slotpool.h>
-#include <pkcs11/session.h>
-#include <pkcs11/object.h>
-
 #include <pkcs11/strbpcpy.h>
 
 #ifdef DEBUG
 #include <pkcs11/debug.h>
 #endif
 
+
 /* 
  * Set up the global context structure.
  * 
  */
-
 struct p11Context_t *context = NULL;
 
 
@@ -147,24 +140,17 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 )
 {
 	int rv = CKR_OK;
-	int fh;
-	unsigned char scr[_MAX_PATH], *p;
-	int len;
 
 	/* Make sure the cryptoki has not been initialized */
 	if (context != NULL) {
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 	}
 
-	context = (struct p11Context_t *) malloc (sizeof(struct p11Context_t));
+	context = (struct p11Context_t *) calloc (1, sizeof(struct p11Context_t));
 
 	if (context == NULL) {
 		return CKR_HOST_MEMORY;
 	}
-
-	memset(context, 0x00,sizeof(struct p11Context_t));
-
-	context->debugFileHandle = NULL;      /* no debug */
 
 #ifdef DEBUG
 	rv = initDebug(context);
@@ -173,25 +159,24 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 		context = NULL;
 		return CKR_GENERAL_ERROR;
 	}
+	FUNC_CALLED();
 #endif
 
-	strcpy(context->slotDirectory, "token");
-
-	context->sessionPool = (struct p11SessionPool_t *) malloc(sizeof(struct p11SessionPool_t));
+	context->sessionPool = (struct p11SessionPool_t *) calloc(1, sizeof(struct p11SessionPool_t));
 
 	if (context->sessionPool == NULL) {
 		free(context);
 		context = NULL;
-		return CKR_HOST_MEMORY;
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
-	context->slotPool = (struct p11SlotPool_t *) malloc(sizeof(struct p11SlotPool_t));
+	context->slotPool = (struct p11SlotPool_t *) calloc(1, sizeof(struct p11SlotPool_t));
 
 	if (context->slotPool == NULL) {
 		free(context->sessionPool);
 		free(context);
 		context = NULL;
-		return CKR_HOST_MEMORY;
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
 	rv = initSessionPool(context->sessionPool);
@@ -204,27 +189,23 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 		free(context->slotPool);
 		free(context);
 		context = NULL;
-		return rv;
+		FUNC_RETURNS(rv);
 	}
 
 	rv = initSlotPool(context->slotPool);
 
 	if (rv != CKR_OK) {
 #ifdef DEBUG
-		printf("[C_Initialize] Error initializing slot pool ...\n");
+		debug("[C_Initialize] Error initializing slot pool ...\n");
 #endif 
 		free(context->sessionPool);
 		free(context->slotPool);
 		free(context);
 		context = NULL;
-		return rv;
+		FUNC_RETURNS(rv);
 	}
 
-#ifdef DEBUG
-	debug("[C_Initialize] Cryptoki is up ...\n");
-#endif
-
-	return CKR_OK;
+	FUNC_RETURNS(CKR_OK);
 }
 
 
@@ -239,8 +220,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_Finalize)
 		CK_VOID_PTR   pReserved  /* reserved.  Should be NULL_PTR */
 )
 {
-	CK_RV rv = CKR_OK;
-
 	FUNC_CALLED();
 
 	if (context != NULL) {
@@ -256,11 +235,12 @@ CK_DECLARE_FUNCTION(CK_RV, C_Finalize)
 #endif
 
 		free(context);
+		context = NULL;
 	}
 
 	context = NULL;
 
-	return rv;
+	return CKR_OK;
 }
 
 
@@ -284,12 +264,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetInfo)
 		CK_INFO_PTR   pInfo  /* location that receives information */
 )
 {
-	CK_RV rv = CKR_OK;
-
 	FUNC_CALLED();
 
-	if (pInfo == NULL) {
-		return CKR_HOST_MEMORY;
+	if (context == NULL) {
+		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	if (!isValidPtr(pInfo)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	memset(pInfo, 0, sizeof(CK_INFO));
@@ -306,7 +288,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetInfo)
 	pInfo->libraryVersion.major = 0;
 	pInfo->libraryVersion.minor = 1;
 
-	return rv;
+	FUNC_RETURNS(CKR_OK);
 }
 
 
@@ -321,9 +303,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetFunctionList)
 		 * function list       */
 )
 {
-	CK_RV rv = CKR_OK;
+	if (!isValidPtr(ppFunctionList)) {
+		return CKR_ARGUMENTS_BAD;
+	}
 
 	*ppFunctionList = &pkcs11_function_list;
 
-	return rv;
+	return CKR_OK;
 }
