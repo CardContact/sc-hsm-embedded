@@ -232,8 +232,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSessionInfo)(
 	rv = getToken(slot, &token);
 
 	if (rv != CKR_OK) {
-		C_CloseSession(hSession);
-		return CKR_SESSION_CLOSED;
+		FUNC_RETURNS(rv);
 	}
 
 	pInfo->slotID = session->slotID;

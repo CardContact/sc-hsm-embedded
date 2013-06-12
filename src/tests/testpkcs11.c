@@ -130,7 +130,8 @@ struct id2name_t p11CKRName[] = {
 		{ CKR_CRYPTOKI_ALREADY_INITIALIZED      , "CKR_CRYPTOKI_ALREADY_INITIALIZED", 0 },
 		{ CKR_MUTEX_BAD                         , "CKR_MUTEX_BAD", 0 },
 		{ CKR_MUTEX_NOT_LOCKED                  , "CKR_MUTEX_NOT_LOCKED", 0 },
-		{ CKR_OK			                    , "CKR_OK", 0 }
+		{ CKR_OK			                    , "CKR_OK", 0 },
+		{ 0, NULL }
 };
 
 
@@ -142,7 +143,7 @@ struct id2name_t p11CKRName[] = {
 
 #define P11CKA			58
 
-struct id2name_t p11CKAName[P11CKA] = {
+struct id2name_t p11CKAName[P11CKA + 1] = {
 		{ CKA_CLASS                              , "CKA_CLASS", CKT_LONG },
 		{ CKA_TOKEN                              , "CKA_TOKEN", CKT_BBOOL },
 		{ CKA_PRIVATE                            , "CKA_PRIVATE", CKT_BBOOL },
@@ -201,6 +202,7 @@ struct id2name_t p11CKAName[P11CKA] = {
 		{ CKA_HW_FEATURE_TYPE                    , "CKA_HW_FEATURE_TYPE", 0 },
 		{ CKA_RESET_ON_INIT                      , "CKA_RESET_ON_INIT", 0 },
 		{ CKA_HAS_RESET                          , "CKA_HAS_RESET", 0 },
+		{ 0, NULL }
 };
 
 struct id2name_t p11CKKName[] = {
@@ -226,6 +228,7 @@ struct id2name_t p11CKKName[] = {
 		{ CKK_JUNIPER                            , "CKK_JUNIPER", 0 },
 		{ CKK_CDMF                               , "CKK_CDMF", 0 },
 		{ CKK_AES                                , "CKK_AES", 0 },
+		{ 0, NULL }
 };
 
 
