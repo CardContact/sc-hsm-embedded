@@ -226,7 +226,7 @@ static int addEECertificateObject(struct p11Token_t *token, unsigned char id)
 #endif
 	}
 
-	if (getSubjectPublicKey(pObject, &spk) == CKR_OK) {
+	if (getSubjectPublicKeyInfo(pObject, &spk) == CKR_OK) {
 		sc = getPrivateData(token);
 		sc->publickeys[id] = spk;
 	}
@@ -517,6 +517,7 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 	int rc, algo;
 	unsigned short SW1SW2;
 	unsigned char scr[256];
+
 	FUNC_CALLED();
 
 	if (pData == NULL) {
@@ -538,7 +539,7 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 	}
 
 	if (SW1SW2 != 0x9000) {
-		FUNC_FAILS(-1, "Decryption operation failed");
+		FUNC_FAILS(CKR_ENCRYPTED_DATA_INVALID, "Decryption operation failed");
 	}
 
 	if (mech == CKM_RSA_X_509) {
@@ -643,6 +644,11 @@ static int addPrivateKeyObject(struct p11Token_t *token, unsigned char id)
 		break;
 	case P15_KEYTYPE_ECC:
 		keyType = CKK_ECDSA;
+		sc = getPrivateData(token);
+		if (sc->publickeys[id]) {
+			decodeECParamsFromSPKI(sc->publickeys[id], &template[attributes]);
+			attributes += 1;
+		}
 		break;
 	default:
 		freePrivateKeyDescription(&p15);

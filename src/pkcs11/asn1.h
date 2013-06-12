@@ -45,6 +45,7 @@ extern "C" {
 #define ASN1_INTEGER            0x02
 #define ASN1_BIT_STRING         0x03
 #define ASN1_OCTET_STRING       0x04
+#define ASN1_OBJECT_IDENTIFIER  0x06
 #define ASN1_UTF8String         0x0C
 #define ASN1_SEQUENCE           0x30
 

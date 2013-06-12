@@ -360,3 +360,56 @@ int decodeModulusExponentFromSPKI(unsigned char *spki,
 
 	return 0;
 }
+
+
+
+int decodeECParamsFromSPKI(unsigned char *spki,
+                           CK_ATTRIBUTE_PTR ecparams)
+{
+	int tag, length, buflen;
+	unsigned char *value, *cursor;
+
+	cursor = spki;				// spk is ASN.1 validated before, not need to check again
+
+	// subjectPublicKeyInfo
+	tag = asn1Tag(&cursor);
+
+	if (tag != ASN1_SEQUENCE) {
+		return -1;
+	}
+
+	buflen = asn1Length(&cursor);
+
+	// algorithm
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {
+		return -1;
+	}
+
+	if (tag != ASN1_SEQUENCE) {
+		return -1;
+	}
+
+	cursor = value;
+	buflen = length;
+
+	// algorithm
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {
+		return -1;
+	}
+
+	if (tag != ASN1_OBJECT_IDENTIFIER) {
+		return -1;
+	}
+
+	ecparams->type = CKA_EC_PARAMS;
+	ecparams->pValue = cursor;
+
+	// parameters
+	if (!asn1Next(&cursor, &buflen, &tag, &length, &value)) {
+		return -1;
+	}
+
+	ecparams->ulValueLen = cursor - (unsigned char *)ecparams->pValue;
+
+	return 0;
+}

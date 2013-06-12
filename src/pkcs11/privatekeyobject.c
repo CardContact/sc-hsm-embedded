@@ -46,7 +46,7 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 
 extern CK_BBOOL ckFalse;
 
-#define NEEDED_ATTRIBUTES_PRIVATEKEYOBJECT   14
+#define NEEDED_ATTRIBUTES_PRIVATEKEYOBJECT   15
 
 static struct attributesForObject_t attributesPrivateKeyObject[NEEDED_ATTRIBUTES_PRIVATEKEYOBJECT] = {
 		{{CKA_SUBJECT, 0, 0}, TRUE},
@@ -62,7 +62,8 @@ static struct attributesForObject_t attributesPrivateKeyObject[NEEDED_ATTRIBUTES
 		{{CKA_UNWRAP_TEMPLATE, 0, 0}, TRUE},
 		{{CKA_ALWAYS_AUTHENTICATE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
 		{{CKA_MODULUS, 0, 0}, TRUE},
-		{{CKA_PUBLIC_EXPONENT, 0, 0}, TRUE}
+		{{CKA_PUBLIC_EXPONENT, 0, 0}, TRUE},
+		{{CKA_EC_PARAMS, 0, 0}, TRUE}
 };
 
 

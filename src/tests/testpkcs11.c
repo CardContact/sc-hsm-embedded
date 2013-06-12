@@ -1074,7 +1074,9 @@ void main(int argc, char *argv[])
 	listObjects(p11, session, attr, 0);
 
 	testRSASigning(p11, session);
-	testRSADecryption(p11, session);
+
+//	Test requires valid crypto matching card used for testing
+//	testRSADecryption(p11, session);
 
 	testECSigning(p11, session);
 
