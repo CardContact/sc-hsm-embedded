@@ -39,6 +39,9 @@
 
 #include "usb_device.h"
 
+
+static libusb_context *usb_ctx = NULL;
+
 /**
  * Open USB device at the specified port and allocate necessary resources
  *
@@ -52,17 +55,19 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 	int rc, cnt, i;
 	libusb_device **devs, *dev;
 
-	rc = libusb_init(NULL);
+	if (!usb_ctx) {
+		rc = libusb_init(&usb_ctx);
 
-	if (rc != LIBUSB_SUCCESS) {
-		return ERR_USB;
+		if (rc != LIBUSB_SUCCESS) {
+			return ERR_USB;
+		}
 	}
 
 #ifdef DEBUG
-	libusb_set_debug(NULL, 3);
+	libusb_set_debug(usb_ctx, 3);
 #endif
 
-	cnt = libusb_get_device_list(NULL, &devs);
+	cnt = libusb_get_device_list(usb_ctx, &devs);
 
 	if (cnt < 0) {
 		return ERR_NO_READER;
@@ -105,8 +110,7 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 #ifdef DEBUG
 				printf("Reader index (%i) and requested port number (%i) match.\n", cnt, pn);
 #endif
-				*device = malloc(sizeof(usb_device_t));
-				memset(*device, 0, sizeof(usb_device_t));
+				*device = calloc(1, sizeof(usb_device_t));
 				break;
 			} else {
 #ifdef DEBUG
@@ -214,7 +218,10 @@ int USB_Close(usb_device_t **device)
 	free(*device);
 	*device = NULL;
 
-	libusb_exit(NULL);
+	if (usb_ctx) {
+		libusb_exit(usb_ctx);
+		usb_ctx = NULL;
+	}
 
 	return USB_OK;
 }
