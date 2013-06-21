@@ -47,15 +47,12 @@
 
 #include <strbpcpy.h>
 
-#ifdef DEBUG
-#include <pkcs11/debug.h>
-#endif
-
-#ifndef _WIN32
-#include <pcsclite.h>
-#endif
-
+#ifdef _WIN32
 #include <winscard.h>
+#else
+#include <pcsclite.h>
+#include <winscard.h>
+#endif
 
 extern struct p11Context_t *context;
 
@@ -158,8 +155,7 @@ char* pcsc_error_to_string(const DWORD error) {
 			(void) strncpy(strError, "Service was stopped.", sizeof(strError));
 			break;
 		case SCARD_E_NO_READERS_AVAILABLE:
-			(void) strncpy(strError, "Cannot find a smart card reader.",
-					sizeof(strError));
+			(void) strncpy(strError, "Cannot find a smart card reader.", sizeof(strError));
 			break;
 		case SCARD_W_UNSUPPORTED_CARD:
 			(void) strncpy(strError, "Card is not supported.", sizeof(strError));
@@ -260,7 +256,7 @@ char* pcsc_feature_to_string(const WORD feature) {
 
 	return strFeature;
 }
-#endif
+#endif /* DEBUG */
 
 
 
@@ -670,4 +666,4 @@ int closePCSCSlot(struct p11Slot_t *slot)
 	FUNC_RETURNS(CKR_OK);
 }
 
-#endif
+#endif /* CTAPI */
