@@ -46,6 +46,10 @@
 #define _MAX_PATH FILENAME_MAX
 #endif
 
+#ifndef CTAPI
+#include <pcsclite.h>
+#endif
+
 #ifdef DEBUG
 #define FUNC_CALLED() do { \
 		debug("Function %s called.\n", __FUNCTION__); \
@@ -96,10 +100,13 @@ struct p11Token_t {
 
 struct p11Slot_t {
 
-	CK_SLOT_ID id;                  /**< The id of the slot                  */
-	CK_SLOT_INFO info;              /**< General information about the slot  */
-	int closed;                     /**< Slot hardware currently absent      */
-	char slotDir[_MAX_PATH];        /**< The directory that holds this slot  */
+	CK_SLOT_ID id;                    /**< The id of the slot                  */
+	CK_SLOT_INFO info;                /**< General information about the slot  */
+	int closed;                       /**< Slot hardware currently absent      */
+#ifndef CTAPI
+	char readername[MAX_READERNAME];  /**< The directory that holds this slot  */
+	SCARDHANDLE card;				  /**< Handle to card */
+#endif
 
 	struct p11Token_t *token;       /**< Pointer to token in the slot        */
 

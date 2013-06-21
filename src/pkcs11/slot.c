@@ -210,6 +210,7 @@ int transmitAPDU(struct p11Slot_t *slot,
 {
 	int rc;
 	unsigned char apdu[4098];
+
 #ifdef DEBUG
 	char scr[4196], *po;
 
