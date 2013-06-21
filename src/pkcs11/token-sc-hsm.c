@@ -48,7 +48,7 @@ static unsigned char aid[] = { 0xE8,0x2B,0x06,0x01,0x04,0x01,0x81,0xC3,0x1F,0x02
 
 
 
-token_sc_hsm_t *getPrivateData(struct p11Token_t *token)
+static token_sc_hsm_t *getPrivateData(struct p11Token_t *token)
 {
 	return (token_sc_hsm_t *)(token + 1);
 }
@@ -480,7 +480,7 @@ static int sc_hsm_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR me
 
 
 
-int stripPKCS15Padding(unsigned char *scr, int len, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+static int stripPKCS15Padding(unsigned char *scr, int len, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
 	int c1,c2,c3;
 
@@ -681,7 +681,7 @@ static int addPrivateKeyObject(struct p11Token_t *token, unsigned char id)
 
 
 
-int sc_hsm_loadObjects(struct p11Token_t *token, int publicObjects)
+static int sc_hsm_loadObjects(struct p11Token_t *token, int publicObjects)
 {
 	unsigned char filelist[MAX_FILES * 2];
 	struct p11Slot_t *slot = token->slot;
@@ -732,6 +732,9 @@ int sc_hsm_loadObjects(struct p11Token_t *token, int publicObjects)
 
 
 
+/**
+ * Update internal PIN status based on SW1/SW2 received from token
+ */
 static int updatePinStatus(struct p11Token_t *token, int pinstatus)
 {
 	int rc = CKR_OK;
@@ -770,6 +773,15 @@ static int updatePinStatus(struct p11Token_t *token, int pinstatus)
 
 
 
+/**
+ * Perform PIN verification and make private objects visible
+ *
+ * @param slot      The slot in which the token is inserted
+ * @param userType  One of CKU_SO or CKU_USER
+ * @param pin       Pointer to PIN value or NULL is PIN shall be verified using PIN-Pad
+ * @param pinLen    The length of the PIN supplied in pin
+ * @return          CKR_OK or any other Cryptoki error code
+ */
 int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin, int pinlen)
 {
 	int rc = CKR_OK;
@@ -804,6 +816,12 @@ int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 
 
 
+/**
+ * Reselect applet in order to reset authentication state
+ *
+ * @param slot      The slot in which the token is inserted
+ * @return          CKR_OK or any other Cryptoki error code
+ */
 int sc_hsm_logout(struct p11Slot_t *slot)
 {
 	int rc;
@@ -826,6 +844,13 @@ int sc_hsm_logout(struct p11Slot_t *slot)
 
 
 
+/**
+ * Create a new SmartCard-HSM token if token detection and initialization is successful
+ *
+ * @param slot      The slot in which a token was detected
+ * @param token     Pointer to pointer updated with newly created token structure
+ * @return          CKR_OK or any other Cryptoki error code
+ */
 int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 {
 	struct p11Token_t *ptoken;

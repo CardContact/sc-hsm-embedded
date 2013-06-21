@@ -56,18 +56,24 @@ extern "C" {
 #define P15_DERIVE          0x00800000
 #define P15_NONREPUDIATION  0x00400000
 
+/**
+ * CommonObjectAttribute as defined by PKCS#15
+ */
 struct p15CommonObjectAttributes {
-	char			*label;
+	char            *label;             /**< The label        */
 };
 
+/**
+ * Private key description as defined by PKCS#15
+ */
 struct p15PrivateKeyDescription {
-	int				keytype;
+	int             keytype;            /**< the keytype encoded as the tag value */
 	struct p15CommonObjectAttributes
-					coa;
-	size_t			idlen;
-	unsigned char	*id;
-	unsigned long	usage;
-	int				keysize;
+	                coa;                /**< CommonObjectAttributes               */
+	size_t          idlen;              /**< Length of key id                     */
+	unsigned char   *id;                /**< The key id as visible at PKCS#11     */
+	unsigned long   usage;              /**< Key usage flags                      */
+	int             keysize;            /**< Key size in bits                     */
 };
 
 int decodePrivateKeyDescription(unsigned char *prkd, size_t prkdlen, struct p15PrivateKeyDescription **p15);

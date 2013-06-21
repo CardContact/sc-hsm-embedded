@@ -45,15 +45,21 @@
 
 #include <token-sc-hsm.h>
 
-// #define USE_CRYPTO
-// #define USE_MAC
-
 #ifdef DEBUG
 #include <pkcs11/debug.h>
 #endif
 
 
 
+/**
+ * Add token object to list of public or private objects
+ *
+ * @param token     The token for which an object shell be added
+ * @param object    The object
+ * @param publicObject true to add as public object, false to add as private object
+ *
+ * @return          0 or -1 if error
+ */
 int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicObject)
 {
 	struct p11Object_t *obj, *tmp;
@@ -109,6 +115,12 @@ int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicOb
 
 
 
+/**
+ * Find public or private object in list of token objects
+ *
+ * @param token     The token whose object shall be removed
+ * @param handle    The objects handle
+ */
 int findObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject)
 {
 	struct p11Object_t *obj;
@@ -134,6 +146,15 @@ int findObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, struct p11Obje
 
 
 
+/**
+ * Remove object from list of token objects
+ *
+ * @param token     The token whose object shall be removed
+ * @param handle    The objects handle
+ * @param publicObject true to remove public object, false to remove private object
+ *
+ * @return          0 or -1 if error
+ */
 int removeObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject)
 {
 	struct p11Object_t *object = NULL;
@@ -182,6 +203,13 @@ int removeObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicOb
 
 
 
+/**
+ * Remove all private objects for token from internal list
+ *
+ * @param token     The token whose objects shall be removed
+ *
+ * @return          CKR_OK or any other Cryptoki error code
+ */
 static void removePrivateObjects(struct p11Token_t *token)
 {
 	struct p11Object_t *pObject = NULL;
@@ -205,6 +233,13 @@ static void removePrivateObjects(struct p11Token_t *token)
 
 
 
+/**
+ * Remove all public objects for token from internal list
+ *
+ * @param token     The token whose objects shall be removed
+ *
+ * @return          CKR_OK or any other Cryptoki error code
+ */
 static void removePublicObjects(struct p11Token_t *token)
 {
 	struct p11Object_t *pObject = NULL;
@@ -228,6 +263,9 @@ static void removePublicObjects(struct p11Token_t *token)
 
 
 
+/**
+ * Remove object from token but keep attributes as these are transfered into a new object
+ */
 int removeObjectLeavingAttributes(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject)
 {
 	struct p11Object_t *object = NULL;
@@ -270,13 +308,14 @@ int removeObjectLeavingAttributes(struct p11Token_t *token, CK_OBJECT_HANDLE han
 
 
 
-int saveObjects(struct p11Slot_t *slot, struct p11Token_t *token, int publicObjects)
-{
-	return CKR_OK;
-}
-
-
-
+/**
+ * Remove object from token
+ *
+ * @param slot      The slot in which the token is inserted
+ * @param token     The token to update
+ *
+ * @return          CKR_OK or any other Cryptoki error code
+ */
 int destroyObject(struct p11Slot_t *slot, struct p11Token_t *token, struct p11Object_t *object)
 {
 	return CKR_OK;
@@ -284,6 +323,14 @@ int destroyObject(struct p11Slot_t *slot, struct p11Token_t *token, struct p11Ob
 
 
 
+/**
+ * Synchronize a token objects that have been changed (e.g. have the dirty flag set)
+ *
+ * @param slot      The slot in which the token is inserted
+ * @param token     The token to update
+ *
+ * @return          CKR_OK or any other Cryptoki error code
+ */
 int synchronizeToken(struct p11Slot_t *slot, struct p11Token_t *token)
 {
 	return CKR_OK;
@@ -291,6 +338,19 @@ int synchronizeToken(struct p11Slot_t *slot, struct p11Token_t *token)
 
 
 
+/**
+ * Log into token
+ *
+ * This token method is called from the C_Login function at the PKCS#11 interface and
+ * make all private objects visible at the PKCS#11 interface
+ *
+ * @param slot      The slot in which the token is inserted
+ * @param userType  One of CKU_SO or CKU_USER
+ * @param pPin      Pointer to PIN value or NULL is PIN shall be verified using PIN-Pad
+ * @param ulPinLen  The length of the PIN supplied in pPin
+ *
+ * @return          CKR_OK or any other Cryptoki error code
+ */
 int logIn(struct p11Slot_t *slot, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen)
 {
 	return sc_hsm_login(slot, userType, pPin, ulPinLen);
@@ -298,6 +358,15 @@ int logIn(struct p11Slot_t *slot, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, C
 
 
 
+/**
+ * Log out from token, removing private objects from the list of visible token objects
+ *
+ * This token method is called from the C_Logout function at the PKCS#11 interface
+ *
+ * @param slot      The slot in which the token is inserted
+ *
+ * @return          CKR_OK or any other Cryptoki error code
+ */
 int logOut(struct p11Slot_t *slot)
 {
 	removePrivateObjects(slot->token);
@@ -307,6 +376,13 @@ int logOut(struct p11Slot_t *slot)
 
 
 
+/**
+ * Detect a newly inserted token in the designated slot
+ *
+ * @param slot      The slot in which a token was detected
+ * @param token     Pointer to pointer updated with newly created token structure
+ * @return          CKR_OK or any other Cryptoki error code
+ */
 int newToken(struct p11Slot_t *slot, struct p11Token_t **token)
 {
 	return newSmartCardHSMToken(slot, token);
@@ -314,6 +390,11 @@ int newToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 
 
+/**
+ * Release allow memory allocated for token
+ *
+ * @param slot      The slot in which the token is inserted
+ */
 void freeToken(struct p11Slot_t *slot)
 {
 	if (slot->token) {

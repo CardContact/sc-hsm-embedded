@@ -222,6 +222,16 @@ static int decodePrivateKeyAttributes(unsigned char *prkd, int prkdlen, struct p
 
 
 
+/**
+ * Decode a TLV encoded PKCS#15 private key description into a structure
+ *
+ * The caller must use freePrivateKeyDescription() to free the allocated structure
+ *
+ * @param prkd      The first byte of the encoded structure
+ * @param prkdlen   The length of the encoded structure
+ * @param p15       Pointer to pointer updated with the newly allocated structure
+ * @return          0 if successfull, -1 for structural errors
+ */
 int decodePrivateKeyDescription(unsigned char *prkd, size_t prkdlen, struct p15PrivateKeyDescription **p15)
 {
 	int rc,tag,len;
@@ -255,7 +265,7 @@ int decodePrivateKeyDescription(unsigned char *prkd, size_t prkdlen, struct p15P
 
 
 
-void freeCommonObjectAttributes(struct p15CommonObjectAttributes *coa)
+static void freeCommonObjectAttributes(struct p15CommonObjectAttributes *coa)
 {
 	if (coa->label != NULL) {
 		free(coa->label);
@@ -265,6 +275,11 @@ void freeCommonObjectAttributes(struct p15CommonObjectAttributes *coa)
 
 
 
+/**
+ * Free structure allocated in decodePrivateKeyDescription()
+ *
+ * @param p15       Pointer to pointer to structure. Pointer is cleared with NULL
+ */
 void freePrivateKeyDescription(struct p15PrivateKeyDescription **p15)
 {
 	if (*p15 != NULL) {

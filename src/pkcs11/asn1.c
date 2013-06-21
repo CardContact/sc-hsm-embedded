@@ -264,6 +264,19 @@ unsigned char *asn1Find(unsigned char *data, unsigned char *path, int level)
 
 
 
+/**
+ * Decode the next TLV object
+ *
+ * Decode the tag and length of the next TLV object and set the value pointer
+ * accordingly. The pointer and remaining buffer length is updated by this call.
+ *
+ * @param ref       Pointer to pointer to first byte of next tag
+ * @param reflen    Pointer to variable containing the remaining buffer length
+ * @param tag       Pointer to variable updated with the tag value
+ * @param length    Pointer to variable updated with the length value
+ * @param value     Pointer to a pointer updated with the value field
+ * @return          true if further object has been decoded
+ */
 int asn1Next(unsigned char **ref, int *reflen, int *tag, int *length, unsigned char **value)
 {
 	unsigned char *base;
@@ -382,6 +395,15 @@ int asn1Validate(unsigned char *data, size_t length)
 
 
 
+/**
+ * Decode a field of up to 32 bit flags into a long value
+ *
+ * Flags are stored left aligned, that is the first bit is stored in the MSB of flags
+ *
+ * @param data the value field
+ * @param length the length of the value field
+ * @param flags pointer to variable receiving the flags
+ */
 void asn1DecodeFlags(unsigned char *data, size_t length, unsigned long *flags)
 {
 	int c = 4;
@@ -396,6 +418,13 @@ void asn1DecodeFlags(unsigned char *data, size_t length, unsigned long *flags)
 
 
 
+/**
+ * Decode integer from value field encoded MSB first
+ *
+ * @param data the value field
+ * @param length the length of the value field
+ * @param value pointer to variable receiving the value
+ */
 int asn1DecodeInteger(unsigned char *data, size_t length, int *value)
 {
 	int c = sizeof(int);
@@ -414,6 +443,9 @@ int asn1DecodeInteger(unsigned char *data, size_t length, int *value)
 
 
 
+/**
+ * Internal selftest
+ */
 void testASN1()
 {
 	unsigned char t1[] = { 0x04, 0x00 };
