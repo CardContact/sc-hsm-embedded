@@ -53,9 +53,8 @@
 #else
 #include <pcsclite.h>
 #include <winscard.h>
-#endif
-
-#endif
+#endif /* _WIN32_ */
+#endif /* CTAPI */
 
 #ifdef DEBUG
 #define FUNC_CALLED() do { \
