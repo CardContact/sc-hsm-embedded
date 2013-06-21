@@ -31,6 +31,8 @@
  * @brief   Slot implementation for CT-API reader
  */
 
+#ifdef CTAPI
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -71,7 +73,7 @@ extern struct p11Context_t *context;
  *
  *  Returns : < 0 Error > 0 Bytes read
  */
-static int transmitAPDUwithCTAPI(struct p11Slot_t *slot, int todad,
+int transmitAPDUwithCTAPI(struct p11Slot_t *slot, int todad,
 		unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
 		int OutLen, unsigned char *OutData,
 		int InLen, unsigned char *InData, int InSize, unsigned short *SW1SW2)
@@ -136,7 +138,7 @@ int transmitAPDUviaCTAPI(struct p11Slot_t *slot, int todad,
 
 
 /**
- * checkForNewToken looks into a specific slot for a token.
+ * checkForNewCTAPIToken looks into a specific slot for a token.
  *
  * @param slot       Pointer to slot structure.
  *
@@ -157,7 +159,7 @@ int transmitAPDUviaCTAPI(struct p11Slot_t *slot, int todad,
  *                   </TR>
  *                   </TABLE></P>
  */
-static int checkForNewToken(struct p11Slot_t *slot)
+static int checkForNewCTAPIToken(struct p11Slot_t *slot)
 {
 	struct p11Token_t *ptoken;
 	unsigned char rsp[260];
@@ -213,7 +215,7 @@ static int checkForNewToken(struct p11Slot_t *slot)
 
 
 /**
- * checkForRemovedToken looks into a specific slot for a removed token.
+ * checkForRemovedCTAPIToken looks into a specific slot for a removed token.
  *
  * @param slot       Pointer to slot structure.
  *
@@ -234,7 +236,7 @@ static int checkForNewToken(struct p11Slot_t *slot)
  *                   </TR>
  *                   </TABLE></P>
  */
-static int checkForRemovedToken(struct p11Slot_t *slot)
+static int checkForRemovedCTAPIToken(struct p11Slot_t *slot)
 {
 	unsigned char rsp[260];
 	int rc;
@@ -274,9 +276,9 @@ int getCTAPIToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	FUNC_CALLED();
 
 	if (slot->token) {
-		rc = checkForRemovedToken(slot);
+		rc = checkForRemovedCTAPIToken(slot);
 	} else {
-		rc = checkForNewToken(slot);
+		rc = checkForNewCTAPIToken(slot);
 	}
 
 	*token = slot->token;
@@ -323,13 +325,11 @@ int updateCTAPISlots(struct p11SlotPool_t *pool)
 			break;
 		}
 
-		slot = (struct p11Slot_t *) malloc(sizeof(struct p11Slot_t));
+		slot = (struct p11Slot_t *) calloc(1, sizeof(struct p11Slot_t));
 
 		if (slot == NULL) {
 			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 		}
-
-		memset(slot, 0x00, sizeof(struct p11Slot_t));
 
 		sprintf(scr, "CT-API Port #%d", ctn);
 		strbpcpy(slot->info.slotDescription,
@@ -373,3 +373,5 @@ int closeCTAPISlot(struct p11Slot_t *slot)
 
 	FUNC_RETURNS(CKR_OK);
 }
+
+#endif
