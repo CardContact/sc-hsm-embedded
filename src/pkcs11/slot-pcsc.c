@@ -276,11 +276,16 @@ int transmitAPDUwithPCSC(struct p11Slot_t *slot, int todad,
 
 		rc = lenr - 2;
 
-		if (rc)
-			rc = InSize;
+		if (rc) { /* Determine the size of the response data */
 
-		if (InData)
-			memcpy(InData, scr, rc);
+			rc = rc > InSize ? InSize : rc; /* Must fit in the outgoing data buffer */
+
+			if (InData) {
+				memcpy(InData, scr, rc);
+			} else {
+				rc = 0;
+			}
+		}
 
 		if ((scr[lenr - 2] == 0x9F) || (scr[lenr - 2] == 0x61))
 			if (InData && InSize) {             /* Get Response             */
