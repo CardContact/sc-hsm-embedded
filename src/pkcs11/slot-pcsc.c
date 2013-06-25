@@ -214,7 +214,6 @@ int transmitAPDUwithPCSC(struct p11Slot_t *slot, int todad,
 	DWORD lenr;
 	unsigned char dad, sad;
 	unsigned char scr[4098], *po;
-	SCARD_IO_REQUEST pioRecvPci;
 
 	FUNC_CALLED();
 
@@ -261,7 +260,7 @@ int transmitAPDUwithPCSC(struct p11Slot_t *slot, int todad,
 
 		lenr = sizeof(scr);
 
-		rc = SCardTransmit(slot->card, SCARD_PCI_T1, scr, po - scr, &pioRecvPci, scr, &lenr);
+		rc = SCardTransmit(slot->card, SCARD_PCI_T1, scr, po - scr, NULL, scr, &lenr);
 #ifdef DEBUG
 		debug("SCardTransmit : %s\n", pcsc_error_to_string(rc));
 #endif
@@ -276,15 +275,12 @@ int transmitAPDUwithPCSC(struct p11Slot_t *slot, int todad,
 
 		rc = lenr - 2;
 
-		if (rc) { /* Determine the size of the response data */
+		if (rc > InSize) {
+			rc = InSize;
+		}
 
-			rc = rc > InSize ? InSize : rc; /* Must fit in the outgoing data buffer */
-
-			if (InData) {
-				memcpy(InData, scr, rc);
-			} else {
-				rc = 0;
-			}
+		if (InData) {
+			memcpy(InData, scr, rc);
 		}
 
 		if ((scr[lenr - 2] == 0x9F) || (scr[lenr - 2] == 0x61))

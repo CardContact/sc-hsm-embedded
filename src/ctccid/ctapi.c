@@ -38,8 +38,12 @@
 #include "ctapi.h"
 #include "ctbcs.h"
 #include "scr.h"
+#include "mutex.h"
 
 extern int ccidT1Term (struct scr *ctx);
+
+static MUTEX mutex;
+static int mutexInitialized = 0;
 
 /* Handle up to 8 USB CCID readers */
 
@@ -78,6 +82,13 @@ signed char CT_init(unsigned short ctn, unsigned short pn)
 	int rc, indx;
 	scr_t *ctx;
 
+	if (!mutexInitialized) {
+		MUTEX_INIT(&mutex);
+	}
+
+	mutexInitialized++;
+	MUTEX_LOCK(&mutex);
+
 	rc = LookupReader(ctn);
 
 	if (rc < 0) {
@@ -90,12 +101,16 @@ signed char CT_init(unsigned short ctn, unsigned short pn)
 		}
 
 		if (indx == MAX_READER) {
+			mutexInitialized--;
+			MUTEX_UNLOCK(&mutex);
 			return ERR_MEMORY;
 		}
 
 		ctx = (scr_t *)calloc(1, sizeof(scr_t));
 
 		if (!ctx) {
+			mutexInitialized--;
+			MUTEX_UNLOCK(&mutex);
 			return ERR_MEMORY;
 		}
 
@@ -108,8 +123,12 @@ signed char CT_init(unsigned short ctn, unsigned short pn)
 			free(ctx);
 
 			if (rc == ERR_NO_READER) {
+				mutexInitialized--;
+				MUTEX_UNLOCK(&mutex);
 				return ERR_CT;
 			} else {
+				mutexInitialized--;
+				MUTEX_UNLOCK(&mutex);
 				return ERR_HOST; /* USB transmission error */
 			}
 		}
@@ -119,6 +138,8 @@ signed char CT_init(unsigned short ctn, unsigned short pn)
 
 		readerTable[indx] = ctx;
 	}
+
+	MUTEX_UNLOCK(&mutex);
 
 	return OK;
 }
@@ -136,6 +157,8 @@ signed char CT_close(unsigned short ctn)
 
 	int rc;
 	scr_t *ctx;
+
+	MUTEX_LOCK(&mutex);
 
 	rc = LookupReader(ctn);
 
@@ -157,6 +180,13 @@ signed char CT_close(unsigned short ctn)
 
 	free(ctx);
 	readerTable[rc] = NULL;
+
+	MUTEX_UNLOCK(&mutex);
+
+	mutexInitialized--;
+	if (!mutexInitialized) {
+		MUTEX_DESTROY(&mutex);
+	}
 
 	return OK;
 }
@@ -184,6 +214,8 @@ signed char CT_data(unsigned short ctn, unsigned char *dad, unsigned char *sad,
 	unsigned int ilr;
 	scr_t *ctx;
 
+	MUTEX_LOCK(&mutex);
+
 	rc = LookupReader(ctn);
 
 	if (rc < 0) {
@@ -199,6 +231,7 @@ signed char CT_data(unsigned short ctn, unsigned char *dad, unsigned char *sad,
 	ilr = (int) *lr; /* Overcome problem with lr size     */
 
 	rc = 0;
+
 
 	if (*dad == 1) {
 		*sad = 1; /* Source Reader    */
@@ -269,6 +302,9 @@ signed char CT_data(unsigned short ctn, unsigned char *dad, unsigned char *sad,
 	}
 
 	*lr = ilr;
+
+	MUTEX_UNLOCK(&mutex);
+
 	return rc;
 }
 
