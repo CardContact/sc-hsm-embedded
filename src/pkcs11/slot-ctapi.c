@@ -47,13 +47,11 @@
 
 #include <pkcs11/strbpcpy.h>
 
-#include <ctccid/ctapi.h>
-
 #ifdef DEBUG
 #include <pkcs11/debug.h>
 #endif
 
-#include "slot-ctapi.h"
+#include <ctccid/ctapi.h>
 
 extern struct p11Context_t *context;
 
@@ -115,6 +113,16 @@ int transmitAPDUwithCTAPI(struct p11Slot_t *slot, int todad,
 
 
 
+/**
+ * Transmit APDU using CT-API
+ *
+ * @param slot the slot to use for communication
+ * @param capdu the command APDU
+ * @param capdu_len the length of the command APDU
+ * @param rapdu the response APDU
+ * @param rapdu_len the length of the response APDU
+ * @return -1 for error or length of received response APDU
+ */
 int transmitAPDUviaCTAPI(struct p11Slot_t *slot, int todad,
 	unsigned char *capdu, size_t capdu_len,
 	unsigned char *rapdu, size_t rapdu_len)

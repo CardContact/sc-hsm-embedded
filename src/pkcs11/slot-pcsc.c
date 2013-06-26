@@ -43,17 +43,19 @@
 #include <pkcs11/slot.h>
 #include <pkcs11/token.h>
 #include <pkcs11/slotpool.h>
+#include <pkcs11/slot-pcsc.h>
 
 #include <strbpcpy.h>
 
-#include "slot-pcsc.h"
-
-#ifdef _WIN32
-#include <winscard.h>
-#else
-#include <pcsclite.h>
-#include <winscard.h>
+#ifdef DEBUG
+#include <pkcs11/debug.h>
 #endif
+
+#ifndef _WIN32
+#include <pcsclite.h>
+#endif
+
+#include <winscard.h>
 
 extern struct p11Context_t *context;
 
@@ -187,30 +189,24 @@ char* pcsc_error_to_string(const DWORD error) {
 
 #endif
 
-/*
- *  Process an ISO 7816 APDU with the underlying terminal hardware.
+
+
+/**
+ * Transmit APDU using PC/SC
  *
- *  CLA     : Class byte of instruction
- *  INS     : Instruction byte
- *  P1      : Parameter P1
- *  P2      : Parameter P2
- *  OutLen  : Length of outgoing data (Lc)
- *  OutData : Outgoing data or NULL if none
- *  InLen   : Length of incoming data (Le)
- *  InData  : Input buffer for incoming data
- *  InSize  : buffer size
- *  SW1SW2  : Address of short integer to receive SW1SW2
- *
- *  Returns : < 0 Error > 0 Bytes read
+ * @param slot the slot to use for communication
+ * @param capdu the command APDU
+ * @param capdu_len the length of the command APDU
+ * @param rapdu the response APDU
+ * @param rapdu_len the length of the response APDU
+ * @return -1 for error or length of received response APDU
  */
-int transmitAPDUwithPCSC(struct p11Slot_t *slot, int todad,
-		unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
-		int OutLen, unsigned char *OutData,
-		int InLen, unsigned char *InData, int InSize, unsigned short *SW1SW2)
+int transmitAPDUviaPCSC(struct p11Slot_t *slot,
+	unsigned char *capdu, size_t capdu_len,
+	unsigned char *rapdu, size_t rapdu_len)
 {
-	int  rc, r, retry;
+	int rc;
 	DWORD lenr;
-	unsigned char scr[4098], *po;
 
 	FUNC_CALLED();
 
@@ -218,88 +214,18 @@ int transmitAPDUwithPCSC(struct p11Slot_t *slot, int todad,
 		FUNC_FAILS(CKR_DEVICE_ERROR, "No card handle");
 	}
 
-	retry = 2;
+	lenr = rapdu_len;
 
-	while (retry--) {
-		scr[0] = CLA;
-		scr[1] = INS;
-		scr[2] = P1;
-		scr[3] = P2;
-		po = scr + 4;
-		rc = 0;
+	rc = SCardTransmit(slot->card, SCARD_PCI_T1, capdu, capdu_len, NULL, rapdu, &lenr);
 
-		if (OutData && OutLen) {
-			if ((OutLen <= 255) && (InLen <= 255)) {
-				*po++ = (unsigned char)OutLen;
-			} else {
-				*po++ = 0;
-				*po++ = (unsigned char)(OutLen >> 8);
-				*po++ = (unsigned char)(OutLen & 0xFF);
-			}
-			memcpy(po, OutData, OutLen);
-			po += OutLen;
-		}
-
-		if (InData && InSize) {
-			if ((InLen <= 255) && (OutLen <= 255)) {
-				*po++ = (unsigned char)InLen;
-			} else {
-				if (InLen >= 65556)
-					InLen = 0;
-
-				if (!OutData) {
-					*po++ = 0;
-				}
-				*po++ = (unsigned char)(InLen >> 8);
-				*po++ = (unsigned char)(InLen & 0xFF);
-			}
-		}
-
-		lenr = sizeof(scr);
-
-		rc = SCardTransmit(slot->card, SCARD_PCI_T1, scr, po - scr, NULL, scr, &lenr);
+	if (rc != SCARD_S_SUCCESS) {
 #ifdef DEBUG
 		debug("SCardTransmit : %s\n", pcsc_error_to_string(rc));
 #endif
-		if (rc != SCARD_S_SUCCESS) {
-			FUNC_FAILS(-1, "SCardTransmit failed");
-		}
-
-		if (scr[lenr - 2] == 0x6C) {
-			InLen = scr[lenr - 1];
-			continue;
-		}
-
-		rc = lenr - 2;
-
-		if (rc > InSize) {
-			rc = InSize;
-		}
-
-		if (InData) {
-			memcpy(InData, scr, rc);
-		}
-
-		if ((scr[lenr - 2] == 0x9F) || (scr[lenr - 2] == 0x61))
-			if (InData && InSize) {             /* Get Response             */
-				r = transmitAPDU(slot,
-						(unsigned char)((CLA == 0xE0) || (CLA == 0x80) ?
-								0x00 : CLA), 0xC0, 0, 0,
-								0, NULL,
-								scr[1], InData + rc, InSize - rc, SW1SW2);
-
-				if (r < 0)
-					FUNC_FAILS(rc, "GET RESPONSE failed");
-
-				rc += r;
-			} else
-				*SW1SW2 = 0x9000;
-		else
-			*SW1SW2 = (scr[lenr - 2] << 8) + scr[lenr - 1];
-		break;
+		FUNC_FAILS(-1, "SCardTransmit failed");
 	}
 
-	FUNC_RETURNS(rc);
+	FUNC_RETURNS(lenr);
 }
 
 
