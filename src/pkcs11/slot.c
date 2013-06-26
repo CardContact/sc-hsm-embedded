@@ -253,6 +253,10 @@ int transmitAPDU(struct p11Slot_t *slot,
 	rc = transmitAPDUviaCTAPI(slot, 0,
 			apdu, rc,
 			apdu, sizeof(apdu));
+#else
+	rc = transmitAPDUviaPCSC(slot,
+			apdu, rc,
+			apdu, sizeof(apdu));
 #endif
 
 	if (rc >= 2) {

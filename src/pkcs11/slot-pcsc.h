@@ -60,11 +60,9 @@
 char* pcsc_error_to_string(const DWORD error);
 #endif
 
-int transmitAPDUwithPCSC(struct p11Slot_t *slot, int todad,
-		unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
-		int OutLen, unsigned char *OutData,
-		int InLen, unsigned char *InData, int InSize, unsigned short *SW1SW2);
-
+int transmitAPDUviaPCSC(struct p11Slot_t *slot,
+	unsigned char *capdu, size_t capdu_len,
+	unsigned char *rapdu, size_t rapdu_len);
 int getPCSCToken(struct p11Slot_t *slot, struct p11Token_t **token);
 int updatePCSCSlots(struct p11SlotPool_t *pool);
 int closePCSCSlot(struct p11Slot_t *slot);
