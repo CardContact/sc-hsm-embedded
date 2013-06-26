@@ -1,5 +1,5 @@
 /**
- * CT-API for CCID Driver
+ * SmartCard-HSM PKCS#11 Module
  *
  * Copyright (c) 2013, CardContact Systems GmbH, Minden, Germany
  * All rights reserved.
@@ -26,50 +26,49 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @file mutex.h
- * @author Frank Thater
- * @brief Defines procedures for cross platform mutex handling
+ * @file    slot-pcsc.c
+ * @author  Frank Thater
+ * @brief   Slot implementation for PC/SC reader
  */
 
-#include "mutex.h"
+#ifndef ___SLOT_PCSC_H___
+#define ___SLOT_PCSC_H___
 
+#ifndef CTAPI
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <errno.h>
 
-int mutex_init(MUTEX *mutex) {
+#include <pkcs11/slot.h>
+#include <pkcs11/token.h>
+#include <pkcs11/slotpool.h>
+
+#include <strbpcpy.h>
+
 #ifdef _WIN32
-	*mutex = CreateMutex(0, FALSE, 0);
-	return (*mutex == 0 ? -1 : 0);
+#include <winscard.h>
 #else
-	return pthread_mutex_init(mutex, NULL);
+#include <pcsclite.h>
+#include <winscard.h>
 #endif
-}
 
-
-
-int mutex_lock(MUTEX *mutex) {
-#ifdef _WIN32
-	return (WaitForSingleObject(*mutex, INFINITE) == WAIT_FAILED ? -1 : 0);
-#else
-	return pthread_mutex_lock(mutex);
+#ifdef DEBUG
+char* pcsc_error_to_string(const DWORD error);
 #endif
-}
 
+int transmitAPDUwithPCSC(struct p11Slot_t *slot, int todad,
+		unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
+		int OutLen, unsigned char *OutData,
+		int InLen, unsigned char *InData, int InSize, unsigned short *SW1SW2);
 
+int getPCSCToken(struct p11Slot_t *slot, struct p11Token_t **token);
+int updatePCSCSlots(struct p11SlotPool_t *pool);
+int closePCSCSlot(struct p11Slot_t *slot);
 
-int mutex_unlock(MUTEX *mutex) {
-#ifdef _WIN32
-	return (ReleaseMutex(*mutex) == 0 ? -1 : 0);
-#else
-	return pthread_mutex_unlock(mutex);
 #endif
-}
 
-
-
-int mutex_destroy(MUTEX *mutex) {
-#ifdef _WIN32
-	return (CloseHandle(*mutex) == 0 ? -1 : 0);
-#else
-	return pthread_mutex_destroy(mutex);
 #endif
-}

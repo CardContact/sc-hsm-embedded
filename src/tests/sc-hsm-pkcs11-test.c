@@ -919,7 +919,7 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 }
 
 
-
+#if 0
 void testInsertRemove(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 {
 	CK_RV rc;
@@ -969,7 +969,7 @@ void testInsertRemove(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 		}
 	}
 }
-
+#endif
 
 
 void main(int argc, char *argv[])
@@ -996,6 +996,7 @@ void main(int argc, char *argv[])
 	CK_RV (*C_GetFunctionList)(CK_FUNCTION_LIST_PTR_PTR);
 	char *p11libname = P11LIBNAME;
 
+
 	if (argc == 2) {
 		p11libname = argv[1];
 	}
@@ -1007,6 +1008,7 @@ void main(int argc, char *argv[])
 		printf("dlopen failed with %s\n", dlerror());
 		exit(-1);
 	}
+
 	C_GetFunctionList = (CK_RV (*)(CK_FUNCTION_LIST_PTR_PTR))dlsym(dlhandle, "C_GetFunctionList");
 
 	printf("Calling C_GetFunctionList ");
@@ -1138,6 +1140,7 @@ void main(int argc, char *argv[])
 	}
 
 	dlclose(dlhandle);
+
 	printf("Unit test finished.\n");
 	printf("%d tests performed.\n", testscompleted);
 	printf("%d tests failed.\n", testsfailed);

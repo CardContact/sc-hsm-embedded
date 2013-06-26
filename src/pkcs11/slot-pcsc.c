@@ -46,6 +46,8 @@
 
 #include <strbpcpy.h>
 
+#include "slot-pcsc.h"
+
 #ifdef _WIN32
 #include <winscard.h>
 #else
@@ -174,11 +176,7 @@ char* pcsc_error_to_string(const DWORD error) {
 			break;
 		case SCARD_E_UNSUPPORTED_FEATURE :
 			(void) strncpy(strError, "Feature not supported.", sizeof(strError));
-			break;
-		default:
-			(void) snprintf(strError, sizeof(strError) - 1,
-					"Unknown error: 0x%08lX", error);
-			break;
+			break;		
 	};
 
 	/* add a null byte */
@@ -212,7 +210,6 @@ int transmitAPDUwithPCSC(struct p11Slot_t *slot, int todad,
 {
 	int  rc, r, retry;
 	DWORD lenr;
-	unsigned char dad, sad;
 	unsigned char scr[4098], *po;
 
 	FUNC_CALLED();
@@ -332,9 +329,7 @@ int transmitAPDUwithPCSC(struct p11Slot_t *slot, int todad,
 static int checkForNewPCSCToken(struct p11Slot_t *slot)
 {
 	struct p11Token_t *ptoken;
-	unsigned char rsp[260];
 	int rc;
-	unsigned short SW1SW2;
 	DWORD dwActiveProtocol;
 
 	FUNC_CALLED();
@@ -395,9 +390,7 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
  */
 static int checkForRemovedPCSCToken(struct p11Slot_t *slot)
 {
-	unsigned char rsp[260];
 	int rc;
-	unsigned short SW1SW2;
 
 	FUNC_CALLED();
 
@@ -448,10 +441,9 @@ int getPCSCToken(struct p11Slot_t *slot, struct p11Token_t **token)
 int updatePCSCSlots(struct p11SlotPool_t *pool)
 {
 	struct p11Slot_t *slot;
-	LPSTR mszReaders;
-	DWORD dwReaders = 0, i, numOfReaders;
-	char **readers, *reader;
-	char scr[20], *p;
+	LPTSTR readers = NULL;
+	DWORD cch = SCARD_AUTOALLOCATE;
+	LPTSTR p;
 	int rc, match;
 
 	FUNC_CALLED();
@@ -472,19 +464,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		}
 	}
 
-	/* Determine size of reader list */
-	rc = SCardListReaders(hContext, NULL, NULL, &dwReaders);
-
-#ifdef DEBUG
-	debug("SCardListReaders : %s\n", pcsc_error_to_string(rc));
-#endif
-
-	if (rc != SCARD_S_SUCCESS) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Error listing PC/SC card terminals");
-	}
-
-	mszReaders = calloc(dwReaders, sizeof(char));
-	rc = SCardListReaders(hContext, NULL, mszReaders, &dwReaders);
+	rc = SCardListReaders(hContext, NULL, (LPTSTR)&readers, &cch);
 
 #ifdef DEBUG
 	debug("SCardListReaders : %s\n", pcsc_error_to_string(rc));
@@ -495,37 +475,17 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 	}
 
 	/* Determine the total number of readers */
-	numOfReaders = 0;
-	p = mszReaders;
+	p = readers;
 	while (*p != '\0') {
-		p += strlen(p) + 1;
-		numOfReaders++;
-	}
-
-	/* allocate the readers table */
-	readers = calloc(numOfReaders, sizeof(char *));
-	if (readers == NULL) {
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
-	}
-
-	/* Get the names of all readers */
-	numOfReaders = 0;
-	p = mszReaders;
-	while (*p != '\0') {
-		readers[numOfReaders] = p;
-		p += strlen(p) + 1;
-		numOfReaders++;
-	}
-
-	while (numOfReaders) {
-
-		reader = readers[--numOfReaders];
+#ifdef DEBUG
+		debug("%s\n", p);
+#endif
 
 		/* Check if the already have a slot for the reader */
 		slot = pool->list;
 		match = FALSE;
 		while (slot) {
-			if (strncmp(slot->readername, reader, strlen(reader)) == 0) {
+			if (strncmp(slot->readername, p, strlen(p)) == 0) {
 				match = TRUE;
 				break;
 			}
@@ -534,21 +494,22 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 
 		/* Skip the reader as we already have a slot for it */
 		if (match) {
+			p += strlen(p) + 1;
 			continue;
 		}
 
 		slot = (struct p11Slot_t *) calloc(1, sizeof(struct p11Slot_t));
 
 		if (slot == NULL) {
-			free(readers);
+			SCardFreeMemory(hContext, readers );
 			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 		}
 
 		strbpcpy(slot->info.slotDescription,
-				reader,
+				(char *)p,
 				sizeof(slot->info.slotDescription));
 
-		strcpy(slot->readername, reader);
+		strcpy(slot->readername, (char *)p);
 
 		strbpcpy(slot->info.manufacturerID,
 				"CardContact",
@@ -562,12 +523,22 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 
 		slot->info.flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
 		addSlot(context->slotPool, slot);
+
 #ifdef DEBUG
 		debug("Added slot (%lu, %s)\n", slot->id, slot->readername);
 #endif
+		p += strlen(p) + 1;
 	}
 
-	free(readers);
+    rc = SCardFreeMemory(hContext, readers );
+
+#ifdef DEBUG
+	debug("SCardFreeMemory : %s\n", pcsc_error_to_string(rc));
+#endif
+
+	if (rc != SCARD_S_SUCCESS) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error freeing memory");
+	}
 
 	FUNC_RETURNS(CKR_OK);
 }

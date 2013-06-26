@@ -42,7 +42,7 @@
 
 extern int ccidT1Term (struct scr *ctx);
 
-static MUTEX mutex;
+static MUTEX globalmutex;
 static int mutexInitialized = 0;
 
 /* Handle up to 8 USB CCID readers */
@@ -83,11 +83,16 @@ signed char CT_init(unsigned short ctn, unsigned short pn)
 	scr_t *ctx;
 
 	if (!mutexInitialized) {
-		MUTEX_INIT(&mutex);
+		if (mutex_init(&globalmutex) != 0) {
+			return ERR_CT;
+		};
 	}
 
 	mutexInitialized++;
-	MUTEX_LOCK(&mutex);
+	
+	if (mutex_lock(&globalmutex) != 0) {
+		return ERR_CT;
+	}
 
 	rc = LookupReader(ctn);
 
@@ -102,7 +107,10 @@ signed char CT_init(unsigned short ctn, unsigned short pn)
 
 		if (indx == MAX_READER) {
 			mutexInitialized--;
-			MUTEX_UNLOCK(&mutex);
+			mutex_unlock(&globalmutex);
+			if (!mutexInitialized) {
+				mutex_destroy(&globalmutex);
+			}
 			return ERR_MEMORY;
 		}
 
@@ -110,7 +118,10 @@ signed char CT_init(unsigned short ctn, unsigned short pn)
 
 		if (!ctx) {
 			mutexInitialized--;
-			MUTEX_UNLOCK(&mutex);
+			mutex_unlock(&globalmutex);
+			if (!mutexInitialized) {
+				mutex_destroy(&globalmutex);
+			}
 			return ERR_MEMORY;
 		}
 
@@ -124,11 +135,17 @@ signed char CT_init(unsigned short ctn, unsigned short pn)
 
 			if (rc == ERR_NO_READER) {
 				mutexInitialized--;
-				MUTEX_UNLOCK(&mutex);
+				mutex_unlock(&globalmutex);
+				if (!mutexInitialized) {
+					mutex_destroy(&globalmutex);
+				}
 				return ERR_CT;
 			} else {
 				mutexInitialized--;
-				MUTEX_UNLOCK(&mutex);
+				mutex_unlock(&globalmutex);
+				if (!mutexInitialized) {
+					mutex_destroy(&globalmutex);
+				}
 				return ERR_HOST; /* USB transmission error */
 			}
 		}
@@ -136,10 +153,17 @@ signed char CT_init(unsigned short ctn, unsigned short pn)
 		ctx->ctn = ctn;
 		ctx->pn = pn;
 
+		if (mutex_init(&ctx->mutex) != 0) {
+			free(ctx);
+			return ERR_CT;
+		}
+
 		readerTable[indx] = ctx;
 	}
 
-	MUTEX_UNLOCK(&mutex);
+	if (mutex_unlock(&globalmutex) != 0) {
+		return ERR_CT;
+	}
 
 	return OK;
 }
@@ -158,17 +182,21 @@ signed char CT_close(unsigned short ctn)
 	int rc;
 	scr_t *ctx;
 
-	MUTEX_LOCK(&mutex);
+	if (mutex_lock(&globalmutex) != 0) {
+		return ERR_CT;
+	}
 
 	rc = LookupReader(ctn);
 
 	if (rc < 0) {
+		mutex_unlock(&globalmutex);
 		return ERR_CT;
 	}
 
 	ctx = readerTable[rc];
 
 	if (!ctx) {
+		mutex_unlock(&globalmutex);
 		return ERR_CT;
 	}
 
@@ -176,16 +204,20 @@ signed char CT_close(unsigned short ctn)
 		ccidT1Term(ctx);
 	}
 
-	USB_Close(&(ctx->device));
+	USB_Close(&ctx->device);
+
+	mutex_destroy(&ctx->mutex);
 
 	free(ctx);
 	readerTable[rc] = NULL;
 
-	MUTEX_UNLOCK(&mutex);
+	if (mutex_unlock(&globalmutex) != 0) {
+		return ERR_CT;	
+	}
 
 	mutexInitialized--;
 	if (!mutexInitialized) {
-		MUTEX_DESTROY(&mutex);
+		mutex_destroy(&globalmutex);
 	}
 
 	return OK;
@@ -214,8 +246,6 @@ signed char CT_data(unsigned short ctn, unsigned char *dad, unsigned char *sad,
 	unsigned int ilr;
 	scr_t *ctx;
 
-	MUTEX_LOCK(&mutex);
-
 	rc = LookupReader(ctn);
 
 	if (rc < 0) {
@@ -232,6 +262,9 @@ signed char CT_data(unsigned short ctn, unsigned char *dad, unsigned char *sad,
 
 	rc = 0;
 
+	if (mutex_lock(&ctx->mutex) != 0) {
+		return ERR_CT;
+	}
 
 	if (*dad == 1) {
 		*sad = 1; /* Source Reader    */
@@ -303,7 +336,9 @@ signed char CT_data(unsigned short ctn, unsigned char *dad, unsigned char *sad,
 
 	*lr = ilr;
 
-	MUTEX_UNLOCK(&mutex);
+	if (mutex_unlock(&ctx->mutex) != 0) {
+		return ERR_CT;
+	}
 
 	return rc;
 }

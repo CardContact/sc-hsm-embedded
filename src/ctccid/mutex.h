@@ -47,9 +47,9 @@
 #define MUTEX pthread_mutex_t
 #endif
 
-int MUTEX_INIT(MUTEX *mutex);
-int MUTEX_LOCK(MUTEX *mutex);
-int MUTEX_UNLOCK(MUTEX *mutex);
-int MUTEX_DESTROY(MUTEX *mutex);
+int mutex_init(MUTEX *mutex);
+int mutex_lock(MUTEX *mutex);
+int mutex_unlock(MUTEX *mutex);
+int mutex_destroy(MUTEX *mutex);
 
 #endif

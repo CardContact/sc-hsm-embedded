@@ -42,8 +42,13 @@
 #include <pkcs11/debug.h>
 #endif
 
-#define CTAPI			// Only CTAPI supported so far
-#include <pkcs11/slot-ctapi.h>
+#ifdef CTAPI
+#include "slot-ctapi.h"
+#else
+#include "slot-pcsc.h"
+#endif
+
+extern struct p11Context_t *context;
 
 
 
