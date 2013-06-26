@@ -246,8 +246,6 @@ signed char CT_data(unsigned short ctn, unsigned char *dad, unsigned char *sad,
 	unsigned int ilr;
 	scr_t *ctx;
 
-	MUTEX_LOCK(&mutex);
-
 	rc = LookupReader(ctn);
 
 	if (rc < 0) {

@@ -53,7 +53,7 @@
 #else
 #include <pcsclite.h>
 #include <winscard.h>
-#endif /* _WIN32_ */
+#endif /* _WIN32 */
 #endif /* CTAPI */
 
 #ifdef DEBUG
