@@ -571,7 +571,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	if (!isValidPtr(pTemplate)) {
+	if (ulCount && !isValidPtr(pTemplate)) {
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
