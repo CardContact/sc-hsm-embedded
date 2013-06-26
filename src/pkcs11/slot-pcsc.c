@@ -47,14 +47,15 @@
 
 #include <strbpcpy.h>
 
-#include "slot-pcsc.h"
-
-#ifdef _WIN32
-#include <winscard.h>
-#else
-#include <pcsclite.h>
-#include <winscard.h>
+#ifdef DEBUG
+#include <pkcs11/debug.h>
 #endif
+
+#ifndef _WIN32
+#include <pcsclite.h>
+#endif
+
+#include <winscard.h>
 
 extern struct p11Context_t *context;
 
