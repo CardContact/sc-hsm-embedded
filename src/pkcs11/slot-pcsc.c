@@ -47,6 +47,8 @@
 
 #include <strbpcpy.h>
 
+#include "slot-pcsc.h"
+
 #ifdef _WIN32
 #include <winscard.h>
 #else
