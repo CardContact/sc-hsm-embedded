@@ -40,6 +40,7 @@
 #endif
 
 #include "usb_device.h"
+#include "mutex.h"
 
 /**
  * Maximum number of readers
@@ -75,6 +76,9 @@ typedef struct scr {
 	unsigned short ctn;
 	/** Port number */
 	unsigned short pn;
+
+	/** Card terminal specific mutex */
+	MUTEX mutex;
 
 	/** Context structure for USB device */
 	struct usb_device	*device;

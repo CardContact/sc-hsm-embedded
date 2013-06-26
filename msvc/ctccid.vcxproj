@@ -172,6 +172,7 @@
     <ClCompile Include="..\src\ctccid\ctapi.c" />
     <ClCompile Include="..\src\ctccid\ctbcs.c" />
     <ClCompile Include="..\src\ctccid\ctccid_debug.c" />
+    <ClCompile Include="..\src\ctccid\mutex.c" />
     <ClCompile Include="..\src\ctccid\usb_device.c" />
   </ItemGroup>
   <ItemGroup>
@@ -180,6 +181,7 @@
     <ClInclude Include="..\src\ctccid\ctapi.h" />
     <ClInclude Include="..\src\ctccid\ctbcs.h" />
     <ClInclude Include="..\src\ctccid\ctccid_debug.h" />
+    <ClInclude Include="..\src\ctccid\mutex.h" />
     <ClInclude Include="..\src\ctccid\scr.h" />
     <ClInclude Include="..\src\ctccid\usb_device.h" />
   </ItemGroup>

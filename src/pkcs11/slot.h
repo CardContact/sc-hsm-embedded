@@ -59,4 +59,8 @@ int updateSlots(struct p11SlotPool_t *pool);
 
 int closeSlot(struct p11Slot_t *slot);
 
+int addToken(struct p11Slot_t *slot, struct p11Token_t *token);
+
+int removeToken(struct p11Slot_t *slot);
+
 #endif /* ___SLOT_H_INC___ */

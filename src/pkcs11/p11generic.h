@@ -47,7 +47,14 @@
 #endif
 
 #ifndef CTAPI
+#ifdef _WIN32
+#include <winscard.h>
+#define  MAX_READERNAME   128
+#else
 #include <pcsclite.h>
+#include <winscard.h>
+#endif
+
 #endif
 
 #ifdef DEBUG

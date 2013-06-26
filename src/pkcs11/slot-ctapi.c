@@ -53,6 +53,8 @@
 #include <pkcs11/debug.h>
 #endif
 
+#include "slot-ctapi.h"
+
 extern struct p11Context_t *context;
 
 
