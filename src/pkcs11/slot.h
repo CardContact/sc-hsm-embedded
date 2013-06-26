@@ -28,7 +28,7 @@
  *
  * @file    slot.h
  * @author  Frank Thater, Andreas Schwier
- * @brief   API exposed by slot implementations
+ * @brief   API exposed by slot implementation
  */
 
 #ifndef ___SLOT_H_INC___
@@ -36,6 +36,15 @@
 
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/p11generic.h>
+
+int addToken(struct p11Slot_t *slot, struct p11Token_t *token);
+
+int removeToken(struct p11Slot_t *slot);
+
+int encodeCommandAPDU(
+		unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
+		size_t Nc, unsigned char *OutData, int Ne,
+		unsigned char *apdu, size_t apdu_len);
 
 int transmitAPDU(struct p11Slot_t *slot,
 		unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,

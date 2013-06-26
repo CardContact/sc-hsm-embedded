@@ -85,7 +85,7 @@ int initDebug(struct p11Context_t *context)
 
 
 
-int debug(unsigned char *log, ...)
+int debug(char *log, ...)
 {
 	struct tm *loctim;
 	time_t elapsed;

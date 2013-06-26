@@ -42,7 +42,8 @@
 
 int createCertificateObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);
 int populateIssuerSubjectSerial(struct p11Object_t *pObject);
-int getSubjectPublicKey(struct p11Object_t *pObject, unsigned char **spk);
-int decodeModulusExponentFromSPKI(unsigned char *spk, CK_ATTRIBUTE_PTR modulus, CK_ATTRIBUTE_PTR exponent);
+int getSubjectPublicKeyInfo(struct p11Object_t *pObject, unsigned char **spki);
+int decodeModulusExponentFromSPKI(unsigned char *spki, CK_ATTRIBUTE_PTR modulus, CK_ATTRIBUTE_PTR exponent);
+int decodeECParamsFromSPKI(unsigned char *spki, CK_ATTRIBUTE_PTR ecparams);
 
 #endif /* ___SECRETKEYOBJECT_H_INC___ */

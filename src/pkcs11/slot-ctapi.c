@@ -41,77 +41,17 @@
 #include <pkcs11/slot.h>
 #include <pkcs11/token.h>
 #include <pkcs11/slotpool.h>
+#include <pkcs11/slot-ctapi.h>
 
 #include <strbpcpy.h>
 
 #include <ctccid/ctapi.h>
 
+#ifdef DEBUG
+#include <pkcs11/debug.h>
+#endif
+
 extern struct p11Context_t *context;
-
-
-
-/**
- * addToken adds a token to the specified slot.
- *
- * @param slot       Pointer to slot structure.
- * @param token      Pointer to token structure.
- *
- * @return          
- *                   <P><TABLE>
- *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
- *                   <TR>
- *                   <TD>CKR_OK                                 </TD>
- *                   <TD>Success                                </TD>
- *                   </TR>
- *                   <TR>
- *                   <TD>CKR_FUNCTION_FAILED                    </TD>
- *                   <TD>There is already a token in the slot   </TD>
- *                   </TR>
- *                   </TABLE></P>
- */
-static int addToken(struct p11Slot_t *slot, struct p11Token_t *token)
-{
-	if (slot->token != NULL) {
-		return CKR_FUNCTION_FAILED;
-	}
-
-	slot->token = token;                     /* Add token to slot                */
-	slot->info.flags |= CKF_TOKEN_PRESENT;   /* indicate the presence of a token */
-
-	return CKR_OK;
-}
-
-
-
-/**
- * removeToken removes a token from the specified slot.
- *
- * @param slot       Pointer to slot structure.
- *
- * @return          
- *                   <P><TABLE>
- *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
- *                   <TR>
- *                   <TD>CKR_OK                                 </TD>
- *                   <TD>Success                                </TD>
- *                   </TR>
- *                   <TR>
- *                   <TD>CKR_FUNCTION_FAILED                    </TD>
- *                   <TD>There is no token in the slot          </TD>
- *                   </TR>
- *                   </TABLE></P>
- */
-static int removeToken(struct p11Slot_t *slot)
-{
-	if (slot->token == NULL) {
-		return CKR_FUNCTION_FAILED;
-	}
-
-	slot->info.flags &= ~CKF_TOKEN_PRESENT;
-	freeToken(slot);
-
-	return CKR_TOKEN_NOT_PRESENT;
-}
 
 
 
@@ -136,167 +76,61 @@ static int transmitAPDUwithCTAPI(struct p11Slot_t *slot, int todad,
 		int OutLen, unsigned char *OutData,
 		int InLen, unsigned char *InData, int InSize, unsigned short *SW1SW2)
 {
-	int  rv, rc, r, retry;
-	unsigned short lenr;
-	unsigned char dad, sad;
-	unsigned char scr[MAX_APDULEN], *po;
+	int rc;
+	unsigned char apdu[MAX_APDULEN];
 
 	FUNC_CALLED();
 
-	retry = 2;
+	rc = encodeCommandAPDU(CLA, INS, P1, P2,
+			OutLen, OutData, InData ? InLen : -1,
+			apdu, sizeof(apdu));
 
-	while (retry--) {
-		scr[0] = CLA;
-		scr[1] = INS;
-		scr[2] = P1;
-		scr[3] = P2;
-		po = scr + 4;
-		rv = 0;
+	if (rc < 0)
+		FUNC_FAILS(rc, "Encoding APDU failed");
 
-		if (OutData && OutLen) {
-			if ((OutLen <= 255) && (InLen <= 255)) {
-				*po++ = (unsigned char)OutLen;
-			} else {
-				*po++ = 0;
-				*po++ = (unsigned char)(OutLen >> 8);
-				*po++ = (unsigned char)(OutLen & 0xFF);
-			}
-			memcpy(po, OutData, OutLen);
-			po += OutLen;
-		}
+	rc = transmitAPDUviaCTAPI(slot, todad,
+			apdu, rc,
+			apdu, sizeof(apdu));
+
+	if (rc >= 2) {
+		*SW1SW2 = (apdu[rc - 2] << 8) | apdu[rc - 1];
+		rc -= 2;
 
 		if (InData && InSize) {
-			if ((InLen <= 255) && (OutLen <= 255)) {
-				*po++ = (unsigned char)InLen;
-			} else {
-				if (InLen >= 65556)
-					InLen = 0;
-
-				if (!OutData) {
-					*po++ = 0;
-				}
-				*po++ = (unsigned char)(InLen >> 8);
-				*po++ = (unsigned char)(InLen & 0xFF);
+			if (rc > InSize) {		// Never return more than caller allocated a buffer for
+				rc = InSize;
 			}
+			memcpy(InData, apdu, rc);
 		}
-
-		sad  = HOST;
-		dad  = todad;
-		lenr = sizeof(scr);
-
-		rc = CT_data((unsigned short)slot->id, &dad, &sad, po - scr, scr, &lenr, scr);
-
-		if (rc < 0)
-			FUNC_FAILS(rc, "CT_data failed");
-
-		if (scr[lenr - 2] == 0x6C) {
-			InLen = scr[lenr - 1];
-			continue;
-		}
-
-		rv = lenr - 2;
-
-		if (rv > InSize)
-			rv = InSize;
-
-		if (InData)
-			memcpy(InData, scr, rv);
-
-		if ((scr[lenr - 2] == 0x9F) || (scr[lenr - 2] == 0x61))
-			if (InData && InSize) {             /* Get Response             */
-				r = transmitAPDU(slot,
-						(unsigned char)((CLA == 0xE0) || (CLA == 0x80) ?
-								0x00 : CLA), 0xC0, 0, 0,
-								0, NULL,
-								scr[1], InData + rv, InSize - rv, SW1SW2);
-
-				if (r < 0)
-					FUNC_FAILS(rc, "GET RESPONSE failed");
-
-				rv += r;
-			} else
-				*SW1SW2 = 0x9000;
-		else
-			*SW1SW2 = (scr[lenr - 2] << 8) + scr[lenr - 1];
-		break;
+	} else {
+		rc = -1;
 	}
 
-	FUNC_RETURNS(rv);
+	FUNC_RETURNS(rc);
 }
 
 
 
-/*
- *  Process an ISO 7816 APDU with the underlying terminal hardware.
- *
- *  CLA     : Class byte of instruction
- *  INS     : Instruction byte
- *  P1      : Parameter P1
- *  P2      : Parameter P2
- *  OutLen  : Length of outgoing data (Lc)
- *  OutData : Outgoing data or NULL if none
- *  InLen   : Length of incoming data (Le)
- *  InData  : Input buffer for incoming data
- *  InSize  : buffer size
- *  SW1SW2  : Address of short integer to receive SW1SW2
- *
- *  Returns : < 0 Error > 0 Bytes read
- */
-int transmitAPDU(struct p11Slot_t *slot,
-		unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
-		int OutLen, unsigned char *OutData,
-		int InLen, unsigned char *InData, int InSize, unsigned short *SW1SW2)
-
+int transmitAPDUviaCTAPI(struct p11Slot_t *slot, int todad,
+	unsigned char *capdu, size_t capdu_len,
+	unsigned char *rapdu, size_t rapdu_len)
 {
 	int rc;
-#ifdef DEBUG
-	char scr[4196], *po;
+	unsigned short lenr;
+	unsigned char dad, sad;
 
-	sprintf(scr, "C-APDU: %02X %02X %02X %02X ", CLA, INS, P1, P2);
-	po = strchr(scr, '\0');
+	FUNC_CALLED();
 
-	if (OutLen && OutData) {
-		sprintf(po, "Lc=%02X(%d) ", OutLen, OutLen);
-		po = strchr(scr, '\0');
-		if (OutLen > 2048) {
-			decodeBCDString(OutData, 2048, po);
-			strcat(po, "..");
-		} else {
-			decodeBCDString(OutData, OutLen, po);
-		}
-		po = strchr(scr, '\0');
-		strcpy(po, " ");
-		po++;
-	}
+	sad  = HOST;
+	dad  = todad;
+	lenr = rapdu_len;
 
-	if (InData && InSize)
-		sprintf(po, "Le=%02X(%d)", InLen, InLen);
+	rc = CT_data((unsigned short)slot->id, &dad, &sad, capdu_len, capdu, &lenr, rapdu);
 
-	debug("%s\n", scr);
-#endif
+	if (rc < 0)
+		FUNC_FAILS(rc, "CT_data failed");
 
-	rc = transmitAPDUwithCTAPI(slot, 0, CLA, INS, P1, P2,
-			OutLen, OutData,
-			InLen, InData, InSize, SW1SW2);
-#ifdef DEBUG
-if (rc > 0) {
-	sprintf(scr, "R-APDU: Lr=%02X(%d) ", rc, rc);
-	po = strchr(scr, '\0');
-	if (rc > 2048) {
-		decodeBCDString(InData, 2048, po);
-		strcat(scr, "..");
-	} else {
-		decodeBCDString(InData, rc, po);
-	}
-
-	po = strchr(scr, '\0');
-	sprintf(po, " SW1/SW2=%04X", *SW1SW2);
-} else
-	sprintf(scr, "R-APDU: rc=%d SW1/SW2=%04X", rc, *SW1SW2);
-
-debug("%s\n", scr);
-#endif
-return rc;
+	FUNC_RETURNS(lenr);
 }
 
 
@@ -434,7 +268,7 @@ static int checkForRemovedToken(struct p11Slot_t *slot)
 
 
 
-int getToken(struct p11Slot_t *slot, struct p11Token_t **token)
+int getCTAPIToken(struct p11Slot_t *slot, struct p11Token_t **token)
 {
 	int rc;
 	FUNC_CALLED();
@@ -451,24 +285,7 @@ int getToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 
 
-int findSlotObject(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject)
-{
-	int rc;
-	struct p11Token_t *token;
-
-	rc = getToken(slot, &token);
-	if (rc != CKR_OK) {
-		return rc;
-	}
-
-	rc = findObject(token, handle, object, publicObject);
-
-	return rc < 0 ? CKR_GENERAL_ERROR : CKR_OK;
-}
-
-
-
-int updateSlots(struct p11SlotPool_t *pool)
+int updateCTAPISlots(struct p11SlotPool_t *pool)
 {
 	struct p11Slot_t *slot;
 	unsigned short ctn;
@@ -538,7 +355,7 @@ int updateSlots(struct p11SlotPool_t *pool)
 
 
 
-int closeSlot(struct p11Slot_t *slot)
+int closeCTAPISlot(struct p11Slot_t *slot)
 {
 	int rc;
 
