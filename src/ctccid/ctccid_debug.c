@@ -1,5 +1,5 @@
 /**
- * SmartCard-HSM PKCS#11 Module
+ * CT-API for CCID Driver
  *
  * Copyright (c) 2013, CardContact Systems GmbH, Minden, Germany
  * All rights reserved.
@@ -26,7 +26,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @file    debug.c
+ * @file    ctccid_debug.c
  * @author  Frank Thater, Andreas Schwier
  * @brief   Debug and logging functions
  */
@@ -42,64 +42,48 @@
 #include <io.h>
 #endif
 
-#include <pkcs11/debug.h>
-
-extern struct p11Context_t *context;
+#include <ctccid_debug.h>
 
 #define bcddigit(x) ((x) >= 10 ? 'A' - 10 + (x) : '0' + (x))
 
+static FILE *ctccid_debugFileHandle;
 
 
-/*
- *  Convert a string of bytes in BCD coding to a string of hexadecimal char.
- *
- */
-void decodeBCDString(unsigned char *Inbuff, int len, char *Outbuff)
+
+int ctccid_initDebug()
 {
-	while (len--) {
-		*Outbuff++ = bcddigit(*Inbuff >> 4);
-		*Outbuff++ = bcddigit(*Inbuff & 15);
-		Inbuff++;
-	}
-	*Outbuff++ = '\0';
-}
+	ctccid_debugFileHandle = fopen("/var/tmp/sc-hsm-embedded/ctccid.log", "a+");
 
-
-
-int initDebug(struct p11Context_t *context)
-{
-	FILE *fh;
-
-	fh = fopen("/var/tmp/sc-hsm-embedded/pkcs11.log", "a+");
-
-	context->debugFileHandle = fh;
-
-	if (fh == NULL) {
+	if (ctccid_debugFileHandle == NULL) {
 		/*
 		 * Return success even if initialization of debugging fails
 		 */
 		return 0;
 	}
 
-	fprintf(fh, "Debugging initialized ...\n");
+	fprintf(ctccid_debugFileHandle, "Debugging initialized ...\n");
 
 	return 0;
 }
 
 
 
-int debug(char *log, ...)
+int ctccid_debug(char *log, ...)
 {
 	struct tm *loctim;
 	time_t elapsed;
 	va_list argptr;
 
-	time(&elapsed);
-	loctim = localtime(&elapsed);
+	if (ctccid_debugFileHandle == NULL) {
+		ctccid_initDebug();
+	}
 
-	if (context->debugFileHandle != NULL) {
+	if (ctccid_debugFileHandle != NULL) {
 
-		fprintf(context->debugFileHandle, "%02d.%02d.%04d %02d:%02d ",
+		time(&elapsed);
+		loctim = localtime(&elapsed);
+
+		fprintf(ctccid_debugFileHandle, "%02d.%02d.%04d %02d:%02d ",
 				loctim->tm_mday,
 				loctim->tm_mon,
 				loctim->tm_year+1900,
@@ -107,8 +91,8 @@ int debug(char *log, ...)
 				loctim->tm_min);
 
 		va_start(argptr, log);
-		vfprintf(context->debugFileHandle, log, argptr);
-		fflush(context->debugFileHandle);
+		vfprintf(ctccid_debugFileHandle, log, argptr);
+		fflush(ctccid_debugFileHandle);
 		va_end(argptr);
 	}
 
@@ -117,13 +101,36 @@ int debug(char *log, ...)
 
 
 
-int termDebug(struct p11Context_t *context)
+int ctccid_debug_no_timestamp(char *log, ...)
 {
-	if (context->debugFileHandle != NULL) {
-		fprintf(context->debugFileHandle, "Debugging terminated ...\n");
-		fflush(context->debugFileHandle);
-		fclose(context->debugFileHandle);
-		context->debugFileHandle = NULL;
+	struct tm *loctim;
+	time_t elapsed;
+	va_list argptr;
+
+	if (ctccid_debugFileHandle == NULL) {
+		ctccid_initDebug();
+	}
+
+	if (ctccid_debugFileHandle != NULL) {
+
+		va_start(argptr, log);
+		vfprintf(ctccid_debugFileHandle, log, argptr);
+		fflush(ctccid_debugFileHandle);
+		va_end(argptr);
+	}
+
+	return 0;
+}
+
+
+
+int ctccid_termDebug()
+{
+	if (ctccid_debugFileHandle != NULL) {
+		fprintf(ctccid_debugFileHandle, "Debugging terminated ...\n");
+		fflush(ctccid_debugFileHandle);
+		fclose(ctccid_debugFileHandle);
+		ctccid_debugFileHandle = NULL;
 	}
 
 	return 0;

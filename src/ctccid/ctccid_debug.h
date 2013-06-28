@@ -26,73 +26,17 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @file dump.c
- * @author Christoph Brunhuber
- * @brief Simple hex dumper
+ * @file    ctccid_debug.h
+ * @author  Frank Thater, Andreas Schwier
+ * @brief   Debug and logging functions
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
+#ifndef ___CTCCID_DEBUG_H_INC___
+#define ___CTCCID_DEBUG_H_INC___
 
-#include "dump.h"
+int ctccid_initDebug();
+int ctccid_debug(char *log, ...);
+int ctccid_debug_no_timestamp(char *log, ...);
+int ctccid_termDebug();
 
-
-
-#ifdef DEBUG
-/*
- * Dump the memory pointed to by <ptr>
- *
- */
-void ctccidDump(void *_ptr, int len)
-{
-	unsigned char *ptr = (unsigned char *)_ptr;
-	int i;
-
-	static char *MinStack = (char *)-1;
-	static char *MaxStack; /* = 0; */
-	if (MinStack > (char *)&ptr)
-		MinStack = (char *)&ptr;
-	if (MaxStack < (char *)&ptr)
-		MaxStack = (char *)&ptr;
-	ctccid_debug("Dump(%p, %d) stack used so far: %d\n", ptr, len, (int)(MaxStack - MinStack));
-	ctccid_debug("Buffer content:\n", ptr, len, (int)(MaxStack - MinStack));
-
-	for (i = 0; i < len; i += 16) {
-		int i1 = i + 16;
-		int i2 = i1;
-		int j;
-
-		if (i1 > len) {
-			i1 = len;
-		}
-
-		if (i % 16 == 0) {
-			ctccid_debug_no_timestamp("\n  %04x: ", i);
-		}
-
-		for (j = i; j < i1; j++) {
-			ctccid_debug_no_timestamp("%02x ", ptr[j]);
-		}
-
-		for (     ; j < i2; j++) {
-			ctccid_debug_no_timestamp("   ");
-		}
-
-		ctccid_debug_no_timestamp(" ");
-
-		for (j = i; j < i1; j++) {
-			unsigned char ch = ptr[j];
-
-			if (!isprint(ch)) {
-				ch = '.';
-			}
-
-			ctccid_debug_no_timestamp("%c", ch);
-		}
-	}
-
-	ctccid_debug_no_timestamp("\n");
-}
-
-#endif
+#endif /* ___CTCCID_DEBUG_H_INC___ */

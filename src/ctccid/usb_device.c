@@ -39,6 +39,62 @@
 
 #include "usb_device.h"
 
+#ifdef DEBUG
+
+static char* libusb_error_to_string(const int error) {
+	static char strError[60];
+
+	switch (error) {
+		case LIBUSB_SUCCESS :
+			(void) strncpy(strError, "Success", sizeof(strError));
+			break;
+		case LIBUSB_ERROR_IO :
+			(void) strncpy(strError, "Input/output error", sizeof(strError));
+			break;
+		case LIBUSB_ERROR_INVALID_PARAM :
+			(void) strncpy(strError, "Invalid parameter", sizeof(strError));
+			break;
+		case LIBUSB_ERROR_ACCESS :
+			(void) strncpy(strError, "Access denied", sizeof(strError));
+			break;
+		case LIBUSB_ERROR_NO_DEVICE :
+			(void) strncpy(strError, "No such device/device disconnected", sizeof(strError));
+			break;
+		case LIBUSB_ERROR_NOT_FOUND :
+			(void) strncpy(strError, "Entity not found", sizeof(strError));
+			break;
+		case LIBUSB_ERROR_BUSY :
+			(void) strncpy(strError, "Resource busy", sizeof(strError));
+			break;
+		case LIBUSB_ERROR_TIMEOUT :
+			(void) strncpy(strError, "Operation timed out", sizeof(strError));
+			break;
+		case LIBUSB_ERROR_OVERFLOW :
+			(void) strncpy(strError, "Overflow", sizeof(strError));
+			break;
+		case LIBUSB_ERROR_PIPE :
+			(void) strncpy(strError, "Pipe error", sizeof(strError));
+			break;
+		case LIBUSB_ERROR_INTERRUPTED :
+			(void) strncpy(strError, "System call interrupted", sizeof(strError));
+			break;
+		case LIBUSB_ERROR_NO_MEM :
+			(void) strncpy(strError, "Insufficient memory", sizeof(strError));
+			break;
+		case LIBUSB_ERROR_NOT_SUPPORTED :
+			(void) strncpy(strError, "Operation not supported or unimplemented on this platform", sizeof(strError));
+			break;
+		case LIBUSB_ERROR_OTHER :
+			(void) strncpy(strError, "Other error.", sizeof(strError));
+			break;
+	};
+
+	/* add a null byte */
+	strError[sizeof(strError) - 1] = '\0';
+	return strError;
+}
+
+#endif
 
 /**
  * Open USB device at the specified port and allocate necessary resources
@@ -56,6 +112,9 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 	rc = libusb_init(NULL);
 
 	if (rc != LIBUSB_SUCCESS) {
+#ifdef DEBUG
+		ctccid_debug("libusb_init failed. rc = %i (%s)\n", rc, libusb_error_to_string(rc));
+#endif
 		return ERR_USB;
 	}
 
@@ -88,12 +147,12 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 #ifdef DEBUG
 
 			if (desc.idProduct == SCM_SCR_35XX_DEVICE_ID) {
-				printf("Found reader SCR_35XX (%04X:%04X)\n", desc.idVendor,
+				ctccid_debug("Found reader SCR_35XX (%04X:%04X)\n", desc.idVendor,
 					   desc.idProduct);
 			}
 
 			if (desc.idProduct == SCM_SCR_3310_DEVICE_ID) {
-				printf("Found reader SCR_3310 (%04X:%04X)\n", desc.idVendor,
+				ctccid_debug("Found reader SCR_3310 (%04X:%04X)\n", desc.idVendor,
 					   desc.idProduct);
 			}
 
@@ -104,13 +163,13 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 			 */
 			if (cnt == pn) {
 #ifdef DEBUG
-				printf("Reader index (%i) and requested port number (%i) match.\n", cnt, pn);
+				ctccid_debug("Reader index (%i) and requested port number (%i) match.\n", cnt, pn);
 #endif
 				*device = calloc(1, sizeof(usb_device_t));
 				break;
 			} else {
 #ifdef DEBUG
-				printf("Reader index (%i) and requested port number (%i) do not match.\n", cnt, pn);
+				ctccid_debug("Reader index (%i) and requested port number (%i) do not match.\n", cnt, pn);
 #endif
 				cnt++;
 			}
@@ -121,6 +180,9 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 		rc = libusb_open(dev, &((*device)->handle));
 
 		if (rc != LIBUSB_SUCCESS) {
+#ifdef DEBUG
+			ctccid_debug("libusb_open failed. rc = %i (%s)\n", rc, libusb_error_to_string(rc));
+#endif
 			free(*device);
 			libusb_free_device_list(devs, 1);
 			libusb_exit(NULL);
@@ -130,6 +192,9 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 		rc = libusb_get_active_config_descriptor(dev, &((*device)->configuration_descriptor));
 
 		if (rc != LIBUSB_SUCCESS) {
+#ifdef DEBUG
+			ctccid_debug("libusb_get_active_config_descriptor failed. rc = %i (%s)\n", rc, libusb_error_to_string(rc));
+#endif
 			libusb_close((*device)->handle);
 			free(*device);
 			libusb_free_device_list(devs, 1);
@@ -140,6 +205,9 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 		rc = libusb_claim_interface((*device)->handle, (*device)->configuration_descriptor->interface->altsetting->bInterfaceNumber);
 
 		if (rc != LIBUSB_SUCCESS) {
+#ifdef DEBUG
+			ctccid_debug("libusb_claim_interface failed. rc = %i (%s)\n", rc, libusb_error_to_string(rc));
+#endif
 			libusb_close((*device)->handle);
 			free(*device);
 			libusb_free_device_list(devs, 1);
@@ -213,6 +281,9 @@ int USB_Close(usb_device_t **device)
 								  (*device)->configuration_descriptor->interface->altsetting->bInterfaceNumber);
 
 	if (rc != LIBUSB_SUCCESS) {
+#ifdef DEBUG
+		ctccid_debug("libusb_release_interface failed. rc = %i (%s)\n", rc, libusb_error_to_string(rc));
+#endif
 		return ERR_USB;
 	}
 
@@ -245,7 +316,7 @@ int USB_Write(usb_device_t *device, unsigned int length, unsigned char *buffer)
 
 	if (rc != LIBUSB_SUCCESS || (send != length)) {
 #ifdef DEBUG
-		printf("libusb_bulk_transfer failed. rc = %i, send=%i, length=%i", rc, send, length);
+		ctccid_debug("libusb_bulk_transfer (write) failed. rc = %i (%s), send=%i, length=%i\n", rc, libusb_error_to_string(rc), send, length);
 #endif
 		return ERR_USB;
 	}
@@ -273,7 +344,7 @@ int USB_Read(usb_device_t *device, unsigned int *length, unsigned char *buffer)
 	if (rc != LIBUSB_SUCCESS) {
 		*length = 0;
 #ifdef DEBUG
-		printf("libusb_bulk_transfer failed. rc = %i", rc);
+		ctccid_debug("libusb_bulk_transfer (read) failed. rc = %i (%s)\n", rc, libusb_error_to_string(rc));
 #endif
 		return ERR_USB;
 	}

@@ -56,31 +56,31 @@ void CCIDDump(unsigned char *mem, int len)
 
         switch(mem[0]) {
         case MSG_TYPE_PC_to_RDR_IccPowerOn:
-                printf("CCID PC_to_RDR_IccPowerOn\n");
+                ctccid_debug("CCID PC_to_RDR_IccPowerOn\n");
                 break;
         case MSG_TYPE_PC_to_RDR_IccPowerOff:
-                printf("CCID PC_to_RDR_IccPowerOff\n");
+                ctccid_debug("CCID PC_to_RDR_IccPowerOff\n");
                 break;
         case MSG_TYPE_PC_to_RDR_GetSlotStatus:
-                printf("CCID PC_to_RDR_GetSlotStatus\n");
+                ctccid_debug("CCID PC_to_RDR_GetSlotStatus\n");
                 break;
         case MSG_TYPE_PC_to_RDR_XfrBlock        :
-                printf("CCID PC_to_RDR_XfrBlock\n");
+                ctccid_debug("CCID PC_to_RDR_XfrBlock\n");
                 break;
         case MSG_TYPE_RDR_to_PC_DataBlock:
-                printf("CCID RDR_to_PC_DataBlock\n");
+                ctccid_debug("CCID RDR_to_PC_DataBlock\n");
                 break;
         case MSG_TYPE_RDR_to_PC_SlotStatus:
-                printf("CCID RDR_to_PC_SlotStatus\n");
+                ctccid_debug("CCID RDR_to_PC_SlotStatus\n");
                 break;
         case MSG_TYPE_PC_to_RDR_SetParameters:
-                printf("CCID PC_to_RDR_SetParameters\n");
+                ctccid_debug("CCID PC_to_RDR_SetParameters\n");
                 break;
         case MSG_TYPE_RDR_to_PC_Parameters:
-                printf("CCID RDR_to_PC_Parameters\n");
+                ctccid_debug("CCID RDR_to_PC_Parameters\n");
                 break;
         default:
-                printf("Unknown message type\n");
+                ctccid_debug("Unknown message type\n");
                 break;
         }
 
@@ -440,7 +440,7 @@ int PC_to_RDR_XfrBlock(scr_t *ctx, unsigned int outlen, unsigned char *outbuf)
 
         if (outlen > BUFFMAX) {
 #ifdef DEBUG
-                printf("PC_to_RDR_XfrBlock outlen > BUFFMAX\n");
+                ctccid_debug("PC_to_RDR_XfrBlock outlen > BUFFMAX\n");
 #endif
                 return -1;
         }
@@ -485,7 +485,7 @@ int RDR_to_PC_DataBlock(scr_t *ctx, unsigned int *inlen, unsigned char *inbuf)
 
         if (*inlen > BUFFMAX) {
 #ifdef DEBUG
-                printf("RDR_to_PC_DataBlock *inlen > BUFFMAX\n");
+                ctccid_debug("RDR_to_PC_DataBlock *inlen > BUFFMAX\n");
 #endif
                 return -1;
         }

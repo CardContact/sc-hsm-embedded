@@ -85,45 +85,45 @@ int ccidT1Term (struct scr *ctx)
  */
 void ccidT1BlockInfo(unsigned char Nad, unsigned char Pcb, int InBuffLength, unsigned char *InBuff)
 {
-	printf("SAD:%02d-DAD:%02d  ", SAD(Nad), DAD(Nad));
+	ctccid_debug("SAD:%02d-DAD:%02d\n", SAD(Nad), DAD(Nad));
 
 	if (ISIBLOCK(Pcb)) {
-		printf("I(%d,%d):", NS(Pcb), MORE(Pcb));
+		ctccid_debug("I(%d,%d):\n", NS(Pcb), MORE(Pcb));
 		ctccidDump(InBuff, InBuffLength);
 	}
 
 	if (ISRBLOCK(Pcb)) {
-		printf("R(%d)[%d]\n", NR(Pcb), RERR(Pcb));
+		ctccid_debug("R(%d)[%d]\n", NR(Pcb), RERR(Pcb));
 	}
 
 	if (ISSBLOCK(Pcb)) {
 		switch (SBLOCKFUNC(Pcb)) {
 		case RESYNCHREQ :
-			printf("S(RESYNCH Request)\n");
+			ctccid_debug("S(RESYNCH Request)\n");
 			break;
 		case RESYNCHRES :
-			printf("S(RESYNCH Response)\n");
+			ctccid_debug("S(RESYNCH Response)\n");
 			break;
 		case IFSREQ :
-			printf("S(IFS Request:%d)\n",(int)InBuff[0]);
+			ctccid_debug("S(IFS Request:%d)\n",(int)InBuff[0]);
 			break;
 		case IFSRES :
-			printf("S(IFS Response:%d)\n",(int)InBuff[0]);
+			ctccid_debug("S(IFS Response:%d)\n",(int)InBuff[0]);
 			break;
 		case ABORTREQ       :
-			printf("S(ABORT Request)\n");
+			ctccid_debug("S(ABORT Request)\n");
 			break;
 		case ABORTRES       :
-			printf("S(ABORT Response)\n");
+			ctccid_debug("S(ABORT Response)\n");
 			break;
 		case WTXREQ :
-			printf("S(WTX Request:%d)\n",(int)InBuff[0]);
+			ctccid_debug("S(WTX Request:%d)\n",(int)InBuff[0]);
 			break;
 		case WTXRES :
-			printf("S(WTX Response:%d)\n",(int)InBuff[0]);
+			ctccid_debug("S(WTX Response:%d)\n",(int)InBuff[0]);
 			break;
 		default :
-			printf("Unknown S(...) Block\n");
+			ctccid_debug("Unknown S(...) Block\n");
 			break;
 		}
 	}
@@ -155,7 +155,7 @@ int ccidT1ReceiveBlock(scr_t *ctx)
 	}
 
 #ifdef DEBUG
-	printf("Received : ");
+	ctccid_debug("Received : \n");
 	ccidT1BlockInfo(buf[0], buf[1], buf[2], buf + 3);
 #endif
 
@@ -230,7 +230,7 @@ int ccidT1SendBlock(scr_t *ctx,
 	}
 
 #ifdef DEBUG
-	printf("Sending : ");
+	ctccid_debug("Sending : \n");
 	ccidT1BlockInfo(Nad, Pcb, BuffLen, Buffer);
 #endif
 
@@ -373,7 +373,7 @@ int ccidT1GetBlock(scr_t *ctx, int SrcNode, int DestNode)
 				ctx->t1->IFSC = (int)ctx->t1->InBuff[0];
 
 #ifdef DEBUG
-				printf("New IFSC: %d unsigned chars.\n", ctx->t1->IFSC);
+				ctccid_debug("New IFSC: %d unsigned chars.\n", ctx->t1->IFSC);
 #endif
 				break;
 
@@ -398,7 +398,7 @@ int ccidT1GetBlock(scr_t *ctx, int SrcNode, int DestNode)
 								   (int)ctx->t1->InBuff[0];
 
 #ifdef DEBUG
-				printf("New BWT value %ld ms.\n",ctx->t1->WorkBWT);
+				ctccid_debug("New BWT value %ld ms.\n",ctx->t1->WorkBWT);
 #endif
 				break;
 
@@ -492,7 +492,7 @@ int ccidT1SendData(scr_t *ctx,
 					ctx->t1->SSequenz = 1 - ctx->t1->SSequenz;
 				} else {
 #ifdef DEBUG
-					printf("Error: Unexpected R-Block.\n");
+					ctccid_debug("Error: Unexpected R-Block.\n");
 #endif
 
 					if (ccidT1Resynch(ctx,SrcNode,DestNode)) {
@@ -504,7 +504,7 @@ int ccidT1SendData(scr_t *ctx,
 			if (ISIBLOCK(ctx->t1->Pcb)) {    /* Usual response to I-block     */
 				if ((NS(ctx->t1->Pcb) != ctx->t1->RSequenz) || more) {
 #ifdef DEBUG
-					printf("Asynchronous I-Block received as response.\n");
+					ctccid_debug("Asynchronous I-Block received as response.\n");
 #endif
 
 					if (ccidT1Resynch(ctx,SrcNode,DestNode)) {
@@ -584,7 +584,7 @@ int ccidT1ReceiveData(scr_t *ctx,
 					if (NR(ctx->t1->Pcb) != ctx->t1->SSequenz) {
 
 #ifdef DEBUG
-						printf("Error: Invalid sequenz received in R-Block.\n");
+						ctccid_debug("Error: Invalid sequenz received in R-Block.\n");
 #endif
 
 						if (ccidT1Resynch(ctx,SrcNode,DestNode)) {
@@ -629,14 +629,14 @@ int ccidT1Transport(scr_t *ctx,
 	int ret;
 
 #ifdef DEBUG
-	printf("ccidT1SendData called\n");
+	ctccid_debug("ccidT1SendData called\n");
 #endif
 
 	ret = ccidT1SendData(ctx, FALSE, SrcNode, DestNode, OBuffer, OBuffLen);
 
 	if (ret < 0) {
 #ifdef DEBUG
-		printf("ccidT1SendData failed with rc = %i\n", ret);
+		ctccid_debug("ccidT1SendData failed with rc = %i\n", ret);
 #endif
 		return ret;
 	}
@@ -646,7 +646,7 @@ int ccidT1Transport(scr_t *ctx,
 #ifdef DEBUG
 
 	if (ret < 0) {
-		printf("ccidT1ReceiveData failed with rc = %i\n", ret);
+		ctccid_debug("ccidT1ReceiveData failed with rc = %i\n", ret);
 	}
 
 #endif

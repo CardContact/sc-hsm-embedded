@@ -358,7 +358,7 @@ int GetStatus(struct scr *ctx, unsigned char *cmd, unsigned int *lr,
 	unsigned char what = cmd[3];
 
 #ifdef DEBUG
-	printf("\nGetStatus(%02x,%02x)\n", func_unit, what);
+	ctccid_debug("GetStatus(FU=%02x,%02x)\n", func_unit, what);
 #endif
 
 	if (func_unit == 0x00) {
