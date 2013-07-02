@@ -56,10 +56,58 @@
 #include <winscard.h>
 #endif
 
-#ifdef DEBUG
-char* pcsc_error_to_string(const DWORD error);
+#ifndef SCARD_CTL_CODE
+#define SCARD_CTL_CODE(code) (0x42000000 + (code))
 #endif
 
+#define FEATURE_VERIFY_PIN_START 			0x01
+#define FEATURE_VERIFY_PIN_FINIS			0x02
+#define FEATURE_MODIFY_PIN_START			0x03
+#define FEATURE_MODIFY_PIN_FINISH			0x04
+#define FEATURE_GET_KEY_PRESSED				0x05
+#define FEATURE_VERIFY_PIN_DIRECT			0x06
+#define FEATURE_MODIFY_PIN_DIRECT			0x07
+#define FEATURE_MCT_READER_DIRECT			0x08
+#define FEATURE_MCT_UNIVERSAL				0x09
+#define FEATURE_IFD_PIN_PROPERTIES			0x0A
+#define FEATURE_ABORT						0x0B
+#define FEATURE_SET_SPE_MESSAGE				0x0C
+#define FEATURE_VERIFY_PIN_DIRECT_APP_ID	0x0D
+#define FEATURE_MODIFY_PIN_DIRECT_APP_ID	0x0E
+#define FEATURE_WRITE_DISPLAY				0x0F
+#define FEATURE_GET_KEY						0x10
+#define FEATURE_IFD_DISPLAY_PROPERTIES		0x11
+#define FEATURE_GET_TLV_PROPERTIES			0x12
+#define FEATURE_CCID_ESC_COMMAND			0x13
+
+#pragma pack(push, 1)
+typedef struct {
+	BYTE  bTimeOut;						/* Timeout is seconds (00 means use default timeout) */
+	BYTE  bTimeOut2; 					/* Timeout in seconds after first key stroke */
+	BYTE  bmFormatString; 				/* Formatting options */
+	BYTE  bmPINBlockString; 			/* bits 7-4 bit size of PIN length in APDU, bits 3-0 PIN block size in bytes after justification and formatting */
+	BYTE  bmPINLengthFormat; 			/* bits 7-5 RFU, bit 4 set if system units are bytes, clear if system units are bits, bits 3-0 PIN length position in system units */
+	WORD  wPINMaxExtraDigit; 			/* 0xXXYY where XX is minimum PIN size in digits and YY is maximum PIN size in digits */
+	BYTE  bEntryValidationCondition; 	/* Conditions under which PIN entry should be considered complete */
+	BYTE  bNumberMessage; 				/* Number of messages to display for PIN verification */
+	WORD  wLangID;						/* Language for messages */
+	BYTE  bMsgIndex; 					/* Message index (should be 00) */
+	BYTE  bTeoPrologue[3]; 				/* T=1 block prologue field to use (should be all zeros) */
+	DWORD ulDataLength; 				/* Length of Data to be sent to the ICC */
+	BYTE  abData[128]; 					/* Data to send to the ICC */
+} PIN_VERIFY_DIRECT_STRUCTURE_t;
+#pragma pack()
+
+#ifdef DEBUG
+char* pcsc_error_to_string(const DWORD error);
+char* pcsc_feature_to_string(const WORD feature);
+#endif
+
+int transmitVerifyPinAPDUviaPCSC(struct p11Slot_t *slot,
+	unsigned char pinformat, unsigned char minpinsize, unsigned char maxpinsize,
+	unsigned char pinblockstring, unsigned char pinlengthformat,
+	unsigned char *capdu, size_t capdu_len,
+	unsigned char *rapdu, size_t rapdu_len);
 int transmitAPDUviaPCSC(struct p11Slot_t *slot,
 	unsigned char *capdu, size_t capdu_len,
 	unsigned char *rapdu, size_t rapdu_len);

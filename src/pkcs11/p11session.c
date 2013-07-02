@@ -300,6 +300,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
 		FUNC_RETURNS(CKR_USER_TYPE_INVALID);
 	}
 
+	if (ulPinLen != 0 && pPin == NULL) {
+		FUNC_RETURNS(CKR_ARGUMENTS_BAD);
+	}
+
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {

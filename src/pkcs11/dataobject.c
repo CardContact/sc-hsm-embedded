@@ -41,8 +41,6 @@
 #include <pkcs11/debug.h>
 #endif
 
-extern int dumpAttributeList(struct p11Object_t *pObject);
-
 #define NEEDED_ATTRIBUTES_DATAOBJECT   3
 
 static struct attributesForObject_t attributesDataObject[] = {

@@ -795,9 +795,20 @@ int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 		}
 		// Store SO PIN
 	} else {
-		rc = transmitAPDU(slot, 0x00, 0x20, 0x00, 0x081,
+
+		if (slot->hasFeatureVerifyPINDirect && !pinlen && !pin) {
+#ifdef DEBUG
+			debug("Verify PIN using CKF_PROTECTED_AUTHENTICATION_PATH\n");
+#endif
+			rc = transmitVerifyPinAPDU(slot, 0x00, 0x20, 0x00, 0x81, &SW1SW2, PIN_FORMAT_ASCII, 0x06, 0x0F, 0x00, 0x00);
+		} else {
+#ifdef DEBUG
+			debug("Verify PIN using provided PIN value\n");
+#endif
+			rc = transmitAPDU(slot, 0x00, 0x20, 0x00, 0x81,
 				pinlen, pin,
 				0, NULL, 0, &SW1SW2);
+		}
 
 		if (rc < 0) {
 			FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
