@@ -48,8 +48,6 @@
 #include "slot-pcsc.h"
 #endif
 
-extern struct p11Context_t *context;
-
 
 
 /**
@@ -211,7 +209,6 @@ int transmitAPDU(struct p11Slot_t *slot,
 		unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
 		int OutLen, unsigned char *OutData,
 		int InLen, unsigned char *InData, int InSize, unsigned short *SW1SW2)
-
 {
 	int rc;
 	unsigned char apdu[4098];
@@ -222,7 +219,7 @@ int transmitAPDU(struct p11Slot_t *slot,
 	sprintf(scr, "C-APDU: %02X %02X %02X %02X ", CLA, INS, P1, P2);
 	po = strchr(scr, '\0');
 
-	if (OutLen && OutData) {
+	if (INS != 0x20 && OutLen && OutData) {
 		sprintf(po, "Lc=%02X(%d) ", OutLen, OutLen);
 		po = strchr(scr, '\0');
 		if (OutLen > 2048) {
@@ -294,6 +291,57 @@ int transmitAPDU(struct p11Slot_t *slot,
 	return rc;
 }
 
+
+
+int transmitVerifyPinAPDU(struct p11Slot_t *slot,
+		unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2, unsigned short *SW1SW2,
+		unsigned char pinformat, unsigned char minpinsize, unsigned char maxpinsize,
+		unsigned char pinblockstring, unsigned char pinlengthformat)
+{
+	int rc;
+	unsigned char apdu[4098];
+
+#ifdef DEBUG
+	char scr[4196], *po;
+
+	sprintf(scr, "C-APDU: %02X %02X %02X %02X ", CLA, INS, P1, P2);
+	po = strchr(scr, '\0');
+
+	debug("%s\n", scr);
+#endif
+
+	rc = encodeCommandAPDU(CLA, INS, P1, P2,
+			0, NULL, -1,
+			apdu, sizeof(apdu));
+
+	if (rc < 0)
+		FUNC_FAILS(rc, "Encoding APDU failed");
+
+#ifdef CTAPI
+	/*
+	 * Not implemented yet
+	 */
+	rc = -1;
+
+#else
+	rc = transmitVerifyPinAPDUviaPCSC(slot,
+			pinformat, minpinsize, maxpinsize,
+			pinblockstring, pinlengthformat,
+			apdu, rc,
+			apdu, sizeof(apdu));
+#endif
+
+	if (rc >= 2) {
+		*SW1SW2 = (apdu[rc - 2] << 8) | apdu[rc - 1];
+		rc -= 2;
+	}
+
+#ifdef DEBUG
+	sprintf(scr, "R-APDU: rc=%d SW1/SW2=%04X", rc, *SW1SW2);
+	debug("%s\n", scr);
+#endif
+	return rc;
+}
 
 
 int getToken(struct p11Slot_t *slot, struct p11Token_t **token)

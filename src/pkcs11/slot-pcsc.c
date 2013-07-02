@@ -67,118 +67,118 @@ char* pcsc_error_to_string(const DWORD error) {
 	static char strError[75];
 
 	switch (error) {
-		case SCARD_S_SUCCESS :
+		case SCARD_S_SUCCESS:
 			(void) strncpy(strError, "Command successful.", sizeof(strError));
 			break;
-		case SCARD_F_INTERNAL_ERROR :
+		case SCARD_F_INTERNAL_ERROR:
 			(void) strncpy(strError, "Internal error.", sizeof(strError));
 			break;
-		case SCARD_E_CANCELLED :
+		case SCARD_E_CANCELLED:
 			(void) strncpy(strError, "Command cancelled.", sizeof(strError));
 			break;
-		case SCARD_E_INVALID_HANDLE :
+		case SCARD_E_INVALID_HANDLE:
 			(void) strncpy(strError, "Invalid handle.", sizeof(strError));
 			break;
-		case SCARD_E_INVALID_PARAMETER :
+		case SCARD_E_INVALID_PARAMETER:
 			(void) strncpy(strError, "Invalid parameter given.", sizeof(strError));
 			break;
-		case SCARD_E_INVALID_TARGET :
+		case SCARD_E_INVALID_TARGET:
 			(void) strncpy(strError, "Invalid target given.", sizeof(strError));
 			break;
-		case SCARD_E_NO_MEMORY :
+		case SCARD_E_NO_MEMORY:
 			(void) strncpy(strError, "Not enough memory.", sizeof(strError));
 			break;
-		case SCARD_F_WAITED_TOO_LONG :
+		case SCARD_F_WAITED_TOO_LONG:
 			(void) strncpy(strError, "Waited too long.", sizeof(strError));
 			break;
-		case SCARD_E_INSUFFICIENT_BUFFER :
+		case SCARD_E_INSUFFICIENT_BUFFER:
 			(void) strncpy(strError, "Insufficient buffer.", sizeof(strError));
 			break;
-		case SCARD_E_UNKNOWN_READER :
+		case SCARD_E_UNKNOWN_READER:
 			(void) strncpy(strError, "Unknown reader specified.", sizeof(strError));
 			break;
-		case SCARD_E_TIMEOUT :
+		case SCARD_E_TIMEOUT:
 			(void) strncpy(strError, "Command timeout.", sizeof(strError));
 			break;
-		case SCARD_E_SHARING_VIOLATION :
+		case SCARD_E_SHARING_VIOLATION:
 			(void) strncpy(strError, "Sharing violation.", sizeof(strError));
 			break;
-		case SCARD_E_NO_SMARTCARD :
+		case SCARD_E_NO_SMARTCARD:
 			(void) strncpy(strError, "No smart card inserted.", sizeof(strError));
 			break;
-		case SCARD_E_UNKNOWN_CARD :
+		case SCARD_E_UNKNOWN_CARD:
 			(void) strncpy(strError, "Unknown card.", sizeof(strError));
 			break;
-		case SCARD_E_CANT_DISPOSE :
+		case SCARD_E_CANT_DISPOSE:
 			(void) strncpy(strError, "Cannot dispose handle.", sizeof(strError));
 			break;
-		case SCARD_E_PROTO_MISMATCH :
+		case SCARD_E_PROTO_MISMATCH:
 			(void) strncpy(strError, "Card protocol mismatch.", sizeof(strError));
 			break;
-		case SCARD_E_NOT_READY :
+		case SCARD_E_NOT_READY:
 			(void) strncpy(strError, "Subsystem not ready.", sizeof(strError));
 			break;
-		case SCARD_E_INVALID_VALUE :
+		case SCARD_E_INVALID_VALUE:
 			(void) strncpy(strError, "Invalid value given.", sizeof(strError));
 			break;
-		case SCARD_E_SYSTEM_CANCELLED :
+		case SCARD_E_SYSTEM_CANCELLED:
 			(void) strncpy(strError, "System cancelled.", sizeof(strError));
 			break;
-		case SCARD_F_COMM_ERROR :
+		case SCARD_F_COMM_ERROR:
 			(void) strncpy(strError, "RPC transport error.", sizeof(strError));
 			break;
-		case SCARD_F_UNKNOWN_ERROR :
+		case SCARD_F_UNKNOWN_ERROR:
 			(void) strncpy(strError, "Unknown error.", sizeof(strError));
 			break;
-		case SCARD_E_INVALID_ATR :
+		case SCARD_E_INVALID_ATR:
 			(void) strncpy(strError, "Invalid ATR.", sizeof(strError));
 			break;
-		case SCARD_E_NOT_TRANSACTED :
+		case SCARD_E_NOT_TRANSACTED:
 			(void) strncpy(strError, "Transaction failed.", sizeof(strError));
 			break;
-		case SCARD_E_READER_UNAVAILABLE :
+		case SCARD_E_READER_UNAVAILABLE:
 			(void) strncpy(strError, "Reader is unavailable.", sizeof(strError));
 			break;
-		case SCARD_E_PCI_TOO_SMALL :
+		case SCARD_E_PCI_TOO_SMALL:
 			(void) strncpy(strError, "PCI struct too small.", sizeof(strError));
 			break;
-		case SCARD_E_READER_UNSUPPORTED :
+		case SCARD_E_READER_UNSUPPORTED:
 			(void) strncpy(strError, "Reader is unsupported.", sizeof(strError));
 			break;
-		case SCARD_E_DUPLICATE_READER :
+		case SCARD_E_DUPLICATE_READER:
 			(void) strncpy(strError, "Reader already exists.", sizeof(strError));
 			break;
-		case SCARD_E_CARD_UNSUPPORTED :
+		case SCARD_E_CARD_UNSUPPORTED:
 			(void) strncpy(strError, "Card is unsupported.", sizeof(strError));
 			break;
-		case SCARD_E_NO_SERVICE :
+		case SCARD_E_NO_SERVICE:
 			(void) strncpy(strError, "Service not available.", sizeof(strError));
 			break;
-		case SCARD_E_SERVICE_STOPPED :
+		case SCARD_E_SERVICE_STOPPED:
 			(void) strncpy(strError, "Service was stopped.", sizeof(strError));
 			break;
-		case SCARD_E_NO_READERS_AVAILABLE :
+		case SCARD_E_NO_READERS_AVAILABLE:
 			(void) strncpy(strError, "Cannot find a smart card reader.",
 					sizeof(strError));
 			break;
-		case SCARD_W_UNSUPPORTED_CARD :
+		case SCARD_W_UNSUPPORTED_CARD:
 			(void) strncpy(strError, "Card is not supported.", sizeof(strError));
 			break;
-		case SCARD_W_UNRESPONSIVE_CARD :
+		case SCARD_W_UNRESPONSIVE_CARD:
 			(void) strncpy(strError, "Card is unresponsive.", sizeof(strError));
 			break;
-		case SCARD_W_UNPOWERED_CARD :
+		case SCARD_W_UNPOWERED_CARD:
 			(void) strncpy(strError, "Card is unpowered.", sizeof(strError));
 			break;
-		case SCARD_W_RESET_CARD :
+		case SCARD_W_RESET_CARD:
 			(void) strncpy(strError, "Card was reset.", sizeof(strError));
 			break;
-		case SCARD_W_REMOVED_CARD :
+		case SCARD_W_REMOVED_CARD:
 			(void) strncpy(strError, "Card was removed.", sizeof(strError));
 			break;
-		case SCARD_E_UNSUPPORTED_FEATURE :
+		case SCARD_E_UNSUPPORTED_FEATURE:
 			(void) strncpy(strError, "Feature not supported.", sizeof(strError));
-			break;		
+			break;
 	};
 
 	/* add a null byte */
@@ -187,6 +187,79 @@ char* pcsc_error_to_string(const DWORD error) {
 	return strError;
 }
 
+
+
+char* pcsc_feature_to_string(const WORD feature) {
+	static char strFeature[75];
+
+	switch (feature) {
+		case FEATURE_VERIFY_PIN_START:
+			(void) strncpy(strFeature, "VERIFY_PIN_START", sizeof(strFeature));
+			break;
+		case FEATURE_VERIFY_PIN_FINIS:
+			(void) strncpy(strFeature, "VERIFY_PIN_FINISH", sizeof(strFeature));
+			break;
+		case FEATURE_MODIFY_PIN_START:
+			(void) strncpy(strFeature, "MODIFY_PIN_START", sizeof(strFeature));
+			break;
+		case FEATURE_MODIFY_PIN_FINISH:
+			(void) strncpy(strFeature, "MODIFY_PIN_FINISH", sizeof(strFeature));
+			break;
+		case FEATURE_GET_KEY_PRESSED:
+			(void) strncpy(strFeature, "GET_KEY_PRESSED", sizeof(strFeature));
+			break;
+		case FEATURE_VERIFY_PIN_DIRECT:
+			(void) strncpy(strFeature, "VERIFY_PIN_DIRECT", sizeof(strFeature));
+			break;
+		case FEATURE_MODIFY_PIN_DIRECT:
+			(void) strncpy(strFeature, "MODIFY_PIN_DIRECT", sizeof(strFeature));
+			break;
+		case FEATURE_MCT_READER_DIRECT:
+			(void) strncpy(strFeature, "MCT_READER_DIRECT", sizeof(strFeature));
+			break;
+		case FEATURE_MCT_UNIVERSAL:
+			(void) strncpy(strFeature, "MCT_UNIVERSAL", sizeof(strFeature));
+			break;
+		case FEATURE_IFD_PIN_PROPERTIES:
+			(void) strncpy(strFeature, "IFD_PIN_PROPERTIES", sizeof(strFeature));
+			break;
+		case FEATURE_ABORT:
+			(void) strncpy(strFeature, "ABORT", sizeof(strFeature));
+			break;
+		case FEATURE_SET_SPE_MESSAGE:
+			(void) strncpy(strFeature, "SET_SPE_MESSAGE", sizeof(strFeature));
+			break;
+		case FEATURE_VERIFY_PIN_DIRECT_APP_ID:
+			(void) strncpy(strFeature, "VERIFY_PIN_DIRECT_APP_ID", sizeof(strFeature));
+			break;
+		case FEATURE_MODIFY_PIN_DIRECT_APP_ID:
+			(void) strncpy(strFeature, "MODIFY_PIN_DIRECT_APP_ID", sizeof(strFeature));
+			break;
+		case FEATURE_WRITE_DISPLAY:
+			(void) strncpy(strFeature, "WRITE_DISPLAY", sizeof(strFeature));
+			break;
+		case FEATURE_GET_KEY:
+			(void) strncpy(strFeature, "GET_KEY", sizeof(strFeature));
+			break;
+		case FEATURE_IFD_DISPLAY_PROPERTIES:
+			(void) strncpy(strFeature, "IFD_DISPLAY_PROPERTIES", sizeof(strFeature));
+			break;
+		case FEATURE_GET_TLV_PROPERTIES:
+			(void) strncpy(strFeature, "GET_TLV_PROPERTIES", sizeof(strFeature));
+			break;
+		case FEATURE_CCID_ESC_COMMAND:
+			(void) strncpy(strFeature, "CCID_ESC_COMMAND", sizeof(strFeature));
+			break;
+		default:
+			(void) strncpy(strFeature, "Unknown feature.", sizeof(strFeature));
+			break;
+	};
+
+	/* add a null byte */
+	strFeature[sizeof(strFeature) - 1] = '\0';
+
+	return strFeature;
+}
 #endif
 
 
@@ -218,11 +291,75 @@ int transmitAPDUviaPCSC(struct p11Slot_t *slot,
 
 	rc = SCardTransmit(slot->card, SCARD_PCI_T1, capdu, capdu_len, NULL, rapdu, &lenr);
 
-	if (rc != SCARD_S_SUCCESS) {
 #ifdef DEBUG
-		debug("SCardTransmit : %s\n", pcsc_error_to_string(rc));
+	debug("SCardTransmit: %s\n", pcsc_error_to_string(rc));
 #endif
+
+	if (rc != SCARD_S_SUCCESS) {
 		FUNC_FAILS(-1, "SCardTransmit failed");
+	}
+
+	FUNC_RETURNS(lenr);
+}
+
+
+
+int transmitVerifyPinAPDUviaPCSC(struct p11Slot_t *slot,
+	unsigned char pinformat, unsigned char minpinsize, unsigned char maxpinsize,
+	unsigned char pinblockstring, unsigned char pinlengthformat,
+	unsigned char *capdu, size_t capdu_len,
+	unsigned char *rapdu, size_t rapdu_len)
+{
+	int rc, i;
+	DWORD lenr;
+	WORD feature;
+	DWORD featurecode;
+	PIN_VERIFY_DIRECT_STRUCTURE_t verify;
+	unsigned char buf[256];
+
+	FUNC_CALLED();
+
+	if (!slot->card) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "No card handle");
+	}
+
+	verify.bTimeOut = 0x00;
+	verify.bTimeOut2 = 0x00;
+	verify.bmFormatString = 0x80 | pinformat;
+	verify.bmPINBlockString = pinblockstring;
+	verify.bmPINLengthFormat = pinlengthformat;
+
+	verify.wPINMaxExtraDigit = (minpinsize << 8) | maxpinsize;
+
+	/*
+	 * Bit 7-3: RFU
+	 * Bit   2: Timout occurred
+	 * Bit   1: Validation Key pressed
+	 * Bit   0: Max size reached
+	 */
+	verify.bEntryValidationCondition = 0x02;
+
+	verify.bNumberMessage = 0x01;
+	verify.wLangID        = 0x0904;
+	verify.bMsgIndex      = 0;
+
+	verify.bTeoPrologue[0]= 0;
+	verify.bTeoPrologue[1]= 0;
+	verify.bTeoPrologue[2]= 0;
+
+	verify.ulDataLength = capdu_len;
+	memcpy(verify.abData, capdu, capdu_len);
+
+	lenr = rapdu_len;
+
+	rc = SCardControl(slot->card, slot->hasFeatureVerifyPINDirect, &verify,  18 + capdu_len + 1, rapdu, rapdu_len, &lenr);
+
+#ifdef DEBUG
+	debug("SCardControl (VERIFY_PIN_DIRECT): %s\n", pcsc_error_to_string(rc));
+#endif
+
+	if (rc != SCARD_S_SUCCESS) {
+		FUNC_FAILS(-1, "SCardControl failed");
 	}
 
 	FUNC_RETURNS(lenr);
@@ -255,8 +392,11 @@ int transmitAPDUviaPCSC(struct p11Slot_t *slot,
 static int checkForNewPCSCToken(struct p11Slot_t *slot)
 {
 	struct p11Token_t *ptoken;
-	int rc;
+	int rc, i;
 	DWORD dwActiveProtocol;
+	WORD feature;
+	DWORD featurecode, lenr;
+	unsigned char buf[256];
 
 	FUNC_CALLED();
 
@@ -282,10 +422,41 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 	rc = newToken(slot, &ptoken);
 
 	if (rc != CKR_OK) {
-		FUNC_FAILS(rc, "newToken failed()");
+		FUNC_FAILS(rc, "newToken() failed");
 	}
 
 	rc = addToken(slot, ptoken);
+
+	if (rc != CKR_OK) {
+		FUNC_FAILS(rc, "addToken() failed");
+	}
+
+	if (!slot->hasFeatureVerifyPINDirect) {
+		rc = SCardControl(slot->card, SCARD_CTL_CODE(3400), NULL,0, buf, sizeof(buf), &lenr);
+
+#ifdef DEBUG
+		debug("SCardControl (CM_IOCTL_GET_FEATURE_REQUEST): %s\n", pcsc_error_to_string(rc));
+#endif
+
+		if (rc != SCARD_S_SUCCESS) {
+			FUNC_FAILS(-1, "SCardControl failed");
+		}
+
+		for (i = 0; i < lenr; i += 6){
+			feature = buf[i];
+			featurecode = (buf[i + 2] << 24) + (buf[i + 3] << 16) + (buf[i + 4] << 8) + buf[i + 5];
+#ifdef DEBUG
+			debug("%s - 0x%08X\n", pcsc_feature_to_string(feature), featurecode);
+#endif
+			if (feature == FEATURE_VERIFY_PIN_DIRECT) {
+				slot->hasFeatureVerifyPINDirect = featurecode;
+#ifdef DEBUG
+				debug("Slot supports feature VERIFY_PIN_DIRECT - setting CKF_PROTECTED_AUTHENTICATION_PATH for token\n");
+#endif
+				ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
+			}
+		}
+	}
 
 	FUNC_RETURNS(rc);
 }
@@ -331,7 +502,7 @@ static int checkForRemovedPCSCToken(struct p11Slot_t *slot)
 	rc = SCardStatus(slot->card, NULL, 0, 0, 0, 0, 0);
 
 #ifdef DEBUG
-	debug("SCardStatus : %s\n", pcsc_error_to_string(rc));
+	debug("SCardStatus: %s\n", pcsc_error_to_string(rc));
 #endif
 
 	if (rc == SCARD_S_SUCCESS) {
@@ -382,7 +553,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		rc = SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &hContext);
 
 #ifdef DEBUG
-		debug("SCardEstablishContext : %s\n", pcsc_error_to_string(rc));
+		debug("SCardEstablishContext: %s\n", pcsc_error_to_string(rc));
 #endif
 
 		if (rc != SCARD_S_SUCCESS) {
@@ -393,7 +564,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 	rc = SCardListReaders(hContext, NULL, (LPTSTR)&readers, &cch);
 
 #ifdef DEBUG
-	debug("SCardListReaders : %s\n", pcsc_error_to_string(rc));
+	debug("SCardListReaders: %s\n", pcsc_error_to_string(rc));
 #endif
 
 	if (rc != SCARD_S_SUCCESS) {
@@ -459,7 +630,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
     rc = SCardFreeMemory(hContext, readers );
 
 #ifdef DEBUG
-	debug("SCardFreeMemory : %s\n", pcsc_error_to_string(rc));
+	debug("SCardFreeMemory: %s\n", pcsc_error_to_string(rc));
 #endif
 
 	if (rc != SCARD_S_SUCCESS) {

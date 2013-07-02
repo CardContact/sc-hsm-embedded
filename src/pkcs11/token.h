@@ -37,6 +37,10 @@
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/p11generic.h>
 
+#define PIN_FORMAT_BINARY	0x00
+#define PIN_FORMAT_BCD		0x01
+#define PIN_FORMAT_ASCII	0x02
+
 int newToken(struct p11Slot_t *slot, struct p11Token_t **token);
 
 void freeToken(struct p11Slot_t *slot);

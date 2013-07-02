@@ -110,6 +110,7 @@ struct p11Slot_t {
 	CK_SLOT_ID id;                    /**< The id of the slot                  */
 	CK_SLOT_INFO info;                /**< General information about the slot  */
 	int closed;                       /**< Slot hardware currently absent      */
+	unsigned long hasFeatureVerifyPINDirect;
 #ifndef CTAPI
 	char readername[MAX_READERNAME];  /**< The directory that holds this slot  */
 	SCARDHANDLE card;				  /**< Handle to card */

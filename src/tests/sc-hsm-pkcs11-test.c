@@ -38,6 +38,7 @@
 
 #ifndef WIN32
 
+#include <pthread.h>
 #include <dlfcn.h>
 #define LIB_HANDLE void*
 #define P11LIBNAME "/usr/local/lib/libsc-hsm-pkcs11.so"
@@ -271,6 +272,16 @@ struct id2name_t p11CKKName[] = {
 		{ CKK_CDMF                               , "CKK_CDMF", 0 },
 		{ CKK_AES                                , "CKK_AES", 0 },
 		{ 0, NULL }
+};
+
+/* Number of threads used for multi-threading test */
+#define NUM_THREADS		10
+
+/* Data structure for parameters passed to thread */
+struct thread_data {
+	int  thread_id;
+	CK_SLOT_ID slotid;
+	CK_FUNCTION_LIST_PTR p11;
 };
 
 
@@ -528,6 +539,151 @@ int findObject(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBUTE
 	return CKR_OK;
 }
 
+
+#ifndef WIN32
+void *SignThread(void *arg) {
+
+	struct thread_data *d;
+	int id;
+	CK_FUNCTION_LIST_PTR p11;
+	CK_SLOT_ID slotid;
+	CK_SESSION_HANDLE session;
+
+	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
+	CK_KEY_TYPE keyType = CKK_RSA;
+	CK_ATTRIBUTE template[] = {
+			{ CKA_CLASS, &class, sizeof(class) },
+			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) }
+	};
+
+	CK_OBJECT_HANDLE hnd;
+	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
+	char *tbs = "Hello World";
+	CK_BYTE signature[256];
+	CK_ULONG len;
+	char scr[1024];
+	int rc,keyno;
+
+	keyno = 0;
+
+	d = (struct thread_data *) arg;
+
+	id = d->thread_id;
+	p11 = d->p11;
+	slotid = d->slotid;
+
+	printf("Calling C_OpenSession (Thread %i)", id);
+	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+	while (1) {
+		printf("Calling findObject (Thread %i, Session %ld)\n", id, session);
+		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
+
+		if (rc != CKR_OK) {
+			printf("Key %i not found (Thread %i, Session %ld)\n", keyno, id, session);
+			break;
+		}
+		printf("Calling C_SignInit (Thread %i, Session %ld)", id, session);
+		rc = p11->C_SignInit(session, &mech, hnd);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		printf("Calling C_Sign (Thread %i, Session %ld)", id, session);
+
+		len = 0;
+		rc = p11->C_Sign(session, tbs, strlen(tbs), NULL, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		printf("Signature size = %lu\n", len);
+
+		len = sizeof(signature);
+		rc = p11->C_Sign(session, tbs, strlen(tbs), signature, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		bin2str(scr, sizeof(scr), signature, len);
+		printf("Signature:\n%s\n", scr);
+
+
+		printf("Calling C_SignInit (Thread %i, Session %ld) - Multipart", id, session);
+		rc = p11->C_SignInit(session, &mech, hnd);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		printf("Calling C_SignUpdate (Thread %i, Session %ld - Part #1)", id, session);
+		rc = p11->C_SignUpdate(session, tbs, 6);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		printf("Calling C_SignUpdate (Thread %i, Session %ld - Part #2)", id, session);
+		rc = p11->C_SignUpdate(session, tbs + 6, strlen(tbs) - 6);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		len = 0;
+		printf("Calling C_SignFinal (Thread %i, Session %ld)", id, session);
+		rc = p11->C_SignFinal(session, NULL, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		printf("Signature size = %lu\n", len);
+
+		len = sizeof(signature);
+		printf("Calling C_SignFinal (Thread %i, Session %ld)", id, session);
+		rc = p11->C_SignFinal(session, signature, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		bin2str(scr, sizeof(scr), signature, len);
+		printf("Signature:\n%s\n", scr);
+
+		keyno++;
+	}
+
+	printf("Calling C_CloseSession (Thread %i, Session %ld)", id, session);
+	rc = p11->C_CloseSession(session);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+}
+
+
+
+void testRSASigningMultiThreading(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
+{
+	pthread_t threads[NUM_THREADS];
+	pthread_attr_t attr;
+	void *status;
+	struct thread_data data[NUM_THREADS];
+	int rc;
+	long t;
+
+	/* Initialize and set thread detached attribute */
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+	for (t = 0;t < NUM_THREADS;t++) {
+		data[t].p11 = p11;
+		data[t].slotid = slotid;
+		data[t].thread_id = t;
+
+		rc = pthread_create(&threads[t], &attr, SignThread, (void *)&data[t]);
+
+		if (rc) {
+			printf("ERROR; return code from pthread_create() is %d\n", rc);
+			exit(-1);
+		}
+	}
+
+	/* Free attribute and wait for the other threads */
+	pthread_attr_destroy(&attr);
+
+	for (t = 0;t < NUM_THREADS;t++) {
+		rc = pthread_join(threads[t], &status);
+
+		if (rc) {
+			printf("ERROR; return code from pthread_join() is %d\n", rc);
+			exit(-1);
+		}
+
+		printf("Thread %ld completed\n", t);
+	}
+
+	pthread_exit(NULL);
+}
+#endif
 
 
 void testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
@@ -916,7 +1072,61 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	printf("Calling C_GetTokenInfo ");
 	rc = p11->C_GetTokenInfo(sessioninfo.slotID, &tokeninfo);
 	printf("Token flags %lx - %s\n", tokeninfo.flags, verdict((tokeninfo.flags & (CKF_USER_PIN_COUNT_LOW|CKF_USER_PIN_FINAL_TRY|CKF_USER_PIN_LOCKED)) == 0));
+
+	if (tokeninfo.flags & CKF_PROTECTED_AUTHENTICATION_PATH) {
+
+		printf("Calling C_Logout ");
+		rc = p11->C_Logout(session);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		printf("Testing CKF_PROTECTED_AUTHENTICATION_PATH - Please enter correct PIN on pin-pad\n");
+		printf("Calling C_Login User");
+		rc = p11->C_Login(session, CKU_USER, NULL, 0);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		if (rc != CKR_OK) {
+			exit(-1);
+		}
+
+		printf("Calling C_GetSessionInfo ");
+		rc = p11->C_GetSessionInfo(session, &sessioninfo);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_USER_FUNCTIONS));
+
+		printf("Calling C_Logout ");
+		rc = p11->C_Logout(session);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+
+		printf("Testing CKF_PROTECTED_AUTHENTICATION_PATH - Please enter wrong PIN on pin-pad\n");
+		printf("Calling C_Login User ");
+		rc = p11->C_Login(session, CKU_USER, NULL, 0);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_PIN_INCORRECT));
+
+		printf("Calling C_GetSessionInfo ");
+		rc = p11->C_GetSessionInfo(session, &sessioninfo);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_PUBLIC_SESSION));
+
+		/*
+		 * Reset the PIN counter
+		 */
+		printf("Calling C_Login User ");
+		rc = p11->C_Login(session, CKU_USER, pin, pinlen);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+
+		if (rc != CKR_OK) {
+			exit(-1);
+		}
+
+		printf("Calling C_GetSessionInfo ");
+		rc = p11->C_GetSessionInfo(session, &sessioninfo);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_USER_FUNCTIONS));
+
+	}
 }
+
 
 
 #if 0
@@ -970,7 +1180,6 @@ void testInsertRemove(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 	}
 }
 #endif
-
 
 void main(int argc, char *argv[])
 {
@@ -1124,6 +1333,10 @@ void main(int argc, char *argv[])
 	listObjects(p11, session, attr, 0);
 
 	testRSASigning(p11, session);
+
+#ifndef WIN32
+	testRSASigningMultiThreading(p11, slotid);
+#endif
 
 //	Test requires valid crypto matching card used for testing
 //	testRSADecryption(p11, session);
