@@ -33,7 +33,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>      
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -43,7 +43,7 @@
 #include <pkcs11/object.h>
 #include <pkcs11/dataobject.h>
 
-#include <token-sc-hsm.h>
+#include <pkcs11/token-sc-hsm.h>
 
 #ifdef DEBUG
 #include <pkcs11/debug.h>

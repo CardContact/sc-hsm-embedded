@@ -19,7 +19,7 @@
  */
 
 #include <string.h>
-#include "SignHash.h"
+#include "sc-hsm-ultralite.h"
 
 typedef unsigned char uint8;
 typedef unsigned int uint32;

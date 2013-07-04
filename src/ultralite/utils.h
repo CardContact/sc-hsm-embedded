@@ -1,5 +1,5 @@
 /**
- * CT-API for CCID Driver
+ * SmartCard-HSM Ultra-Light Library
  *
  * Copyright (c) 2013, CardContact Systems GmbH, Minden, Germany
  * All rights reserved.
@@ -26,73 +26,46 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @file dump.c
+ * @file utils.h
  * @author Christoph Brunhuber
- * @brief Simple hex dumper
+ * @brief Simple abstraction layer for USB devices using libusb
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
+#ifndef __utils_h__                     /* Prevent from including twice      */
+#define __utils_h__
 
-#include "dump.h"
+#include "ctccid/scr.h"
 
+#ifdef __cplusplus                      /* Support for C++ compiler          */
+extern "C" {
+#endif
 
+/* utility functions */
 
-#ifdef DEBUG
-/*
- * Dump the memory pointed to by <ptr>
- *
- */
-void ctccidDump(void *_ptr, int len)
-{
-	unsigned char *ptr = (unsigned char *)_ptr;
-	int i;
+#define MAX_OUT_IN 256
 
-	static char *MinStack = (char *)-1;
-	static char *MaxStack; /* = 0; */
-	if (MinStack > (char *)&ptr)
-		MinStack = (char *)&ptr;
-	if (MaxStack < (char *)&ptr)
-		MaxStack = (char *)&ptr;
-	ctccid_debug("Dump(%p, %d) stack used so far: %d\n", ptr, len, (int)(MaxStack - MinStack));
-	ctccid_debug("Buffer content:\n", ptr, len, (int)(MaxStack - MinStack));
+typedef unsigned char uint8;
+typedef unsigned short uint16;
 
-	for (i = 0; i < len; i += 16) {
-		int i1 = i + 16;
-		int i2 = i1;
-		int j;
+int ProcessAPDU(
+	int ctn, int todad,
+	unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
+	int OutLen, unsigned char *OutData,
+	int InLen, unsigned char *InData,
+	unsigned short *SW1SW2
+);
 
-		if (i1 > len) {
-			i1 = len;
-		}
-
-		if (i % 16 == 0) {
-			ctccid_debug_no_timestamp("\n  %04x: ", i);
-		}
-
-		for (j = i; j < i1; j++) {
-			ctccid_debug_no_timestamp("%02x ", ptr[j]);
-		}
-
-		for (     ; j < i2; j++) {
-			ctccid_debug_no_timestamp("   ");
-		}
-
-		ctccid_debug_no_timestamp(" ");
-
-		for (j = i; j < i1; j++) {
-			unsigned char ch = ptr[j];
-
-			if (!isprint(ch)) {
-				ch = '.';
-			}
-
-			ctccid_debug_no_timestamp("%c", ch);
-		}
-	}
-
-	ctccid_debug_no_timestamp("\n");
+#define SaveToFile(name, ptr, len) {\
+	FILE *f = fopen(name, "wb");\
+	if (f) {\
+		if ((len) > 0)\
+			fwrite(ptr, 1, len, f);\
+		fclose(f);\
+	}\
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

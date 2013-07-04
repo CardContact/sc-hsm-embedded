@@ -35,6 +35,8 @@
 #include <pkcs11/slot.h>
 #include <pkcs11/slotpool.h>
 #include <pkcs11/token.h>
+#include <pkcs11/debug.h>
+
 
 extern struct p11Context_t *context;
 
@@ -149,7 +151,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
 
 
 
-/*  C_EncryptUpdate continues a multiple-part encryption operation, 
+/*  C_EncryptUpdate continues a multiple-part encryption operation,
     processing another data part. */
 CK_DECLARE_FUNCTION(CK_RV, C_EncryptUpdate)(
 		CK_SESSION_HANDLE hSession,
@@ -373,7 +375,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Decrypt)(
 
 
 
-/*  C_DecryptUpdate continues a multiple-part decryption operation, 
+/*  C_DecryptUpdate continues a multiple-part decryption operation,
     processing another encrypted data part. */
 CK_DECLARE_FUNCTION(CK_RV, C_DecryptUpdate)(
 		CK_SESSION_HANDLE hSession,
@@ -524,7 +526,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Digest)(
 
 
 
-/*  C_DigestUpdate continues a multiple-part message-digesting operation, 
+/*  C_DigestUpdate continues a multiple-part message-digesting operation,
     processing another data part. */
 CK_DECLARE_FUNCTION(CK_RV, C_DigestUpdate)(
 		CK_SESSION_HANDLE hSession,
@@ -545,7 +547,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestUpdate)(
 
 
 
-/*  C_DigestKey continues a multiple-part message-digesting operation by 
+/*  C_DigestKey continues a multiple-part message-digesting operation by
     digesting the value of a secret key. */
 CK_DECLARE_FUNCTION(CK_RV, C_DigestKey)(
 		CK_SESSION_HANDLE hSession,
@@ -585,7 +587,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestFinal)(
 
 
 
-/*  C_SignInit initializes a signature operation, 
+/*  C_SignInit initializes a signature operation,
     here the signature is an appendix to the data. */
 CK_DECLARE_FUNCTION(CK_RV, C_SignInit)(
 		CK_SESSION_HANDLE hSession,
@@ -700,7 +702,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
 
 
 
-/*  C_SignUpdate continues a multiple-part signature operation, 
+/*  C_SignUpdate continues a multiple-part signature operation,
     processing another data part. */
 CK_DECLARE_FUNCTION(CK_RV, C_SignUpdate)(
 		CK_SESSION_HANDLE hSession,
@@ -815,7 +817,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 
 
 
-/*  C_SignRecoverInit initializes a signature operation, where the data 
+/*  C_SignRecoverInit initializes a signature operation, where the data
     can be recovered from the signature. */
 CK_DECLARE_FUNCTION(CK_RV, C_SignRecoverInit)(
 		CK_SESSION_HANDLE hSession,
@@ -836,7 +838,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignRecoverInit)(
 
 
 
-/*  C_SignRecover signs data in a single operation, where the data can be 
+/*  C_SignRecover signs data in a single operation, where the data can be
     recovered from the signature. */
 CK_DECLARE_FUNCTION(CK_RV, C_SignRecover)(
 		CK_SESSION_HANDLE hSession,
@@ -859,7 +861,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignRecover)(
 
 
 
-/*  C_VerifyInit initializes a verification operation, where the signature is 
+/*  C_VerifyInit initializes a verification operation, where the signature is
     an appendix to the data. */
 CK_DECLARE_FUNCTION(CK_RV, C_VerifyInit)(
 		CK_SESSION_HANDLE hSession,
@@ -880,7 +882,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyInit)(
 
 
 
-/*  C_Verify verifies a signature in a single-part operation, where the signature 
+/*  C_Verify verifies a signature in a single-part operation, where the signature
     is an appendix to the data. */
 CK_DECLARE_FUNCTION(CK_RV, C_Verify)(
 		CK_SESSION_HANDLE hSession,
@@ -903,7 +905,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Verify)(
 
 
 
-/*  C_VerifyUpdate continues a multiple-part verification operation, 
+/*  C_VerifyUpdate continues a multiple-part verification operation,
     processing another data part. */
 CK_DECLARE_FUNCTION(CK_RV, C_VerifyUpdate)(
 		CK_SESSION_HANDLE hSession,
@@ -924,7 +926,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyUpdate)(
 
 
 
-/*  C_VerifyFinal finishes a multiple-part verification operation, 
+/*  C_VerifyFinal finishes a multiple-part verification operation,
     checking the signature. */
 CK_DECLARE_FUNCTION(CK_RV, C_VerifyFinal)(
 		CK_SESSION_HANDLE hSession,
@@ -945,7 +947,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyFinal)(
 
 
 
-/*  C_VerifyRecoverInit initializes a signature verification operation, 
+/*  C_VerifyRecoverInit initializes a signature verification operation,
     where the data is recovered from the signature. */
 CK_DECLARE_FUNCTION(CK_RV, C_VerifyRecoverInit)(
 		CK_SESSION_HANDLE hSession,
@@ -966,7 +968,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyRecoverInit)(
 
 
 
-/*  C_VerifyRecover verifies a signature in a single-part operation, 
+/*  C_VerifyRecover verifies a signature in a single-part operation,
     where the data is recovered from the signature. */
 CK_DECLARE_FUNCTION(CK_RV, C_VerifyRecover)(
 		CK_SESSION_HANDLE hSession,
@@ -989,7 +991,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyRecover)(
 
 
 
-/*  C_DigestEncryptUpdate continues multiple-part digest and encryption 
+/*  C_DigestEncryptUpdate continues multiple-part digest and encryption
     operations, processing another data part. */
 CK_DECLARE_FUNCTION(CK_RV, C_DigestEncryptUpdate)(
 		CK_SESSION_HANDLE hSession,
@@ -1012,7 +1014,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestEncryptUpdate)(
 
 
 
-/*  C_DecryptDigestUpdate continues a multiple-part combined decryption and 
+/*  C_DecryptDigestUpdate continues a multiple-part combined decryption and
     digest operation, processing another data part. */
 CK_DECLARE_FUNCTION(CK_RV, C_DecryptDigestUpdate)(
 		CK_SESSION_HANDLE hSession,
@@ -1035,7 +1037,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptDigestUpdate)(
 
 
 
-/*  C_SignEncryptUpdate continues a multiple-part combined signature and 
+/*  C_SignEncryptUpdate continues a multiple-part combined signature and
     encryption operation, processing another data part. */
 CK_DECLARE_FUNCTION(CK_RV, C_SignEncryptUpdate)(
 		CK_SESSION_HANDLE hSession,
@@ -1081,7 +1083,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptVerifyUpdate)(
 
 
 
-/*  C_GenerateKey generates a secret key or set of domain parameters, 
+/*  C_GenerateKey generates a secret key or set of domain parameters,
     creating a new object. */
 CK_DECLARE_FUNCTION(CK_RV, C_GenerateKey)(
 		CK_SESSION_HANDLE hSession,
@@ -1152,7 +1154,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_WrapKey)(
 
 
 
-/*  C_UnwrapKey unwraps (i.e. decrypts) a wrapped key, creating a new private key 
+/*  C_UnwrapKey unwraps (i.e. decrypts) a wrapped key, creating a new private key
     or secret key object. */
 CK_DECLARE_FUNCTION(CK_RV, C_UnwrapKey)(
 		CK_SESSION_HANDLE hSession,

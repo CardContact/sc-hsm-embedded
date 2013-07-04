@@ -42,6 +42,7 @@
 #include <pkcs11/strbpcpy.h>
 #include <pkcs11/asn1.h>
 #include <pkcs11/pkcs15.h>
+#include <pkcs11/debug.h>
 
 
 static unsigned char aid[] = { 0xE8,0x2B,0x06,0x01,0x04,0x01,0x81,0xC3,0x1F,0x02,0x01 };

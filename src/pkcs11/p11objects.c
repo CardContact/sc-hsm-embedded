@@ -549,7 +549,7 @@ static int isMatchingObject(struct p11Object_t *pObject, CK_ATTRIBUTE_PTR pTempl
 
 
 
-/*  C_FindObjectsInit initializes a search for token and session objects 
+/*  C_FindObjectsInit initializes a search for token and session objects
     that match a template. */
 CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
 		CK_SESSION_HANDLE hSession,

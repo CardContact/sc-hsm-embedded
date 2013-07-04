@@ -38,6 +38,7 @@
 #include <pkcs11/slotpool.h>
 #include <pkcs11/slot.h>
 #include <pkcs11/token.h>
+#include <pkcs11/debug.h>
 
 extern struct p11Context_t *context;
 
@@ -48,11 +49,11 @@ extern struct p11Context_t *context;
  *
  * Call CT_init with increasing port number to determine number of readers attached
  *
- * Token found in a slot are added to specific slot structure for later use. 
+ * Token found in a slot are added to specific slot structure for later use.
  *
  * @param pool       Pointer to slot-pool structure.
  *
- * @return          
+ * @return
  *                   <P><TABLE>
  *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
  *                   <TR>
@@ -78,7 +79,7 @@ extern struct p11Context_t *context;
  *                   </TABLE></P>
  */
 int initSlotPool(struct p11SlotPool_t *pool)
-{ 
+{
 	FUNC_CALLED();
 
 	if (context == NULL) {
@@ -126,7 +127,7 @@ int terminateSlotPool(struct p11SlotPool_t *pool)
  * @param pool       Pointer to slot-pool structure.
  * @param slot       Pointer to slot structure.
  *
- * @return          
+ * @return
  *                   <P><TABLE>
  *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
  *                   <TR>
@@ -165,7 +166,7 @@ int addSlot(struct p11SlotPool_t *pool, struct p11Slot_t *slot)
 
 
 /**
- * findSlot finds a slot in the slot-pool. 
+ * findSlot finds a slot in the slot-pool.
  * The slot is specified by its slotID.
  *
  * @param pool       Pointer to slot-pool structure.
@@ -173,7 +174,7 @@ int addSlot(struct p11SlotPool_t *pool, struct p11Slot_t *slot)
  * @param slot       Pointer to pointer to slot structure.
  *                   If the slot is found, this pointer holds the specific slot structure - otherwise NULL.
  *
- * @return          
+ * @return
  *                   <P><TABLE>
  *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
  *                   <TR>

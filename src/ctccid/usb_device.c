@@ -41,6 +41,8 @@
 
 #ifdef DEBUG
 
+#include "ctccid_debug.h"
+
 static char* libusb_error_to_string(const int error) {
 	static char strError[60];
 

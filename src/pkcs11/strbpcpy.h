@@ -41,6 +41,9 @@
 
 void strbpcpy(CK_CHAR *dst, const char *src, int dstsize);
 
-void removeBlanks(unsigned char *dst, const unsigned char *src);
+#if 0
+killer function, not used, deleted!
+void removeBlanks32(unsigned char *dst, const unsigned char *src);
+#endif
 
 #endif /* ___STRBPCPY_H_INC___ */

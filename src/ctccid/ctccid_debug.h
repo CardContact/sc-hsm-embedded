@@ -31,12 +31,16 @@
  * @brief   Debug and logging functions
  */
 
+#ifdef DEBUG
+
 #ifndef ___CTCCID_DEBUG_H_INC___
 #define ___CTCCID_DEBUG_H_INC___
 
-int ctccid_initDebug();
-int ctccid_debug(char *log, ...);
-int ctccid_debug_no_timestamp(char *log, ...);
-int ctccid_termDebug();
+void ctccid_initDebug();
+void ctccid_debug(char *log, ...);
+void ctccid_dump(void *ptr, int len);
+void ctccid_termDebug();
 
 #endif /* ___CTCCID_DEBUG_H_INC___ */
+
+#endif /* DEBUG */

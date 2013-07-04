@@ -91,7 +91,7 @@ typedef struct usb_device {
          * ID of bulk out
          */
         uint8_t bulk_out;
- 
+
 } usb_device_t;
 
 int USB_Open(unsigned short pn, usb_device_t **device);

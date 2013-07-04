@@ -43,7 +43,7 @@
 #include <pkcs11/slotpool.h>
 #include <pkcs11/slot-ctapi.h>
 
-#include <strbpcpy.h>
+#include <pkcs11/strbpcpy.h>
 
 #include <ctccid/ctapi.h>
 
@@ -140,7 +140,7 @@ int transmitAPDUviaCTAPI(struct p11Slot_t *slot, int todad,
  *
  * @param slot       Pointer to slot structure.
  *
- * @return          
+ * @return
  *                   <P><TABLE>
  *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
  *                   <TR>

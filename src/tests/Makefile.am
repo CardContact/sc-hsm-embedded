@@ -1,13 +1,13 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
-noinst_PROGRAMS = testctapi testpkcs11
+noinst_PROGRAMS = ctccid-test sc-hsm-pkcs11-test
 
 AM_CPPFLAGS = -I$(top_srcdir)/src
 
-testctapi_SOURCES = testctapi.c
+ctccid_test_SOURCES = ctccid-test.c
 
-testctapi_LDADD = $(top_builddir)/src/ctccid/libctccid.la
+ctccid_test_LDADD = $(top_builddir)/src/ctccid/libctccid.la
 
-testpkcs11_SOURCES = testpkcs11.c
+sc_hsm_pkcs11_test_SOURCES = sc-hsm-pkcs11-test.c
 
-testpkcs11_LDFLAGS = -ldl
+sc_hsm_pkcs11_test_LDFLAGS = -ldl

@@ -36,7 +36,49 @@
 #include <string.h>
 #include <ctype.h>
 
+#ifndef WIN32
+
 #include <dlfcn.h>
+#define LIB_HANDLE void*
+#define P11LIBNAME "/usr/local/lib/libsc-hsm-pkcs11.so"
+#define PIN "648219"
+
+#else
+
+#include <windows.h>
+#include <malloc.h>
+#define LIB_HANDLE HMODULE
+#define P11LIBNAME "sc-hsm-pkcs11.dll"
+#define PIN "123456"
+#define dlopen(fn, flag) LoadLibrary(fn)
+#define dlclose(h) FreeLibrary(h)
+#define dlsym(h, n) GetProcAddress(h, n)
+
+char* dlerror()
+{
+	char* msg = "UNKNOWN";
+	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, 0, GetLastError(), 0, (char*)&msg, 0, 0);
+	return msg;
+}
+
+size_t getline(char** pp, size_t* pl, FILE* f)
+{
+	char buf[256];
+	buf[0] = 0;
+	fgets(buf, sizeof(buf), f);
+	*pl = strlen(buf) + 1;
+	if (*pp)
+		free(*pp);
+	*pp = (char*)malloc(*pl);
+	if (*pp == 0) {
+		printf("malloc(%d) failed.", *pl);
+		exit(1);
+	}
+	memcpy(*pp, buf, *pl);
+	return *pl - 1;
+}
+
+#endif /* WIN32 */
 
 #include <pkcs11/cryptoki.h>
 
@@ -232,7 +274,7 @@ struct id2name_t p11CKKName[] = {
 };
 
 
-CK_UTF8CHAR pin[] = "648219";
+CK_UTF8CHAR pin[] = PIN;
 CK_UTF8CHAR wrongpin[] = "111111";
 CK_ULONG pinlen = 6;
 
@@ -947,9 +989,9 @@ void main(int argc, char *argv[])
 	CK_UTF8CHAR objlabel[] = "sampleobj";
 	char *value = "\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01";
 	CK_FUNCTION_LIST_PTR p11;
-	void *dlhandle;
+	LIB_HANDLE dlhandle;
 	CK_RV (*C_GetFunctionList)(CK_FUNCTION_LIST_PTR_PTR);
-	char *p11libname = "/usr/local/lib/libsc-hsm-pkcs11.so";
+	char *p11libname = P11LIBNAME;
 
 	if (argc == 2) {
 		p11libname = argv[1];
@@ -962,7 +1004,7 @@ void main(int argc, char *argv[])
 		printf("dlopen failed with %s\n", dlerror());
 		exit(-1);
 	}
-	C_GetFunctionList = dlsym(dlhandle, "C_GetFunctionList");
+	C_GetFunctionList = (CK_RV (*)(CK_FUNCTION_LIST_PTR_PTR))dlsym(dlhandle, "C_GetFunctionList");
 
 	printf("Calling C_GetFunctionList ");
 

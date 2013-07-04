@@ -31,7 +31,7 @@
  * @brief   String copy routine with blank padding
  */
 
-#include <strbpcpy.h>
+#include <pkcs11/strbpcpy.h>
 
 /**
  * strbpcpy() copies the source string to the destination string.
@@ -46,24 +46,10 @@
  */
 void strbpcpy(CK_CHAR *dst, const char *src, int dstsize)
 {
-	int c = strlen(src) > (unsigned int) dstsize ? dstsize : strlen(src);
-
-	memcpy((char *) dst, src, c);
-	dstsize -= c;
-	memset((char *) dst + c, ' ', dstsize);
-}
-
-
-
-void removeBlanks(unsigned char *dst, const unsigned char *src)
-{
-	int i = 0; /* the maximum length of the label */
-
-	memcpy(dst, src, 32);
-
-	while (dst[i] != 0x20) { /* search for the first blank */
-		i++;
+	int c = strlen(src);
+	if (c > dstsize) {
+		c = dstsize;
 	}
-
-	dst[i] = '\0';
+	memcpy(dst, src, c);
+	memset(dst + c, ' ', dstsize - c);
 }

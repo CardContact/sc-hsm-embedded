@@ -38,6 +38,7 @@
 #include "ctbcs.h"
 #include "ctapi.h"
 #include "ccid_usb.h"
+#include "ctccid_debug.h"
 
 extern int ccidT1Init (struct scr *ctx);
 

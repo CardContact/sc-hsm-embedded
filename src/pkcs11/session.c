@@ -44,7 +44,7 @@
  *
  * @param pool       Pointer to session-pool structure.
  *
- * @return          
+ * @return
  *                   <P><TABLE>
  *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
  *                   <TR>
@@ -120,7 +120,7 @@ int terminateSessionPool(struct p11SessionPool_t *pool)
  * @param pool       Pointer to session-pool structure.
  * @param session    Pointer to session structure.
  *
- * @return          
+ * @return
  *                   <P><TABLE>
  *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
  *                   <TR>
@@ -160,7 +160,7 @@ int addSession(struct p11SessionPool_t *pool, struct p11Session_t *session)
 
 
 /**
- * findSessionByHandle finds a slot in the slot-pool. 
+ * findSessionByHandle finds a slot in the slot-pool.
  * The session is specified by its handle.
  *
  * @param pool       Pointer to slot-pool structure.
@@ -168,7 +168,7 @@ int addSession(struct p11SessionPool_t *pool, struct p11Session_t *session)
  * @param session    Pointer to session structure.
  *                   If the session is found, this pointer holds the specific session structure - otherwise NULL.
  *
- * @return          
+ * @return
  *                   <P><TABLE>
  *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
  *                   <TR>
@@ -203,7 +203,7 @@ int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle,
 
 
 /**
- * findSessionBySlotID finds a slot in the slot-pool. 
+ * findSessionBySlotID finds a slot in the slot-pool.
  * The session is specified by the slotID of the used slot..
  *
  * @param pool       Pointer to slot-pool structure.
@@ -211,7 +211,7 @@ int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle,
  * @param session    Pointer to session structure.
  *                   If the session is found, this pointer holds the specific session structure - otherwise NULL.
  *
- * @return          
+ * @return
  *                   <P><TABLE>
  *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
  *                   <TR>
@@ -251,13 +251,13 @@ int findSessionBySlotID(struct p11SessionPool_t *pool, CK_SLOT_ID slotID, struct
 
 
 /**
- * removeSession removes a session from the session-pool. 
+ * removeSession removes a session from the session-pool.
  * The session to remove is specified by the session handle.
  *
  * @param pool       Pointer to session-pool structure.
  * @param handle     The handle of the session.
  *
- * @return          
+ * @return
  *                   <P><TABLE>
  *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
  *                   <TR>

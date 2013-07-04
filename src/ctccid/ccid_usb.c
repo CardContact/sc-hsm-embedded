@@ -37,6 +37,7 @@
 
 #ifdef DEBUG
 #include <stdio.h>
+#include "ctccid_debug.h"
 #endif
 
 #include "ccid_usb.h"
@@ -46,6 +47,7 @@ int FTable[]  = { 372, 372, 558, 744, 1116, 1488, 1860, -1, -1, 512, 768, 1024, 
 int DTable[]  = { -1, 1, 2, 4, 8, 16, 32, -1, 12, 20, -1, -1, -1, -1, -1, -1};
 
 #ifdef DEBUG
+
 /**
  * Dump the content of a CCID message
  * @param mem Pointer to array holding the message
@@ -84,7 +86,7 @@ void CCIDDump(unsigned char *mem, int len)
                 break;
         }
 
-        ctccidDump(mem, len);
+        ctccid_dump(mem, len);
 }
 #endif
 

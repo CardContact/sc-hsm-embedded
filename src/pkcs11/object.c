@@ -637,7 +637,7 @@ int findAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTemplate
 
 
 
-int findAttributeInTemplate(CK_ATTRIBUTE_TYPE attributeType, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) 
+int findAttributeInTemplate(CK_ATTRIBUTE_TYPE attributeType, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount)
 {
 	unsigned int i;
 
@@ -687,7 +687,7 @@ int removeAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTempla
 
 
 
-int removeAllAttributes(struct p11Object_t *object) 
+int removeAllAttributes(struct p11Object_t *object)
 {
 	struct p11Attribute_t *pAttr, *pAttr2;
 
@@ -839,7 +839,7 @@ int createKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Obje
 
 
 /**
- * Serialize all attributes of the object to an unsigned char array 
+ * Serialize all attributes of the object to an unsigned char array
  */
 int serializeObject(struct p11Object_t *pObject, unsigned char **pBuffer, unsigned int *bufLength)
 {

@@ -40,7 +40,7 @@
 
 #include "ccidT1.h"
 #include "ccid_usb.h"
-#include "dump.h"
+#include "ctccid_debug.h"
 
 
 /**
@@ -89,7 +89,7 @@ void ccidT1BlockInfo(unsigned char Nad, unsigned char Pcb, int InBuffLength, uns
 
 	if (ISIBLOCK(Pcb)) {
 		ctccid_debug("I(%d,%d):\n", NS(Pcb), MORE(Pcb));
-		ctccidDump(InBuff, InBuffLength);
+		ctccid_dump(InBuff, InBuffLength);
 	}
 
 	if (ISRBLOCK(Pcb)) {

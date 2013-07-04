@@ -22,7 +22,7 @@ AC_CONFIG_FILES([
     src/ctccid/Makefile
     src/pkcs11/Makefile
     src/tests/Makefile
-    src/utils/Makefile
+    src/ultralite/Makefile
 ])
 
 AC_OUTPUT

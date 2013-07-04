@@ -40,13 +40,13 @@
 
 /**
  * Decode the tag from an ASN.1 object and update the reference pointer
- * 
- * Decode the tag value from the ASN.1 coded data object referenced by the parameter 
+ *
+ * Decode the tag value from the ASN.1 coded data object referenced by the parameter
  * Ref. One and two byte tag values are supported. See asn1Length() function call for
  * an example.
  *
- * @param Ref       Address of the pointer variable which points to the tag field of 
- *                  the TLV structure. It gets updated by the function to point to the 
+ * @param Ref       Address of the pointer variable which points to the tag field of
+ *                  the TLV structure. It gets updated by the function to point to the
  *                  length field.
  *
  * @return          The function returns the tag value for the ASN.1 data object.
@@ -70,17 +70,17 @@ unsigned int asn1Tag(unsigned char **Ref)
 
 /**
  * Decode the length from an ASN.1 object and update the reference pointer.
- * 
+ *
  * Decode the length value from the ASN.1 coded data object referenced by the pa-
- * rameter Ref. One, two and three byte length values are supported. A prior call of 
+ * rameter Ref. One, two and three byte length values are supported. A prior call of
  * asn1Tag() should have moved the pointer Ref to the length field of the TLV object.
- * 
- * Note: Usually asn1Tag() and asn1Length() are used directly after another, even if the 
- * length information is not of interest. But this is the only safe way to get to the data field, 
+ *
+ * Note: Usually asn1Tag() and asn1Length() are used directly after another, even if the
+ * length information is not of interest. But this is the only safe way to get to the data field,
  * because the tag and length fields may have a variable size.
- * 
- * @param Ref       Address of the pointer variable which points to the length field 
- *                  of the TLV structure. It gets updated by the function to point to 
+ *
+ * @param Ref       Address of the pointer variable which points to the length field
+ *                  of the TLV structure. It gets updated by the function to point to
  *                  the value field.
  *
  * @return          The function returns the length value for the ASN.1 data object.
@@ -91,13 +91,13 @@ unsigned int asn1Tag(unsigned char **Ref)
  * unsigned char ASN1[] = { 0x5F,0x10,0x02,0x20,0x30 };     // Tag=5F10, Length=2
  * unsigned char *po;
  * int  len;
- * 
+ *
  * po = ASN1;
  * prnPrintf("Tag = %x\n", asn1Tag(&po));
- * 
+ *
  * len = asn1Length(&po);
  * prnPrintf("Length = %d\n", len);
- * 
+ *
  * prnPrintf("Value =");
  * while(len--)
  *     prnPrintf(" %02X", *po++);
@@ -128,11 +128,11 @@ int asn1Length(unsigned char **Ref)
 /**
  * Construct the ASN.1 tag at referenced memory position.
  *
- * Store the tag according to ASN.1 BER-TLV rules in the message buffer. The function 
+ * Store the tag according to ASN.1 BER-TLV rules in the message buffer. The function
  * decides whether one or two byte storage is required.
  *
- * @param Ref       Address of the pointer variable which points to the tag field of 
- *                  the TLV structure. It gets updated by the function to point to the 
+ * @param Ref       Address of the pointer variable which points to the tag field of
+ *                  the TLV structure. It gets updated by the function to point to the
  *                  length field.
  * @param Tag       Tag that shall be stored at position Ref.
  *
@@ -152,8 +152,8 @@ void asn1StoreTag(unsigned char **Ref, unsigned short Tag)
  * Store the length according to ASN.1 BER-TLV rules in the message buffer. The func-
  * tion decides whether one, two or three byte of storage is required.
  *
- * @param Ref       Address of the pointer variable which points to the tag field of 
- *                  the TLV structure. It gets updated by the function to point to the 
+ * @param Ref       Address of the pointer variable which points to the tag field of
+ *                  the TLV structure. It gets updated by the function to point to the
  *                  value field.
  * @param Length    Value to be stored in the length field.
  */
@@ -175,16 +175,16 @@ void asn1StoreLength(unsigned char **Ref, int Length)
 /**
  * Encapsulate the provided message in an ASN.1 TLV structure.
  *
- * This function combines the both functions asn1StoreTag() and asn1StoreLength() and 
- * encapsulates the message provided in Msg with an ASN.1 TLV structure. 
- * 
- * WARNING: Tag and length field will be added to the beginning of the message. Please 
+ * This function combines the both functions asn1StoreTag() and asn1StoreLength() and
+ * encapsulates the message provided in Msg with an ASN.1 TLV structure.
+ *
+ * WARNING: Tag and length field will be added to the beginning of the message. Please
  * make sure, that sufficient space is available in the message buffer (maximum 5 addi-
  * tional bytes).
  *
  * @param Tag       The tag that shall be given to the message
- * @param Msg       Pointer to the message buffer which contains the message to 
- *                  be encapsulated. The tag and length fields will be added at the 
+ * @param Msg       Pointer to the message buffer which contains the message to
+ *                  be encapsulated. The tag and length fields will be added at the
  *                  beginning of this buffer.
  * @param MsgLen    Length of the given message in the Msg buffer
  * @return          The function will return the total number of bytes in the message

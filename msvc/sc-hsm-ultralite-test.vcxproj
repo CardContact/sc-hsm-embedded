@@ -10,19 +10,30 @@
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\ultralite\sc-hsm-ultralite.c" />
+    <ClCompile Include="..\src\ultralite\sha256.c" />
+    <ClCompile Include="..\src\ultralite\sc-hsm-ultralite-test.c" />
+    <ClCompile Include="..\src\ultralite\utils.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\ultralite\sc-hsm-ultralite.h" />
+    <ClInclude Include="..\src\ultralite\utils.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{CEEAF173-F9EC-4306-BBE4-A85E2641541D}</ProjectGuid>
+    <ProjectGuid>{E01C9DAC-044E-44E7-A714-F6F74DFCE5F6}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>ctccid</RootNamespace>
+    <RootNamespace>sc_hsm_ultralite_test</RootNamespace>
+    <ProjectName>sc-hsm-ultralite-test</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
@@ -38,46 +49,58 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
-    <IncludePath>..;$(IncludePath)</IncludePath>
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>..\src;$(IncludePath)</IncludePath>
     <OutDir>..\Win32\$(Configuration)\</OutDir>
+    <LibraryPath>..\libusb-1.0;$(OutDir);$(VCInstallDir)lib;$(WindowsSdkDir)lib</LibraryPath>
+    <ReferencePath>$(VCInstallDir)atlmfc\lib;$(VCInstallDir)lib</ReferencePath>
     <IntDir>$(OutDir)$(MSBuildProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..;$(IncludePath)</IncludePath>
+    <IncludePath>..\src;$(IncludePath)</IncludePath>
     <OutDir>..\Win32\$(Configuration)\</OutDir>
+    <ReferencePath>$(VCInstallDir)atlmfc\lib;$(VCInstallDir)lib</ReferencePath>
+    <LibraryPath>..\libusb-1.0;$(OutDir);$(VCInstallDir)lib;$(WindowsSdkDir)lib</LibraryPath>
     <IntDir>$(OutDir)$(MSBuildProjectName)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>DEBUG;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <MinimalRebuild>false</MinimalRebuild>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+      <ExceptionHandling>Sync</ExceptionHandling>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalOptions>/wd4018 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;libusb-1.0.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;libusb.lib;ctccid.lib</AdditionalDependencies>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
+      <AdditionalOptions>/LTCG %(AdditionalOptions)</AdditionalOptions>
+      <AddModuleNamesToAssembly>
+      </AddModuleNamesToAssembly>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+      <ExceptionHandling>Sync</ExceptionHandling>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalOptions>/wd4018 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -86,26 +109,12 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>kernel32.lib;user32.lib;libusb-1.0.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;libusb.lib;ctccid.lib</AdditionalDependencies>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
+      <AdditionalOptions>/IGNORE:4049 %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="..\src\ctccid\ccidT1.c" />
-    <ClCompile Include="..\src\ctccid\ccid_usb.c" />
-    <ClCompile Include="..\src\ctccid\ctapi.c" />
-    <ClCompile Include="..\src\ctccid\ctbcs.c" />
-    <ClCompile Include="..\src\ctccid\ctccid_debug.c" />
-    <ClCompile Include="..\src\ctccid\usb_device.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\src\ctccid\ccidT1.h" />
-    <ClInclude Include="..\src\ctccid\ccid_usb.h" />
-    <ClInclude Include="..\src\ctccid\ctapi.h" />
-    <ClInclude Include="..\src\ctccid\ctbcs.h" />
-    <ClInclude Include="..\src\ctccid\ctccid_debug.h" />
-    <ClInclude Include="..\src\ctccid\scr.h" />
-    <ClInclude Include="..\src\ctccid\usb_device.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

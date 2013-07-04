@@ -47,7 +47,7 @@
 struct p11Attribute_t {
 
     CK_ATTRIBUTE attrData;          /**< The attribute data                   */
-    
+
     struct p11Attribute_t *next;    /**< Pointer to next attribute            */
 };
 

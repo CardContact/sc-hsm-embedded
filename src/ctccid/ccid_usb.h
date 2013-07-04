@@ -42,13 +42,13 @@
 #define ERR_HW_ERROR				0xFB
 
 #define MSG_TYPE_PC_to_RDR_SetParameters	0x61
-#define MSG_TYPE_PC_to_RDR_IccPowerOn 		0x62
-#define MSG_TYPE_PC_to_RDR_IccPowerOff 		0x63
-#define MSG_TYPE_PC_to_RDR_GetSlotStatus 	0x65
+#define MSG_TYPE_PC_to_RDR_IccPowerOn		0x62
+#define MSG_TYPE_PC_to_RDR_IccPowerOff		0x63
+#define MSG_TYPE_PC_to_RDR_GetSlotStatus	0x65
 #define MSG_TYPE_PC_to_RDR_XfrBlock			0x6F
 #define MSG_TYPE_RDR_to_PC_DataBlock		0x80
 #define MSG_TYPE_RDR_to_PC_SlotStatus		0x81
-#define MSG_TYPE_RDR_to_PC_Parameters      	0x82
+#define MSG_TYPE_RDR_to_PC_Parameters		0x82
 
 #define ICC_PRESENT_AND_ACTIVE		0x00
 #define ICC_PRESENT_AND_INACTIVE	0x01

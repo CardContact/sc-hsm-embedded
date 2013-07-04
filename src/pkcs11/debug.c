@@ -31,6 +31,8 @@
  * @brief   Debug and logging functions
  */
 
+#ifdef DEBUG
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <fcntl.h>
@@ -65,59 +67,53 @@ void decodeBCDString(unsigned char *Inbuff, int len, char *Outbuff)
 }
 
 
-
-int initDebug(struct p11Context_t *context)
+void initDebug(struct p11Context_t *context)
 {
-	FILE *fh;
+	static const char debug_fn[] = "/var/tmp/sc-hsm-embedded/pkcs11.log";
 
-	fh = fopen("/var/tmp/sc-hsm-embedded/pkcs11.log", "a+");
-
-	context->debugFileHandle = fh;
-
-	if (fh == NULL) {
-		/*
-		 * Return success even if initialization of debugging fails
-		 */
-		return 0;
+	if (context->debugFileHandle != NULL) {
+		return;
 	}
 
-	fprintf(fh, "Debugging initialized ...\n");
+	context->debugFileHandle = fopen(debug_fn, "a+");
 
-	return 0;
+	if (context->debugFileHandle != NULL) {
+		fprintf(context->debugFileHandle, "Debugging initialized ...\n");
+	} else {
+		fprintf(stderr, "Can't create: '%s'.\n", debug_fn);
+	}
 }
 
 
-
-int debug(char *log, ...)
+void debug(char *format, ...)
 {
 	struct tm *loctim;
 	time_t elapsed;
 	va_list argptr;
 
+	if (context->debugFileHandle == NULL) {
+		return;
+	}
+
 	time(&elapsed);
 	loctim = localtime(&elapsed);
 
-	if (context->debugFileHandle != NULL) {
+	fprintf(context->debugFileHandle, "%02d.%02d.%04d %02d:%02d:%02d ",
+			loctim->tm_mday,
+			loctim->tm_mon,
+			loctim->tm_year+1900,
+			loctim->tm_hour,
+			loctim->tm_min,
+			loctim->tm_sec);
 
-		fprintf(context->debugFileHandle, "%02d.%02d.%04d %02d:%02d ",
-				loctim->tm_mday,
-				loctim->tm_mon,
-				loctim->tm_year+1900,
-				loctim->tm_hour,
-				loctim->tm_min);
-
-		va_start(argptr, log);
-		vfprintf(context->debugFileHandle, log, argptr);
-		fflush(context->debugFileHandle);
-		va_end(argptr);
-	}
-
-	return 0;
+	va_start(argptr, format);
+	vfprintf(context->debugFileHandle, format, argptr);
+	fflush(context->debugFileHandle);
+	va_end(argptr);
 }
 
 
-
-int termDebug(struct p11Context_t *context)
+void termDebug(struct p11Context_t *context)
 {
 	if (context->debugFileHandle != NULL) {
 		fprintf(context->debugFileHandle, "Debugging terminated ...\n");
@@ -125,7 +121,6 @@ int termDebug(struct p11Context_t *context)
 		fclose(context->debugFileHandle);
 		context->debugFileHandle = NULL;
 	}
-
-	return 0;
 }
 
+#endif /* DEBUG */

@@ -26,15 +26,15 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @file SignHash.h
+ * @file sc-hsm-ultralite.h
  * @author Christoph Brunhuber
  * @brief Functions for RSA-2k signing of SHA1, SHA-256, SHA-384, SHA-512
  *                  ECDSA-prime256 signing of SHA1, SHA-256
  *                  Card Devices, Version 1.0
  */
 
-#ifndef _SignHash_h_
-#define _SignHash_h_
+#ifndef _sc_hsm_ultralite_h_
+#define _sc_hsm_ultralite_h_
 
 #ifndef ERR_INVALID
 #define OK               0   /** Successful completion            */
@@ -56,11 +56,21 @@
 #define ERR_HASH      (-1000 -  8)
 #define ERR_TIME      (-1000 -  9)
 
-int SignHash(const char *pin, const char *label,
+#ifndef _USRDLL
+#define EXPORT_FUNC
+#else
+#ifdef WIN32
+#define EXPORT_FUNC __declspec(dllexport) __cdecl
+#else
+#define EXPORT_FUNC
+#endif
+#endif
+
+int EXPORT_FUNC sign_hash(const char *pin, const char *label,
 	const unsigned char *hash, int hashLen,
 	const unsigned char **ppCMS);
 
-void ReleaseState();
+void EXPORT_FUNC release_template();
 
 typedef struct {
     unsigned int total[2];
@@ -69,8 +79,8 @@ typedef struct {
 } sha256_context;
 
 
-void sha256_starts(sha256_context *ctx);
-void sha256_update(sha256_context *ctx, unsigned char *input, unsigned int length);
-void sha256_finish(sha256_context *ctx, unsigned char digest[32]);
+void EXPORT_FUNC sha256_starts(sha256_context *ctx);
+void EXPORT_FUNC sha256_update(sha256_context *ctx, unsigned char *input, unsigned int length);
+void EXPORT_FUNC sha256_finish(sha256_context *ctx, unsigned char digest[32]);
 
 #endif

@@ -34,14 +34,8 @@
 #ifndef _SCR_H_
 #define _SCR_H_
 
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
+#ifdef WIN32
 #include <windows.h>
-#include <malloc.h>
-#include <stdio.h>
-#if defined(_DEBUG) && !defined(DEBUG) /* msvc defines _DEBUG rather than DEBUG */
-#define DEBUG
-#endif
 #define usleep(us) Sleep((us) / 1000)
 #endif
 
@@ -61,6 +55,15 @@
  * Maximum number of historical bytes
  */
 #define HBSIZE      15
+
+typedef struct scr scr_t;
+
+typedef int (*CTModFunc_t) (scr_t *,                   /* specified SCR Data */
+							unsigned int,              /* length of command  */
+							unsigned char *,           /* command            */
+							unsigned int *,            /* length of response */
+							unsigned char *);          /* response           */
+
 
 /**
  * Data structure encapsulating all necessary data elements of the reader interface
@@ -84,37 +87,26 @@ typedef struct scr {
 	unsigned char     NumOfHB;
 	/** Historical bytes                   */
 	unsigned char     HCC[HBSIZE];
-	/** Clock rate conversion integer	  */
-	unsigned char		FI;
-	/** Baud rate adjustment integer      */
-	unsigned char		DI;
-	/** Character waiting time            */
-	unsigned char		CWI;
+	/** Clock rate conversion integer      */
+	unsigned char     FI;
+	/** Baud rate adjustment integer       */
+	unsigned char     DI;
+	/** Character waiting time             */
+	unsigned char     CWI;
 	/** Block waiting time                 */
-	unsigned char		BWI;
+	unsigned char     BWI;
 	/** Extra guard time                   */
-	unsigned char		EXTRA_GUARD_TIME;
+	unsigned char     EXTRA_GUARD_TIME;
 	/** Maximum length of INF field        */
 	unsigned char     IFSC;
 	/** Current baudrate                   */
-	int                Baud;
+	int               Baud;
 
-	int               (*CTModFunc)(struct scr *,
-								   unsigned int,         /* length of command  */
-								   unsigned char *,      /* command            */
-								   unsigned int *,       /* length of response */
-								   unsigned char *);     /* response           */
+	CTModFunc_t       CTModFunc; /* response */
 
-	struct ccidT1      *t1;             /** Context structure for T=1 protocol  */
+	struct ccidT1     *t1;       /* Context structure for T=1 protocol  */
 
 } scr_t;
-
-
-typedef int (*CTModFunc_t) (scr_t *,        	/* specified SCR Data */
-							unsigned int,              /* length of command  */
-							unsigned char *,           /* command            */
-							unsigned int *,            /* length of response */
-							unsigned char *);          /* response           */
 
 
 #endif

@@ -240,7 +240,7 @@ signed char CT_data(unsigned short ctn, unsigned char *dad, unsigned char *sad,
 
 	} else if (*dad == 0) { /* This command goes to the card     */
 
-		/* 	Don't get confused here this is for the return saying
+		/*  Don't get confused here this is for the return saying
 
 			the source was the card and the destination the host */
 

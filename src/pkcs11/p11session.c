@@ -37,12 +37,13 @@
 #include <pkcs11/slotpool.h>
 #include <pkcs11/slot.h>
 #include <pkcs11/token.h>
+#include <pkcs11/debug.h>
 
 extern struct p11Context_t *context;
 
 
 
-/*  C_OpenSession opens a session between an application and a 
+/*  C_OpenSession opens a session between an application and a
     token in a particular slot. */
 CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 		CK_SLOT_ID slotID,

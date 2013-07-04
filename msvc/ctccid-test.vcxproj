@@ -11,18 +11,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\utils\sha256.c" />
-    <ClCompile Include="..\src\utils\SignHash.c" />
-    <ClCompile Include="..\src\utils\utils.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\src\utils\SignHash.h" />
-    <ClInclude Include="..\src\utils\utils.h" />
+    <ClCompile Include="..\src\tests\ctccid-test.c" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{E01C9DAC-044E-44E7-A714-F6F74DFCE5F6}</ProjectGuid>
+    <ProjectGuid>{58AF235F-FEA6-4D0D-AC64-FEE4C0A25222}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>testctapi</RootNamespace>
+    <RootNamespace>ctccid_test</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -49,32 +43,29 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\src;$(IncludePath)</IncludePath>
-    <OutDir>..\Win32\</OutDir>
-    <LibraryPath>..\libusb-1.0;$(OutDir);$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSdkDir)lib;$(FrameworkSDKDir)\lib</LibraryPath>
+    <OutDir>..\Win32\$(Configuration)\</OutDir>
+    <LibraryPath>..\libusb-1.0;$(OutDir);$(VCInstallDir)lib;$(WindowsSdkDir)lib</LibraryPath>
     <ReferencePath>$(VCInstallDir)atlmfc\lib;$(VCInstallDir)lib</ReferencePath>
-    <IntDir>$(OutDir)$(Configuration)-$(MSBuildProjectName)\</IntDir>
+    <IntDir>$(OutDir)$(MSBuildProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\src;$(IncludePath)</IncludePath>
-    <OutDir>..\Win32\</OutDir>
+    <OutDir>..\Win32\$(Configuration)\</OutDir>
     <ReferencePath>$(VCInstallDir)atlmfc\lib;$(VCInstallDir)lib</ReferencePath>
-    <LibraryPath>..\libusb-1.0;$(OutDir);$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSdkDir)lib;$(FrameworkSDKDir)\lib</LibraryPath>
-    <IntDir>$(OutDir)$(Configuration)-$(MSBuildProjectName)\</IntDir>
+    <LibraryPath>..\libusb-1.0;$(OutDir);$(VCInstallDir)lib;$(WindowsSdkDir)lib</LibraryPath>
+    <IntDir>$(OutDir)$(MSBuildProjectName)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>DEBUG;_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MinimalRebuild>false</MinimalRebuild>
-      <ObjectFileName>$(IntDir)</ObjectFileName>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <DisableLanguageExtensions>false</DisableLanguageExtensions>
-      <ExceptionHandling>Sync</ExceptionHandling>
-      <CompileAs>CompileAsC</CompileAs>
+      <AdditionalOptions>/wd4018 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -83,22 +74,20 @@
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
       <AdditionalOptions>/LTCG %(AdditionalOptions)</AdditionalOptions>
-      <AddModuleNamesToAssembly>
-      </AddModuleNamesToAssembly>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32_LEAN_AND_MEAN;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <DisableLanguageExtensions>false</DisableLanguageExtensions>
-      <ExceptionHandling>Sync</ExceptionHandling>
       <CompileAs>CompileAsC</CompileAs>
+      <AdditionalOptions>/wd4018 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

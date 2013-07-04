@@ -42,16 +42,16 @@
 #endif
 
 
-/* 
+/*
  * Set up the global context structure.
- * 
+ *
  */
 struct p11Context_t *context = NULL;
 
 
 
 /*
- * Initialize the PKCS#11 function list. 
+ * Initialize the PKCS#11 function list.
  *
  */
 CK_FUNCTION_LIST pkcs11_function_list = {
@@ -129,7 +129,7 @@ CK_FUNCTION_LIST pkcs11_function_list = {
 
 
 /**
- * C_Initialize initializes the Cryptoki library. 
+ * C_Initialize initializes the Cryptoki library.
  *
  */
 CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
@@ -153,12 +153,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 	}
 
 #ifdef DEBUG
-	rv = initDebug(context);
-	if (rv < 0) {
-		free(context);
-		context = NULL;
-		return CKR_GENERAL_ERROR;
-	}
+	initDebug(context);
 	FUNC_CALLED();
 #endif
 
@@ -184,7 +179,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 	if (rv != CKR_OK) {
 #ifdef DEBUG
 		debug("[C_Initialize] Error initializing session pool ...\n");
-#endif 
+#endif
 		free(context->sessionPool);
 		free(context->slotPool);
 		free(context);
@@ -197,7 +192,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 	if (rv != CKR_OK) {
 #ifdef DEBUG
 		debug("[C_Initialize] Error initializing slot pool ...\n");
-#endif 
+#endif
 		free(context->sessionPool);
 		free(context->slotPool);
 		free(context);
@@ -210,9 +205,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 
 
 
-/** 
+/**
  * C_Finalize indicates that an application is done with the
- * Cryptoki library. 
+ * Cryptoki library.
  *
  */
 CK_DECLARE_FUNCTION(CK_RV, C_Finalize)
@@ -246,11 +241,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_Finalize)
 
 
 /**
- * C_GetInfo returns general information about Cryptoki. 
+ * C_GetInfo returns general information about Cryptoki.
  *
  * @param pInfo     Pointer to structure for the information.
  *
- * @return          
+ * @return
  *                   <P><TABLE>
  *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
  *                   <TR>
@@ -294,7 +289,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetInfo)
 
 
 /**
- * C_GetFunctionList returns the function list. 
+ * C_GetFunctionList returns the function list.
  *
  */
 CK_DECLARE_FUNCTION(CK_RV, C_GetFunctionList)
