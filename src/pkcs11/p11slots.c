@@ -399,10 +399,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitPIN)(
 		FUNC_RETURNS(rv);
 	}
 
-	if (session->state != CKS_RW_SO_FUNCTIONS) {
-		FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "SO not logged in");
-	}
-
 	rv = findSlot(context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
@@ -413,6 +409,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitPIN)(
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
+	}
+
+	if (getSessionState(session, token) != CKS_RW_SO_FUNCTIONS) {
+		FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "SO not logged in");
 	}
 
 	return CKR_FUNCTION_NOT_SUPPORTED;

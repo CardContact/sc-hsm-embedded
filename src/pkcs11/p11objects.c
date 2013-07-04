@@ -122,7 +122,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 	/* Check if this is a session or a token object */
 
 	/* Token object */
-	if ((session->state == CKS_RW_USER_FUNCTIONS) && pObject->tokenObj) {
+	if ((getSessionState(session, slot->token) == CKS_RW_USER_FUNCTIONS) && pObject->tokenObj) {
 		addObject(slot->token, pObject, pObject->publicObj);
 
 		rv = synchronizeToken(slot, slot->token);
@@ -205,7 +205,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DestroyObject)(
 		rv = findObject(slot->token, hObject, &pObject, TRUE);
 
 		if (rv < 0) {
-			if (session->state == CKS_RW_USER_FUNCTIONS) {
+			if (getSessionState(session, slot->token) == CKS_RW_USER_FUNCTIONS) {
 				rv = findObject(slot->token, hObject, &pObject, FALSE);
 
 				if (rv < 0) {
@@ -249,6 +249,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetObjectSize)(
 	struct p11Slot_t *slot;
 	unsigned int size;
 	unsigned char *tmp;
+	CK_STATE state;
 
 	FUNC_CALLED();
 
@@ -278,7 +279,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetObjectSize)(
 		rv = findObject(slot->token, hObject, &pObject, TRUE);
 
 		if (rv < 0) {
-			if ((session->state == CKS_RW_USER_FUNCTIONS) || (session->state == CKS_RO_USER_FUNCTIONS)) {
+			state = getSessionState(session, slot->token);
+			if ((state == CKS_RW_USER_FUNCTIONS) || (state == CKS_RO_USER_FUNCTIONS)) {
 				rv = findObject(slot->token, hObject, &pObject, FALSE);
 
 				if (rv < 0) {
@@ -314,6 +316,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetAttributeValue)(
 	struct p11Session_t *session;
 	struct p11Slot_t *slot;
 	struct p11Attribute_t *attribute;
+	CK_STATE state;
 
 	FUNC_CALLED();
 
@@ -343,7 +346,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetAttributeValue)(
 		rv = findObject(slot->token, hObject, &pObject, TRUE);
 
 		if (rv < 0) {
-			if ((session->state == CKS_RW_USER_FUNCTIONS) || (session->state == CKS_RO_USER_FUNCTIONS)) {
+			state = getSessionState(session, slot->token);
+			if ((state == CKS_RW_USER_FUNCTIONS) || (state == CKS_RO_USER_FUNCTIONS)) {
 				rv = findObject(slot->token, hObject, &pObject, FALSE);
 
 				if (rv < 0) {
@@ -441,7 +445,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 	/* only session objects can be modified without user authentication */
 
 	if (rv < 0) {
-		if (session->state != CKS_RW_USER_FUNCTIONS) {
+		if (getSessionState(session, slot->token) != CKS_RW_USER_FUNCTIONS) {
 			FUNC_FAILS(CKR_OBJECT_HANDLE_INVALID, "Object not found as session object");
 		}
 
@@ -561,6 +565,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
 	struct p11Object_t *pObject;
 	struct p11Session_t *session;
 	struct p11Slot_t *slot;
+	CK_STATE state;
 #ifdef DEBUG
 	int i;
 #endif
@@ -619,8 +624,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
 	}
 
 	/* private token objects */
-	if ((session->state == CKS_RW_USER_FUNCTIONS) ||
-		(session->state == CKS_RO_USER_FUNCTIONS)) {
+	state = getSessionState(session, slot->token);
+	if ((state == CKS_RW_USER_FUNCTIONS) ||
+		(state == CKS_RO_USER_FUNCTIONS)) {
 
 		pObject = slot->token->tokenPrivObjList;
 

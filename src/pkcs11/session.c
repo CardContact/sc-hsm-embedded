@@ -315,6 +315,28 @@ int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle)
 
 
 
+CK_STATE getSessionState(struct p11Session_t *session, struct p11Token_t *token)
+{
+	CK_STATE state;
+
+	switch (token->user) {
+	case CKU_USER:
+		state = (session->flags & CKF_RW_SESSION) ? CKS_RW_USER_FUNCTIONS : CKS_RO_USER_FUNCTIONS;
+		break;
+
+	case CKU_SO:
+		state = CKS_RW_SO_FUNCTIONS;
+		break;
+
+	default:
+		state = (session->flags & CKF_RW_SESSION) ? CKS_RW_PUBLIC_SESSION : CKS_RO_PUBLIC_SESSION;
+		break;
+	}
+	return state;
+}
+
+
+
 int addSessionObject(struct p11Session_t *session, struct p11Object_t *object)
 {
 	struct p11Object_t *obj;

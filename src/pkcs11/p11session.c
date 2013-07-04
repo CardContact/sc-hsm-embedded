@@ -102,9 +102,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 	session->flags = flags;
 	session->activeObjectHandle = CK_INVALID_HANDLE;
 
-	/* initial session state */
-	session->state = (session->flags & CKF_RW_SESSION) ? CKS_RW_PUBLIC_SESSION : CKS_RO_PUBLIC_SESSION;
-
 	rv = addSession(context->sessionPool, session);
 
 	if (rv != CKR_OK) {
@@ -239,20 +236,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSessionInfo)(
 	pInfo->slotID = session->slotID;
 	pInfo->flags = session->flags;
 	pInfo->ulDeviceError = 0;
-
-	switch (token->user) {
-	case CKU_USER:
-		pInfo->state = (session->flags & CKF_RW_SESSION) ? CKS_RW_USER_FUNCTIONS : CKS_RO_USER_FUNCTIONS;
-		break;
-
-	case CKU_SO:
-		pInfo->state = CKS_RW_SO_FUNCTIONS;
-		break;
-
-	default:
-		pInfo->state = (session->flags & CKF_RW_SESSION) ? CKS_RW_PUBLIC_SESSION : CKS_RO_PUBLIC_SESSION;
-		break;
-	}
+	pInfo->state = getSessionState(session, token);
 
 	FUNC_RETURNS(CKR_OK);
 }
@@ -361,12 +345,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
 
 	token->user = userType;
 
-	if (token->user == CKU_SO) {
-		session->state = CKS_RW_SO_FUNCTIONS;
-	} else {
-		session->state = (session->flags & CKF_RW_SESSION) ? CKS_RW_USER_FUNCTIONS : CKS_RO_USER_FUNCTIONS;
-	}
-
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -411,9 +389,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_Logout)(
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
-
-	// reset initital session state
-	session->state = (session->flags & CKF_RW_SESSION) ? CKS_RW_PUBLIC_SESSION : CKS_RO_PUBLIC_SESSION;
 
 	FUNC_RETURNS(CKR_OK);
 }

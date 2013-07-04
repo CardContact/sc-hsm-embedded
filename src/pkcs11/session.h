@@ -55,7 +55,7 @@ struct p11Session_t {
 
 	CK_SLOT_ID slotID;                  /**< The id of the slot for this session                */
 	CK_FLAGS flags;                     /**< The flags of this session                          */
-	CK_STATE state;                     /**< The session state                                  */
+//	CK_STATE state;                     /**< The session state                                  */
 	CK_SESSION_HANDLE handle;           /**< The handle of the session                          */
 	int activeObjectHandle;             /**< The handle of the active object, -1 if no object   */
 	CK_MECHANISM_TYPE activeMechanism;	/**< The currently active mechanism                     */
@@ -101,6 +101,8 @@ int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle,
 int findSessionBySlotID(struct p11SessionPool_t *pool, CK_SLOT_ID slotID, struct p11Session_t **session);
 
 int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle);
+
+CK_STATE getSessionState(struct p11Session_t *session, struct p11Token_t *token);
 
 int addSessionObject(struct p11Session_t *session, struct p11Object_t *object);
 
