@@ -36,7 +36,7 @@
 
 
 #include <pkcs11/p11generic.h>
-#include <pkcs11/session.h>
+// #include <pkcs11/session.h>
 #include <pkcs11/cryptoki.h>
 
 /**

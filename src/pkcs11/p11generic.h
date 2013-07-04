@@ -39,7 +39,7 @@
 
 #include <pkcs11/cryptoki.h>
 
-#include <pkcs11/session.h>
+//#include <pkcs11/session.h>
 #include <pkcs11/object.h>
 
 #ifndef _MAX_PATH
