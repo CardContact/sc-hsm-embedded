@@ -38,8 +38,6 @@
 #include <stdlib.h>
 
 #include <pkcs11/cryptoki.h>
-
-//#include <pkcs11/session.h>
 #include <pkcs11/object.h>
 
 #ifndef _MAX_PATH
@@ -77,13 +75,13 @@
 #define FUNC_FAILS(rc, msg) return (rc)
 #endif
 
+
+
 /**
  * Internal structure to store information about a token.
  *
  */
-
 struct p11Token_t {
-
 	CK_TOKEN_INFO info;                 /**< General information about the token            */
 	struct p11Slot_t *slot;             /**< The slot where the token is inserted           */
 	CK_USER_TYPE user;                  /**< The user of this session                       */
@@ -99,49 +97,56 @@ struct p11Token_t {
 	struct p11Object_t *tokenPrivObjList; /**< Pointer to the first object in pool          */
 };
 
+
+
+struct p11TokenDriver {
+	const char *name;                   /**< Name of driver                                 */
+	/**< Allow driver to check if card is a candidate based on the ATR                      */
+	int (*isCandidate)(unsigned char *atr, size_t atrLen);
+	int (*newToken)(struct p11Slot_t *slot, struct p11Token_t **token);
+};
+
+
+
 /**
  * Internal structure to store information about a slot.
  *
  */
-
 struct p11Slot_t {
-
 	CK_SLOT_ID id;                    /**< The id of the slot                  */
 	CK_SLOT_INFO info;                /**< General information about the slot  */
 	int closed;                       /**< Slot hardware currently absent      */
 	unsigned long hasFeatureVerifyPINDirect;
 #ifndef CTAPI
-	char readername[MAX_READERNAME];	/**< The directory that holds this slot  */
-	SCARDCONTEXT context;				/**< Card manager context for slot	*/
-	SCARDHANDLE card;					/**< Handle to card */
+	char readername[MAX_READERNAME];  /**< The directory that holds this slot  */
+	SCARDCONTEXT context;             /**< Card manager context for slot       */
+	SCARDHANDLE card;                 /**< Handle to card                      */
 #endif
 
 	struct p11Token_t *token;       /**< Pointer to token in the slot        */
 
 	struct p11Slot_t *next;         /**< Pointer to next available slot      */
-
 };
+
+
 
 /**
  * Internal structure to store information about all available slots.
  *
  */
-
 struct p11SlotPool_t {
-
 	CK_ULONG numberOfSlots;         /**< Number of slots in the pool         */
 	CK_SLOT_ID nextSlotID;          /**< The next assigned slot ID value     */
 	struct p11Slot_t *list;         /**< Pointer to first slot in pool       */
-
 };
+
+
 
 /**
  * Internal context structure of the cryptoki.
  *
  */
-
 struct p11Context_t {
-
 	CK_VERSION version;                     /**< Information about cryptoki version       */
 	CK_INFO info;                           /**< General information about cryptoki       */
 	CK_HW_FEATURE_TYPE hw_feature;          /**< Hardware feature type of device          */

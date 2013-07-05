@@ -50,6 +50,14 @@
 #endif
 
 
+extern struct p11TokenDriver sc_hsm_token;
+extern struct p11TokenDriver starcos_token;
+
+static struct p11TokenDriver *tokenDriver[] = {
+		&sc_hsm_token, &starcos_token, NULL
+};
+
+
 
 /**
  * Add token object to list of public or private objects
@@ -292,9 +300,34 @@ int logOut(struct p11Slot_t *slot)
  * @param token     Pointer to pointer updated with newly created token structure
  * @return          CKR_OK or any other Cryptoki error code
  */
-int newToken(struct p11Slot_t *slot, struct p11Token_t **token)
+int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p11Token_t **token)
 {
-	return newSmartCardHSMToken(slot, token);
+	int rc;
+	struct p11TokenDriver **drv;
+
+	FUNC_CALLED();
+
+	for (drv = tokenDriver; *drv != NULL; drv++) {
+		if (((*drv)->isCandidate)(atr, atrlen)) {
+			rc = ((*drv)->newToken)(slot, token);
+			if (rc == CKR_OK)
+				FUNC_RETURNS(rc);
+
+			if (rc != CKR_TOKEN_NOT_RECOGNIZED)
+				FUNC_FAILS(rc, "Token detection failed for recognized token");
+		}
+	}
+
+	for (drv = tokenDriver; *drv != NULL; drv++) {
+		rc = ((*drv)->newToken)(slot, token);
+		if (rc == CKR_OK)
+			FUNC_RETURNS(rc);
+
+		if (rc != CKR_TOKEN_NOT_RECOGNIZED)
+			FUNC_FAILS(rc, "Token detection failed for probed token");
+	}
+
+	FUNC_RETURNS(CKR_TOKEN_NOT_RECOGNIZED);
 }
 
 

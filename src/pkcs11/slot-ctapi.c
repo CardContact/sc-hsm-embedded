@@ -211,7 +211,7 @@ static int checkForNewCTAPIToken(struct p11Slot_t *slot)
 		FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "Reset failed");
 	}
 
-	rc = newToken(slot, &ptoken);
+	rc = newToken(slot, rsp, rc, &ptoken);
 
 	if (rc != CKR_OK) {
 		FUNC_FAILS(rc, "newToken failed()");

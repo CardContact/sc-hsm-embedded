@@ -42,6 +42,8 @@
 extern "C" {
 #endif
 
+#include "bytestring.h"
+
 #define P15_KEYTYPE_RSA     0x30
 #define P15_KEYTYPE_ECC     0xA0
 
@@ -56,6 +58,8 @@ extern "C" {
 #define P15_DERIVE          0x00800000
 #define P15_NONREPUDIATION  0x00400000
 
+
+
 /**
  * CommonObjectAttribute as defined by PKCS#15
  */
@@ -63,11 +67,16 @@ struct p15CommonObjectAttributes {
 	char            *label;             /**< The label        */
 };
 
+
+
+#define P15_KT_RSA                      0x30
+#define P15_KT_EC                       0xA0
+
 /**
  * Private key description as defined by PKCS#15
  */
 struct p15PrivateKeyDescription {
-	int             keytype;            /**< the keytype encoded as the tag value */
+	int             keytype;            /**< the key type encoded as the tag value*/
 	struct p15CommonObjectAttributes
 	                coa;                /**< CommonObjectAttributes               */
 	size_t          idlen;              /**< Length of key id                     */
@@ -75,6 +84,26 @@ struct p15PrivateKeyDescription {
 	unsigned long   usage;              /**< Key usage flags                      */
 	int             keysize;            /**< Key size in bits                     */
 };
+
+
+
+#define P15_CT_X509                     0x30
+#define P15_CT_X509_ATTRIBUTE           0xA0
+
+/**
+ * Certificate description as defined by PKCS#15
+ */
+struct p15CertificateDescription {
+	int             isCA;               /**< CA certificate                       */
+	int             certtype;           /**< the certificate type as tag value    */
+	struct p15CommonObjectAttributes
+	                coa;                /**< CommonObjectAttributes               */
+	struct bytestring_s
+	                id;                 /**< The id as visible at PKCS#11         */
+	struct bytestring_s
+	                efidOrPath;         /**< The EF identifier or full path       */
+};
+
 
 int decodePrivateKeyDescription(unsigned char *prkd, size_t prkdlen, struct p15PrivateKeyDescription **p15);
 void freePrivateKeyDescription(struct p15PrivateKeyDescription **p15);

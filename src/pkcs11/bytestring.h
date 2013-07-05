@@ -26,43 +26,40 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @file    token.h
- * @author  Frank Thater, Andreas Schwier
- * @brief   Functions for token authentication and token management
+ * @file    bytestring.h
+ * @author  Andreas Schwier
+ * @brief   Functions to handle strings of bytes safely
  */
 
-#ifndef ___TOKEN_H_INC___
-#define ___TOKEN_H_INC___
+/* Prevent from including twice ------------------------------------------- */
 
-#include <pkcs11/cryptoki.h>
-#include <pkcs11/p11generic.h>
+#ifndef __BYTESTRING_H__
+#define __BYTESTRING_H__
 
-#define PIN_FORMAT_BINARY	0x00
-#define PIN_FORMAT_BCD		0x01
-#define PIN_FORMAT_ASCII	0x02
+/* Support for C++ compiler ----------------------------------------------- */
 
-#define MAX_CERTIFICATE_SIZE	4096
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p11Token_t **token);
+#include <stddef.h>
 
-void freeToken(struct p11Slot_t *slot);
+/**
+ * A string of bytes with determined length
+ */
+struct bytestring_s {
+	unsigned char *val;
+	size_t len;
+};
 
-int logIn(struct p11Slot_t *slot, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen);
+typedef struct bytestring_s *bytestring;
 
-int logOut(struct p11Slot_t *slot);
+int bsCompare(bytestring s1, bytestring s2);
 
-int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicObject);
 
-int findObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject);
+/* Support for C++ compiler ----------------------------------------------- */
 
-int removeTokenObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject);
-
-int removeObjectLeavingAttributes(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject);
-
-int saveObjects(struct p11Slot_t *slot, struct p11Token_t *token, int publicObject);
-
-int destroyObject(struct p11Slot_t *slot, struct p11Token_t *token, struct p11Object_t *object);
-
-int synchronizeToken(struct p11Slot_t *slot, struct p11Token_t *token);
-
-#endif /* ___TOKEN_H_INC___ */
+#ifdef __cplusplus
+}
+#endif
+#endif

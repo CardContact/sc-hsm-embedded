@@ -26,43 +26,19 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @file    token.h
- * @author  Frank Thater, Andreas Schwier
- * @brief   Functions for token authentication and token management
+ * @file    bytestring.c
+ * @author  Andreas Schwier
+ * @brief   Functions to handle strings of bytes safely
  */
 
-#ifndef ___TOKEN_H_INC___
-#define ___TOKEN_H_INC___
+#include "bytestring.h"
 
-#include <pkcs11/cryptoki.h>
-#include <pkcs11/p11generic.h>
 
-#define PIN_FORMAT_BINARY	0x00
-#define PIN_FORMAT_BCD		0x01
-#define PIN_FORMAT_ASCII	0x02
 
-#define MAX_CERTIFICATE_SIZE	4096
-
-int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p11Token_t **token);
-
-void freeToken(struct p11Slot_t *slot);
-
-int logIn(struct p11Slot_t *slot, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen);
-
-int logOut(struct p11Slot_t *slot);
-
-int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicObject);
-
-int findObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject);
-
-int removeTokenObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject);
-
-int removeObjectLeavingAttributes(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject);
-
-int saveObjects(struct p11Slot_t *slot, struct p11Token_t *token, int publicObject);
-
-int destroyObject(struct p11Slot_t *slot, struct p11Token_t *token, struct p11Object_t *object);
-
-int synchronizeToken(struct p11Slot_t *slot, struct p11Token_t *token);
-
-#endif /* ___TOKEN_H_INC___ */
+int bsCompare(bytestring s1, bytestring s2)
+{
+	if (s1->len != s2->len) {
+		return s1->len - s2->len;
+	}
+	return memcmp(s1->val, s2->val);
+}

@@ -45,13 +45,30 @@
 #include <pkcs11/debug.h>
 
 
+
 static unsigned char aid[] = { 0xE8,0x2B,0x06,0x01,0x04,0x01,0x81,0xC3,0x1F,0x02,0x01 };
 
+static unsigned char atrJCOP41[] = { 0x3B,0xF8,0x13,0x00,0x00,0x81,0x31,0xFE,0x45,0x4A,0x43,0x4F,0x50,0x76,0x32,0x34,0x31,0xB7 };
+static unsigned char atrHSM[] = { 0x3B,0xFE,0x18,0x00,0x00,0x81,0x31,0xFE,0x45,0x80,0x31,0x81,0x54,0x48,0x53,0x4D,0x31,0x73,0x80,0x21,0x40,0x81,0x07,0xFA };
 
 
-static token_sc_hsm_t *getPrivateData(struct p11Token_t *token)
+
+static struct token_sc_hsm *getPrivateData(struct p11Token_t *token)
 {
-	return (token_sc_hsm_t *)(token + 1);
+	return (struct token_sc_hsm *)(token + 1);
+}
+
+
+
+static int isCandidate(unsigned char *atr, size_t atrLen)
+{
+	if ((atrLen == sizeof(atrJCOP41)) && !memcmp(atr, atrJCOP41, atrLen))
+		return 1;
+
+	if ((atrLen == sizeof(atrHSM)) && !memcmp(atr, atrHSM, atrLen))
+		return 1;
+
+	return 0;
 }
 
 
@@ -162,7 +179,7 @@ static int addEECertificateObject(struct p11Token_t *token, unsigned char id)
 			{ CKA_VALUE, certValue, sizeof(certValue) }
 	};
 	struct p11Object_t *pObject;
-	token_sc_hsm_t *sc;
+	struct token_sc_hsm *sc;
 	struct p15PrivateKeyDescription *p15 = NULL;
 	unsigned char prkd[MAX_P15_SIZE], *spk;
 	int rc;
@@ -589,7 +606,7 @@ static int addPrivateKeyObject(struct p11Token_t *token, unsigned char id)
 			{ 0, NULL, 0 },
 			{ 0, NULL, 0 }
 	};
-	token_sc_hsm_t *sc;
+	struct token_sc_hsm *sc;
 	struct p11Object_t *pObject;
 	struct p15PrivateKeyDescription *p15 = NULL;
 	unsigned char prkd[MAX_P15_SIZE];
@@ -866,7 +883,7 @@ int sc_hsm_logout(struct p11Slot_t *slot)
 int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 {
 	struct p11Token_t *ptoken;
-//	token_sc_hsm_t *sc;
+//	struct token_sc_hsm *sc;
 	int rc, pinstatus;
 
 	FUNC_CALLED();
@@ -889,7 +906,7 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	}
 	pinstatus = rc;
 
-	ptoken = (struct p11Token_t *)calloc(sizeof(struct p11Token_t) + sizeof(token_sc_hsm_t), 1);
+	ptoken = (struct p11Token_t *)calloc(sizeof(struct p11Token_t) + sizeof(struct token_sc_hsm), 1);
 
 	if (ptoken == NULL) {
 		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
@@ -923,3 +940,10 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	return CKR_OK;
 }
 
+
+
+struct p11TokenDriver sc_hsm_token = {
+	"SmartCard-HSM",
+	isCandidate,
+	newSmartCardHSMToken
+};
