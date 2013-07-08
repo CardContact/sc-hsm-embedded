@@ -309,13 +309,10 @@ int transmitVerifyPinAPDUviaPCSC(struct p11Slot_t *slot,
 	unsigned char *capdu, size_t capdu_len,
 	unsigned char *rapdu, size_t rapdu_len)
 {
-	int rc, i;
+	int rc;
 	DWORD lenr;
-	WORD feature;
-	DWORD featurecode;
 	PIN_VERIFY_DIRECT_STRUCTURE_t verify;
-	unsigned char buf[256];
-
+	
 	FUNC_CALLED();
 
 	if (!slot->card) {
