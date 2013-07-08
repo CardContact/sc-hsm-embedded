@@ -50,7 +50,7 @@
 #include <malloc.h>
 #define LIB_HANDLE HMODULE
 #define P11LIBNAME "sc-hsm-pkcs11.dll"
-#define PIN "123456"
+#define PIN "648219"
 #define dlopen(fn, flag) LoadLibrary(fn)
 #define dlclose(h) FreeLibrary(h)
 #define dlsym(h, n) GetProcAddress(h, n)
