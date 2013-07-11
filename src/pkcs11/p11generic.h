@@ -111,8 +111,9 @@ struct p11Slot_t {
 	int closed;                       /**< Slot hardware currently absent      */
 	unsigned long hasFeatureVerifyPINDirect;
 #ifndef CTAPI
-	char readername[MAX_READERNAME];  /**< The directory that holds this slot  */
-	SCARDHANDLE card;				  /**< Handle to card */
+	char readername[MAX_READERNAME];	/**< The directory that holds this slot  */
+	SCARDCONTEXT context;				/**< Card manager context for slot	*/
+	SCARDHANDLE card;					/**< Handle to card */
 #endif
 
 	struct p11Token_t *token;       /**< Pointer to token in the slot        */
