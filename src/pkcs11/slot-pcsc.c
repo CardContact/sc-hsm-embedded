@@ -59,7 +59,8 @@
 
 extern struct p11Context_t *context;
 
-static SCARDCONTEXT hContext = 0;
+static SCARDCONTEXT globalContext = 0;
+static int slotCounter = 0;
 
 #ifdef DEBUG
 
@@ -312,7 +313,7 @@ int transmitVerifyPinAPDUviaPCSC(struct p11Slot_t *slot,
 	int rc;
 	DWORD lenr;
 	PIN_VERIFY_DIRECT_STRUCTURE_t verify;
-	
+
 	FUNC_CALLED();
 
 	if (!slot->card) {
@@ -400,7 +401,7 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 		FUNC_RETURNS(CKR_TOKEN_NOT_PRESENT);
 	}
 
-	rc = SCardConnect(hContext, slot->readername, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T1, &(slot->card), &dwActiveProtocol);
+	rc = SCardConnect(slot->context, slot->readername, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T1, &(slot->card), &dwActiveProtocol);
 
 #ifdef DEBUG
 	debug("SCardConnect (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rc));
@@ -544,9 +545,9 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 	/*
 	 * Create a context if not already done
 	 */
-	if (!hContext) {
+	if (!globalContext) {
 
-		rc = SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &hContext);
+		rc = SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &globalContext);
 
 #ifdef DEBUG
 		debug("SCardEstablishContext: %s\n", pcsc_error_to_string(rc));
@@ -557,7 +558,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		}
 	}
 
-	rc = SCardListReaders(hContext, NULL, (LPTSTR)&readers, &cch);
+	rc = SCardListReaders(globalContext, NULL, (LPTSTR)&readers, &cch);
 
 #ifdef DEBUG
 	debug("SCardListReaders: %s\n", pcsc_error_to_string(rc));
@@ -594,9 +595,22 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		slot = (struct p11Slot_t *) calloc(1, sizeof(struct p11Slot_t));
 
 		if (slot == NULL) {
-			SCardFreeMemory(hContext, readers );
+			SCardFreeMemory(globalContext, readers );
 			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 		}
+
+		rc = SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &(slot->context));
+
+#ifdef DEBUG
+		debug("SCardEstablishContext: %s\n", pcsc_error_to_string(rc));
+#endif
+
+		if (rc != SCARD_S_SUCCESS) {
+			SCardFreeMemory(globalContext, readers );
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Could not establish context to PC/SC manager");
+		}
+
+		slotCounter++;
 
 		strbpcpy(slot->info.slotDescription,
 				(char *)p,
@@ -618,12 +632,12 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		addSlot(context->slotPool, slot);
 
 #ifdef DEBUG
-		debug("Added slot (%lu, %s)\n", slot->id, slot->readername);
+		debug("Added slot (%lu, %s) - slot counter is %i\n", slot->id, slot->readername, slotCounter);
 #endif
 		p += strlen(p) + 1;
 	}
 
-    rc = SCardFreeMemory(hContext, readers );
+    rc = SCardFreeMemory(globalContext, readers );
 
 #ifdef DEBUG
 	debug("SCardFreeMemory: %s\n", pcsc_error_to_string(rc));
@@ -648,6 +662,21 @@ int closePCSCSlot(struct p11Slot_t *slot)
 	debug("Trying to close slot (%i, %s)\n", slot->id, slot->readername);
 #endif
 
+	slotCounter--;
+
+	if (slotCounter == 0 && globalContext) {
+#ifdef DEBUG
+		debug("Releasing global PC/SC context\n");
+#endif
+		rc = SCardReleaseContext(globalContext);
+
+#ifdef DEBUG
+		debug("SCardReleaseContext (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rc));
+#endif
+
+		slot->context = 0;
+	}
+
 	/* No token in slot */
 	if (!slot->card) {
 		slot->closed = TRUE;
@@ -658,6 +687,13 @@ int closePCSCSlot(struct p11Slot_t *slot)
 
 #ifdef DEBUG
 	debug("SCardDisconnect (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rc));
+	debug("Releasing slot specific PC/SC context - slot counter is %i\n", slotCounter);
+#endif
+
+	rc = SCardReleaseContext(slot->context);
+
+#ifdef DEBUG
+	debug("SCardReleaseContext (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rc));
 #endif
 
 	slot->card = 0;
