@@ -46,8 +46,7 @@
 #include <pkcs11/slot.h>
 #include <pkcs11/token.h>
 #include <pkcs11/slotpool.h>
-
-#include <strbpcpy.h>
+#include <pkcs11/strbpcpy.h>
 
 #ifdef _WIN32
 #include <winscard.h>

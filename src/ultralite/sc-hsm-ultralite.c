@@ -36,16 +36,10 @@
 #define LITTLE_ENDIAN
 #define USE_PRINTF
 
-#ifdef WIN32
-#ifdef DEBUG
-#include <crtdbg.h>
-#endif
-#endif
-
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <ctccid/ctapi.h>
+
 #include "utils.h"
 #include "sc-hsm-ultralite.h"
 
@@ -59,70 +53,10 @@ void no_printf(const char *format, ...) {}
 /*******************************************************************************
  *******************************************************************************
  *******************************************************************************
- ************************** SmartCard Functions ********************************
+ ************************ Template Helper Functions ****************************
  *******************************************************************************
  *******************************************************************************
  ******************************************************************************/
-
-static int SC_Init(int ctn)
-{
-	uint8 dad = 1;   /* Reader */
-	uint8 sad = 2;   /* Host   */
-	uint8 buf[260];
-	uint16 len = sizeof(buf);
-	/* - REQUEST ICC */
-	int rc = CT_data((uint16)ctn, &dad, &sad, 5, (uint8*)"\x20\x12\x00\x01\x00", &len, buf);
-	if (rc < 0 || buf[0] == 0x64 || buf[0] == 0x62)
-		return ERR_CARD;
-	return buf[len - 1] == 0x00 ? 1 : 2;  /* Memory or processor card ? */
-}
-
-static int SC_Logon(int ctn, const char *pin, uint8 pinLen)
-{
-	uint16 sw1sw2;
-	uint8 buf[256];
-	int rc;
-	/* - SmartCard-HSM: SELECT APPLET */
-	rc = ProcessAPDU(ctn, 0, 0x00,0xA4,0x04,0x04,
-					 11, (uint8*)"\xE8\x2B\x06\x01\x04\x01\x81\xc3\x1f\x02\x01",
-					 sizeof(buf), buf, &sw1sw2);
-	if (rc < 0)
-		return rc;
-	if (sw1sw2 != 0x9000)
-		return ERR_APDU;
-	/* - SmartCard-HSM: VERIFY PIN */
-	rc = ProcessAPDU(ctn, 0, 0x00,0x20,0x00,0x81,
-					 pinLen, (uint8*)pin,
-					 0, 0, &sw1sw2);
-	if (rc < 0)
-		return rc;
-	if (sw1sw2 != 0x9000)
-		return ERR_APDU;
-	return rc;
-}
-
-int SC_ReadFile(int ctn, uint16 fid, int off, uint8 *data, int dataLen)
-{
-	uint16 sw1sw2;
-	int rc;
-	uint8 offset[4];
-	offset[0] = 0x54;
-	offset[1] = 0x02;
-	offset[2] = off >> 8;
-	offset[3] = off >> 0;
-	/* - SmartCard-HSM: READ BINARY */
-	rc = ProcessAPDU(ctn, 0, 0x00,
-					 0xB1,      /* READ BINARY */
-					 fid >> 8,  /* MSB(fid) */
-					 fid >> 0,  /* LSB(fid) */
-					 4, offset,
-					 dataLen, data, &sw1sw2);
-	if (rc < 0)
-		return rc;
-	if (sw1sw2 != 0x9000 && sw1sw2 != 0x6282)
-		return ERR_APDU;
-	return rc;
-}
 
 /* Warning: case sensitive */
 static int FindLabel(const char *label, const uint8* buf, int len)
@@ -169,38 +103,34 @@ static int FindFid(uint8 hi, uint8 lo, const uint8* buf, int len)
 	return -1;
 }
 
-#define MAXPORT 2
+/*
+	Files on the SmartCard-HSM are addressed by a 16 bit unsigned integers,
+	where the upper 8 bits (hi) indicate the type of file and the lower 8 bits the name.
+	In most cases 2 filegroup are associated (data and descriptor).
+	lo is the binding between the 2 files.
+	private keys:
+	0xCC00 | lo .. private key (never readable)
+	0xC400 | lo .. private key descriptor
 
-int SC_Open(const char *pin)
-{
-	int rc, ctn;
-	uint16 i;
-	/* find 1st available card */
-	ctn = -1;
-	for (i = 0; i < MAXPORT; i++) {
-		if (CT_init(i, i) < 0)
-			continue;
-		if (SC_Init(i) < 0) {
-			CT_close(i);
-			continue;
-		}
-		ctn = i;
-		break;
-	}
-	if (ctn < 0) {
-		printf("no card found\n");
-		return ERR_CARD;
-	}
-	rc = SC_Logon(ctn, pin, strlen(pin));
-	if (rc < 0) {
-		printf("Logon error\n");
-		CT_close(ctn);
-		return ERR_PIN;
-	}
-	return ctn;
-}
+	PKCS11 PIN protected data
+	0xCD00 | lo .. data
+	0xC900 | lo .. data descriptor.
 
-static int SC_GetFids(int ctn, const char *label, uint16 *pKeyFid, uint16 *pTemplateFid)
+	GetFids returns the key fid in pKeyFid and the template fid id in pTemplateFid.
+	Because the template preparation is performed via PKCS11 the association between
+	the key and the template is the label (you cannot specify the elementary file id
+	with PKCS11, the ids are managed internally by the PKCS11 library).
+	E.g.: We have a key "sign0" with fid 0xCC03 for the private data and 0xC403 for the descriptor.
+	To find a key for a given label: enumerate through all 0xCCii files and open the associatet
+	0xC4ii descriptor file. Check if it has the proper label ("sign0").
+	If found: enumerate through all 0xCDjj files and open the associated 0xC9jj descriptor file.
+	Check if it has the proper label.
+	In case of success we have found a template associates with a key.
+	The templates could be also used with PKCS11 withou a crypto library.
+	The approach here is much simpler, you do not even need a PKCS11 library, here it is managed
+	on a lower level, but specific to the SC-HSM (CardContact) card.
+*/
+static int GetFids(int ctn, const char *label, uint16 *pKeyFid, uint16 *pTemplateFid)
 {
 	uint8 list[2 * 128];
 	uint16 sw1sw2;
@@ -208,9 +138,11 @@ static int SC_GetFids(int ctn, const char *label, uint16 *pKeyFid, uint16 *pTemp
 	*pKeyFid = 0;
 	*pTemplateFid = 0;
 	/* - SmartCard-HSM: ENUMERATE OBJECTS */
-	rc = ProcessAPDU(ctn, 0, 0x00,0x58,0x00,0x00,
-					 0, 0,
-					 sizeof(list), list, &sw1sw2);
+	rc = SC_ProcessAPDU(
+		ctn, 0, 0x00,0x58,0x00,0x00,
+		0, 0,
+		list, sizeof(list),
+		&sw1sw2);
 	if (rc < 0)
 		return rc;
 	if (sw1sw2 != 0x9000 && sw1sw2 != 0x6282)
@@ -246,26 +178,6 @@ static int SC_GetFids(int ctn, const char *label, uint16 *pKeyFid, uint16 *pTemp
 		return ERR_TEMPLATE;
 	}
 	return 0;
-}
-
-static int SC_Sign(int ctn, uint8 op, uint8 keyFid,
-		 uint8 *outBuf, int outLen,
-		 uint8 *inBuf, int inSize)
-{
-	uint16 sw1sw2;
-	int rc;
-	/* - SmartCard-HSM: SIGN */
-	rc = ProcessAPDU(ctn, 0, 0x80,
-					 0x68, /* SIGN */
-					 keyFid,
-					 op, /* Plain RSA(0x20) or ECDSA(0x70) signature */
-					 outLen, outBuf,
-					 inSize, inBuf, &sw1sw2);
-	if (rc < 0)
-		return rc;
-	if (sw1sw2 != 0x9000 && sw1sw2 != 0x6282)
-		return ERR_APDU;
-	return rc;
 }
 
 /*******************************************************************************
@@ -304,13 +216,16 @@ static Template_t *This; /* current template (singleton) */
 static int LoadTemplate(int ctn, const char *label)
 {
 	uint8 *pCms;
-	int rc, end, off, labelLen = strlen(label);
+	int rc, end, off, labelLen;
+	if (label == 0)
+		return ERR_INVALID;
+	labelLen = strlen(label);
 	This = (Template_t*)calloc(1, sizeof(Template_t) + labelLen);
 	if (This == 0)
 		return ERR_MEMORY;
 	This->Ctn = ctn;
 	memcpy(This->Label, label, labelLen + 1); /* include 0 terminator */
-	rc = SC_GetFids(ctn, label, &This->KeyFid, &This->TemplateFid);
+	rc = GetFids(ctn, label, &This->KeyFid, &This->TemplateFid);
 	if (rc < 0)
 		goto error;
 	/* read template header */
@@ -576,10 +491,9 @@ static int PatchECDSATemplate(const uint8 *hash, int hashLen)
  *
  *  pin         : smartcard pin
  *  label       : key and template label
- *  handle		: handle obtained from LoadTemplate
  *  hash        : Hash to be signed
  *  hashLen     : Length of hash (20, 32, 48 or 64)
- *  ppCms		: returns the CMS data in *ppCms
+ *  ppCms       : returns the CMS data in *ppCms
  *
  *  Returns : CMS size or error if <= 0
  */
@@ -605,7 +519,7 @@ int EXPORT_FUNC sign_hash(const char *pin, const char *label, const uint8 *hash,
 			return ctn;
 		rc = LoadTemplate(ctn, label);
 		if (rc < 0) {
-			CT_close(ctn);
+			SC_Close(ctn);
 			return rc;
 		}
 	}
@@ -628,7 +542,7 @@ void EXPORT_FUNC release_template()
 {
 	if (This == 0)
 		return;
-	CT_close(This->Ctn);
+	SC_Close(This->Ctn);
 	free(This->pCms);
 	free(This);
 	This = 0;

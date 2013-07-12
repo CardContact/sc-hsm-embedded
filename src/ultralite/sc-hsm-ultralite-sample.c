@@ -30,7 +30,7 @@
  * @author Keith Morgan, Christoph Brunhuber
  */
 
-#ifdef WIN32
+#ifdef _WIN32
 #ifdef DEBUG
 #include <crtdbg.h>
 #endif
@@ -40,7 +40,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#ifdef WIN32
+#ifdef _WIN32
 #include "ext-win/dirent.h"
 #define snprintf _snprintf
 #else
@@ -257,7 +257,7 @@ int main(int argc, char** argv)
 
 	/* TODO: Destroy mutex */
 
-#if defined(WIN32) && defined(DEBUG)
+#if defined(_WIN32) && defined(DEBUG)
 	_CrtDumpMemoryLeaks();
 #endif
 	return 0;

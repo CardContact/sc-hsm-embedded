@@ -30,12 +30,6 @@
  * @author Christoph Brunhuber
  */
 
-#ifdef WIN32
-#ifdef DEBUG
-#include <crtdbg.h>
-#endif
-#endif
-
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
@@ -43,7 +37,12 @@
 #include "utils.h"
 #include "sc-hsm-ultralite.h"
 
-#ifndef WIN32
+#ifdef _WIN32
+#include <windows.h>
+#ifndef usleep
+#define usleep(us) Sleep((us) / 1000)
+#endif
+#else
 /* Windows GetTickCount() returns ms since startup.
  * This function returns ms since the Epoch.
  * Since we're doing a delta it's OK
@@ -56,9 +55,6 @@ long GetTickCount()
 }
 #endif
 
-extern int SC_Open(const char *pin);
-extern int SC_ReadFile(int ctn, uint16 fid, int off, uint8 *data, int dataLen);
-
 uint8 TestHash[] = {
 	0x81, 0x1c, 0x98, 0xb8, 0x3b, 0x8a, 0x56, 0xdf, 0x9e, 0x34, 0xe6, 0x8b, 0x41, 0xf4, 0x27, 0xd6,
 	0x9e, 0xfe, 0x7f, 0x52, 0x74, 0x61, 0xb1, 0x39, 0x8a, 0x1c, 0x74, 0xa0, 0xd5, 0xa7, 0x00, 0xd2
@@ -67,29 +63,31 @@ int TestHashLen = sizeof(TestHash);
 
 int DumpAllFiles(const char *pin)
 {
-	uint8 List[2 * 128];
-	uint16 SW1SW2;
+	uint8 list[2 * 128];
+	uint16 sw1sw2;
 	int ctn, rc, i;
 	ctn = SC_Open(pin);
 	if (ctn < 0)
 		return ctn;
 
 	/* - SmartCard-HSM: ENUMERATE OBJECTS */
-	rc = ProcessAPDU(ctn, 0, 0x00,0x58,0x00,0x00,
-					 0, NULL,
-					 sizeof(List), List, &SW1SW2);
+	rc = SC_ProcessAPDU(
+		ctn, 0, 0x00,0x58,0x00,0x00,
+		0, 0,
+		list, sizeof(list),
+		&sw1sw2);
 	if (rc < 0) {
-		CT_close(ctn);
+		SC_Close(ctn);
 		return rc;
 	}
 	/* save dir and all files */
-	SaveToFile("dir.hsm", List, rc);
+	SaveToFile("dir.hsm", list, rc);
 	for (i = 0; i < rc; i += 2) {
 		uint8 buf[0x10000], *p;
 		char name[10];
 		int rc, off;
-		uint16 fid = List[i] << 8 | List[i + 1];
-		if (List[i] == 0xcc) /* never readable */
+		uint16 fid = list[i] << 8 | list[i + 1];
+		if (list[i] == 0xcc) /* never readable */
 			continue;
 		for (p = buf, off = 0; off < sizeof(buf); p += rc) {
 			int l = sizeof(buf) - off;
@@ -108,7 +106,62 @@ int DumpAllFiles(const char *pin)
 			SaveToFile(name, buf, off);
 		}
 	}
-	CT_close(ctn);
+	SC_Close(ctn);
+	return 0;
+}
+
+int ResetPin(const char *pin, const char *sopin)
+{
+	uint16 sw1sw2;
+	int ctn, rc, len;
+	uint8 sopin_pin[8 + 16];
+	if (sopin == 0) {
+		memcpy(sopin_pin, "\x35\x37\x36\x32\x31\x38\x38\x30", 8);
+	} else {
+		int i;
+		if (strlen(sopin) != 16) {
+			printf("SO_PIN must have 16 hex-digits");
+			return ERR_INVALID;
+		}
+		for (i = 0; i < 8; i++) {
+			int hi = sopin[2 * i + 0];
+			int lo = sopin[2 * i + 1];
+#define HEX(ch) (\
+			'0' <= ch && ch <= '9' \
+			? ch - '0' \
+			: 'A' <= ch && ch <= 'F' \
+				? 10 + ch - 'A' \
+				: 'a' <= ch && ch <= 'f' \
+					? 10 - ch - 'a' \
+					: -1)
+			int b = HEX(hi) << 4 | HEX(lo);
+#undef HEX
+			if (b < 0) {
+				printf("SO_PIN must have 16 hex-digits");
+				return ERR_INVALID;
+			}
+			sopin_pin[i] = b;
+		}
+	}
+	len = strlen(pin);
+	if (!(6 <= len && len <= 16)) {
+		printf("PIN must have 6 - 16 chars");
+		return ERR_INVALID;
+	}
+	memcpy(sopin_pin + 8, pin, len); /* no 0 terminator */
+	ctn = SC_Open(0);
+	if (ctn < 0)
+		return ctn;
+	/* - SmartCard-HSM: RESET RETRY COUNTER */
+	rc = SC_ProcessAPDU(
+		ctn, 0, 0x00,0x2C,0x00,0x81,
+		sopin_pin, 8 + len,
+		0, 0,
+		&sw1sw2);
+	if (rc < 0) {
+		SC_Close(ctn);
+		return rc;
+	}
 	return 0;
 }
 
@@ -117,38 +170,40 @@ int main(int argc, char **argv)
 	int i;
 	if (!(2 <= argc && argc <= 5)) {
 		printf("\
-    usage: %s pin label [count [wait-in-milliseconds]] (signs a test hash)\n\
-       or: %s pin (writes all token elementary files to disk)\n",
-			argv[0], argv[0]);
+usage: %s pin label [count [wait-in-milliseconds]] (signs a test hash)\n\
+   or: %s pin (writes all token elementary files to disk)\n\
+   or: %s --reset-pin pin [so-pin] (so-pin defaults to '3537363231383830')\n",
+			argv[0], argv[0], argv[0]);
 		return 1;
 	}
 	if (argc >= 3) {
-		int rc;
-		const uint8 *pCms = 0;
-		int count = argc >= 4 ? atoi(argv[3]) : 1;
-		int wait = argc >= 5 ? atoi(argv[4]) : 10000;
-		for (i = 0; i < count; i++) {
-			long start, end;
-			if (i > 0 && count > 1) {
-				printf("wait %d milliseconds for next signature\n", wait);
-				usleep(wait * 1000);
+		if (strcmp(argv[1], "--reset-pin") == 0) {
+			ResetPin(argv[2], argc == 3 ? NULL : argv[3]);
+		} else {
+			int rc;
+			const uint8 *pCms = 0;
+			int count = argc >= 4 ? atoi(argv[3]) : 1;
+			int wait = argc >= 5 ? atoi(argv[4]) : 10000;
+			for (i = 0; i < count; i++) {
+				long start, end;
+				if (i > 0 && count > 1) {
+					printf("wait %d milliseconds for next signature\n", wait);
+					usleep(wait * 1000);
+				}
+				start = GetTickCount();
+				rc = sign_hash(argv[1], argv[2], TestHash, TestHashLen, &pCms);
+				end = GetTickCount();
+				printf("sign_hash returns: %d, time used: %ld ms\n", rc, end - start);
+				if (rc > 0) {
+					char name[64];
+					sprintf(name, "test-%s.p7s", argv[2]);
+					SaveToFile(name, pCms, rc);
+				}
 			}
-			start = GetTickCount();
-			rc = sign_hash(argv[1], argv[2], TestHash, TestHashLen, &pCms);
-			end = GetTickCount();
-			printf("sign_hash returns: %d, time used: %ld ms\n", rc, end - start);
-			if (rc > 0) {
-				char name[64];
-				sprintf(name, "test-%s.p7s", argv[2]);
-				SaveToFile(name, pCms, rc);
-			}
+			release_template();
 		}
-		release_template();
 	} else {
 		DumpAllFiles(argv[1]);
 	}
-#if defined(WIN32) && defined(DEBUG)
-	_CrtDumpMemoryLeaks();
-#endif
 	return 0;
 }
