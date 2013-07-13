@@ -127,7 +127,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseSession)(
 {
 	int rv;
 	struct p11Slot_t *slot;
-	struct p11Token_t *token;
 	struct p11Session_t *session;
 
 	FUNC_CALLED();
@@ -148,14 +147,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseSession)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = getToken(slot, &token);
-
-	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
-	}
-
-	if (!(session->flags & CKF_RW_SESSION)) {
-		token->rosessions--;
+	if (slot->token && !(session->flags & CKF_RW_SESSION)) {
+		slot->token->rosessions--;
 	}
 
 	rv = removeSession(context->sessionPool, hSession);
@@ -174,6 +167,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseAllSessions)(
 		CK_SLOT_ID slotID
 )
 {
+	CK_RV rv;
 	struct p11Session_t *session;
 
 	FUNC_CALLED();
@@ -187,7 +181,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseAllSessions)(
 	}
 
 	while((session = context->sessionPool->list)) {
-		C_CloseSession(session->handle);
+		rv = C_CloseSession(session->handle);
+		if (rv != CKR_OK) {
+			FUNC_FAILS(rv, "Could not close session");
+		}
 	}
 
 	FUNC_RETURNS(CKR_OK);
