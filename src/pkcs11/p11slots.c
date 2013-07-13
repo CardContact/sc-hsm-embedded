@@ -42,18 +42,6 @@
 extern struct p11Context_t *context;
 
 
-static const CK_MECHANISM_TYPE p11MechanismList[] = {
-		CKM_RSA_X_509,
-		CKM_RSA_PKCS,
-		CKM_SHA1_RSA_PKCS,
-		CKM_SHA256_RSA_PKCS,
-		CKM_SHA1_RSA_PKCS_PSS,
-		CKM_SHA256_RSA_PKCS_PSS,
-		CKM_ECDSA,
-		CKM_ECDSA_SHA1
-};
-
-
 
 /*  C_GetSlotList obtains a list of slots in the system. */
 CK_DECLARE_FUNCTION(CK_RV, C_GetSlotList)(
@@ -238,7 +226,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismList)(
 )
 {
 	int rv;
-	CK_ULONG numberOfMechanisms = 0;
 	struct p11Slot_t *slot;
 	struct p11Token_t *token;
 
@@ -268,21 +255,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismList)(
 		FUNC_RETURNS(rv);
 	}
 
-	numberOfMechanisms = sizeof(p11MechanismList) / sizeof(p11MechanismList[0]);
-
-	if (pMechanismList == NULL) {
-		*pulCount = numberOfMechanisms;
-		FUNC_RETURNS(CKR_OK);
-	}
-
-	if (*pulCount < numberOfMechanisms) {
-		*pulCount = numberOfMechanisms;
-		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Buffer provided by caller too small");
-	}
-
-	memcpy(pMechanismList, p11MechanismList, sizeof(p11MechanismList));
-
-	FUNC_RETURNS(CKR_OK);
+	FUNC_RETURNS(token->drv->getMechanismList(pMechanismList, pulCount));
 }
 
 
@@ -321,33 +294,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismInfo)(
 		FUNC_RETURNS(rv);
 	}
 
-	switch (type) {
-	case CKM_RSA_X_509:
-	case CKM_RSA_PKCS:
-	case CKM_SHA1_RSA_PKCS:
-	case CKM_SHA256_RSA_PKCS:
-	case CKM_SHA1_RSA_PKCS_PSS:
-	case CKM_SHA256_RSA_PKCS_PSS:
-		pInfo->flags = CKF_SIGN;
-		pInfo->flags |= CKF_HW|CKF_ENCRYPT|CKF_DECRYPT|CKF_GENERATE_KEY_PAIR;	// Quick fix for Peter Gutmann's cryptlib
-		pInfo->ulMinKeySize = 1024;
-		pInfo->ulMaxKeySize = 2048;
-		break;
-
-	case CKM_ECDSA:
-	case CKM_ECDSA_SHA1:
-		pInfo->flags = CKF_SIGN;
-		pInfo->flags |= CKF_HW|CKF_VERIFY|CKF_GENERATE_KEY_PAIR; // Quick fix for Peter Gutmann's cryptlib
-		pInfo->ulMinKeySize = 192;
-		pInfo->ulMaxKeySize = 320;
-		break;
-
-	default:
-		rv = CKR_MECHANISM_INVALID;
-		break;
-	}
-
-	FUNC_RETURNS(rv);
+	FUNC_RETURNS(token->drv->getMechanismInfo(type, pInfo));
 }
 
 

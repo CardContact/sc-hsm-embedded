@@ -37,13 +37,15 @@
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/p11generic.h>
 
-#define STARCOS_ESIGN           0
-#define STARCOS_EUSERPKI        1
+#define STARCOS_ESIGN1          0
+#define STARCOS_ESIGN2          1
+#define STARCOS_EUSERPKI        2
 
 
 struct starcosPrivateData {
 	int                 application;
 	int                 selectedApplication;
+	unsigned char       *publickeys[256];
 	struct p11Token_t   *primaryToken;
 };
 

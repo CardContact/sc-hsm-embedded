@@ -270,7 +270,7 @@ int synchronizeToken(struct p11Slot_t *slot, struct p11Token_t *token)
  */
 int logIn(struct p11Slot_t *slot, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen)
 {
-	return sc_hsm_login(slot, userType, pPin, ulPinLen);
+	return (slot->token->drv->login)(slot, userType, pPin, ulPinLen);
 }
 
 
@@ -286,9 +286,11 @@ int logIn(struct p11Slot_t *slot, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, C
  */
 int logOut(struct p11Slot_t *slot)
 {
+	slot->token->user = 0xFF;
+
 	removePrivateObjects(slot->token);
 
-	return sc_hsm_logout(slot);
+	return (slot->token->drv->logout)(slot);
 }
 
 

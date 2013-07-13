@@ -77,6 +77,8 @@
 
 
 
+struct p11TokenDriver;
+
 /**
  * Internal structure to store information about a token.
  *
@@ -88,22 +90,16 @@ struct p11Token_t {
 	int rosessions;                     /**< Number of read/only sessions                   */
 	CK_ULONG freeObjectNumber;          /**< The number of objects in this token            */
 
-	CK_MECHANISM_TYPE mechanism;        /**< Mechanisms supported by token                  */
+//	CK_MECHANISM_TYPE mechanism;        /**< Mechanisms supported by token                  */
+	int checkPINAfterSigning;           /**< Detect logout after QES C_Sign                 */
 
 	CK_ULONG numberOfTokenObjects;      /**< The number of public objects in this token     */
 	struct p11Object_t *tokenObjList;   /**< Pointer to first object in pool                */
 
 	CK_ULONG numberOfPrivateTokenObjects; /**< The number of private objects in this token  */
 	struct p11Object_t *tokenPrivObjList; /**< Pointer to the first object in pool          */
-};
 
-
-
-struct p11TokenDriver {
-	const char *name;                   /**< Name of driver                                 */
-	/**< Allow driver to check if card is a candidate based on the ATR                      */
-	int (*isCandidate)(unsigned char *atr, size_t atrLen);
-	int (*newToken)(struct p11Slot_t *slot, struct p11Token_t **token);
+	struct p11TokenDriver *drv;         /**< Driver for this token                          */
 };
 
 
@@ -138,6 +134,19 @@ struct p11SlotPool_t {
 	CK_ULONG numberOfSlots;         /**< Number of slots in the pool         */
 	CK_SLOT_ID nextSlotID;          /**< The next assigned slot ID value     */
 	struct p11Slot_t *list;         /**< Pointer to first slot in pool       */
+};
+
+
+
+struct p11TokenDriver {
+	const char *name;                   /**< Name of driver                                 */
+	/**< Allow driver to check if card is a candidate based on the ATR                      */
+	int (*isCandidate)(unsigned char *atr, size_t atrLen);
+	int (*newToken)(struct p11Slot_t *slot, struct p11Token_t **token);
+	int (*getMechanismList)(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount);
+	int (*getMechanismInfo)(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo);
+	int (*login)(struct p11Slot_t *slot, int userType, unsigned char *pin, int pinlen);
+	int (*logout)(struct p11Slot_t *slot);
 };
 
 

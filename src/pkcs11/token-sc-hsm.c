@@ -52,6 +52,18 @@ static unsigned char atrJCOP41[] = { 0x3B,0xF8,0x13,0x00,0x00,0x81,0x31,0xFE,0x4
 static unsigned char atrHSM[] = { 0x3B,0xFE,0x18,0x00,0x00,0x81,0x31,0xFE,0x45,0x80,0x31,0x81,0x54,0x48,0x53,0x4D,0x31,0x73,0x80,0x21,0x40,0x81,0x07,0xFA };
 
 
+static const CK_MECHANISM_TYPE p11MechanismList[] = {
+		CKM_RSA_X_509,
+		CKM_RSA_PKCS,
+		CKM_SHA1_RSA_PKCS,
+		CKM_SHA256_RSA_PKCS,
+		CKM_SHA1_RSA_PKCS_PSS,
+		CKM_SHA256_RSA_PKCS_PSS,
+		CKM_ECDSA,
+		CKM_ECDSA_SHA1
+};
+
+
 
 static struct token_sc_hsm *getPrivateData(struct p11Token_t *token)
 {
@@ -223,9 +235,9 @@ static int addEECertificateObject(struct p11Token_t *token, unsigned char id)
 	}
 	template[4].ulValueLen = strlen(template[4].pValue);
 
-	if (p15->id) {
-		template[5].pValue = p15->id;
-		template[5].ulValueLen = p15->idlen;
+	if (p15->id.val) {
+		template[5].pValue = p15->id.val;
+		template[5].ulValueLen = p15->id.len;
 	}
 
 	rc = createCertificateObject(template, 7, pObject);
@@ -488,7 +500,7 @@ static int sc_hsm_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR me
 
 	FUNC_CALLED();
 
-	algo = getAlgorithmIdForSigning(mech->mechanism);
+	algo = getAlgorithmIdForDecryption(mech->mechanism);
 	if (algo < 0) {
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
 	}
@@ -640,9 +652,9 @@ static int addPrivateKeyObject(struct p11Token_t *token, unsigned char id)
 	}
 	template[4].ulValueLen = strlen(template[4].pValue);
 
-	if (p15->id) {
-		template[5].pValue = p15->id;
-		template[5].ulValueLen = p15->idlen;
+	if (p15->id.val) {
+		template[5].pValue = p15->id.val;
+		template[5].ulValueLen = p15->id.len;
 
 		template[9].pValue = p15->usage & P15_DECIPHER ? &true : &false;
 		template[10].pValue = p15->usage & P15_SIGN ? &true : &false;
@@ -800,7 +812,7 @@ static int updatePinStatus(struct p11Token_t *token, int pinstatus)
  * @param pinLen    The length of the PIN supplied in pin
  * @return          CKR_OK or any other Cryptoki error code
  */
-int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin, int pinlen)
+static int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin, int pinlen)
 {
 	int rc = CKR_OK;
 	unsigned short SW1SW2;
@@ -851,7 +863,7 @@ int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
  * @param slot      The slot in which the token is inserted
  * @return          CKR_OK or any other Cryptoki error code
  */
-int sc_hsm_logout(struct p11Slot_t *slot)
+static int sc_hsm_logout(struct p11Slot_t *slot)
 {
 	int rc;
 	FUNC_CALLED();
@@ -872,6 +884,8 @@ int sc_hsm_logout(struct p11Slot_t *slot)
 }
 
 
+
+struct p11TokenDriver sc_hsm_token;
 
 /**
  * Create a new SmartCard-HSM token if token detection and initialization is successful
@@ -929,6 +943,7 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 	ptoken->info.flags = CKF_WRITE_PROTECTED | CKF_LOGIN_REQUIRED;
 	ptoken->user = 0xFF;
+	ptoken->drv = &sc_hsm_token;
 
 	updatePinStatus(ptoken, pinstatus);
 
@@ -942,8 +957,75 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 
 
+static int getMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount)
+{
+	int numberOfMechanisms;
+
+	FUNC_CALLED();
+
+	numberOfMechanisms = sizeof(p11MechanismList) / sizeof(p11MechanismList[0]);
+
+	if (pMechanismList == NULL) {
+		*pulCount = numberOfMechanisms;
+		FUNC_RETURNS(CKR_OK);
+	}
+
+	if (*pulCount < numberOfMechanisms) {
+		*pulCount = numberOfMechanisms;
+		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Buffer provided by caller too small");
+	}
+
+	memcpy(pMechanismList, p11MechanismList, sizeof(p11MechanismList));
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+static int getMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
+{
+	CK_RV rv = CKR_OK;
+
+	FUNC_CALLED();
+
+	switch (type) {
+	case CKM_RSA_X_509:
+	case CKM_RSA_PKCS:
+	case CKM_SHA1_RSA_PKCS:
+	case CKM_SHA256_RSA_PKCS:
+	case CKM_SHA1_RSA_PKCS_PSS:
+	case CKM_SHA256_RSA_PKCS_PSS:
+		pInfo->flags = CKF_SIGN;
+		pInfo->flags |= CKF_HW|CKF_ENCRYPT|CKF_DECRYPT|CKF_GENERATE_KEY_PAIR;	// Quick fix for Peter Gutmann's cryptlib
+		pInfo->ulMinKeySize = 1024;
+		pInfo->ulMaxKeySize = 2048;
+		break;
+
+	case CKM_ECDSA:
+	case CKM_ECDSA_SHA1:
+		pInfo->flags = CKF_SIGN;
+		pInfo->flags |= CKF_HW|CKF_VERIFY|CKF_GENERATE_KEY_PAIR; // Quick fix for Peter Gutmann's cryptlib
+		pInfo->ulMinKeySize = 192;
+		pInfo->ulMaxKeySize = 320;
+		break;
+
+	default:
+		rv = CKR_MECHANISM_INVALID;
+		break;
+	}
+
+	FUNC_RETURNS(rv);
+
+}
+
+
+
 struct p11TokenDriver sc_hsm_token = {
 	"SmartCard-HSM",
 	isCandidate,
-	newSmartCardHSMToken
+	newSmartCardHSMToken,
+	getMechanismList,
+	getMechanismInfo,
+	sc_hsm_login,
+	sc_hsm_logout
 };

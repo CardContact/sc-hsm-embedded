@@ -372,7 +372,7 @@ int findSlotObject(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Ob
 
 	rc = findObject(token, handle, object, publicObject);
 
-	return rc < 0 ? CKR_GENERAL_ERROR : CKR_OK;
+	return rc < 0 ? CKR_OBJECT_HANDLE_INVALID : CKR_OK;
 }
 
 

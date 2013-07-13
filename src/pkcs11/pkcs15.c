@@ -81,8 +81,8 @@ static int decodeCommonKeyAttributes(unsigned char *cka, int ckalen, struct p15P
 		return -1;
 	}
 	memcpy(id, po, len);
-	p15->id = id;
-	p15->idlen = len;
+	p15->id.val = id;
+	p15->id.len = len;
 
 	po += len;
 
@@ -284,9 +284,10 @@ void freePrivateKeyDescription(struct p15PrivateKeyDescription **p15)
 {
 	if (*p15 != NULL) {
 		freeCommonObjectAttributes(&(*p15)->coa);
-		if ((*p15)->id) {
-			free((*p15)->id);
-			(*p15)->id = NULL;
+		if ((*p15)->id.val) {
+			free((*p15)->id.val);
+			(*p15)->id.val = NULL;
+			(*p15)->id.len = 0;
 		}
 		free(*p15);
 	}

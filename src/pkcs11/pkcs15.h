@@ -80,9 +80,11 @@ struct p15PrivateKeyDescription {
 	struct p15CommonObjectAttributes
 	                coa;                /**< CommonObjectAttributes               */
 	size_t          idlen;              /**< Length of key id                     */
-	unsigned char   *id;                /**< The key id as visible at PKCS#11     */
+	struct bytestring_s
+	                id;                 /**< The key id as visible at PKCS#11     */
 	unsigned long   usage;              /**< Key usage flags                      */
 	int             keysize;            /**< Key size in bits                     */
+	int             keyReference;       /**< The key reference used by the card   */
 };
 
 
