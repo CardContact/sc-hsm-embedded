@@ -28,13 +28,11 @@
  *
  * @file utils.h
  * @author Christoph Brunhuber
- * @brief Simple abstraction layer for USB devices using libusb
+ * @brief Simple abstraction layer for USB devices using libusb or WinSCard
  */
 
 #ifndef __utils_h__                     /* Prevent from including twice      */
 #define __utils_h__
-
-#include "ctccid/scr.h"
 
 #ifdef __cplusplus                      /* Support for C++ compiler          */
 extern "C" {
@@ -43,17 +41,22 @@ extern "C" {
 /* utility functions */
 
 #define MAX_OUT_IN 256
-
 typedef unsigned char uint8;
 typedef unsigned short uint16;
 
-int ProcessAPDU(
-	int ctn, int todad,
-	unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
-	int OutLen, unsigned char *OutData,
-	int InLen, unsigned char *InData,
-	unsigned short *SW1SW2
-);
+int SC_Open(const char *pin);
+int SC_Close();
+int SC_Logon(const char *pin);
+int SC_ReadFile(uint16 fid, int off, uint8 *data, int dataLen);
+int SC_Sign(uint8 op, uint8 keyFid,
+	uint8 *outBuf, int outLen,
+	uint8 *inBuf, int inSize);
+int SC_ProcessAPDU(
+	int todad,
+	uint8 cla, uint8 ins, uint8 p1, uint8 p2,
+	uint8 *outData, int outLen,
+	uint8 *inData, int inLen,
+	uint16 *sw1sw2);
 
 #define SaveToFile(name, ptr, len) {\
 	FILE *f = fopen(name, "wb");\
@@ -63,9 +66,7 @@ int ProcessAPDU(
 		fclose(f);\
 	}\
 }
-
 #ifdef __cplusplus
 }
 #endif
-
 #endif

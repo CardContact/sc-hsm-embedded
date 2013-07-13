@@ -39,6 +39,9 @@
 
 #ifdef DEBUG
 #include <pkcs11/debug.h>
+
+extern int dumpAttributeList(struct p11Object_t *pObject);
+
 #endif
 
 #define NEEDED_ATTRIBUTES_DATAOBJECT   3

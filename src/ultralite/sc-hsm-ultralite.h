@@ -37,6 +37,8 @@
 #define _sc_hsm_ultralite_h_
 
 #ifndef ERR_INVALID
+#define CT               1
+#define HOST             2
 #define OK               0   /** Successful completion            */
 #define ERR_INVALID     -1   /** Invalid parameter or value       */
 #define ERR_CT          -8   /** Cardterminal error               */
@@ -59,7 +61,7 @@
 #ifndef _USRDLL
 #define EXPORT_FUNC
 #else
-#ifdef WIN32
+#ifdef _WIN32
 #define EXPORT_FUNC __declspec(dllexport) __cdecl
 #else
 #define EXPORT_FUNC
@@ -73,9 +75,9 @@ int EXPORT_FUNC sign_hash(const char *pin, const char *label,
 void EXPORT_FUNC release_template();
 
 typedef struct {
-    unsigned int total[2];
-    unsigned int state[8];
-    unsigned char buffer[64];
+	unsigned int total[2];
+	unsigned int state[8];
+	unsigned char buffer[64];
 } sha256_context;
 
 
