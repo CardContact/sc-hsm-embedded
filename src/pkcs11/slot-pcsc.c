@@ -44,8 +44,7 @@
 #include <pkcs11/token.h>
 #include <pkcs11/slotpool.h>
 #include <pkcs11/slot-pcsc.h>
-
-#include <strbpcpy.h>
+#include <pkcs11/strbpcpy.h>
 
 #ifdef DEBUG
 #include <pkcs11/debug.h>
