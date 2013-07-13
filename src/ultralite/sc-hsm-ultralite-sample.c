@@ -30,7 +30,7 @@
  * @author Keith Morgan, Christoph Brunhuber
  */
 
-#ifdef WIN32
+#ifdef _WIN32
 #ifdef DEBUG
 #include <crtdbg.h>
 #endif
@@ -40,7 +40,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#ifdef WIN32
+#ifdef _WIN32
 #include "ext-win/dirent.h"
 #define snprintf _snprintf
 #else
@@ -57,7 +57,7 @@
 #include "metadata.h"
 
 extern int SC_Open(const char *pin);
-extern int SC_ReadFile(int ctn, uint16 fid, int off, uint8 *data, int dataLen);
+extern int SC_ReadFile(uint16 fid, int off, uint8 *data, int dataLen);
 
 unsigned int sign_file(const char* pin, const char* label, const char* path, const char* md_path)
 {
@@ -257,7 +257,7 @@ int main(int argc, char** argv)
 
 	/* TODO: Destroy mutex */
 
-#if defined(WIN32) && defined(DEBUG)
+#if defined(_WIN32) && defined(DEBUG)
 	_CrtDumpMemoryLeaks();
 #endif
 	return 0;
