@@ -57,7 +57,7 @@
 #include "metadata.h"
 
 extern int SC_Open(const char *pin);
-extern int SC_ReadFile(int ctn, uint16 fid, int off, uint8 *data, int dataLen);
+extern int SC_ReadFile(uint16 fid, int off, uint8 *data, int dataLen);
 
 unsigned int sign_file(const char* pin, const char* label, const char* path, const char* md_path)
 {

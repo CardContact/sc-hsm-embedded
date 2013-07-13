@@ -21,17 +21,18 @@
   <ItemGroup>
     <ClCompile Include="..\src\ultralite\sc-hsm-ultralite.c" />
     <ClCompile Include="..\src\ultralite\sha256.c" />
-    <ClCompile Include="..\src\ultralite\sc-hsm-ultralite-test.c" />
+    <ClCompile Include="..\src\ultralite\sc-hsm-ultralite-sample.c" />
     <ClCompile Include="..\src\ultralite\utils.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\src\ultralite\metadata.h" />
     <ClInclude Include="..\src\ultralite\sc-hsm-ultralite.h" />
     <ClInclude Include="..\src\ultralite\utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{E01C9DAC-044E-44E7-A714-F6F74DFCE5F6}</ProjectGuid>
+    <ProjectGuid>{CF4F0318-4841-465A-B6A0-ED78618836BB}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <ProjectName>sc-hsm-ultralite-test</ProjectName>
+    <ProjectName>sc-hsm-ultralite-sample</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -73,7 +74,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>..\$(Platform)\PCSC\$(Configuration)\</OutDir>
+    <OutDir>..\$(Platform)\CTAPI\$(Configuration)\</OutDir>
     <IntDir>$(OutDir)$(MSBuildProjectName)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\src;$(IncludePath)</IncludePath>
@@ -81,7 +82,7 @@
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>..\$(Platform)\PCSC\$(Configuration)\</OutDir>
+    <OutDir>..\$(Platform)\CTAPI\$(Configuration)\</OutDir>
     <IntDir>$(OutDir)$(MSBuildProjectName)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\src;$(IncludePath)</IncludePath>
@@ -89,7 +90,7 @@
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>..\$(Platform)\PCSC\$(Configuration)\</OutDir>
+    <OutDir>..\$(Platform)\CTAPI\$(Configuration)\</OutDir>
     <IntDir>$(OutDir)$(MSBuildProjectName)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\src;$(IncludePath)</IncludePath>
@@ -97,7 +98,7 @@
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>..\$(Platform)\PCSC\$(Configuration)\</OutDir>
+    <OutDir>..\$(Platform)\CTAPI\$(Configuration)\</OutDir>
     <IntDir>$(OutDir)$(MSBuildProjectName)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\src;$(IncludePath)</IncludePath>
@@ -125,7 +126,7 @@
       <AdditionalDependencies>winscard.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
-      <AdditionalOptions>/IGNORE:4049 </AdditionalOptions>
+      <AdditionalOptions>/IGNORE:4049 %(AdditionalOptions)</AdditionalOptions>
       <AddModuleNamesToAssembly>
       </AddModuleNamesToAssembly>
     </Link>
@@ -135,7 +136,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>DEBUG;_CRT_SECURE_NO_WARNINGS;WIN32;WIN32_LEAN_AND_MEAN;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>DEBUG;_CRT_SECURE_NO_WARNINGS;WIN32;WIN32_LEAN_AND_MEAN;_DEBUG;_CONSOLE;_AMD64_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MinimalRebuild>false</MinimalRebuild>
       <ObjectFileName>$(IntDir)</ObjectFileName>
@@ -151,7 +152,7 @@
       <AdditionalDependencies>winscard.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
-      <AdditionalOptions>/IGNORE:4049 </AdditionalOptions>
+      <AdditionalOptions>/IGNORE:4049 %(AdditionalOptions)</AdditionalOptions>
       <AddModuleNamesToAssembly>
       </AddModuleNamesToAssembly>
     </Link>
@@ -178,7 +179,7 @@
       <AdditionalDependencies>winscard.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
-      <AdditionalOptions>/IGNORE:4049 </AdditionalOptions>
+      <AdditionalOptions>/IGNORE:4049 %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -188,7 +189,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;WIN32_LEAN_AND_MEAN;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;WIN32_LEAN_AND_MEAN;_CONSOLE;_AMD64_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -203,7 +204,7 @@
       <AdditionalDependencies>winscard.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
-      <AdditionalOptions>/IGNORE:4049 </AdditionalOptions>
+      <AdditionalOptions>/IGNORE:4049 %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

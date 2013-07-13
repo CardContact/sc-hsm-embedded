@@ -65,19 +65,19 @@ int DumpAllFiles(const char *pin)
 {
 	uint8 list[2 * 128];
 	uint16 sw1sw2;
-	int ctn, rc, i;
-	ctn = SC_Open(pin);
-	if (ctn < 0)
-		return ctn;
+	int rc, i;
+	rc = SC_Open(pin);
+	if (rc < 0)
+		return rc;
 
 	/* - SmartCard-HSM: ENUMERATE OBJECTS */
 	rc = SC_ProcessAPDU(
-		ctn, 0, 0x00,0x58,0x00,0x00,
+		0, 0x00,0x58,0x00,0x00,
 		0, 0,
 		list, sizeof(list),
 		&sw1sw2);
 	if (rc < 0) {
-		SC_Close(ctn);
+		SC_Close();
 		return rc;
 	}
 	/* save dir and all files */
@@ -93,7 +93,7 @@ int DumpAllFiles(const char *pin)
 			int l = sizeof(buf) - off;
 			if (l > MAX_OUT_IN)
 				l = MAX_OUT_IN;
-			rc = SC_ReadFile(ctn, fid, off, p, l);
+			rc = SC_ReadFile(fid, off, p, l);
 			if (rc < 0)
 				break;
 			off += rc;
@@ -106,14 +106,14 @@ int DumpAllFiles(const char *pin)
 			SaveToFile(name, buf, off);
 		}
 	}
-	SC_Close(ctn);
+	SC_Close();
 	return 0;
 }
 
 int ResetPin(const char *pin, const char *sopin)
 {
 	uint16 sw1sw2;
-	int ctn, rc, len;
+	int rc, len;
 	uint8 sopin_pin[8 + 16];
 	if (sopin == 0) {
 		memcpy(sopin_pin, "\x35\x37\x36\x32\x31\x38\x38\x30", 8);
@@ -149,17 +149,17 @@ int ResetPin(const char *pin, const char *sopin)
 		return ERR_INVALID;
 	}
 	memcpy(sopin_pin + 8, pin, len); /* no 0 terminator */
-	ctn = SC_Open(0);
-	if (ctn < 0)
-		return ctn;
+	rc = SC_Open(0);
+	if (rc < 0)
+		return rc;
 	/* - SmartCard-HSM: RESET RETRY COUNTER */
 	rc = SC_ProcessAPDU(
-		ctn, 0, 0x00,0x2C,0x00,0x81,
+		0, 0x00,0x2C,0x00,0x81,
 		sopin_pin, 8 + len,
 		0, 0,
 		&sw1sw2);
 	if (rc < 0) {
-		SC_Close(ctn);
+		SC_Close();
 		return rc;
 	}
 	return 0;

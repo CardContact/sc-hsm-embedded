@@ -48,15 +48,17 @@
 #ifdef CTAPI /* via libusb */
 #include <ctccid/ctapi.h>
 
+static uint16 Ctn;
+
 /* used only for SC_Open */
-static int SC_Init(int ctn)
+static int SC_Init()
 {
 	uint8 dad = 1;   /* Reader */
 	uint8 sad = 2;   /* Host   */
 	uint8 buf[260];
 	uint16 len = sizeof(buf);
 	/* - REQUEST ICC */
-	int rc = CT_data((uint16)ctn, &dad, &sad, 5, (uint8*)"\x20\x12\x00\x01\x00", &len, buf);
+	int rc = CT_data(Ctn, &dad, &sad, 5, (uint8*)"\x20\x12\x00\x01\x00", &len, buf);
 	if (rc < 0 || buf[0] == 0x64 || buf[0] == 0x62)
 		return ERR_CARD;
 	return buf[len - 1] == 0x00 ? 1 : 2;  /* Memory or processor card ? */
@@ -66,40 +68,38 @@ static int SC_Init(int ctn)
 
 int SC_Open(const char *pin)
 {
-	int rc, ctn;
+	int rc;
 	uint16 i;
 	/* find 1st available card */
-	ctn = -1;
 	for (i = 0; i < MAXPORT; i++) {
 		if (CT_init(i, i) < 0)
 			continue;
-		if (SC_Init(i) < 0) {
+		Ctn = i;
+		if (SC_Init() < 0) {
 			CT_close(i);
 			continue;
 		}
-		ctn = i;
 		break;
 	}
-	if (ctn < 0) {
+	if (Ctn == MAXPORT) {
 		printf("no card found\n");
 		return ERR_CARD;
 	}
-	rc = SC_Logon(ctn, pin);
+	rc = SC_Logon(pin);
 	if (rc < 0) {
 		printf("Logon error\n");
-		CT_close(ctn);
+		CT_close(Ctn);
 		return ERR_PIN;
 	}
-	return ctn;
+	return 0;
 }
 
-int SC_Close(int ctn)
+int SC_Close()
 {
-	return CT_close(ctn);
+	return CT_close(Ctn);
 }
 
 #else /* via PCSC */
-
 #ifndef _WIN32
 #include <pcsclite.h>
 #endif
@@ -135,7 +135,7 @@ int SC_Open(const char *pin)
 	SCardFreeMemory(hContext, readerNames);
 	if (!found)
 		return ERR_CARD;
-	rc = SC_Logon(0, pin);
+	rc = SC_Logon(pin);
 	if (rc < 0) {
 		printf("Logon error\n");
 		SCardDisconnect(hCard, SCARD_LEAVE_CARD);
@@ -144,21 +144,21 @@ int SC_Open(const char *pin)
 	return 0;
 }
 
-int SC_Close(int ctn)
+int SC_Close()
 {
 	return SCardDisconnect(hCard, SCARD_LEAVE_CARD);
 }
 
 #endif /* !CTAPI */
 
-static int SC_Logon(int ctn, const char *pin)
+static int SC_Logon(const char *pin)
 {
 	uint16 sw1sw2;
 	uint8 buf[256];
 	int rc, pinLen;
 	/* - SmartCard-HSM: SELECT APPLET */
 	rc = SC_ProcessAPDU(
-		ctn, 0, 0x00,0xA4,0x04,0x04,
+		0, 0x00,0xA4,0x04,0x04,
 		(uint8*)"\xE8\x2B\x06\x01\x04\x01\x81\xc3\x1f\x02\x01", 11,
 		buf, sizeof(buf),
 		&sw1sw2);
@@ -173,7 +173,7 @@ static int SC_Logon(int ctn, const char *pin)
 	pinLen = strlen(pin);
 	/* - SmartCard-HSM: VERIFY PIN */
 	rc = SC_ProcessAPDU(
-		ctn, 0, 0x00,0x20,0x00,0x81,
+		0, 0x00,0x20,0x00,0x81,
 		(uint8*)pin, pinLen,
 		0, 0,
 		&sw1sw2);
@@ -184,7 +184,7 @@ static int SC_Logon(int ctn, const char *pin)
 	return rc;
 }
 
-int SC_ReadFile(int ctn, uint16 fid, int off, uint8 *data, int dataLen)
+int SC_ReadFile(uint16 fid, int off, uint8 *data, int dataLen)
 {
 	uint16 sw1sw2;
 	int rc;
@@ -195,7 +195,7 @@ int SC_ReadFile(int ctn, uint16 fid, int off, uint8 *data, int dataLen)
 	offset[3] = off >> 0;
 	/* - SmartCard-HSM: READ BINARY */
 	rc = SC_ProcessAPDU(
-		ctn, 0, 0x00,
+		0, 0x00,
 		0xB1,      /* READ BINARY */
 		fid >> 8,  /* MSB(fid) */
 		fid >> 0,  /* LSB(fid) */
@@ -209,7 +209,7 @@ int SC_ReadFile(int ctn, uint16 fid, int off, uint8 *data, int dataLen)
 	return rc;
 }
 
-int SC_Sign(int ctn, uint8 op, uint8 keyFid,
+int SC_Sign(uint8 op, uint8 keyFid,
 	uint8 *outBuf, int outLen,
 	uint8 *inBuf, int inSize)
 {
@@ -217,7 +217,7 @@ int SC_Sign(int ctn, uint8 op, uint8 keyFid,
 	int rc;
 	/* - SmartCard-HSM: SIGN */
 	rc = SC_ProcessAPDU(
-		ctn, 0, 0x80,
+		0, 0x80,
 		0x68, /* SIGN */
 		keyFid,
 		op, /* Plain RSA(0x20) or ECDSA(0x70) signature */
@@ -247,7 +247,7 @@ int SC_Sign(int ctn, uint8 op, uint8 keyFid,
  *  Returns : < 0 Error >= 0 Bytes read
  */
 int SC_ProcessAPDU(
-	int ctn, int todad,
+	int todad,
 	uint8 cla, uint8 ins, uint8 p1, uint8 p2,
 	uint8 *outData, int outLen,
 	uint8 *inData, int inLen,
@@ -306,7 +306,7 @@ int SC_ProcessAPDU(
 	dad = todad;
 	len = sizeof(scr);
 #ifdef CTAPI
-	rc = CT_data(ctn, &dad, &sad, p - scr, scr, &len, scr);
+	rc = CT_data(Ctn, &dad, &sad, p - scr, scr, &len, scr);
 #else
 	rc = SCardTransmit(hCard, SCARD_PCI_T1, scr, p - scr, 0, scr, &len);
 #endif

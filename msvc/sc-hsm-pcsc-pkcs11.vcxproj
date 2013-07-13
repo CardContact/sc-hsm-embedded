@@ -111,6 +111,7 @@
     <IncludePath>..\src;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
     <TargetName>sc-hsm-pkcs11</TargetName>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\$(Platform)\PCSC\$(Configuration)\</OutDir>
@@ -119,6 +120,7 @@
     <IncludePath>..\src;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
     <TargetName>sc-hsm-pkcs11</TargetName>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>..\$(Platform)\PCSC\$(Configuration)\</OutDir>
@@ -127,6 +129,7 @@
     <IncludePath>..\src;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
     <TargetName>sc-hsm-pkcs11</TargetName>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\$(Platform)\PCSC\$(Configuration)\</OutDir>
@@ -135,6 +138,7 @@
     <IncludePath>..\src;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
     <TargetName>sc-hsm-pkcs11</TargetName>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -170,7 +174,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MinimalRebuild>false</MinimalRebuild>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalOptions>/wd4018 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/wd4018 /wd4267 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -211,7 +215,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>CRYPTOKI_EXPORTS;PKCS11_EXPORTS;_CRT_SECURE_NO_WARNINGS;WIN32;WIN32_LEAN_AND_MEAN;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalOptions>/wd4018 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/wd4018 /wd4267 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

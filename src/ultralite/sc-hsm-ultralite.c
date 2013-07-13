@@ -50,13 +50,50 @@
 void no_printf(const char *format, ...) {}
 #endif
 
+/*
+	This code implements template based signing.
+	A detached CMS signature (Cryptographic Message Syntax, RFC 5652) is an ASN.1
+	encoded data structure. It is a de facto standard (commonly used for signed emails S/MIME).
+	To produce the data structure is a non trivial task. Mostly a huge crypto package like
+	OpenSLL or cryptlib is used to create the CMS.
+	The CMS signature works as follows:
+	Create a hash of the document to sign.
+	Put that hash into the so called SignedAttributes as MessageDigest. Another dynamic field
+	in the SignedAttributes is the SigningTime.
+	Hash the SignedAttributes and create the signature of the last hash.
+	It turns out that a CMS signature is similar for different hashes (documents).
+	Specifically the MessageDigest, the SigningTime and the Signature itself are the dynamic
+	fields, all other fields are static. Because a RSA signature from the same key has
+	always the same size, the CMS can be produced from a template by simply patching the 3
+	fields. The needed cryptographic ciphers are, hashing (here SHA256) and the RSA private key
+	operation. The RSA operation is actually running on the token (no crypto code required).
+	In this specific case the raw RSA private key operation is used, so the PKCS#1.5 padding is also
+	implemented here (trivial).
+	The template itself is a small header + a valid CMS signature. It is stored as PKCS11 data on the token.
+	The link between a private key and a template is the label.
+	The template contains also a patch plan (offset of the fields which need to be changed).
+	The patch plan is the mentioned header. See "typedef struct {..} Template_t" for details.
+	The interface contains actually a single function (sign_hash) which returns the CMS for a
+	given document hash. The program uses ~2k heap memory and ~2k stack memory (without the USB library).
+	The template is cached internally for reuse. However is is also robust against a token change.
+	
+	Because the specific token supports also ECDSA, also ECDSA (prime256v1 == secp256r1) templates are
+	supported. Because the ECDSA signature consists of 2 ASN.1 enclosed big unsigned ints (R, S)
+	the length of the signature is not constant. This makes simple patching actually impossible (ASN.1 issue).
+	A work around is encoding R and S always with its maximum size. An ASN.1 integer is interpreted as
+	negative if it has the highest bit set. To make it to an unsigned int a leading 0 byte must be pre pended.
+	To make it the same size always a 0 is pre pended. If that violates the standard is not clear, however most
+	crypto libraries accept the expanded signature. Windows actually require R and S packed (fixed length),
+	that is the original signature must be transformed anyway before passed to the verify function.
+*/
+
 /*******************************************************************************
  *******************************************************************************
  *******************************************************************************
  ************************ Template Helper Functions ****************************
  *******************************************************************************
  *******************************************************************************
- ******************************************************************************/
+ ******************************************************************************
 
 /* Warning: case sensitive */
 static int FindLabel(const char *label, const uint8* buf, int len)
@@ -104,9 +141,9 @@ static int FindFid(uint8 hi, uint8 lo, const uint8* buf, int len)
 }
 
 /*
-	Files on the SmartCard-HSM are addressed by a 16 bit unsigned integers,
-	where the upper 8 bits (hi) indicate the type of file and the lower 8 bits the name.
-	In most cases 2 filegroup are associated (data and descriptor).
+	Elementary files on the SmartCard-HSM from CardContact are addressed by a 16 bit unsigned integer,
+	where the upper 8 bits (hi) indicate the type of file and the lower 8 bits (lo) the name.
+	In most cases 2 files are associated (data and descriptor).
 	lo is the binding between the 2 files.
 	private keys:
 	0xCC00 | lo .. private key (never readable)
@@ -121,16 +158,16 @@ static int FindFid(uint8 hi, uint8 lo, const uint8* buf, int len)
 	the key and the template is the label (you cannot specify the elementary file id
 	with PKCS11, the ids are managed internally by the PKCS11 library).
 	E.g.: We have a key "sign0" with fid 0xCC03 for the private data and 0xC403 for the descriptor.
-	To find a key for a given label: enumerate through all 0xCCii files and open the associatet
+	To find a key for a given label: enumerate through all 0xCCii files and open the associated
 	0xC4ii descriptor file. Check if it has the proper label ("sign0").
 	If found: enumerate through all 0xCDjj files and open the associated 0xC9jj descriptor file.
-	Check if it has the proper label.
+	Check if it has the same label.
 	In case of success we have found a template associates with a key.
 	The templates could be also used with PKCS11 withou a crypto library.
 	The approach here is much simpler, you do not even need a PKCS11 library, here it is managed
 	on a lower level, but specific to the SC-HSM (CardContact) card.
 */
-static int GetFids(int ctn, const char *label, uint16 *pKeyFid, uint16 *pTemplateFid)
+static int GetFids(const char *label, uint16 *pKeyFid, uint16 *pTemplateFid)
 {
 	uint8 list[2 * 128];
 	uint16 sw1sw2;
@@ -139,7 +176,7 @@ static int GetFids(int ctn, const char *label, uint16 *pKeyFid, uint16 *pTemplat
 	*pTemplateFid = 0;
 	/* - SmartCard-HSM: ENUMERATE OBJECTS */
 	rc = SC_ProcessAPDU(
-		ctn, 0, 0x00,0x58,0x00,0x00,
+		0, 0x00,0x58,0x00,0x00,
 		0, 0,
 		list, sizeof(list),
 		&sw1sw2);
@@ -151,7 +188,7 @@ static int GetFids(int ctn, const char *label, uint16 *pKeyFid, uint16 *pTemplat
 	for (i = 0; i < rc; i += 2) {
 		if (list[i] == 0xCC && FindFid(0xC4, list[i + 1], list, rc) >= 0) {
 			uint8 buf[256];
-			int rc = SC_ReadFile(ctn, 0xC400 | list[i + 1], 0, buf, sizeof(buf));
+			int rc = SC_ReadFile(0xC400 | list[i + 1], 0, buf, sizeof(buf));
 			if (rc > 0 && FindLabel(label, buf, rc)) {
 				*pKeyFid = 0xCC00 | list[i + 1];
 				break;
@@ -166,7 +203,7 @@ static int GetFids(int ctn, const char *label, uint16 *pKeyFid, uint16 *pTemplat
 	for (i = 0; i < rc; i += 2) {
 		if (list[i] == 0xCD && FindFid(0xC9, list[i + 1], list, rc) >= 0) {
 			uint8 buf[256];
-			int rc = SC_ReadFile(ctn, 0xC900 | list[i + 1], 0, buf, sizeof(buf));
+			int rc = SC_ReadFile(0xC900 | list[i + 1], 0, buf, sizeof(buf));
 			if (rc > 0 && FindLabel(label, buf, rc)) {
 				*pTemplateFid = 0xCD00 | list[i + 1];
 				break;
@@ -203,7 +240,6 @@ typedef struct {
 /* up to here from file */
 	uint16 KeyFid;
 	uint16 TemplateFid;
-	int Ctn;
 	uint8 *pCms;
 	char Label[1]; /* space for the 0 terminator, need calloc(1, sizeof(Template_t) + strlen(label)) */
 } Template_t;
@@ -213,7 +249,7 @@ static Template_t *This; /* current template (singleton) */
 #define TEMPLATE_VERSION (0)
 #define TEMPLATE_HEADER_LENGTH (20)
 
-static int LoadTemplate(int ctn, const char *label)
+static int LoadTemplate(const char *label)
 {
 	uint8 *pCms;
 	int rc, end, off, labelLen;
@@ -223,13 +259,12 @@ static int LoadTemplate(int ctn, const char *label)
 	This = (Template_t*)calloc(1, sizeof(Template_t) + labelLen);
 	if (This == 0)
 		return ERR_MEMORY;
-	This->Ctn = ctn;
 	memcpy(This->Label, label, labelLen + 1); /* include 0 terminator */
-	rc = GetFids(ctn, label, &This->KeyFid, &This->TemplateFid);
+	rc = GetFids(label, &This->KeyFid, &This->TemplateFid);
 	if (rc < 0)
 		goto error;
 	/* read template header */
-	rc = SC_ReadFile(ctn, This->TemplateFid, 0, (uint8*)This, TEMPLATE_HEADER_LENGTH);
+	rc = SC_ReadFile(This->TemplateFid, 0, (uint8*)This, TEMPLATE_HEADER_LENGTH);
 	if (rc < 0)
 		goto error;
 	if (rc != TEMPLATE_HEADER_LENGTH) {
@@ -296,7 +331,7 @@ static int LoadTemplate(int ctn, const char *label)
 		int len = end - off;
 		if (len > MAX_OUT_IN)
 			len = MAX_OUT_IN;
-		rc = SC_ReadFile(ctn, This->TemplateFid, off, pCms, len);
+		rc = SC_ReadFile(This->TemplateFid, off, pCms, len);
 		if (rc != len) {
 			rc = ERR_TEMPLATE;
 			goto error;
@@ -417,7 +452,7 @@ static int PatchRSATemplate(const uint8 *hash, int hashLen)
 	memset(sig + 2, -1, ix - 2);
 	sig[1] = 1;
 	sig[0] = 0;
-	return SC_Sign(This->Ctn, 0x20, (uint8)This->KeyFid, sig, This->SignatureSize, sig, This->SignatureSize);
+	return SC_Sign(0x20, (uint8)This->KeyFid, sig, This->SignatureSize, sig, This->SignatureSize);
 }
 
 static int PatchECDSATemplate(const uint8 *hash, int hashLen)
@@ -428,7 +463,7 @@ static int PatchECDSATemplate(const uint8 *hash, int hashLen)
 	rc = PatchSignedAttributes(hash, hashLen, hashToSign, sizeof(hashToSign));
 	if (rc < 0)
 		return rc;
-	rc = SC_Sign(This->Ctn, 0x70, (uint8)This->KeyFid, hashToSign, hashLen, This->pCms + This->SignatureOff, This->SignatureSize);
+	rc = SC_Sign(0x70, (uint8)This->KeyFid, hashToSign, hashLen, This->pCms + This->SignatureOff, This->SignatureSize);
 	if (rc < 0)
 		return rc;
 	/*
@@ -508,18 +543,18 @@ int EXPORT_FUNC sign_hash(const char *pin, const char *label, const uint8 *hash,
 			release_template();
 		} else {
 			uint8 certId[32];
-			rc = SC_ReadFile(This->Ctn, This->TemplateFid, TEMPLATE_HEADER_LENGTH + This->CertIdOff, certId, sizeof(certId));
+			rc = SC_ReadFile(This->TemplateFid, TEMPLATE_HEADER_LENGTH + This->CertIdOff, certId, sizeof(certId));
 			if (rc != sizeof(certId) || memcmp(certId, This->pCms + This->CertIdOff, sizeof(certId)))
 				release_template(); /* do not reuse, but release rescources */
 		}
 	}
 	if (This == 0) {
-		int ctn = SC_Open(pin);
-		if (ctn < 0)
-			return ctn;
-		rc = LoadTemplate(ctn, label);
+		rc = SC_Open(pin);
+		if (rc < 0)
+			return rc;
+		rc = LoadTemplate(label);
 		if (rc < 0) {
-			SC_Close(ctn);
+			SC_Close();
 			return rc;
 		}
 	}
@@ -542,7 +577,7 @@ void EXPORT_FUNC release_template()
 {
 	if (This == 0)
 		return;
-	SC_Close(This->Ctn);
+	SC_Close();
 	free(This->pCms);
 	free(This);
 	This = 0;

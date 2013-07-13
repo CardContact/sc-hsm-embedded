@@ -144,7 +144,7 @@
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalOptions>/wd4018 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/wd4018 /wd4267 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -194,7 +194,7 @@
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalOptions>/wd4018 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/wd4018 /wd4267 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

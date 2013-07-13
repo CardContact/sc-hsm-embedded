@@ -77,6 +77,7 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\src;$(IncludePath)</IncludePath>
     <LibraryPath>..\libusb-1.0;$(OutDir);$(LibraryPath)</LibraryPath>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\$(Platform)\PCSC\$(Configuration)\</OutDir>
@@ -84,6 +85,7 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\src;$(IncludePath)</IncludePath>
     <LibraryPath>..\libusb-1.0\x64;$(OutDir);$(LibraryPath)</LibraryPath>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>..\$(Platform)\PCSC\$(Configuration)\</OutDir>
@@ -91,6 +93,7 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\src;$(IncludePath)</IncludePath>
     <LibraryPath>..\libusb-1.0;$(OutDir);$(LibraryPath)</LibraryPath>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\$(Platform)\PCSC\$(Configuration)\</OutDir>
@@ -98,6 +101,7 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\src;$(IncludePath)</IncludePath>
     <LibraryPath>..\libusb-1.0\x64;$(OutDir);$(LibraryPath)</LibraryPath>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -134,7 +138,7 @@
       <MinimalRebuild>false</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalOptions>/wd4018 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/wd4018 /wd4267 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -184,7 +188,7 @@
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;WIN32_LEAN_AND_MEAN;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalOptions>/wd4018 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/wd4018 /wd4267 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

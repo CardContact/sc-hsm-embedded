@@ -71,6 +71,7 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\src;$(IncludePath)</IncludePath>
     <LibraryPath>..\libusb-1.0;$(OutDir);$(LibraryPath)</LibraryPath>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\$(Platform)\PCSC\$(Configuration)\</OutDir>
@@ -78,6 +79,7 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\src;$(IncludePath)</IncludePath>
     <LibraryPath>..\libusb-1.0\x64;$(OutDir);$(LibraryPath)</LibraryPath>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>..\$(Platform)\PCSC\$(Configuration)\</OutDir>
@@ -85,6 +87,7 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\src;$(IncludePath)</IncludePath>
     <LibraryPath>..\libusb-1.0;$(OutDir);$(LibraryPath)</LibraryPath>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\$(Platform)\PCSC\$(Configuration)\</OutDir>
@@ -92,6 +95,7 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\src;$(IncludePath)</IncludePath>
     <LibraryPath>..\libusb-1.0\x64;$(OutDir);$(LibraryPath)</LibraryPath>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -131,7 +135,7 @@
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalOptions>/wd4018 /wd4101 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/wd4018 /wd4267 /wd4101 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -180,7 +184,7 @@
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalOptions>/wd4018 /wd4101 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/wd4018 /wd4267 /wd4101 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

@@ -45,14 +45,14 @@ typedef unsigned char uint8;
 typedef unsigned short uint16;
 
 int SC_Open(const char *pin);
-int SC_Close(int ctn);
-int SC_Logon(int ctn, const char *pin);
-int SC_ReadFile(int ctn, uint16 fid, int off, uint8 *data, int dataLen);
-int SC_Sign(int ctn, uint8 op, uint8 keyFid,
+int SC_Close();
+int SC_Logon(const char *pin);
+int SC_ReadFile(uint16 fid, int off, uint8 *data, int dataLen);
+int SC_Sign(uint8 op, uint8 keyFid,
 	uint8 *outBuf, int outLen,
 	uint8 *inBuf, int inSize);
 int SC_ProcessAPDU(
-	int ctn, int todad,
+	int todad,
 	uint8 cla, uint8 ins, uint8 p1, uint8 p2,
 	uint8 *outData, int outLen,
 	uint8 *inData, int inLen,
