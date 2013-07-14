@@ -152,7 +152,7 @@
       <AdditionalDependencies>winscard.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
-      <AdditionalOptions>/LTCG /IGNORE:4049 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/IGNORE:4049 %(AdditionalOptions)</AdditionalOptions>
       <AddModuleNamesToAssembly>
       </AddModuleNamesToAssembly>
     </Link>
