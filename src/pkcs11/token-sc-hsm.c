@@ -886,8 +886,8 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 	ptoken->slot = slot;
 	ptoken->freeObjectNumber = 1;
-	strbpcpy(ptoken->info.label, "SC-HSM", sizeof(ptoken->info.label));
-	strbpcpy(ptoken->info.manufacturerID, "CardContact", sizeof(ptoken->info.manufacturerID));
+	strbpcpy(ptoken->info.label, "SmartCard-HSM", sizeof(ptoken->info.label));
+	strbpcpy(ptoken->info.manufacturerID, "CardContact (www.cardcontact.de)", sizeof(ptoken->info.manufacturerID));
 	strbpcpy(ptoken->info.model, "SmartCard-HSM", sizeof(ptoken->info.model));
 	ptoken->info.ulFreePrivateMemory = CK_UNAVAILABLE_INFORMATION;
 	ptoken->info.ulFreePublicMemory = CK_UNAVAILABLE_INFORMATION;

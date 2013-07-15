@@ -3,7 +3,7 @@
 # Support for em SmartCard-HSM 
 # (c) 2013 CardContact Software & System Consulting (www.cardcontact.de)
 
-AC_INIT(sc-hsm-embedded, 0.9)
+AC_INIT(sc-hsm-embedded, 1.0)
 AM_INIT_AUTOMAKE
 LT_INIT
 

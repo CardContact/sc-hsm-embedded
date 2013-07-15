@@ -279,10 +279,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetInfo)
 			"CardContact (www.cardcontact.de)",
 			sizeof(pInfo->manufacturerID));
 	strbpcpy(pInfo->libraryDescription,
-			"PKCS#11 Framework",
+			"SmartCard-HSM R/O with CT-API",
 			sizeof(pInfo->libraryDescription));
-	pInfo->libraryVersion.major = 0;
-	pInfo->libraryVersion.minor = 1;
+	pInfo->libraryVersion.major = 1;
+	pInfo->libraryVersion.minor = 0;
 
 	FUNC_RETURNS(CKR_OK);
 }
