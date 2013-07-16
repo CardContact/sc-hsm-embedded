@@ -1129,7 +1129,6 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 
 
-#if 0
 void testInsertRemove(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 {
 	CK_RV rc;
@@ -1179,7 +1178,8 @@ void testInsertRemove(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 		}
 	}
 }
-#endif
+
+
 
 void main(int argc, char *argv[])
 {
@@ -1266,7 +1266,7 @@ void main(int argc, char *argv[])
 	while (i < slots) {
 		slotid = *(slotlist + i);
 
-		// testInsertRemove(p11, slotid);
+//		testInsertRemove(p11, slotid);
 
 		printf("Calling C_GetSlotInfo for slot %lu ", slotid);
 

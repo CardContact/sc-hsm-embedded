@@ -63,7 +63,7 @@ static int slotCounter = 0;
 
 #ifdef DEBUG
 
-char* pcsc_error_to_string(const DWORD error) {
+char* pcsc_error_to_string(const LONG error) {
 	static char strError[75];
 
 	switch (error) {
@@ -277,7 +277,7 @@ int transmitAPDUviaPCSC(struct p11Slot_t *slot,
 	unsigned char *capdu, size_t capdu_len,
 	unsigned char *rapdu, size_t rapdu_len)
 {
-	int rc;
+	LONG rc;
 	DWORD lenr;
 
 	FUNC_CALLED();
@@ -309,7 +309,7 @@ int transmitVerifyPinAPDUviaPCSC(struct p11Slot_t *slot,
 	unsigned char *capdu, size_t capdu_len,
 	unsigned char *rapdu, size_t rapdu_len)
 {
-	int rc;
+	LONG rc;
 	DWORD lenr;
 	PIN_VERIFY_DIRECT_STRUCTURE_t verify;
 
@@ -389,6 +389,7 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 {
 	struct p11Token_t *ptoken;
 	int rc, i;
+	LONG rv;
 	DWORD dwActiveProtocol;
 	WORD feature;
 	DWORD featurecode, lenr;
@@ -400,19 +401,19 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 		FUNC_RETURNS(CKR_TOKEN_NOT_PRESENT);
 	}
 
-	rc = SCardConnect(slot->context, slot->readername, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T1, &(slot->card), &dwActiveProtocol);
+	rv = SCardConnect(slot->context, slot->readername, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T1, &(slot->card), &dwActiveProtocol);
 
 #ifdef DEBUG
-	debug("SCardConnect (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rc));
+	debug("SCardConnect (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rv));
 #endif
 
-	if (rc == SCARD_E_NO_SMARTCARD) {
+	if (rv == SCARD_E_NO_SMARTCARD) {
 		FUNC_RETURNS(CKR_TOKEN_NOT_PRESENT);
 	}
 
-	if (rc != SCARD_S_SUCCESS) {
+	if (rv != SCARD_S_SUCCESS) {
 		closeSlot(slot);
-		FUNC_FAILS(CKR_DEVICE_ERROR, pcsc_error_to_string(rc));
+		FUNC_FAILS(CKR_DEVICE_ERROR, pcsc_error_to_string(rv));
 	}
 
 	rc = newToken(slot, &ptoken);
@@ -428,14 +429,14 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 	}
 
 	if (!slot->hasFeatureVerifyPINDirect) {
-		rc = SCardControl(slot->card, SCARD_CTL_CODE(3400), NULL,0, buf, sizeof(buf), &lenr);
+		rv = SCardControl(slot->card, SCARD_CTL_CODE(3400), NULL,0, buf, sizeof(buf), &lenr);
 
 #ifdef DEBUG
-		debug("SCardControl (CM_IOCTL_GET_FEATURE_REQUEST): %s\n", pcsc_error_to_string(rc));
+		debug("SCardControl (CM_IOCTL_GET_FEATURE_REQUEST): %s\n", pcsc_error_to_string(rv));
 #endif
 
-		if (rc != SCARD_S_SUCCESS) {
-			FUNC_FAILS(-1, "SCardControl failed");
+		if (rv != SCARD_S_SUCCESS) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "SCardControl failed");
 		}
 
 		for (i = 0; i < lenr; i += 6){
@@ -484,6 +485,7 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 static int checkForRemovedPCSCToken(struct p11Slot_t *slot)
 {
 	int rc;
+	LONG rv;
 
 	FUNC_CALLED();
 
@@ -495,15 +497,15 @@ static int checkForRemovedPCSCToken(struct p11Slot_t *slot)
 		FUNC_RETURNS(CKR_TOKEN_NOT_PRESENT);
 	}
 
-	rc = SCardStatus(slot->card, NULL, 0, 0, 0, 0, 0);
+	rv = SCardStatus(slot->card, NULL, 0, 0, 0, 0, 0);
 
 #ifdef DEBUG
-	debug("SCardStatus: %s\n", pcsc_error_to_string(rc));
+	debug("SCardStatus: %s\n", pcsc_error_to_string(rv));
 #endif
 
-	if (rc == SCARD_S_SUCCESS) {
+	if (rv == SCARD_S_SUCCESS) {
 		FUNC_RETURNS(CKR_OK);
-	} else if (rc == SCARD_W_REMOVED_CARD) {
+	} else if (rv == SCARD_W_REMOVED_CARD) {
 		rc = removeToken(slot);
 	} else {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error getting PC/SC card terminal status");
@@ -537,7 +539,8 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 	LPTSTR readers = NULL;
 	DWORD cch = SCARD_AUTOALLOCATE;
 	LPTSTR p;
-	int rc, match;
+	LONG rc;
+	int match;
 
 	FUNC_CALLED();
 
@@ -636,7 +639,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		p += strlen(p) + 1;
 	}
 
-    rc = SCardFreeMemory(globalContext, readers );
+	rc = SCardFreeMemory(globalContext, readers );
 
 #ifdef DEBUG
 	debug("SCardFreeMemory: %s\n", pcsc_error_to_string(rc));
@@ -653,7 +656,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 
 int closePCSCSlot(struct p11Slot_t *slot)
 {
-	int rc;
+	LONG rc;
 
 	FUNC_CALLED();
 
@@ -682,7 +685,7 @@ int closePCSCSlot(struct p11Slot_t *slot)
 		FUNC_RETURNS(CKR_OK);
 	}
 
-	rc =SCardDisconnect(slot->card, SCARD_UNPOWER_CARD);
+	rc = SCardDisconnect(slot->card, SCARD_UNPOWER_CARD);
 
 #ifdef DEBUG
 	debug("SCardDisconnect (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rc));

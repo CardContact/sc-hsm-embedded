@@ -98,7 +98,7 @@ typedef struct {
 #pragma pack()
 
 #ifdef DEBUG
-char* pcsc_error_to_string(const DWORD error);
+char* pcsc_error_to_string(const LONG error);
 char* pcsc_feature_to_string(const WORD feature);
 #endif
 
