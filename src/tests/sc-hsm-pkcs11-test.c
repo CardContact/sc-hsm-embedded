@@ -41,11 +41,11 @@
 #include <pthread.h>
 #include <dlfcn.h>
 #define LIB_HANDLE void*
-#define P11LIBNAME "/usr/local/lib/libsc-hsm-pkcs11.so"
-#define PIN "648219"
+#define P11LIBNAME "libsc-hsm-pkcs11.so"
+#define PIN "123456"
 
 #define MUTEX pthread_mutex_t
-int mutex_init   (MUTEX *mutex) { *mutex = CreateMutex(0, FALSE, 0); }
+int mutex_init   (MUTEX *mutex) { return pthread_mutex_init(mutex, NULL); }
 int mutex_lock   (MUTEX *mutex) { return pthread_mutex_lock(mutex); }
 int mutex_unlock (MUTEX *mutex) { return pthread_mutex_unlock(mutex); }
 int mutex_destroy(MUTEX *mutex) { return pthread_mutex_destroy(mutex); }
