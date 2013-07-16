@@ -1335,7 +1335,7 @@ void main(int argc, char *argv[])
 	testRSASigning(p11, session);
 
 #ifndef WIN32
-	testRSASigningMultiThreading(p11, slotid);
+//	testRSASigningMultiThreading(p11, slotid);
 #endif
 
 //	Test requires valid crypto matching card used for testing
