@@ -286,7 +286,7 @@ static int selectApplication(struct p11Token_t *token)
 	}
 
 	if (sc->application == *sa) {
-		return CKR_OK;
+		return 0;
 	}
 
 	rc = transmitAPDU(token->slot, 0x00, 0xA4, 0x04, 0x0C,
@@ -303,7 +303,7 @@ static int selectApplication(struct p11Token_t *token)
 
 	*sa = sc->application;
 
-	FUNC_RETURNS(CKR_OK);
+	FUNC_RETURNS(0);
 }
 
 
@@ -512,8 +512,8 @@ static int digest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned cha
 
 	FUNC_CALLED();
 
-	if (len > 4096) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Data to be hashed must not exceed 4K");
+	if (len > 1000) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Data to be hashed must not exceed 1000 bytes");
 	}
 
 	rc = getAlgorithmIdForDigest(token, mech, &algo);
@@ -531,11 +531,11 @@ static int digest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned cha
 		0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {
-		FUNC_FAILS(rc, "transmitAPDU failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
 	if (SW1SW2 != 0x9000) {
-		FUNC_FAILS(-1, "MANAGE SE failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "MANAGE SE failed");
 	}
 
 	scr[0] = 0x90;
@@ -548,11 +548,11 @@ static int digest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned cha
 		0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {
-		FUNC_FAILS(rc, "transmitAPDU failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
 	if (SW1SW2 != 0x9000) {
-		FUNC_FAILS(-1, "Signature operation failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Signature operation failed");
 	}
 
 	return CKR_OK;
@@ -591,7 +591,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 
 	rc = selectApplication(pObject->token);
 	if (rc < 0) {
-		FUNC_FAILS(rc, "selecting application failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "selecting application failed");
 	}
 
 	if (mech != CKM_RSA_PKCS) {
@@ -624,11 +624,11 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 		0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {
-		FUNC_FAILS(rc, "transmitAPDU failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
 	if (SW1SW2 != 0x9000) {
-		FUNC_FAILS(-1, "MANAGE SE failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "MANAGE SE failed");
 	}
 
 	rc = transmitAPDU(pObject->token->slot, 0x00, 0x2A, 0x9E, 0x9A,
@@ -636,7 +636,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 			0, pSignature, *pulSignatureLen, &SW1SW2);
 
 	if (rc < 0) {
-		FUNC_FAILS(rc, "transmitAPDU failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
 	if (SW1SW2 == 0x6982) {
@@ -645,7 +645,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 	}
 
 	if (SW1SW2 != 0x9000) {
-		FUNC_FAILS(-1, "Signature operation failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Signature operation failed");
 	}
 
 	*pulSignatureLen = rc;
