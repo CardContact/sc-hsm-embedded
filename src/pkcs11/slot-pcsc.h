@@ -79,21 +79,21 @@
 #define FEATURE_GET_TLV_PROPERTIES			0x12
 #define FEATURE_CCID_ESC_COMMAND			0x13
 
-#pragma pack(push, 1)
+#pragma pack(1)
 typedef struct {
-	BYTE  bTimeOut;						/* Timeout is seconds (00 means use default timeout) */
-	BYTE  bTimeOut2; 					/* Timeout in seconds after first key stroke */
-	BYTE  bmFormatString; 				/* Formatting options */
-	BYTE  bmPINBlockString; 			/* bits 7-4 bit size of PIN length in APDU, bits 3-0 PIN block size in bytes after justification and formatting */
-	BYTE  bmPINLengthFormat; 			/* bits 7-5 RFU, bit 4 set if system units are bytes, clear if system units are bits, bits 3-0 PIN length position in system units */
-	WORD  wPINMaxExtraDigit; 			/* 0xXXYY where XX is minimum PIN size in digits and YY is maximum PIN size in digits */
-	BYTE  bEntryValidationCondition; 	/* Conditions under which PIN entry should be considered complete */
-	BYTE  bNumberMessage; 				/* Number of messages to display for PIN verification */
-	WORD  wLangID;						/* Language for messages */
-	BYTE  bMsgIndex; 					/* Message index (should be 00) */
-	BYTE  bTeoPrologue[3]; 				/* T=1 block prologue field to use (should be all zeros) */
-	DWORD ulDataLength; 				/* Length of Data to be sent to the ICC */
-	BYTE  abData[128]; 					/* Data to send to the ICC */
+	unsigned char bTimeOut;					/* Timeout is seconds (00 means use default timeout) */
+	unsigned char bTimeOut2; 					/* Timeout in seconds after first key stroke */
+	unsigned char bmFormatString; 				/* Formatting options */
+	unsigned char bmPINBlockString; 			/* bits 7-4 bit size of PIN length in APDU, bits 3-0 PIN block size in bytes after justification and formatting */
+	unsigned char bmPINLengthFormat; 			/* bits 7-5 RFU, bit 4 set if system units are bytes, clear if system units are bits, bits 3-0 PIN length position in system units */
+	unsigned short wPINMaxExtraDigit; 			/* 0xXXYY where XX is minimum PIN size in digits and YY is maximum PIN size in digits */
+	unsigned char bEntryValidationCondition; 	/* Conditions under which PIN entry should be considered complete */
+	unsigned char bNumberMessage; 				/* Number of messages to display for PIN verification */
+	unsigned short wLangID;					/* Language for messages */
+	unsigned char bMsgIndex; 					/* Message index (should be 00) */
+	unsigned char bTeoPrologue[3]; 			/* T=1 block prologue field to use (should be all zeros) */
+	unsigned int ulDataLength; 				/* Length of Data to be sent to the ICC */
+	unsigned char abData[128]; 				/* Data to send to the ICC */
 } PIN_VERIFY_DIRECT_STRUCTURE_t;
 #pragma pack()
 
