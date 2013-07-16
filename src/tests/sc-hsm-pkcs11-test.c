@@ -36,24 +36,41 @@
 #include <string.h>
 #include <ctype.h>
 
-#ifndef WIN32
+#ifndef _WIN32
 
 #include <pthread.h>
 #include <dlfcn.h>
 #define LIB_HANDLE void*
-#define P11LIBNAME "/usr/local/lib/libsc-hsm-pkcs11.so"
-#define PIN "648219"
+#define P11LIBNAME "libsc-hsm-pkcs11.so"
+#define PIN "123456"
+
+#define MUTEX pthread_mutex_t
+int mutex_init   (MUTEX *mutex) { return pthread_mutex_init(mutex, NULL); }
+int mutex_lock   (MUTEX *mutex) { return pthread_mutex_lock(mutex); }
+int mutex_unlock (MUTEX *mutex) { return pthread_mutex_unlock(mutex); }
+int mutex_destroy(MUTEX *mutex) { return pthread_mutex_destroy(mutex); }
 
 #else
 
+#ifdef _DEBUG
+#include <crtdbg.h>
+#endif
 #include <windows.h>
 #include <malloc.h>
 #define LIB_HANDLE HMODULE
 #define P11LIBNAME "sc-hsm-pkcs11.dll"
-#define PIN "648219"
+#define PIN "123456"
 #define dlopen(fn, flag) LoadLibrary(fn)
 #define dlclose(h) FreeLibrary(h)
 #define dlsym(h, n) GetProcAddress(h, n)
+#define pthread_t HANDLE
+#define pthread_create(t, a, f, p) (*t = CreateThread(0, 0, f, p, 0, 0), *t ? 0 : GetLastError())
+#define pthread_join(t, s) WaitForSingleObject(t, INFINITE)
+#define pthread_exit(r) ExitThread(0)
+#define pthread_attr_t int
+#define pthread_attr_init(a)
+#define pthread_attr_setdetachstate(a, f)
+#define pthread_attr_destroy(a)
 
 char* dlerror()
 {
@@ -79,7 +96,13 @@ size_t getline(char** pp, size_t* pl, FILE* f)
 	return *pl - 1;
 }
 
-#endif /* WIN32 */
+#define MUTEX HANDLE
+int mutex_init   (MUTEX *mutex) { return !(*mutex = CreateMutex(0, 0, 0)); }
+int mutex_lock   (MUTEX *mutex) { return WaitForSingleObject(*mutex, INFINITE) != WAIT_FAILED ? 0 : -1; }
+int mutex_unlock (MUTEX *mutex) { return ReleaseMutex(*mutex) ? 0 : -1; }
+int mutex_destroy(MUTEX *mutex) { return CloseHandle(*mutex) ? 0 : -1; }
+
+#endif /* _WIN32 */
 
 #include <pkcs11/cryptoki.h>
 
@@ -293,27 +316,30 @@ CK_UTF8CHAR sopin[] = "3537363231383830";
 CK_ULONG sopinlen = 16;
 
 
-int testscompleted = 0;
-int testsfailed = 0;
+static MUTEX verdictMutex; /* initialized in main */
+static int testscompleted = 0;
+static int testsfailed = 0;
 
-
-static char *verdict(int condition) {
+static char *verdict(int condition)
+{
+	mutex_lock(&verdictMutex);
 	testscompleted++;
-
 	if (condition) {
+		mutex_unlock(&verdictMutex);
 		return "Passed";
 	} else {
 		testsfailed++;
+		mutex_unlock(&verdictMutex);
 		return "Failed";
 	}
 }
 
 
 
-static char *id2name(struct id2name_t *p, unsigned long id, unsigned long *attr)
-{
-	static char scr[40];
+static char namebuf[40]; /* used by main thread */
 
+static char *id2name(struct id2name_t *p, unsigned long id, unsigned long *attr, char scr[40])
+{
 	if (attr)
 		*attr = 0;
 
@@ -334,7 +360,6 @@ static char *id2name(struct id2name_t *p, unsigned long id, unsigned long *attr)
 	}
 	return scr;
 }
-
 
 
 static char *p11string(CK_UTF8CHAR *str, size_t len)
@@ -401,12 +426,12 @@ void dumpAttribute(CK_ATTRIBUTE_PTR attr)
 	char attribute[30], scr[4096];
 	unsigned long atype;
 
-	strcpy(attribute, id2name(p11CKAName, attr->type, &atype));
+	strcpy(attribute, id2name(p11CKAName, attr->type, &atype, scr));
 
 	switch(attr->type) {
 
 	case CKA_KEY_TYPE:
-		printf("  %s = %s\n", attribute, id2name(p11CKKName, *(CK_KEY_TYPE *)attr->pValue, NULL));
+		printf("  %s = %s\n", attribute, id2name(p11CKKName, *(CK_KEY_TYPE *)attr->pValue, NULL, scr));
 		break;
 
 	default:
@@ -444,30 +469,30 @@ void dumpAttribute(CK_ATTRIBUTE_PTR attr)
 
 void dumpObject(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE hnd)
 {
-	CK_ATTRIBUTE template[P11CKA];
+	CK_ATTRIBUTE template_private_key[P11CKA];
 	int rc, i;
 
-	memset(template, 0, sizeof(template));
+	memset(template_private_key, 0, sizeof(template_private_key));
 	for (i = 0; i < P11CKA; i++) {
-		template[i].type = p11CKAName[i].id;
+		template_private_key[i].type = p11CKAName[i].id;
 	}
 	printf("Calling C_GetAttributeValue ");
-	rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&template, P11CKA);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), (rc == CKR_OK) || (rc == CKR_ATTRIBUTE_TYPE_INVALID) ? "Passed" : "Failed");
+	rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&template_private_key, P11CKA);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), (rc == CKR_OK) || (rc == CKR_ATTRIBUTE_TYPE_INVALID) ? "Passed" : "Failed");
 
 	for (i = 0; i < P11CKA; i++) {
-		if ((CK_LONG)template[i].ulValueLen > 0) {
-			template[i].pValue = alloca(template[i].ulValueLen);
+		if ((CK_LONG)template_private_key[i].ulValueLen > 0) {
+			template_private_key[i].pValue = alloca(template_private_key[i].ulValueLen);
 		}
 	}
 
 	printf("Calling C_GetAttributeValue ");
-	rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&template, P11CKA);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), (rc == CKR_OK) || (rc == CKR_ATTRIBUTE_TYPE_INVALID) ? "Passed" : "Failed");
+	rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&template_private_key, P11CKA);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), (rc == CKR_OK) || (rc == CKR_ATTRIBUTE_TYPE_INVALID) ? "Passed" : "Failed");
 
 	for (i = 0; i < P11CKA; i++) {
-		if ((CK_LONG)template[i].ulValueLen > 0) {
-			dumpAttribute(&template[i]);
+		if ((CK_LONG)template_private_key[i].ulValueLen > 0) {
+			dumpAttribute(&template_private_key[i]);
 		}
 	}
 }
@@ -482,7 +507,7 @@ void listObjects(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBU
 
 	printf("Calling C_FindObjectsInit ");
 	rc = p11->C_FindObjectsInit(session, attr, len);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (rc != CKR_OK) {
 		return;
@@ -492,7 +517,7 @@ void listObjects(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBU
 	while ((rc == CKR_OK) && (cnt)) {
 		printf("Calling C_FindObjects ");
 		rc = p11->C_FindObjects(session, &hnd, 1, &cnt);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		if ((rc == CKR_OK) && (cnt == 1)) {
 			dumpObject(p11, session, hnd);
@@ -501,20 +526,21 @@ void listObjects(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBU
 
 	printf("Calling C_FindObjectsFinal ");
 	p11->C_FindObjectsFinal(session);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 }
 
 
 
 int findObject(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBUTE_PTR attr, int len, int ofs, CK_OBJECT_HANDLE_PTR phnd)
 {
+	char namebuf[40]; /* each thread need its own buffer */
 	CK_ULONG cnt;
 	CK_OBJECT_HANDLE hnd;
 	int rc;
 
 	printf("Calling C_FindObjectsInit ");
 	rc = p11->C_FindObjectsInit(session, attr, len);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (rc != CKR_OK) {
 		return rc;
@@ -524,12 +550,12 @@ int findObject(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBUTE
 		cnt = 1;
 		printf("Calling C_FindObjects ");
 		rc = p11->C_FindObjects(session, &hnd, 1, &cnt);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	} while ((rc == CKR_OK) && ofs--);
 
 	printf("Calling C_FindObjectsFinal ");
 	p11->C_FindObjectsFinal(session);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (cnt == 0) {
 		return CKR_GENERAL_ERROR;
@@ -541,44 +567,44 @@ int findObject(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBUTE
 
 
 #ifndef WIN32
-void *SignThread(void *arg) {
-
-	struct thread_data *d;
-	int id;
-	CK_FUNCTION_LIST_PTR p11;
-	CK_SLOT_ID slotid;
+void*
+#else
+DWORD WINAPI
+#endif
+SignThread(void *arg)
+{
+	struct thread_data *d = (struct thread_data *)arg;
+	int id = d->thread_id;
+	CK_FUNCTION_LIST_PTR p11 = d->p11;
+	CK_SLOT_ID slotid = d->slotid;
 	CK_SESSION_HANDLE session;
 
-	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
+	CK_OBJECT_CLASS class_private_key = CKO_PRIVATE_KEY;
 	CK_KEY_TYPE keyType = CKK_RSA;
-	CK_ATTRIBUTE template[] = {
-			{ CKA_CLASS, &class, sizeof(class) },
+	CK_ATTRIBUTE template_private_key[] = {
+			{ CKA_CLASS, &class_private_key, sizeof(class_private_key) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) }
 	};
 
 	CK_OBJECT_HANDLE hnd;
 	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
-	char *tbs = "Hello World";
+	CK_BYTE_PTR tbs = (CK_BYTE_PTR)"Hello World";
+	int tbs_len = 11;
 	CK_BYTE signature[256];
 	CK_ULONG len;
 	char scr[1024];
-	int rc,keyno;
+	int rc, keyno;
+	char namebuf[40]; /* each thread need its own buffer */
 
 	keyno = 0;
 
-	d = (struct thread_data *) arg;
-
-	id = d->thread_id;
-	p11 = d->p11;
-	slotid = d->slotid;
-
 	printf("Calling C_OpenSession (Thread %i)", id);
 	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	while (1) {
 		printf("Calling findObject (Thread %i, Session %ld)\n", id, session);
-		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
+		rc = findObject(p11, session, template_private_key, sizeof(template_private_key) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
 
 		if (rc != CKR_OK) {
 			printf("Key %i not found (Thread %i, Session %ld)\n", keyno, id, session);
@@ -586,19 +612,19 @@ void *SignThread(void *arg) {
 		}
 		printf("Calling C_SignInit (Thread %i, Session %ld)", id, session);
 		rc = p11->C_SignInit(session, &mech, hnd);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Calling C_Sign (Thread %i, Session %ld)", id, session);
 
 		len = 0;
-		rc = p11->C_Sign(session, tbs, strlen(tbs), NULL, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		rc = p11->C_Sign(session, tbs, tbs_len, NULL, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Signature size = %lu\n", len);
 
 		len = sizeof(signature);
-		rc = p11->C_Sign(session, tbs, strlen(tbs), signature, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		rc = p11->C_Sign(session, tbs, tbs_len, signature, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		bin2str(scr, sizeof(scr), signature, len);
 		printf("Signature:\n%s\n", scr);
@@ -606,27 +632,27 @@ void *SignThread(void *arg) {
 
 		printf("Calling C_SignInit (Thread %i, Session %ld) - Multipart", id, session);
 		rc = p11->C_SignInit(session, &mech, hnd);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Calling C_SignUpdate (Thread %i, Session %ld - Part #1)", id, session);
 		rc = p11->C_SignUpdate(session, tbs, 6);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Calling C_SignUpdate (Thread %i, Session %ld - Part #2)", id, session);
-		rc = p11->C_SignUpdate(session, tbs + 6, strlen(tbs) - 6);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		rc = p11->C_SignUpdate(session, tbs + 6, tbs_len - 6);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		len = 0;
 		printf("Calling C_SignFinal (Thread %i, Session %ld)", id, session);
 		rc = p11->C_SignFinal(session, NULL, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Signature size = %lu\n", len);
 
 		len = sizeof(signature);
 		printf("Calling C_SignFinal (Thread %i, Session %ld)", id, session);
 		rc = p11->C_SignFinal(session, signature, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		bin2str(scr, sizeof(scr), signature, len);
 		printf("Signature:\n%s\n", scr);
@@ -636,7 +662,10 @@ void *SignThread(void *arg) {
 
 	printf("Calling C_CloseSession (Thread %i, Session %ld)", id, session);
 	rc = p11->C_CloseSession(session);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+#ifdef _WIN32
+	return 0;
+#endif
 }
 
 
@@ -654,7 +683,7 @@ void testRSASigningMultiThreading(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-	for (t = 0;t < NUM_THREADS;t++) {
+	for (t = 0; t < NUM_THREADS; t++) {
 		data[t].p11 = p11;
 		data[t].slotid = slotid;
 		data[t].thread_id = t;
@@ -670,7 +699,7 @@ void testRSASigningMultiThreading(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 	/* Free attribute and wait for the other threads */
 	pthread_attr_destroy(&attr);
 
-	for (t = 0;t < NUM_THREADS;t++) {
+	for (t = 0; t < NUM_THREADS; t++) {
 		rc = pthread_join(threads[t], &status);
 
 		if (rc) {
@@ -681,50 +710,50 @@ void testRSASigningMultiThreading(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 		printf("Thread %ld completed\n", t);
 	}
 
-	pthread_exit(NULL);
+	/* wrong usage: pthread_exit(NULL) */
 }
-#endif
 
 
 void testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
-	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
+	CK_OBJECT_CLASS class_private_key = CKO_PRIVATE_KEY;
 	CK_KEY_TYPE keyType = CKK_RSA;
-	CK_ATTRIBUTE template[] = {
-			{ CKA_CLASS, &class, sizeof(class) },
+	CK_ATTRIBUTE template_private_key[] = {
+			{ CKA_CLASS, &class_private_key, sizeof(class_private_key) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) }
 	};
 	CK_OBJECT_HANDLE hnd;
 	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
 //	CK_MECHANISM mech = { CKM_RSA_PKCS, 0, 0 };
-	char *tbs = "Hello World";
+	CK_BYTE_PTR tbs = (CK_BYTE_PTR)"Hello World";
+	int tbs_len = 11;
 	CK_BYTE signature[256];
 	CK_ULONG len;
 	char scr[1024];
-	int rc,keyno;
+	int rc, keyno;
 
 	keyno = 0;
 	while (1) {
-		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
+		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template_private_key, sizeof(template_private_key) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
 
 		if (rc != CKR_OK) {
 			break;
 		}
 		printf("Calling C_SignInit()");
 		rc = p11->C_SignInit(session, &mech, hnd);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Calling C_Sign()");
 
 		len = 0;
-		rc = p11->C_Sign(session, tbs, strlen(tbs), NULL, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		rc = p11->C_Sign(session, tbs, tbs_len, NULL, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Signature size = %lu\n", len);
 
 		len = sizeof(signature);
-		rc = p11->C_Sign(session, tbs, strlen(tbs), signature, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		rc = p11->C_Sign(session, tbs, tbs_len, signature, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		bin2str(scr, sizeof(scr), signature, len);
 		printf("Signature:\n%s\n", scr);
@@ -732,25 +761,25 @@ void testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 		printf("Calling C_SignInit()");
 		rc = p11->C_SignInit(session, &mech, hnd);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Calling C_SignUpdate(1)");
 		rc = p11->C_SignUpdate(session, tbs, 6);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Calling C_SignUpdate(2)");
-		rc = p11->C_SignUpdate(session, tbs + 6, strlen(tbs) - 6);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		rc = p11->C_SignUpdate(session, tbs + 6, tbs_len - 6);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		len = 0;
 		rc = p11->C_SignFinal(session, NULL, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Signature size = %lu\n", len);
 
 		len = sizeof(signature);
 		rc = p11->C_SignFinal(session, signature, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		bin2str(scr, sizeof(scr), signature, len);
 		printf("Signature:\n%s\n", scr);
@@ -763,11 +792,11 @@ void testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
-	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
+	CK_OBJECT_CLASS class_private_key = CKO_PRIVATE_KEY;
 	CK_KEY_TYPE keyType = CKK_RSA;
 	CK_CHAR label[] = "Joe Doe (RSA2048)";
-	CK_ATTRIBUTE template[] = {
-			{ CKA_CLASS, &class, sizeof(class) },
+	CK_ATTRIBUTE template_private_key[] = {
+			{ CKA_CLASS, &class_private_key, sizeof(class_private_key) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
 			{ CKA_LABEL, &label, strlen(label) }
 	};
@@ -781,7 +810,7 @@ void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	char scr[1024];
 	int rc;
 
-	rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), 0, &hnd);
+	rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template_private_key, sizeof(template_private_key) / sizeof(CK_ATTRIBUTE), 0, &hnd);
 
 	if (rc != CKR_OK) {
 		printf("Key %s not found\n", label);
@@ -790,19 +819,19 @@ void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	printf("Calling C_DecryptInit()");
 	rc = p11->C_DecryptInit(session, &mech_raw, hnd);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_Decrypt()");
 
 	len = 0;
 	rc = p11->C_Decrypt(session, raw_cryptogram, 256, NULL, &len);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Plain size = %lu\n", len);
 
 	len = sizeof(plain);
 	rc = p11->C_Decrypt(session, raw_cryptogram, 256, plain, &len);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	bin2str(scr, sizeof(scr), plain, len);
 	printf("Plain:\n%s\n", scr);
@@ -810,19 +839,19 @@ void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	printf("Calling C_DecryptInit()");
 	rc = p11->C_DecryptInit(session, &mech_p15, hnd);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_Decrypt()");
 
 	len = 0;
 	rc = p11->C_Decrypt(session, p15_cryptogram, 256, NULL, &len);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Plain size = %lu\n", len);
 
 	len = sizeof(plain);
 	rc = p11->C_Decrypt(session, p15_cryptogram, 256, plain, &len);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	bin2str(scr, sizeof(scr), plain, len);
 	printf("Plain:\n%s\n", scr);
@@ -833,15 +862,16 @@ void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 void testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
-	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
+	CK_OBJECT_CLASS class_private_key = CKO_PRIVATE_KEY;
 	CK_KEY_TYPE keyType = CKK_ECDSA;
-	CK_ATTRIBUTE template[] = {
-			{ CKA_CLASS, &class, sizeof(class) },
+	CK_ATTRIBUTE template_private_key[] = {
+			{ CKA_CLASS, &class_private_key, sizeof(class_private_key) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) }
 	};
 	CK_OBJECT_HANDLE hnd;
 	CK_MECHANISM mech = { CKM_ECDSA_SHA1, 0, 0 };
-	char *tbs = "Hello World";
+	CK_BYTE_PTR tbs = (CK_BYTE_PTR)"Hello World";
+	int tbs_len = 11;
 	CK_BYTE signature[256];
 	CK_ULONG len;
 	char scr[1024];
@@ -849,26 +879,26 @@ void testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	keyno = 0;
 	while (1) {
-		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
+		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template_private_key, sizeof(template_private_key) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
 
 		if (rc != CKR_OK) {
 			break;
 		}
 		printf("Calling C_SignInit()");
 		rc = p11->C_SignInit(session, &mech, hnd);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Calling C_Sign()");
 
 		len = 0;
-		rc = p11->C_Sign(session, tbs, strlen(tbs), NULL, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		rc = p11->C_Sign(session, tbs, tbs_len, NULL, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Signature size = %lu\n", len);
 
 		len = sizeof(signature);
-		rc = p11->C_Sign(session, tbs, strlen(tbs), signature, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		rc = p11->C_Sign(session, tbs, tbs_len, signature, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		bin2str(scr, sizeof(scr), signature, len);
 		printf("Signature:\n%s\n", scr);
@@ -886,95 +916,95 @@ void testSessions(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 
 	printf("Calling C_OpenSession ");
 	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session1);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_OpenSession ");
 	rc = p11->C_OpenSession(slotid, CKF_SERIAL_SESSION, NULL, NULL, &session2);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session1, &sessioninfo);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_PUBLIC_SESSION));
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session2, &sessioninfo);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RO_PUBLIC_SESSION));
 
 	printf("Calling C_CloseSession ");
 	rc = p11->C_CloseSession(session2);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_CloseSession with wrong handle ");
 	rc = p11->C_CloseSession(session2);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_SESSION_HANDLE_INVALID));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_SESSION_HANDLE_INVALID));
 
 	printf("Calling C_CloseSession ");
 	rc = p11->C_CloseSession(session1);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	// Sequence inspired by PKCS#11 example
 	printf("Calling C_OpenSession ");
 	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session1);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_OpenSession ");
 	rc = p11->C_OpenSession(slotid, CKF_SERIAL_SESSION, NULL, NULL, &session2);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_Login(SO) ");
 	rc = p11->C_Login(session1, CKU_SO, sopin, sopinlen);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_SESSION_READ_ONLY_EXISTS));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_SESSION_READ_ONLY_EXISTS));
 
 	printf("Calling C_Login(SO) ");
 	rc = p11->C_Login(session2, CKU_SO, sopin, sopinlen);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_SESSION_READ_ONLY));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_SESSION_READ_ONLY));
 
 	printf("Calling C_Login(USER) ");
 	rc = p11->C_Login(session1, CKU_USER, pin, pinlen);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session1, &sessioninfo);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_USER_FUNCTIONS));
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session2, &sessioninfo);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RO_USER_FUNCTIONS));
 
 	printf("Calling C_OpenSession ");
 	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session3);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session3, &sessioninfo);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_USER_FUNCTIONS));
 
 	printf("Calling C_CloseSession ");
 	rc = p11->C_CloseSession(session3);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_Logout ");
 	rc = p11->C_Logout(session1);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session1, &sessioninfo);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_PUBLIC_SESSION));
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session2, &sessioninfo);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RO_PUBLIC_SESSION));
 
 	printf("Calling C_CloseAllSessions ");
 	rc = p11->C_CloseAllSessions(slotid);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 }
 
 
@@ -987,12 +1017,12 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session, &sessioninfo);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_PUBLIC_SESSION));
 
 	printf("Calling C_Login User ");
 	rc = p11->C_Login(session, CKU_USER, pin, pinlen);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (rc != CKR_OK) {
 		exit(-1);
@@ -1000,16 +1030,16 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session, &sessioninfo);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_USER_FUNCTIONS));
 
 	printf("Calling C_Logout ");
 	rc = p11->C_Logout(session);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session, &sessioninfo);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_PUBLIC_SESSION));
 
 	printf("Calling C_GetTokenInfo ");
@@ -1019,11 +1049,11 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	printf("Calling C_Login User ");
 	rc = p11->C_Login(session, CKU_USER, wrongpin, pinlen);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_PIN_INCORRECT));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_PIN_INCORRECT));
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session, &sessioninfo);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_PUBLIC_SESSION));
 
 	printf("Calling C_GetTokenInfo ");
@@ -1033,11 +1063,11 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	printf("Calling C_Login User ");
 	rc = p11->C_Login(session, CKU_USER, wrongpin, pinlen);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_PIN_INCORRECT));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_PIN_INCORRECT));
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session, &sessioninfo);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_PUBLIC_SESSION));
 
 	printf("Calling C_GetTokenInfo ");
@@ -1048,11 +1078,11 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 #if 0
 	printf("Calling C_Login User ");
 	rc = p11->C_Login(session, CKU_USER, wrongpin, pinlen);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_PIN_LOCKED));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_PIN_LOCKED));
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session, &sessioninfo);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_PUBLIC_SESSION));
 
 	printf("Calling C_GetTokenInfo ");
@@ -1062,11 +1092,11 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	printf("Calling C_Login User ");
 	rc = p11->C_Login(session, CKU_USER, pin, pinlen);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session, &sessioninfo);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_USER_FUNCTIONS));
 
 	printf("Calling C_GetTokenInfo ");
@@ -1077,12 +1107,12 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 		printf("Calling C_Logout ");
 		rc = p11->C_Logout(session);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Testing CKF_PROTECTED_AUTHENTICATION_PATH - Please enter correct PIN on pin-pad\n");
 		printf("Calling C_Login User");
 		rc = p11->C_Login(session, CKU_USER, NULL, 0);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		if (rc != CKR_OK) {
 			exit(-1);
@@ -1090,22 +1120,22 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 		printf("Calling C_GetSessionInfo ");
 		rc = p11->C_GetSessionInfo(session, &sessioninfo);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 		printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_USER_FUNCTIONS));
 
 		printf("Calling C_Logout ");
 		rc = p11->C_Logout(session);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 
 		printf("Testing CKF_PROTECTED_AUTHENTICATION_PATH - Please enter wrong PIN on pin-pad\n");
 		printf("Calling C_Login User ");
 		rc = p11->C_Login(session, CKU_USER, NULL, 0);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_PIN_INCORRECT));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_PIN_INCORRECT));
 
 		printf("Calling C_GetSessionInfo ");
 		rc = p11->C_GetSessionInfo(session, &sessioninfo);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 		printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_PUBLIC_SESSION));
 
 		/*
@@ -1113,7 +1143,7 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		 */
 		printf("Calling C_Login User ");
 		rc = p11->C_Login(session, CKU_USER, pin, pinlen);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		if (rc != CKR_OK) {
 			exit(-1);
@@ -1121,7 +1151,7 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 		printf("Calling C_GetSessionInfo ");
 		rc = p11->C_GetSessionInfo(session, &sessioninfo);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 		printf("Session state %lu - %s\n", sessioninfo.state, verdict(sessioninfo.state == CKS_RW_USER_FUNCTIONS));
 
 	}
@@ -1147,7 +1177,7 @@ void testInsertRemove(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 
 		printf("Calling C_GetSlotInfo for slot %lu ", slotid);
 		rc = p11->C_GetSlotInfo(slotid, &slotinfo);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		if (slotinfo.flags & CKF_TOKEN_PRESENT) {
 			printf("slotinfo.flags - Failed\n");
@@ -1155,7 +1185,7 @@ void testInsertRemove(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 
 		printf("Calling C_GetTokenInfo ");
 		rc = p11->C_GetTokenInfo(slotid, &tokeninfo);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_TOKEN_NOT_PRESENT));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_TOKEN_NOT_PRESENT));
 
 		printf("Please insert card in slot %lu and press <ENTER>\n", slotid);
 		inp = NULL;
@@ -1164,7 +1194,7 @@ void testInsertRemove(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 
 		printf("Calling C_GetSlotInfo for slot %lu ", slotid);
 		rc = p11->C_GetSlotInfo(slotid, &slotinfo);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		if (!(slotinfo.flags & CKF_TOKEN_PRESENT)) {
 			printf("slotinfo.flags - Failed\n");
@@ -1172,7 +1202,7 @@ void testInsertRemove(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 
 		printf("Calling C_GetTokenInfo ");
 		rc = p11->C_GetTokenInfo(slotid, &tokeninfo);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		if (rc == CKR_OK) {
 			printf("Token label: %s\n", p11string(tokeninfo.label, sizeof(tokeninfo.label)));
@@ -1205,6 +1235,12 @@ void main(int argc, char *argv[])
 	CK_RV (*C_GetFunctionList)(CK_FUNCTION_LIST_PTR_PTR);
 	char *p11libname = P11LIBNAME;
 
+#if defined(_WIN32) && defined(_DEBUG)
+	atexit((void(*)(void))_CrtDumpMemoryLeaks);
+	//_CrtSetBreakAlloc(494);
+#endif
+
+	mutex_init(&verdictMutex);
 
 	if (argc == 2) {
 		p11libname = argv[1];
@@ -1227,7 +1263,7 @@ void main(int argc, char *argv[])
 	printf("Calling C_Initialize ");
 
 	rc = p11->C_Initialize(NULL);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (rc != CKR_OK) {
 		exit(-1);
@@ -1236,7 +1272,7 @@ void main(int argc, char *argv[])
 	printf("Calling C_GetInfo ");
 
 	rc = p11->C_GetInfo(&info);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (rc != CKR_OK) {
 		exit(-1);
@@ -1247,14 +1283,14 @@ void main(int argc, char *argv[])
 	rc = p11->C_GetSlotList(FALSE, NULL, &slots);
 
 	if (rc != CKR_OK) {
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 		exit(-1);
 	}
 
 	slotlist = (CK_SLOT_ID_PTR) malloc(sizeof(CK_SLOT_ID) * slots);
 
 	rc = p11->C_GetSlotList(FALSE, slotlist, &slots);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (rc != CKR_OK) {
 		exit(-1);
@@ -1264,17 +1300,17 @@ void main(int argc, char *argv[])
 	j = -1;
 
 	while (i < slots) {
-		slotid = *(slotlist + i);
+		slotid = slotlist[i];
 
 		// testInsertRemove(p11, slotid);
 
 		printf("Calling C_GetSlotInfo for slot %lu ", slotid);
 
 		rc = p11->C_GetSlotInfo(slotid, &slotinfo);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		if (rc != CKR_OK) {
-			printf("Error getting slot information from cryptoki. slotid = %lu, rc = %lu = %s\n", slotid, rc, id2name(p11CKRName, rc, NULL));
+			printf("Error getting slot information from cryptoki. slotid = %lu, rc = %lu = %s\n", slotid, rc, id2name(p11CKRName, rc, NULL, namebuf));
 			free(slotlist);
 			exit(-1);
 		}
@@ -1286,10 +1322,10 @@ void main(int argc, char *argv[])
 		printf("Calling C_GetTokenInfo ");
 
 		rc = p11->C_GetTokenInfo(slotid, &tokeninfo);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0), rc == CKR_OK ? "Passed" : rc == CKR_TOKEN_NOT_PRESENT ? "No token" : "Failed");
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), rc == CKR_OK ? "Passed" : rc == CKR_TOKEN_NOT_PRESENT ? "No token" : "Failed");
 
 		if (rc != CKR_OK && rc != CKR_TOKEN_NOT_PRESENT) {
-			printf("Error getting token information from cryptoki. slotid = %lu, rc = %lu = %s\n", slotid, rc, id2name(p11CKRName, rc, NULL));
+			printf("Error getting token information from cryptoki. slotid = %lu, rc = %lu = %s\n", slotid, rc, id2name(p11CKRName, rc, 0, namebuf));
 			free(slotlist);
 			exit(-1);
 		}
@@ -1308,15 +1344,17 @@ void main(int argc, char *argv[])
 		exit(-1);
 	}
 
-	slotid = *(slotlist + j);
+	slotid = slotlist[j];
 	free(slotlist);
+
+#if 1
 
 	testSessions(p11, slotid);
 
 	printf("Calling C_OpenSession ");
 
 	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (rc != CKR_OK) {
 		exit(-1);
@@ -1334,19 +1372,19 @@ void main(int argc, char *argv[])
 
 	testRSASigning(p11, session);
 
-#ifndef WIN32
 	testRSASigningMultiThreading(p11, slotid);
-#endif
 
 //	Test requires valid crypto matching card used for testing
 //	testRSADecryption(p11, session);
 
 	testECSigning(p11, session);
 
+#endif
+
 	printf("Calling C_Finalize ");
 
 	rc = p11->C_Finalize(NULL);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (rc != CKR_OK) {
 		exit(-1);
@@ -1357,5 +1395,6 @@ void main(int argc, char *argv[])
 	printf("Unit test finished.\n");
 	printf("%d tests performed.\n", testscompleted);
 	printf("%d tests failed.\n", testsfailed);
+
 	exit(testsfailed ? -1 : 0);
 }
