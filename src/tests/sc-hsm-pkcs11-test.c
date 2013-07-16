@@ -469,30 +469,30 @@ void dumpAttribute(CK_ATTRIBUTE_PTR attr)
 
 void dumpObject(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE hnd)
 {
-	CK_ATTRIBUTE template[P11CKA];
+	CK_ATTRIBUTE template_private_key[P11CKA];
 	int rc, i;
 
-	memset(template, 0, sizeof(template));
+	memset(template_private_key, 0, sizeof(template_private_key));
 	for (i = 0; i < P11CKA; i++) {
-		template[i].type = p11CKAName[i].id;
+		template_private_key[i].type = p11CKAName[i].id;
 	}
 	printf("Calling C_GetAttributeValue ");
-	rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&template, P11CKA);
+	rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&template_private_key, P11CKA);
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), (rc == CKR_OK) || (rc == CKR_ATTRIBUTE_TYPE_INVALID) ? "Passed" : "Failed");
 
 	for (i = 0; i < P11CKA; i++) {
-		if ((CK_LONG)template[i].ulValueLen > 0) {
-			template[i].pValue = alloca(template[i].ulValueLen);
+		if ((CK_LONG)template_private_key[i].ulValueLen > 0) {
+			template_private_key[i].pValue = alloca(template_private_key[i].ulValueLen);
 		}
 	}
 
 	printf("Calling C_GetAttributeValue ");
-	rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&template, P11CKA);
+	rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&template_private_key, P11CKA);
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), (rc == CKR_OK) || (rc == CKR_ATTRIBUTE_TYPE_INVALID) ? "Passed" : "Failed");
 
 	for (i = 0; i < P11CKA; i++) {
-		if ((CK_LONG)template[i].ulValueLen > 0) {
-			dumpAttribute(&template[i]);
+		if ((CK_LONG)template_private_key[i].ulValueLen > 0) {
+			dumpAttribute(&template_private_key[i]);
 		}
 	}
 }
@@ -579,16 +579,17 @@ SignThread(void *arg)
 	CK_SLOT_ID slotid = d->slotid;
 	CK_SESSION_HANDLE session;
 
-	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
+	CK_OBJECT_CLASS class_private_key = CKO_PRIVATE_KEY;
 	CK_KEY_TYPE keyType = CKK_RSA;
-	CK_ATTRIBUTE template[] = {
-			{ CKA_CLASS, &class, sizeof(class) },
+	CK_ATTRIBUTE template_private_key[] = {
+			{ CKA_CLASS, &class_private_key, sizeof(class_private_key) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) }
 	};
 
 	CK_OBJECT_HANDLE hnd;
 	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
-	char *tbs = "Hello World";
+	CK_BYTE_PTR tbs = (CK_BYTE_PTR)"Hello World";
+	int tbs_len = 11;
 	CK_BYTE signature[256];
 	CK_ULONG len;
 	char scr[1024];
@@ -603,7 +604,7 @@ SignThread(void *arg)
 
 	while (1) {
 		printf("Calling findObject (Thread %i, Session %ld)\n", id, session);
-		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
+		rc = findObject(p11, session, template_private_key, sizeof(template_private_key) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
 
 		if (rc != CKR_OK) {
 			printf("Key %i not found (Thread %i, Session %ld)\n", keyno, id, session);
@@ -616,13 +617,13 @@ SignThread(void *arg)
 		printf("Calling C_Sign (Thread %i, Session %ld)", id, session);
 
 		len = 0;
-		rc = p11->C_Sign(session, tbs, strlen(tbs), NULL, &len);
+		rc = p11->C_Sign(session, tbs, tbs_len, NULL, &len);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Signature size = %lu\n", len);
 
 		len = sizeof(signature);
-		rc = p11->C_Sign(session, tbs, strlen(tbs), signature, &len);
+		rc = p11->C_Sign(session, tbs, tbs_len, signature, &len);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		bin2str(scr, sizeof(scr), signature, len);
@@ -638,7 +639,7 @@ SignThread(void *arg)
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Calling C_SignUpdate (Thread %i, Session %ld - Part #2)", id, session);
-		rc = p11->C_SignUpdate(session, tbs + 6, strlen(tbs) - 6);
+		rc = p11->C_SignUpdate(session, tbs + 6, tbs_len - 6);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		len = 0;
@@ -715,16 +716,17 @@ void testRSASigningMultiThreading(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 
 void testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
-	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
+	CK_OBJECT_CLASS class_private_key = CKO_PRIVATE_KEY;
 	CK_KEY_TYPE keyType = CKK_RSA;
-	CK_ATTRIBUTE template[] = {
-			{ CKA_CLASS, &class, sizeof(class) },
+	CK_ATTRIBUTE template_private_key[] = {
+			{ CKA_CLASS, &class_private_key, sizeof(class_private_key) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) }
 	};
 	CK_OBJECT_HANDLE hnd;
 	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
 //	CK_MECHANISM mech = { CKM_RSA_PKCS, 0, 0 };
 	CK_BYTE_PTR tbs = (CK_BYTE_PTR)"Hello World";
+	int tbs_len = 11;
 	CK_BYTE signature[256];
 	CK_ULONG len;
 	char scr[1024];
@@ -732,7 +734,7 @@ void testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	keyno = 0;
 	while (1) {
-		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
+		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template_private_key, sizeof(template_private_key) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
 
 		if (rc != CKR_OK) {
 			break;
@@ -744,13 +746,13 @@ void testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		printf("Calling C_Sign()");
 
 		len = 0;
-		rc = p11->C_Sign(session, tbs, strlen(tbs), NULL, &len);
+		rc = p11->C_Sign(session, tbs, tbs_len, NULL, &len);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Signature size = %lu\n", len);
 
 		len = sizeof(signature);
-		rc = p11->C_Sign(session, tbs, strlen(tbs), signature, &len);
+		rc = p11->C_Sign(session, tbs, tbs_len, signature, &len);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		bin2str(scr, sizeof(scr), signature, len);
@@ -766,7 +768,7 @@ void testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Calling C_SignUpdate(2)");
-		rc = p11->C_SignUpdate(session, tbs + 6, strlen(tbs) - 6);
+		rc = p11->C_SignUpdate(session, tbs + 6, tbs_len - 6);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		len = 0;
@@ -790,11 +792,11 @@ void testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
-	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
+	CK_OBJECT_CLASS class_private_key = CKO_PRIVATE_KEY;
 	CK_KEY_TYPE keyType = CKK_RSA;
 	CK_CHAR label[] = "Joe Doe (RSA2048)";
-	CK_ATTRIBUTE template[] = {
-			{ CKA_CLASS, &class, sizeof(class) },
+	CK_ATTRIBUTE template_private_key[] = {
+			{ CKA_CLASS, &class_private_key, sizeof(class_private_key) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
 			{ CKA_LABEL, &label, strlen(label) }
 	};
@@ -808,7 +810,7 @@ void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	char scr[1024];
 	int rc;
 
-	rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), 0, &hnd);
+	rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template_private_key, sizeof(template_private_key) / sizeof(CK_ATTRIBUTE), 0, &hnd);
 
 	if (rc != CKR_OK) {
 		printf("Key %s not found\n", label);
@@ -860,15 +862,16 @@ void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 void testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
-	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
+	CK_OBJECT_CLASS class_private_key = CKO_PRIVATE_KEY;
 	CK_KEY_TYPE keyType = CKK_ECDSA;
-	CK_ATTRIBUTE template[] = {
-			{ CKA_CLASS, &class, sizeof(class) },
+	CK_ATTRIBUTE template_private_key[] = {
+			{ CKA_CLASS, &class_private_key, sizeof(class_private_key) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) }
 	};
 	CK_OBJECT_HANDLE hnd;
 	CK_MECHANISM mech = { CKM_ECDSA_SHA1, 0, 0 };
-	char *tbs = "Hello World";
+	CK_BYTE_PTR tbs = (CK_BYTE_PTR)"Hello World";
+	int tbs_len = 11;
 	CK_BYTE signature[256];
 	CK_ULONG len;
 	char scr[1024];
@@ -876,7 +879,7 @@ void testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	keyno = 0;
 	while (1) {
-		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
+		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template_private_key, sizeof(template_private_key) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
 
 		if (rc != CKR_OK) {
 			break;
@@ -888,13 +891,13 @@ void testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		printf("Calling C_Sign()");
 
 		len = 0;
-		rc = p11->C_Sign(session, tbs, strlen(tbs), NULL, &len);
+		rc = p11->C_Sign(session, tbs, tbs_len, NULL, &len);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Signature size = %lu\n", len);
 
 		len = sizeof(signature);
-		rc = p11->C_Sign(session, tbs, strlen(tbs), signature, &len);
+		rc = p11->C_Sign(session, tbs, tbs_len, signature, &len);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		bin2str(scr, sizeof(scr), signature, len);
@@ -1234,6 +1237,7 @@ void main(int argc, char *argv[])
 
 #if defined(_WIN32) && defined(_DEBUG)
 	atexit((void(*)(void))_CrtDumpMemoryLeaks);
+	//_CrtSetBreakAlloc(494);
 #endif
 
 	mutex_init(&verdictMutex);
