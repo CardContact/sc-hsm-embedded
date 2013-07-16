@@ -168,6 +168,7 @@ struct p15CertificateDescription certd_eUserPKI[] = {
 
 
 struct starcosApplication {
+	char *name;
 	struct bytestring_s aid;
 	unsigned char pinref;
 	int isQES;
@@ -183,6 +184,7 @@ static unsigned char aid_eUserPKI[] = { 0xA0,0x00,0x00,0x05,0x25,0x65,0x55,0x73,
 
 struct starcosApplication starcosApplications[] = {
 		{
+				"STARCOS.eSign1",
 				{ aid_eSign, sizeof(aid_eSign) },
 				0x81,
 				1,
@@ -192,6 +194,7 @@ struct starcosApplication starcosApplications[] = {
 				sizeof(certd_eSign1) / sizeof(struct p15CertificateDescription)
 		},
 		{
+				"STARCOS.eSign2",
 				{ aid_eSign, sizeof(aid_eSign) },
 				0x86,
 				1,
@@ -201,6 +204,7 @@ struct starcosApplication starcosApplications[] = {
 				sizeof(certd_eSign2) / sizeof(struct p15CertificateDescription)
 		},
 		{
+				"STARCOS.eUserPKI",
 				{ aid_eUserPKI, sizeof(aid_eUserPKI) },
 				0x06,
 				0,
@@ -1150,7 +1154,6 @@ static int newStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 	ptoken->slot = slot;
 	ptoken->freeObjectNumber = 1;
-	strbpcpy(ptoken->info.label, "STARCOS", sizeof(ptoken->info.label));
 	strbpcpy(ptoken->info.manufacturerID, "Giesecke & Devrient", sizeof(ptoken->info.manufacturerID));
 	strbpcpy(ptoken->info.model, "3.5 ID ECC C1", sizeof(ptoken->info.model));
 	ptoken->info.ulFreePrivateMemory = CK_UNAVAILABLE_INFORMATION;
@@ -1168,8 +1171,10 @@ static int newStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	ptoken->drv = &starcos_token;
 
 	sc = getPrivateData(ptoken);
-	sc->application = STARCOS_EUSERPKI;
+	sc->application = STARCOS_DEFAULT;
 	sc->selectedApplication = -1;
+
+	strbpcpy(ptoken->info.label, starcosApplications[sc->application].name, sizeof(ptoken->info.label));
 
 	// For QES application check PIN status after C_Sign
 	ptoken->checkPINAfterSigning = starcosApplications[sc->application].isQES;

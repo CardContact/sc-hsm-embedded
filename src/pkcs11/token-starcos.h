@@ -40,7 +40,7 @@
 #define STARCOS_ESIGN1          0
 #define STARCOS_ESIGN2          1
 #define STARCOS_EUSERPKI        2
-
+#define STARCOS_DEFAULT         STARCOS_EUSERPKI
 
 struct starcosPrivateData {
 	int                 application;

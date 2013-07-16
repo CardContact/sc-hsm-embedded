@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="doctg.xsl" ?>
+<testgroup 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="http://www.openscdp.org/schema/testframework-1.0.xsd"
+	id="tg_enumerate" arrayElement="testcase,function" arrayIndex="id,Name">
+	<name>Signing</name>
+	<description>
+		<p>Obtain information about SmartCard-HSM using PKCS#11 interface.</p>
+	</description>
+	<reference>
+		<p></p>
+	</reference>
+
+<!-- Initializing the test group environment -->
+
+
+	<constructor Param="name, parameter">
+		<Script><![CDATA[		
+		//Call constructor of super class TestGroup and define name of test group
+		TestGroup.call(this, name, parameter);
+		]]></Script>
+	</constructor>
+
+
+
+<!-- Setup method called before each test case is executed -->
+	<setup>
+		<Script><![CDATA[
+			
+		]]></Script>
+	</setup>
+
+
+
+<!-- Teardown method called after each test case is executed -->
+	<teardown>
+		<Script><![CDATA[
+		
+	
+		]]></Script>
+	</teardown>
+
+
+
+	<testcase id="001_Enumerate">
+		<name>Enumerate slots and objects</name>
+		<description>
+			<p></p>
+		</description>
+		<requirement>
+			<p></p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slots = p.getSlots();
+
+	this.assertTrue(slots.length > 0, "PKCS#11 provider does not enumerate any slots");
+
+	var cardSlots = 0;
+	var cardTokenPresent = 0;
+	var slot;
+
+	for (var i = 0; i < slots.length; i++) {
+		var s = slots[i];
+	
+		dumpSlotInfo(s);
+	
+		if (s.isRemovableDevice()) {
+			cardSlots++;
+			if (s.isTokenPresent()) {
+				cardTokenPresent++;
+				slot = s.getId();
+				break;
+			}
+		}
+	}
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	var privateKey = null;
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	// Enumerate public and private objects
+	var objs = s.enumerateObjects();
+	
+	print("Objects listed in R/O user session:");
+	for (var i = 0; i < objs.length; i++) {
+		var o = objs[i];
+		var cl = o.getNumberAttribute(PKCS11Object.CKA_CLASS);
+		print("Class :" + str4class(cl));
+		
+		var id = o.getAttribute(PKCS11Object.CKA_ID);
+		if (id != null) {
+			print(" Id     :" + id.toString(HEX));
+		}
+		var label = o.getAttribute(PKCS11Object.CKA_LABEL);
+		if (label != null) {
+			print(" Label :" + label.toString(ASCII));
+		}
+		if (cl == PKCS11Object.CKO_PRIVATE_KEY) {
+			privateKey = o;
+		}
+	}
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+</testgroup>
