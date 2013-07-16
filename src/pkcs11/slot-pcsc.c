@@ -392,8 +392,9 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 	LONG rv;
 	DWORD dwActiveProtocol;
 	WORD feature;
-	DWORD featurecode, lenr;
+	DWORD featurecode, lenr, atrlen,readernamelen,state,protocol;
 	unsigned char buf[256];
+	unsigned char atr[MAX_ATR_SIZE];
 
 	FUNC_CALLED();
 
@@ -416,7 +417,17 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 		FUNC_FAILS(CKR_DEVICE_ERROR, pcsc_error_to_string(rv));
 	}
 
-	rc = newToken(slot, &ptoken);
+	readernamelen = 0;
+	atrlen = sizeof(atr);
+
+	rc = SCardStatus(slot->card, NULL, &readernamelen, &state, &protocol, atr, &atrlen);
+
+	if (rc != SCARD_S_SUCCESS) {
+		closeSlot(slot);
+		FUNC_FAILS(CKR_DEVICE_ERROR, pcsc_error_to_string(rc));
+	}
+
+	rc = newToken(slot, atr, atrlen, &ptoken);
 
 	if (rc != CKR_OK) {
 		FUNC_FAILS(rc, "newToken() failed");
@@ -676,7 +687,7 @@ int closePCSCSlot(struct p11Slot_t *slot)
 		debug("SCardReleaseContext (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rc));
 #endif
 
-		slot->context = 0;
+		globalContext = 0;
 	}
 
 	/* No token in slot */
@@ -698,6 +709,7 @@ int closePCSCSlot(struct p11Slot_t *slot)
 	debug("SCardReleaseContext (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rc));
 #endif
 
+	slot->context = 0;
 	slot->card = 0;
 	slot->closed = TRUE;
 
