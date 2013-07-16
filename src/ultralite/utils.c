@@ -151,7 +151,7 @@ int SC_Close()
 
 #endif /* !CTAPI */
 
-static int SC_Logon(const char *pin)
+int SC_Logon(const char *pin)
 {
 	uint16 sw1sw2;
 	uint8 buf[256];
