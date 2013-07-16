@@ -37,9 +37,38 @@
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/p11generic.h>
 
+/*
+ * Define human readable constants for
+ *	bmFormatString
+ * according to USB CCID Spec Rev. 1.1
+ */
+
 #define PIN_FORMAT_BINARY	0x00
 #define PIN_FORMAT_BCD		0x01
 #define PIN_FORMAT_ASCII	0x02
+
+#define PIN_SYSTEM_UNIT_BITS	0x00
+#define PIN_SYSTEM_UNIT_BYTES	0x80
+
+#define PIN_LEFT_JUSTIFICATION		0x00
+#define PIN_RIGHT_JUSTIFICATION		0x04
+
+#define PIN_POSITION_0		(0x00 << 3)
+#define PIN_POSITION_1		(0x01 << 3)
+#define PIN_POSITION_2		(0x02 << 3)
+#define PIN_POSITION_3		(0x03 << 3)
+#define PIN_POSITION_4		(0x04 << 3)
+#define PIN_POSITION_5		(0x05 << 3)
+#define PIN_POSITION_6		(0x06 << 3)
+#define PIN_POSITION_7		(0x07 << 3)
+#define PIN_POSITION_8		(0x08 << 3)
+#define PIN_POSITION_9		(0x09 << 3)
+#define PIN_POSITION_10		(0x0A << 3)
+#define PIN_POSITION_11		(0x0B << 3)
+#define PIN_POSITION_12		(0x0C << 3)
+#define PIN_POSITION_13		(0x0D << 3)
+#define PIN_POSITION_14		(0x0E << 3)
+#define PIN_POSITION_15		(0x0F << 3)
 
 #define MAX_CERTIFICATE_SIZE	4096
 

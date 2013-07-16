@@ -52,7 +52,9 @@ int transmitAPDU(struct p11Slot_t *slot,
 		int InLen, unsigned char *InData, int InSize, unsigned short *SW1SW2);
 
 int transmitVerifyPinAPDU(struct p11Slot_t *slot,
-		unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2, unsigned short *SW1SW2,
+		unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
+		int OutLen, unsigned char *OutData,
+		unsigned short *SW1SW2,
 		unsigned char pinformat, unsigned char minpinsize, unsigned char maxpinsize,
 		unsigned char pinblockstring, unsigned char pinlengthformat);
 

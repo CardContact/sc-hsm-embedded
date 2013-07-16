@@ -321,7 +321,7 @@ int transmitVerifyPinAPDUviaPCSC(struct p11Slot_t *slot,
 
 	verify.bTimeOut = 0x00;
 	verify.bTimeOut2 = 0x00;
-	verify.bmFormatString = 0x80 | pinformat;
+	verify.bmFormatString = pinformat;
 	verify.bmPINBlockString = pinblockstring;
 	verify.bmPINLengthFormat = pinlengthformat;
 

@@ -829,7 +829,14 @@ static int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin
 #ifdef DEBUG
 			debug("Verify PIN using CKF_PROTECTED_AUTHENTICATION_PATH\n");
 #endif
-			rc = transmitVerifyPinAPDU(slot, 0x00, 0x20, 0x00, 0x81, &SW1SW2, PIN_FORMAT_ASCII, 0x06, 0x0F, 0x00, 0x00);
+			rc = transmitVerifyPinAPDU(slot, 0x00, 0x20, 0x00, 0x81,
+					0, NULL,
+					&SW1SW2,
+					PIN_SYSTEM_UNIT_BYTES + PIN_POSITION_0 + PIN_LEFT_JUSTIFICATION + PIN_FORMAT_ASCII, /* bmFormatString */
+					0x06, 0x0F, /* Minimum and maximum length of PIN */
+					0x00, /* bmPINBlockString: no inserted PIN length, no PIN block size*/
+					0x00 /* bmPINLengthFormat: no PIN length insertion - set to all zeros */
+					);
 		} else {
 #ifdef DEBUG
 			debug("Verify PIN using provided PIN value\n");

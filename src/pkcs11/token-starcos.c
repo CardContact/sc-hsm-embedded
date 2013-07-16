@@ -1074,15 +1074,37 @@ static int login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 		}
 		// Store SO PIN
 	} else {
-		rc = encodeF2B(pin, pinlen, f2b);
 
-		if (rc != CKR_OK) {
-			FUNC_FAILS(rc, "Could not encode PIN");
+		if (slot->hasFeatureVerifyPINDirect && !pinlen && !pin) {
+#ifdef DEBUG
+			debug("Verify PIN using CKF_PROTECTED_AUTHENTICATION_PATH\n");
+#endif
+			memset(f2b, 0xFF, 8);
+			f2b[0] = 0x20;
+
+			rc = transmitVerifyPinAPDU(slot, 0x00, 0x20, 0x00, starcosApplications[sc->application].pinref,
+					8, f2b,
+					&SW1SW2,
+					PIN_SYSTEM_UNIT_BYTES + PIN_POSITION_1 + PIN_LEFT_JUSTIFICATION + PIN_FORMAT_BCD, /* bmFormatString */
+					0x06, 0x0F, /* Minimum and maximum length of PIN */
+					0x47, /* bmPINBlockString: inserted PIN length is 4 bits, 7 bytes PIN block*/
+					0x04 /* bmPINLengthFormat: system units are bits, PIN length position is 4 bits*/
+					);
+		} else {
+#ifdef DEBUG
+			debug("Verify PIN using provided PIN value\n");
+#endif
+			rc = encodeF2B(pin, pinlen, f2b);
+
+			if (rc != CKR_OK) {
+				FUNC_FAILS(rc, "Could not encode PIN");
+			}
+
+			rc = transmitAPDU(slot, 0x00, 0x20, 0x00, starcosApplications[sc->application].pinref,
+					8, f2b,
+					0, NULL, 0, &SW1SW2);
 		}
 
-		rc = transmitAPDU(slot, 0x00, 0x20, 0x00, starcosApplications[sc->application].pinref,
-				8, f2b,
-				0, NULL, 0, &SW1SW2);
 
 		if (rc < 0) {
 			FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
