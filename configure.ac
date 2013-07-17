@@ -16,11 +16,16 @@ AC_ARG_ENABLE(debug,
 
 AC_ARG_ENABLE(ctapi,
 		AS_HELP_STRING([--enable-ctapi],[enable CT-API support (disables PC/SC)]),
-		[CPPFLAGS+=" -DCTAPI"], [])
-
-PKG_CHECK_MODULES(PCSC, libpcsclite)
+		[CPPFLAGS+=" -DCTAPI"], [enable_pcsc="yes"])
 
 PKG_CHECK_MODULES(LIBUSB, libusb-1.0)
+
+if test "${enable_pcsc}" = "yes"; then
+	PKG_CHECK_MODULES(PCSC, libpcsclite)
+fi
+
+AM_CONDITIONAL([ENABLE_PCSC], [test "${enable_pcsc}" = "yes"])
+AM_CONDITIONAL([ENABLE_CTAPI], [test "${enable_pcsc}" != "yes"])
 
 AC_CONFIG_FILES([
     Makefile
