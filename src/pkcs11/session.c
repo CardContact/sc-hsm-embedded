@@ -75,6 +75,8 @@ int terminateSessionPool(struct p11SessionPool_t *pool)
 	/* clear the session pool */
 	while (pSession) {
 
+		free(pSession->cryptoBuffer);
+
 		/* clear the search objects */
 		pObject = pSession->searchObj.searchList;
 
