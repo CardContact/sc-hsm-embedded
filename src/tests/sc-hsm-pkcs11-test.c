@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <ctype.h>
 
 /* #define NO_THREADING */
@@ -1235,7 +1236,8 @@ void testInsertRemove(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 
 void main(int argc, char *argv[])
 {
-	int i,j;
+	time_t time0 = time(0);
+	int i, j;
 	CK_RV rc;
 	CK_LONG slots;
 	CK_SESSION_HANDLE session;
@@ -1369,8 +1371,6 @@ void main(int argc, char *argv[])
 	slotid = slotlist[j];
 	free(slotlist);
 
-#if 1
-
 	testSessions(p11, slotid);
 
 	printf("Calling C_OpenSession ");
@@ -1401,8 +1401,6 @@ void main(int argc, char *argv[])
 
 	testECSigning(p11, session);
 
-#endif
-
 	printf("Calling C_Finalize ");
 
 	rc = p11->C_Finalize(NULL);
@@ -1417,6 +1415,7 @@ void main(int argc, char *argv[])
 	printf("Unit test finished.\n");
 	printf("%d tests performed.\n", testscompleted);
 	printf("%d tests failed.\n", testsfailed);
+	printf("%time used: %d s\n", time(0) - time0);
 
 	exit(testsfailed ? -1 : 0);
 }

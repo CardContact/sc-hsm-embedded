@@ -56,25 +56,85 @@
 #endif /* _WIN32 */
 #endif /* CTAPI */
 
-#ifdef DEBUG
-#define FUNC_CALLED() do { \
-		debug("Function %s called.\n", __FUNCTION__); \
-} while (0)
+#ifndef _WIN32
+#include <pthread.h>
+#define MUTEX pthread_mutex_t
+#define mutex_init(mutex)    pthread_mutex_init(mutex, NULL)
+#define mutex_lock(mutex)    pthread_mutex_lock(mutex)
+#define mutex_unlock(mutex)  pthread_mutex_unlock(mutex)
+#define mutex_destroy(mutex) pthread_mutex_destroy(mutex)
+#else
+#define MUTEX CRITICAL_SECTION
+#define mutex_init(mutex)    (InitializeCriticalSection(mutex), 0)
+#define mutex_lock(mutex)    (EnterCriticalSection(mutex), 0)
+#define mutex_unlock(mutex)  (LeaveCriticalSection(mutex), 0)
+#define mutex_destroy(mutex) (DeleteCriticalSection(mutex), 0)
+#endif
 
-#define FUNC_RETURNS(rc) do { \
+#ifdef DEBUG
+
+#define LOCKED_FUNC_ENTER CK_RV _locked_rv; \
+		if (context == NULL) return CKR_CRYPTOKI_NOT_INITIALIZED; \
+		if (mutex_lock(&context->mutex)) return CKR_MUTEX_BAD; {
+
+#define LOCKED_FUNC_RETURNS(rc) { \
+		debug("Function %s completes with rc=%d.\n", __FUNCTION__, _locked_rv = (rc)); \
+		goto _locked_return; \
+}
+
+#define LOCKED_FUNC_FAILS(rc, msg) { \
+		debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, _locked_rv = (rc), (msg)); \
+		goto _locked_return; \
+}
+
+#define LOCKED_FUNC_LEAVE } \
+		_locked_return: mutex_unlock(&context->mutex); return _locked_rv;
+
+
+#define FUNC_CALLED() { \
+		debug("Function %s called.\n", __FUNCTION__); \
+}
+
+#define FUNC_RETURNS(rc) { \
 		debug("Function %s completes with rc=%d.\n", __FUNCTION__, (rc)); \
 		return rc; \
-} while (0)
+}
 
-#define FUNC_FAILS(rc, msg) do { \
+#define FUNC_FAILS(rc, msg) { \
 		debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, (rc), (msg)); \
 		return rc; \
-} while (0)
+}
 
 #else
+
+#define LOCKED_FUNC_ENTER CK_RV _locked_rv; \
+		if (context == NULL) return CKR_CRYPTOKI_NOT_INITIALIZED; \
+		if (mutex_lock(&context->mutex)) return CKR_MUTEX_BAD; {
+
+#define LOCKED_FUNC_RETURNS(rc) { \
+		_locked_rv = (rc); \
+		goto _locked_return; \
+}
+
+#define LOCKED_FUNC_FAILS(rc, msg) { \
+		_locked_rv = (rc); \
+		goto _locked_return; \
+}
+
+#define LOCKED_FUNC_LEAVE } \
+		_locked_return: mutex_unlock(&context->mutex); return _locked_rv;
+
+
 #define FUNC_CALLED()
-#define FUNC_RETURNS(rc) return (rc)
-#define FUNC_FAILS(rc, msg) return (rc)
+
+#define FUNC_RETURNS(rc) { \
+		return rc; \
+}
+
+#define FUNC_FAILS(rc, msg) { \
+		return rc; \
+}
+
 #endif
 
 /**
@@ -146,6 +206,7 @@ struct p11Context_t {
 	CK_INFO info;                           /**< General information about cryptoki       */
 	CK_HW_FEATURE_TYPE hw_feature;          /**< Hardware feature type of device          */
 
+	MUTEX mutex;
 	FILE *debugFileHandle;
 
 	struct p11SessionPool_t *sessionPool;   /**< Pointer to session pool                  */

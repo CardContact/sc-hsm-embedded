@@ -55,6 +55,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 		CK_OBJECT_HANDLE_PTR phObject
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv = 0;
 	struct p11Object_t *pObject;
 	struct p11Session_t *session;
@@ -64,38 +66,38 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (!isValidPtr(pTemplate)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	if (!isValidPtr(phObject)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	pObject = (struct p11Object_t *)calloc(1, sizeof(struct p11Object_t));
 
 	if (pObject == NULL) {
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+		LOCKED_FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
 	pos = findAttributeInTemplate(CKA_CLASS, pTemplate, ulCount);
 
 	if (pos == -1) {
 		free(pObject);
-		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_CLASS not found in template");
+		LOCKED_FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_CLASS not found in template");
 	}
 
 	if (!isValidPtr(pTemplate[pos].pValue) || (pTemplate[pos].ulValueLen != sizeof(CK_LONG))) {
-		FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_CLASS has invalid value");
+		LOCKED_FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_CLASS has invalid value");
 	}
 
 	switch (*(CK_LONG *)pTemplate[pos].pValue) {
@@ -116,7 +118,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 	rv = findSlot(context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	/* Check if this is a session or a token object */
@@ -129,13 +131,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 
 		if (rv != CKR_OK) {
 			removeObject(slot->token, pObject->handle, pObject->publicObj);
-			FUNC_RETURNS(rv);
+			LOCKED_FUNC_RETURNS(rv);
 		}
 	} else {
 		if (pObject->tokenObj) {
 			removeAllAttributes(pObject);
 			free(pObject);
-			FUNC_FAILS(CKR_SESSION_READ_ONLY, "Can not create token objects in read only session");
+			LOCKED_FUNC_FAILS(CKR_SESSION_READ_ONLY, "Can not create token objects in read only session");
 		}
 
 		addSessionObject(session, pObject);
@@ -143,7 +145,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 
 	*phObject = pObject->handle;
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -157,15 +161,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_CopyObject)(
 		CK_OBJECT_HANDLE_PTR phNewObject
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -176,6 +184,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_DestroyObject)(
 		CK_OBJECT_HANDLE hObject
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Session_t *session = NULL;
 	struct p11Slot_t *slot = NULL;
@@ -184,19 +194,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_DestroyObject)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlot(context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSessionObject(session, hObject, &pObject);
@@ -231,7 +241,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_DestroyObject)(
 		removeSessionObject(session, hObject);
 	}
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -243,6 +255,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetObjectSize)(
 		CK_ULONG_PTR pulSize
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Object_t *pObject;
 	struct p11Session_t *session;
@@ -254,23 +268,23 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetObjectSize)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (!isValidPtr(pulSize)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlot(context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSessionObject(session, hObject, &pObject);
@@ -297,7 +311,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetObjectSize)(
 
 	*pulSize = size;
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -310,6 +326,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetAttributeValue)(
 		CK_ULONG ulCount
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	CK_ULONG i;
 	struct p11Object_t *pObject;
@@ -321,23 +339,23 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetAttributeValue)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (!isValidPtr(pTemplate)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlot(context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSessionObject(session, hObject, &pObject);
@@ -351,10 +369,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetAttributeValue)(
 				rv = findObject(slot->token, hObject, &pObject, FALSE);
 
 				if (rv < 0) {
-					FUNC_FAILS(CKR_OBJECT_HANDLE_INVALID, "Private token object not found with handle");
+					LOCKED_FUNC_FAILS(CKR_OBJECT_HANDLE_INVALID, "Private token object not found with handle");
 				}
 			} else {
-				FUNC_FAILS(CKR_OBJECT_HANDLE_INVALID, "Public token object not found with handle");
+				LOCKED_FUNC_FAILS(CKR_OBJECT_HANDLE_INVALID, "Public token object not found with handle");
 			}
 		}
 	}
@@ -398,7 +416,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetAttributeValue)(
 		}
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -411,6 +431,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 		CK_ULONG ulCount
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	CK_ULONG i;
 	struct p11Object_t *pObject, *tmp;
@@ -421,23 +443,23 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (!isValidPtr(pTemplate)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlot(context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSessionObject(session, hObject, &pObject);
@@ -446,7 +468,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 
 	if (rv < 0) {
 		if (getSessionState(session, slot->token) != CKS_RW_USER_FUNCTIONS) {
-			FUNC_FAILS(CKR_OBJECT_HANDLE_INVALID, "Object not found as session object");
+			LOCKED_FUNC_FAILS(CKR_OBJECT_HANDLE_INVALID, "Object not found as session object");
 		}
 
 		rv = findObject(slot->token, hObject, &pObject, TRUE);
@@ -455,7 +477,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 			rv = findObject(slot->token, hObject, &pObject, FALSE);
 
 			if (rv < 0) {
-				FUNC_FAILS(CKR_OBJECT_HANDLE_INVALID, "Object not found as token object");
+				LOCKED_FUNC_FAILS(CKR_OBJECT_HANDLE_INVALID, "Object not found as token object");
 			}
 		}
 	}
@@ -468,7 +490,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 		}
 
 		if (!attribute) {
-			FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "We do not allow manufacturer specific attributes");
+			LOCKED_FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "We do not allow manufacturer specific attributes");
 		}
 
 		/* Check if the value of CKA_PRIVATE changes */
@@ -484,7 +506,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 
 				tmp = (struct p11Object_t *)calloc(1, sizeof(struct p11Object_t));
 				if (tmp == NULL) {
-					FUNC_FAILS(CKR_HOST_MEMORY,"Out of memory");
+					LOCKED_FUNC_FAILS(CKR_HOST_MEMORY,"Out of memory");
 				}
 
 				memcpy(tmp, pObject, sizeof(*pObject));
@@ -503,7 +525,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 				rv = synchronizeToken(slot, slot->token);
 
 				if (rv < 0) {
-					FUNC_RETURNS(rv);
+					LOCKED_FUNC_RETURNS(rv);
 				}
 			}
 		} else {
@@ -520,12 +542,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 			rv = synchronizeToken(slot, slot->token);
 
 			if (rv < 0) {
-				FUNC_RETURNS(rv);
+				LOCKED_FUNC_RETURNS(rv);
 			}
 		}
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -561,6 +585,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
 		CK_ULONG ulCount
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Object_t *pObject;
 	struct p11Session_t *session;
@@ -573,23 +599,23 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (ulCount && !isValidPtr(pTemplate)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlot(context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 #ifdef DEBUG
@@ -614,6 +640,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
 	}
 
 	/* public token objects */
+	if (slot->token == NULL)
+		LOCKED_FUNC_FAILS(CKR_DEVICE_REMOVED, "token removed");
+
 	pObject = slot->token->tokenObjList;
 
 	while (pObject != NULL) {
@@ -638,7 +667,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
 		}
 	}
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -651,6 +682,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjects)(
 		CK_ULONG_PTR pulObjectCount
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Session_t *session;
 	struct p11Object_t *pObject;
@@ -659,26 +692,26 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjects)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (phObject && !isValidPtr(phObject)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	if (!isValidPtr(pulObjectCount)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (session->searchObj.objectsCollected == session->searchObj.searchNumOfObjects) {
 		*pulObjectCount = 0;
-		FUNC_RETURNS(CKR_OK);
+		LOCKED_FUNC_RETURNS(CKR_OK);
 	}
 
 	pObject = session->searchObj.searchList;
@@ -704,7 +737,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjects)(
 	*pulObjectCount = cnt;
 	session->searchObj.objectsCollected += cnt;
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -714,6 +749,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsFinal)(
 		CK_SESSION_HANDLE hSession
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Object_t *pObject, *pTempObject;
 	struct p11Session_t *session;
@@ -721,13 +758,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsFinal)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	pObject = session->searchObj.searchList;
@@ -742,5 +779,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsFinal)(
 	session->searchObj.objectsCollected = 0;
 	session->searchObj.searchList = NULL;
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+
+	LOCKED_FUNC_LEAVE
 }

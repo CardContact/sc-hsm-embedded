@@ -54,6 +54,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 		CK_SESSION_HANDLE_PTR phSession
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Slot_t *slot;
 	struct p11Token_t *token;
@@ -62,41 +64,41 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (!(flags & CKF_SERIAL_SESSION)) {
-		FUNC_FAILS(CKR_SESSION_PARALLEL_NOT_SUPPORTED, "CKF_SERIAL_SESSION not set");
+		LOCKED_FUNC_FAILS(CKR_SESSION_PARALLEL_NOT_SUPPORTED, "CKF_SERIAL_SESSION not set");
 	}
 
 	if (pApplication && !isValidPtr(pApplication)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	if (!isValidPtr(phSession)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSlot(context->slotPool, slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = getToken(slot, &token);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (!(flags & CKF_RW_SESSION) && (token->user == CKU_SO)) { /* there is already an active r/w session for SO */
-		FUNC_FAILS(CKR_SESSION_READ_WRITE_SO_EXISTS, "Can not open an R/O session if SO is logged in");
+		LOCKED_FUNC_FAILS(CKR_SESSION_READ_WRITE_SO_EXISTS, "Can not open an R/O session if SO is logged in");
 	}
 
 	session = (struct p11Session_t *)calloc(1, sizeof(struct p11Session_t));
 
 	if (session == NULL) {
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+		LOCKED_FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
 	session->slotID = slotID;
@@ -106,7 +108,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 	rv = addSession(context->sessionPool, session);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	*phSession = session->handle;               /* we got a valid handle by calling addSession() */
@@ -115,7 +117,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 		token->rosessions++;
 	}
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -125,6 +129,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseSession)(
 		CK_SESSION_HANDLE hSession
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Slot_t *slot;
 	struct p11Session_t *session;
@@ -132,19 +138,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseSession)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlot(context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (slot->token && !(session->flags & CKF_RW_SESSION)) {
@@ -154,10 +160,12 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseSession)(
 	rv = removeSession(context->sessionPool, hSession);
 
 	if (rv < 0) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -167,27 +175,31 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseAllSessions)(
 		CK_SLOT_ID slotID
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv;
 	struct p11Session_t *session;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (context->sessionPool == NULL) {
-		FUNC_FAILS(CKR_SESSION_HANDLE_INVALID,"Session pool not initialized");
+		LOCKED_FUNC_FAILS(CKR_SESSION_HANDLE_INVALID,"Session pool not initialized");
 	}
 
 	while((session = context->sessionPool->list)) {
 		rv = C_CloseSession(session->handle);
 		if (rv != CKR_OK) {
-			FUNC_FAILS(rv, "Could not close session");
+			LOCKED_FUNC_FAILS(rv, "Could not close session");
 		}
 	}
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -198,6 +210,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSessionInfo)(
 		CK_SESSION_INFO_PTR pInfo
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Slot_t *slot;
 	struct p11Token_t *token;
@@ -206,29 +220,29 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSessionInfo)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (!isValidPtr(pInfo)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlot(context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = getToken(slot, &token);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	pInfo->slotID = session->slotID;
@@ -236,7 +250,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSessionInfo)(
 	pInfo->ulDeviceError = 0;
 	pInfo->state = getSessionState(session, token);
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -248,13 +264,17 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetOperationState)(
 		CK_ULONG_PTR pulOperationStateLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -268,13 +288,17 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetOperationState)(
 		CK_OBJECT_HANDLE hAuthenticationKey
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -287,33 +311,35 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
 		CK_ULONG ulPinLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Session_t *session;
 	struct p11Slot_t *slot;
 	struct p11Token_t *token;
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (userType != CKU_USER && userType != CKU_SO) {
-		FUNC_RETURNS(CKR_USER_TYPE_INVALID);
+		LOCKED_FUNC_RETURNS(CKR_USER_TYPE_INVALID);
 	}
 
 	if (ulPinLen != 0 && pPin == NULL) {
-		FUNC_RETURNS(CKR_ARGUMENTS_BAD);
+		LOCKED_FUNC_RETURNS(CKR_ARGUMENTS_BAD);
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlot(context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = getToken(slot, &token);
@@ -323,31 +349,33 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
 	}
 
 	if ((token->user == CKU_USER) || (token->user == CKU_SO)) {
-		FUNC_RETURNS(CKR_USER_ALREADY_LOGGED_IN);
+		LOCKED_FUNC_RETURNS(CKR_USER_ALREADY_LOGGED_IN);
 	}
 
 	if (userType == CKU_USER) {
 		if (!(token->info.flags & CKF_USER_PIN_INITIALIZED)) {
-			FUNC_RETURNS(CKR_USER_PIN_NOT_INITIALIZED);
+			LOCKED_FUNC_RETURNS(CKR_USER_PIN_NOT_INITIALIZED);
 		}
 	} else {
 		if (!(session->flags & CKF_RW_SESSION)) {
-			FUNC_RETURNS(CKR_SESSION_READ_ONLY);
+			LOCKED_FUNC_RETURNS(CKR_SESSION_READ_ONLY);
 		}
 		if (token->rosessions) {
-			FUNC_RETURNS(CKR_SESSION_READ_ONLY_EXISTS);
+			LOCKED_FUNC_RETURNS(CKR_SESSION_READ_ONLY_EXISTS);
 		}
 	}
 
 	rv = logIn(slot, userType, pPin, ulPinLen);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	token->user = userType;
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -357,31 +385,33 @@ CK_DECLARE_FUNCTION(CK_RV, C_Logout)(
 		CK_SESSION_HANDLE hSession
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Session_t *session;
 	struct p11Slot_t *slot;
 	struct p11Token_t *token;
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlot(context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = getToken(slot, &token);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	slot->token->user = 0xFF;
@@ -389,8 +419,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_Logout)(
 	rv = logOut(slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+
+	LOCKED_FUNC_LEAVE
 }

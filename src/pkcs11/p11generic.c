@@ -140,7 +140,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 		 * and dereferenced */
 )
 {
-	int rv = CKR_OK;
+	/* LOCKED_FUNC_ENTER */
+	CK_RV _locked_rv = CKR_OK;
+
+	int rv;
 
 	/* Make sure the cryptoki has not been initialized */
 	if (context != NULL) {
@@ -153,6 +156,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 		return CKR_HOST_MEMORY;
 	}
 
+	mutex_init(&context->mutex);
+
 #ifdef DEBUG
 	initDebug(context);
 	FUNC_CALLED();
@@ -163,7 +168,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 	if (context->sessionPool == NULL) {
 		free(context);
 		context = NULL;
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+		LOCKED_FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
 	context->slotPool = (struct p11SlotPool_t *) calloc(1, sizeof(struct p11SlotPool_t));
@@ -172,7 +177,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 		free(context->sessionPool);
 		free(context);
 		context = NULL;
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+		LOCKED_FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
 	rv = initSessionPool(context->sessionPool);
@@ -185,7 +190,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 		free(context->slotPool);
 		free(context);
 		context = NULL;
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = initSlotPool(context->slotPool);
@@ -198,10 +203,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 		free(context->slotPool);
 		free(context);
 		context = NULL;
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+
+	/* LOCKED_FUNC_LEAVE */
+	_locked_return:
+	return _locked_rv;
 }
 
 
@@ -219,22 +228,21 @@ CK_DECLARE_FUNCTION(CK_RV, C_Finalize)
 	FUNC_CALLED();
 
 	if (context != NULL) {
-
+#ifdef DEBUG
+		mutex_lock(&context->mutex);
+		mutex_destroy(&context->mutex);
+#endif
 		terminateSessionPool(context->sessionPool);
 		free(context->sessionPool);
 
 		terminateSlotPool(context->slotPool);
 		free(context->slotPool);
-
 #ifdef DEBUG
 		termDebug(context);
 #endif
-
 		free(context);
 		context = NULL;
 	}
-
-	context = NULL;
 
 	return CKR_OK;
 }
@@ -260,14 +268,16 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetInfo)
 		CK_INFO_PTR   pInfo  /* location that receives information */
 )
 {
+	LOCKED_FUNC_ENTER
+
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (!isValidPtr(pInfo)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	memset(pInfo, 0, sizeof(CK_INFO));
@@ -284,7 +294,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetInfo)
 	pInfo->libraryVersion.major = 1;
 	pInfo->libraryVersion.minor = 0;
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+
+	LOCKED_FUNC_LEAVE
 }
 
 

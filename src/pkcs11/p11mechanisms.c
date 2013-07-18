@@ -42,7 +42,6 @@
 extern struct p11Context_t *context;
 
 
-
 /*  C_EncryptInit initializes an encryption operation. */
 CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 		CK_SESSION_HANDLE hSession,
@@ -50,6 +49,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 		CK_OBJECT_HANDLE hKey
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
@@ -58,35 +59,35 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pSession->activeObjectHandle != CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_ACTIVE, "Operation is already active");
+		LOCKED_FUNC_FAILS(CKR_OPERATION_ACTIVE, "Operation is already active");
 	}
 
 	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlotObject(pSlot, hKey, &pObject, FALSE);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pObject->C_EncryptInit != NULL) {
 		rv = pObject->C_EncryptInit(pObject, pMechanism);
 	} else {
-		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
+		LOCKED_FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
 
 	if (!rv) {
@@ -94,7 +95,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 		rv = CKR_OK;
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -108,6 +111,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
 		CK_ULONG_PTR pulEncryptedDataLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
@@ -116,38 +121,40 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pSession->activeObjectHandle == CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
+		LOCKED_FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
 	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pObject->C_Encrypt != NULL) {
 		rv = pObject->C_Encrypt(pObject, pSession->activeMechanism, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
 	} else {
-		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
+		LOCKED_FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -162,6 +169,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptUpdate)(
 		CK_ULONG_PTR pulEncryptedPartLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
@@ -170,38 +179,40 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptUpdate)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pSession->activeObjectHandle == CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
+		LOCKED_FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
 	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pObject->C_EncryptUpdate != NULL) {
 		rv = pObject->C_EncryptUpdate(pObject, pSession->activeMechanism, pPart, ulPartLen, pEncryptedPart, pulEncryptedPartLen);
 	} else {
-		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
+		LOCKED_FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -213,6 +224,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptFinal)(
 		CK_ULONG_PTR pulLastEncryptedPartLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
@@ -221,35 +234,35 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptFinal)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pSession->activeObjectHandle == CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
+		LOCKED_FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
 	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pObject->C_EncryptFinal != NULL) {
 		rv = pObject->C_EncryptFinal(pObject, pSession->activeMechanism, pLastEncryptedPart, pulLastEncryptedPartLen);
 	} else {
-		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
+		LOCKED_FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
 
 	if (!rv) {
@@ -257,7 +270,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptFinal)(
 		rv = CKR_OK;
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -269,6 +284,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptInit)(
 		CK_OBJECT_HANDLE hKey
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
@@ -277,35 +294,35 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptInit)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pSession->activeObjectHandle != CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_ACTIVE, "Operation is already active");
+		LOCKED_FUNC_FAILS(CKR_OPERATION_ACTIVE, "Operation is already active");
 	}
 
 	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlotObject(pSlot, hKey, &pObject, FALSE);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pObject->C_DecryptInit != NULL) {
 		rv = pObject->C_DecryptInit(pObject, pMechanism);
 	} else {
-		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
+		LOCKED_FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
 
 	if (!rv) {
@@ -314,7 +331,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptInit)(
 		rv = CKR_OK;
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -328,6 +347,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_Decrypt)(
 		CK_ULONG_PTR pulDataLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
@@ -336,29 +357,29 @@ CK_DECLARE_FUNCTION(CK_RV, C_Decrypt)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pSession->activeObjectHandle == CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
+		LOCKED_FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
 	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pData != NULL) {
@@ -368,10 +389,12 @@ CK_DECLARE_FUNCTION(CK_RV, C_Decrypt)(
 	if (pObject->C_Decrypt != NULL) {
 		rv = pObject->C_Decrypt(pObject, pSession->activeMechanism, pEncryptedData, ulEncryptedDataLen, pData, pulDataLen);
 	} else {
-		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
+		LOCKED_FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -386,6 +409,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptUpdate)(
 		CK_ULONG_PTR pulPartLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
@@ -394,38 +419,40 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptUpdate)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pSession->activeObjectHandle == CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
+		LOCKED_FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
 	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pObject->C_DecryptUpdate != NULL) {
 		rv = pObject->C_DecryptUpdate(pObject, pSession->activeMechanism, pEncryptedPart, ulEncryptedPartLen, pPart, pulPartLen);
 	} else {
-		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
+		LOCKED_FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -437,6 +464,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptFinal)(
 		CK_ULONG_PTR pulLastPartLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
@@ -445,35 +474,35 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptFinal)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pSession->activeObjectHandle == CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
+		LOCKED_FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
 	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pObject->C_DecryptFinal != NULL) {
 		rv = pObject->C_DecryptFinal(pObject, pSession->activeMechanism, pLastPart, pulLastPartLen);
 	} else {
-		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
+		LOCKED_FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
 
 	if (!rv) {
@@ -481,7 +510,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptFinal)(
 		rv = CKR_OK;
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -492,15 +523,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestInit)(
 		CK_MECHANISM_PTR pMechanism
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+	
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -514,15 +549,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_Digest)(
 		CK_ULONG_PTR pulDigestLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -535,15 +574,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestUpdate)(
 		CK_ULONG ulPartLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -555,15 +598,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestKey)(
 		CK_OBJECT_HANDLE hKey
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -575,15 +622,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestFinal)(
 		CK_ULONG_PTR pulDigestLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -596,6 +647,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignInit)(
 		CK_OBJECT_HANDLE hKey
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
@@ -604,35 +657,35 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignInit)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pSession->activeObjectHandle != CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_ACTIVE, "Operation is already active");
+		LOCKED_FUNC_FAILS(CKR_OPERATION_ACTIVE, "Operation is already active");
 	}
 
 	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlotObject(pSlot, hKey, &pObject, FALSE);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pObject->C_SignInit != NULL) {
 		rv = pObject->C_SignInit(pObject, pMechanism);
 	} else {
-		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
+		LOCKED_FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
 
 	if (!rv) {
@@ -641,7 +694,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignInit)(
 		rv = CKR_OK;
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -655,6 +710,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
 		CK_ULONG_PTR pulSignatureLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
@@ -663,29 +720,29 @@ CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pSession->activeObjectHandle == CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
+		LOCKED_FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
 	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pSignature != NULL) {
@@ -695,10 +752,12 @@ CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
 	if (pObject->C_Sign != NULL) {
 		rv = pObject->C_Sign(pObject, pSession->activeMechanism, pData, ulDataLen, pSignature, pulSignatureLen);
 	} else {
-		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
+		LOCKED_FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -711,6 +770,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignUpdate)(
 		CK_ULONG ulPartLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
@@ -719,29 +780,29 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignUpdate)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pSession->activeObjectHandle == CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
+		LOCKED_FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
 	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pObject->C_SignUpdate != NULL) {
@@ -750,7 +811,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignUpdate)(
 		rv = appendToCryptoBuffer(pSession, pPart, ulPartLen);
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -762,6 +825,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 		CK_ULONG_PTR pulSignatureLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
@@ -770,29 +835,29 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pSession->activeObjectHandle == CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
+		LOCKED_FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
 	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (pSignature != NULL) {
@@ -805,7 +870,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 		if (pObject->C_Sign != NULL) {
 			rv = pObject->C_Sign(pObject, pSession->activeMechanism, pSession->cryptoBuffer, pSession->cryptoBufferSize, pSignature, pulSignatureLen);
 		} else {
-			FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
+			LOCKED_FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 		}
 	}
 
@@ -813,7 +878,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 		clearCryptoBuffer(pSession);
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -826,15 +893,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignRecoverInit)(
 		CK_OBJECT_HANDLE hKey
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -849,15 +920,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignRecover)(
 		CK_ULONG_PTR pulSignatureLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -870,15 +945,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyInit)(
 		CK_OBJECT_HANDLE hKey
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -893,15 +972,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_Verify)(
 		CK_ULONG ulSignatureLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -914,15 +997,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyUpdate)(
 		CK_ULONG ulPartLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -935,15 +1022,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyFinal)(
 		CK_ULONG ulSignatureLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -956,15 +1047,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyRecoverInit)(
 		CK_OBJECT_HANDLE hKey
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -979,15 +1074,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyRecover)(
 		CK_ULONG_PTR pulDataLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -1002,15 +1101,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestEncryptUpdate)(
 		CK_ULONG_PTR pulEncryptedPartLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -1025,15 +1128,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptDigestUpdate)(
 		CK_ULONG_PTR pulPartLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -1048,15 +1155,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignEncryptUpdate)(
 		CK_ULONG_PTR pulEncryptedPartLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -1071,15 +1182,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptVerifyUpdate)(
 		CK_ULONG_PTR pulPartLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -1094,15 +1209,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_GenerateKey)(
 		CK_OBJECT_HANDLE_PTR phKey
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -1119,15 +1238,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_GenerateKeyPair)(
 		CK_OBJECT_HANDLE_PTR phPrivateKey
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -1142,15 +1265,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_WrapKey)(
 		CK_ULONG_PTR pulWrappedKeyLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -1168,15 +1295,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_UnwrapKey)(
 		CK_OBJECT_HANDLE_PTR phKey
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -1191,15 +1322,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_DeriveKey)(
 		CK_OBJECT_HANDLE_PTR phKey
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -1211,15 +1346,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_SeedRandom)(
 		CK_ULONG ulSeedLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -1231,15 +1370,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_GenerateRandom)(
 		CK_ULONG ulRandomLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -1250,13 +1393,17 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetFunctionStatus)(
 		CK_SESSION_HANDLE hSession
 )
 {
+	LOCKED_FUNC_ENTER
+
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(CKR_FUNCTION_NOT_PARALLEL);
+	LOCKED_FUNC_RETURNS(CKR_FUNCTION_NOT_PARALLEL);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -1266,11 +1413,15 @@ CK_DECLARE_FUNCTION(CK_RV, C_CancelFunction)(
 		CK_SESSION_HANDLE hSession
 )
 {
+	LOCKED_FUNC_ENTER
+
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(CKR_FUNCTION_NOT_PARALLEL);
+	LOCKED_FUNC_RETURNS(CKR_FUNCTION_NOT_PARALLEL);
+
+	LOCKED_FUNC_LEAVE
 }

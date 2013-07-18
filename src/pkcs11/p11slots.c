@@ -62,6 +62,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotList)(
 		CK_ULONG_PTR pulCount
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_OK;
 	struct p11Slot_t *slot;
 	struct p11Token_t *token;
@@ -70,21 +72,21 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotList)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (!isValidPtr(pulCount)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	if (pSlotList && !isValidPtr(pSlotList)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = updateSlots(context->slotPool);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	slot = context->slotPool->list;
@@ -112,7 +114,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotList)(
 	}
 	*pulCount = i;
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -123,6 +127,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotInfo)(
 		CK_SLOT_INFO_PTR pInfo
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Slot_t *slot = NULL;
 	struct p11Token_t *token = NULL;
@@ -130,30 +136,32 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotInfo)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (!isValidPtr(pInfo)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = updateSlots(context->slotPool);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlot(context->slotPool, slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	getToken(slot, &token);				// Update token status
 
 	memcpy(pInfo, &(slot->info), sizeof(CK_SLOT_INFO));
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -164,6 +172,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetTokenInfo)(
 		CK_TOKEN_INFO_PTR pInfo
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	struct p11Slot_t *slot;
 	struct p11Token_t *token;
@@ -171,28 +181,30 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetTokenInfo)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (!isValidPtr(pInfo)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSlot(context->slotPool, slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = getToken(slot, &token);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	memcpy(pInfo, &(slot->token->info), sizeof(CK_TOKEN_INFO));
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+	
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -204,15 +216,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_WaitForSlotEvent)(
 		CK_VOID_PTR pReserved
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -224,6 +240,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismList)(
 		CK_ULONG_PTR pulCount
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv;
 	CK_ULONG numberOfMechanisms = 0;
 	struct p11Slot_t *slot;
@@ -232,44 +250,46 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismList)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (pMechanismList && !isValidPtr(pMechanismList)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	if (!isValidPtr(pulCount)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSlot(context->slotPool, slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = getToken(slot, &token);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	numberOfMechanisms = sizeof(p11MechanismList) / sizeof(p11MechanismList[0]);
 
 	if (pMechanismList == NULL) {
 		*pulCount = numberOfMechanisms;
-		FUNC_RETURNS(CKR_OK);
+		LOCKED_FUNC_RETURNS(CKR_OK);
 	}
 
 	if (*pulCount < numberOfMechanisms) {
 		*pulCount = numberOfMechanisms;
-		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Buffer provided by caller too small");
+		LOCKED_FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Buffer provided by caller too small");
 	}
 
 	memcpy(pMechanismList, p11MechanismList, sizeof(p11MechanismList));
 
-	FUNC_RETURNS(CKR_OK);
+	LOCKED_FUNC_RETURNS(CKR_OK);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -282,6 +302,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismInfo)(
 		CK_MECHANISM_INFO_PTR pInfo
 )
 {
+	LOCKED_FUNC_ENTER
+
 	CK_RV rv = CKR_OK;
 	struct p11Slot_t *slot;
 	struct p11Token_t *token;
@@ -289,23 +311,23 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismInfo)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (!isValidPtr(pInfo)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+		LOCKED_FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSlot(context->slotPool, slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = getToken(slot, &token);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	switch (type) {
@@ -334,7 +356,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismInfo)(
 		break;
 	}
 
-	FUNC_RETURNS(rv);
+	LOCKED_FUNC_RETURNS(rv);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -347,6 +371,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitToken)(
 		CK_UTF8CHAR_PTR pLabel
 )
 {
+	LOCKED_FUNC_ENTER
+
 	int rv = CKR_OK;
 	struct p11Slot_t *slot = NULL;
 	struct p11Session_t *session = NULL;
@@ -354,24 +380,26 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitToken)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	/* Check the slot ID */
 	rv = findSlot(context->slotPool, slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	/* Check if there is an open session */
 	findSessionBySlotID(context->sessionPool, slotID, &session);
 
 	if (session != NULL) {
-		FUNC_FAILS(CKR_SESSION_EXISTS, "A session on the token exists");
+		LOCKED_FUNC_FAILS(CKR_SESSION_EXISTS, "A session on the token exists");
 	}
 
-	FUNC_RETURNS(CKR_FUNCTION_NOT_SUPPORTED);
+	LOCKED_FUNC_RETURNS(CKR_FUNCTION_NOT_SUPPORTED);
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -383,6 +411,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitPIN)(
 		CK_ULONG ulPinLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	struct p11Session_t *session;
 	struct p11Slot_t *slot;
 	struct p11Token_t *token;
@@ -391,32 +421,34 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitPIN)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlot(context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = getToken(slot, &token);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	if (getSessionState(session, token) != CKS_RW_SO_FUNCTIONS) {
-		FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "SO not logged in");
+		LOCKED_FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "SO not logged in");
 	}
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
+
+	LOCKED_FUNC_LEAVE
 }
 
 
@@ -431,6 +463,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetPIN)(
 		CK_ULONG ulNewLen
 )
 {
+	LOCKED_FUNC_ENTER
+
 	struct p11Session_t *session;
 	struct p11Slot_t *slot;
 	struct p11Token_t *token;
@@ -439,26 +473,28 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetPIN)(
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = findSlot(context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	rv = getToken(slot, &token);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		LOCKED_FUNC_RETURNS(rv);
 	}
 
 	return CKR_FUNCTION_NOT_SUPPORTED;
+
+	LOCKED_FUNC_LEAVE
 }
