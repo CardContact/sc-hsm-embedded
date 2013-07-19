@@ -146,7 +146,11 @@ int SC_Open(const char *pin)
 
 int SC_Close()
 {
-	return SCardDisconnect(hCard, SCARD_LEAVE_CARD);
+	int rc;
+	rc = SCardDisconnect(hCard, SCARD_LEAVE_CARD);
+	rc = SCardReleaseContext(hContext);
+	hContext = 0;
+	return rc;
 }
 
 #endif /* !CTAPI */

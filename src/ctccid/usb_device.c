@@ -187,7 +187,6 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 #endif
 			free(*device);
 			libusb_free_device_list(devs, 1);
-			libusb_exit(NULL);
 			return ERR_USB;
 		}
 
@@ -200,7 +199,6 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 			libusb_close((*device)->handle);
 			free(*device);
 			libusb_free_device_list(devs, 1);
-			libusb_exit(NULL);
 			return ERR_USB;
 		}
 
@@ -213,7 +211,6 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 			libusb_close((*device)->handle);
 			free(*device);
 			libusb_free_device_list(devs, 1);
-			libusb_exit(NULL);
 			return ERR_USB;
 		}
 
@@ -259,10 +256,6 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 
 	libusb_free_device_list(devs, 1);
 
-	if (rc == ERR_NO_READER) {
-		libusb_exit(NULL);
-	}
-
 	return rc;
 }
 
@@ -293,9 +286,7 @@ int USB_Close(usb_device_t **device)
 	libusb_close((*device)->handle);
 	free(*device);
 	*device = NULL;
-
 	libusb_exit(NULL);
-
 	return USB_OK;
 }
 

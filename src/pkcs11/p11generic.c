@@ -207,10 +207,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 	}
 
 	LOCKED_FUNC_RETURNS(CKR_OK);
-
-	/* LOCKED_FUNC_LEAVE */
-	_locked_return:
-	return _locked_rv;
 }
 
 

@@ -191,7 +191,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseAllSessions)(
 	}
 
 	while((session = context->sessionPool->list)) {
+		LOCKED_UNLOCK
 		rv = C_CloseSession(session->handle);
+		LOCKED_RELOCK
 		if (rv != CKR_OK) {
 			LOCKED_FUNC_FAILS(rv, "Could not close session");
 		}
