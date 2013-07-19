@@ -64,6 +64,7 @@
 #define mutex_unlock(mutex)  pthread_mutex_unlock(mutex)
 #define mutex_destroy(mutex) pthread_mutex_destroy(mutex)
 #else
+#include <Windows.h>
 #define MUTEX CRITICAL_SECTION
 #define mutex_init(mutex)    (InitializeCriticalSection(mutex), 0)
 #define mutex_lock(mutex)    (EnterCriticalSection(mutex), 0)
