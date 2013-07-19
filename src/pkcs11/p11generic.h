@@ -56,98 +56,101 @@
 #endif /* _WIN32 */
 #endif /* CTAPI */
 
-#ifndef _WIN32
-#include <pthread.h>
-#define MUTEX pthread_mutex_t
-#define mutex_init(mutex)    pthread_mutex_init(mutex, NULL)
-#if defined(DEBUG) && defined(DEBUG_LOCKS)
-#define mutex_lock(mutex)    (printf(" mutex_lock(%s, %d)\n", __FILE__, __LINE__), pthread_mutex_lock(mutex))
-#define mutex_unlock(mutex)  (printf(" mutex_unlock(%s, %d)\n", __FILE__, __LINE__), pthread_mutex_unlock(mutex))
-#else
-#define mutex_lock(mutex)    pthread_mutex_lock(mutex)
-#define mutex_unlock(mutex)  pthread_mutex_unlock(mutex)
-#endif
-#define mutex_destroy(mutex) (pthread_mutex_destroy(mutex))
-#else
-#include <Windows.h>
-#define MUTEX CRITICAL_SECTION
-#define mutex_init(mutex)    (InitializeCriticalSection(mutex), 0)
-#define mutex_lock(mutex)    (EnterCriticalSection(mutex), 0)
-#define mutex_unlock(mutex)  (LeaveCriticalSection(mutex), 0)
-#define mutex_destroy(mutex) (DeleteCriticalSection(mutex), 0)
-#endif
-
-#ifdef DEBUG
-
-#define LOCKED_FUNC_ENTER \
-		if (context == NULL) return CKR_CRYPTOKI_NOT_INITIALIZED; \
-		if (mutex_lock(&context->mutex)) return CKR_MUTEX_BAD; {
-
-#define LOCKED_FUNC_RETURNS(rc) { \
-		CK_RV _rc_ = (rc); \
-		debug("Function %s completes with rc=%d.\n", __FUNCTION__, _rc_); \
-		mutex_unlock(&context->mutex); \
-		return _rc_; \
-}
-
-#define LOCKED_FUNC_FAILS(rc, msg) { \
-		CK_RV _rc_ = (rc); \
-		debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, _rc_, (msg)); \
-		mutex_unlock(&context->mutex); \
-		return _rc_; \
-}
-
-#define LOCKED_UNLOCK { mutex_unlock(&context->mutex); }
-
-#define LOCKED_RELOCK { mutex_lock(&context->mutex); }
-
-#define LOCKED_FUNC_LEAVE }
-
-
-#define FUNC_CALLED() { \
-		debug("Function %s called.\n", __FUNCTION__); \
-}
-
-#define FUNC_RETURNS(rc) { \
-		debug("Function %s completes with rc=%d.\n", __FUNCTION__, (rc)); \
-		return rc; \
-}
-
-#define FUNC_FAILS(rc, msg) { \
-		debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, (rc), (msg)); \
-		return rc; \
-}
-
-#else
-
-#define LOCKED_FUNC_ENTER CK_RV _locked_rv; \
-		if (context == NULL) return CKR_CRYPTOKI_NOT_INITIALIZED; \
-		if (mutex_lock(&context->mutex)) return CKR_MUTEX_BAD; {
-
-#define LOCKED_FUNC_RETURNS(rc) { \
-		_locked_rv = (rc); \
-		goto _locked_return; \
-}
-
-#define LOCKED_FUNC_FAILS(rc, msg) { \
-		_locked_rv = (rc); \
-		goto _locked_return; \
-}
-
-#define LOCKED_FUNC_LEAVE } \
-		_locked_return: mutex_unlock(&context->mutex); return _locked_rv;
-
-
-#define FUNC_CALLED()
-
-#define FUNC_RETURNS(rc) { \
-		return rc; \
-}
-
-#define FUNC_FAILS(rc, msg) { \
-		return rc; \
-}
-
+#ifndef NOT_THREAD_SAFE /* thread save macros */
+	#ifndef _WIN32
+		#include <pthread.h>
+		#define MUTEX pthread_mutex_t
+		#define mutex_init(mutex)    pthread_mutex_init(mutex, NULL)
+		#if defined(DEBUG) && defined(DEBUG_LOCKS)
+		#define mutex_lock(mutex)    (printf(" mutex_lock(%s, %d)\n", __FILE__, __LINE__), pthread_mutex_lock(mutex))
+		#define mutex_unlock(mutex)  (printf(" mutex_unlock(%s, %d)\n", __FILE__, __LINE__), pthread_mutex_unlock(mutex))
+		#else
+		#define mutex_lock(mutex)    pthread_mutex_lock(mutex)
+		#define mutex_unlock(mutex)  pthread_mutex_unlock(mutex)
+		#endif
+		#define mutex_destroy(mutex) (pthread_mutex_destroy(mutex))
+	#else
+		#include <Windows.h>
+		#define MUTEX CRITICAL_SECTION
+		#define mutex_init(mutex)    (InitializeCriticalSection(mutex), 0)
+		#define mutex_lock(mutex)    (EnterCriticalSection(mutex), 0)
+		#define mutex_unlock(mutex)  (LeaveCriticalSection(mutex), 0)
+		#define mutex_destroy(mutex) (DeleteCriticalSection(mutex), 0)
+	#endif
+	#define LOCKED_FUNC_ENTER \
+			if (context == NULL) return CKR_CRYPTOKI_NOT_INITIALIZED; \
+			if (mutex_lock(&context->mutex)) return CKR_MUTEX_BAD; {
+	#define LOCKED_FUNC_LEAVE }
+	#define LOCKED_FUNC_GIVEUP_LOCK { mutex_unlock(&context->mutex);
+	#define LOCKED_FUNC_REAQUIRE_LOCK mutex_lock(&context->mutex); }
+	#ifdef DEBUG
+		#define LOCKED_FUNC_RETURNS(rc) { \
+				CK_RV _rc_ = (rc); \
+				debug("Function %s completes with rc=%d.\n", __FUNCTION__, _rc_); \
+				mutex_unlock(&context->mutex); \
+				return _rc_; \
+		}
+		#define LOCKED_FUNC_FAILS(rc, msg) { \
+				CK_RV _rc_ = (rc); \
+				debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, _rc_, (msg)); \
+				mutex_unlock(&context->mutex); \
+				return _rc_; \
+		}
+		#define FUNC_CALLED() { \
+				debug("Function %s called.\n", __FUNCTION__); \
+		}
+		#define FUNC_RETURNS(rc) { \
+				debug("Function %s completes with rc=%d.\n", __FUNCTION__, (rc)); \
+				return rc; \
+		}
+		#define FUNC_FAILS(rc, msg) { \
+				debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, (rc), (msg)); \
+				return rc; \
+		}
+	#else
+		#define LOCKED_FUNC_RETURNS(rc) { \
+				mutex_unlock(&context->mutex); \
+				return (rc); \
+		}
+		#define LOCKED_FUNC_FAILS(rc, msg) { \
+				CK_RV _rc_ = (rc); \
+				mutex_unlock(&context->mutex); \
+				return (rc); \
+		}
+		#define FUNC_CALLED()
+		#define FUNC_RETURNS(rc) return rc
+		#define FUNC_FAILS(rc, msg) return (rc)
+	#endif
+#else /* NOT_THREAD_SAFE */
+	#define MUTEX int
+	#define mutex_init(mutex)
+	#define mutex_lock(mutex)
+	#define mutex_unlock(mutex)
+	#define mutex_destroy(mutex)
+	#define LOCKED_FUNC_ENTER
+	#define LOCKED_FUNC_GIVEUP_LOCK {
+	#define LOCKED_FUNC_REAQUIRE_LOCK }
+	#define LOCKED_FUNC_LEAVE
+	#ifdef DEBUG
+		#define FUNC_CALLED() { \
+				debug("Function %s called.\n", __FUNCTION__); \
+		}
+		#define FUNC_RETURNS(rc) { \
+				debug("Function %s completes with rc=%d.\n", __FUNCTION__, (rc)); \
+				return rc; \
+		}
+		#define FUNC_FAILS(rc, msg) { \
+				debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, (rc), (msg)); \
+				return rc; \
+		}
+	#else
+		#define LOCKED_FUNC_FAILS(rc, msg) return (rc)
+		#define FUNC_CALLED()
+		#define FUNC_RETURNS(rc) return rc
+		#define FUNC_FAILS(rc, msg) return (rc)
+	#endif
+	#define LOCKED_FUNC_RETURNS(rc) FUNC_RETURNS(rc)
+	#define LOCKED_FUNC_FAILS(rc, msg) FUNC_FAILS(rc, msg)
 #endif
 
 /**

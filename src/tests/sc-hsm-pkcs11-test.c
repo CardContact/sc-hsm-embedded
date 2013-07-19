@@ -594,7 +594,7 @@ void*
 #else
 DWORD WINAPI
 #endif
-SignThread(void *arg)
+SignThreadFunc(void *arg)
 {
 	struct thread_data *d = (struct thread_data *)arg;
 	int id = d->thread_id;
@@ -711,7 +711,7 @@ void testRSASigningMultiThreading(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 		data[t].slotid = slotid;
 		data[t].thread_id = t;
 
-		rc = pthread_create(&threads[t], &attr, SignThread, (void *)&data[t]);
+		rc = pthread_create(&threads[t], &attr, SignThreadFunc, (void *)&data[t]);
 
 		if (rc) {
 			printf("ERROR; return code from pthread_create() is %d\n", rc);
