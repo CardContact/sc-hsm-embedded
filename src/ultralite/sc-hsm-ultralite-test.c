@@ -30,6 +30,7 @@
  * @author Christoph Brunhuber
  */
 
+#include <memory.h>
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>

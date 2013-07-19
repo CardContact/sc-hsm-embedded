@@ -1415,7 +1415,7 @@ void main(int argc, char *argv[])
 	printf("Unit test finished.\n");
 	printf("%d tests performed.\n", testscompleted);
 	printf("%d tests failed.\n", testsfailed);
-	printf("%time used: %d s\n", time(0) - time0);
+	printf("time used: %d s\n", time(0) - time0);
 
 	exit(testsfailed ? -1 : 0);
 }
