@@ -113,15 +113,12 @@ int SC_Open(const char *pin)
 	int rc, len, found;
 	LPSTR readerNames, readerName;
 	DWORD readersLen = SCARD_AUTOALLOCATE;
-	if (hContext == 0) {
-		rc = SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &hContext);
-		if (rc != SCARD_S_SUCCESS)
-			return ERR_CARD;
-	}
+	rc = SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &hContext);
+	if (rc != SCARD_S_SUCCESS)
+		return ERR_CARD;
 	rc = SCardListReaders(hContext, 0, (LPTSTR)&readerNames, &readersLen);
 	if (rc != SCARD_S_SUCCESS) {
 		rc = SCardReleaseContext(hContext);
-		hContext = 0;
 		return ERR_CARD;
 	}
 	found = 0;
@@ -138,7 +135,6 @@ int SC_Open(const char *pin)
 	if (!found) {
 		rc = SCardDisconnect(hCard, SCARD_LEAVE_CARD);
 		rc = SCardReleaseContext(hContext);
-		hContext = 0;
 		return ERR_CARD;
 	}
 	rc = SC_Logon(pin);
@@ -156,7 +152,6 @@ int SC_Close()
 	int rc;
 	rc = SCardDisconnect(hCard, SCARD_LEAVE_CARD);
 	rc = SCardReleaseContext(hContext);
-	hContext = 0;
 	return rc;
 }
 
