@@ -175,33 +175,30 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseAllSessions)(
 		CK_SLOT_ID slotID
 )
 {
-	LOCKED_FUNC_ENTER
-
+	/************************************/
+	/* This function is not thread safe */
+	/************************************/
 	CK_RV rv;
 	struct p11Session_t *session;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
-		LOCKED_FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
 	if (context->sessionPool == NULL) {
-		LOCKED_FUNC_FAILS(CKR_SESSION_HANDLE_INVALID,"Session pool not initialized");
+		FUNC_FAILS(CKR_SESSION_HANDLE_INVALID,"Session pool not initialized");
 	}
 
 	while((session = context->sessionPool->list)) {
-		LOCKED_UNLOCK
 		rv = C_CloseSession(session->handle);
-		LOCKED_RELOCK
 		if (rv != CKR_OK) {
-			LOCKED_FUNC_FAILS(rv, "Could not close session");
+			FUNC_FAILS(rv, "Could not close session");
 		}
 	}
 
-	LOCKED_FUNC_RETURNS(CKR_OK);
-
-	LOCKED_FUNC_LEAVE
+	FUNC_RETURNS(CKR_OK);
 }
 
 

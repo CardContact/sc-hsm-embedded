@@ -140,7 +140,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 		 * and dereferenced */
 )
 {
-	/* LOCKED_FUNC_ENTER */
+	/************************************/
+	/* This function is not thread safe */
+	/************************************/
 	CK_RV _locked_rv = CKR_OK;
 
 	int rv;
@@ -168,7 +170,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 	if (context->sessionPool == NULL) {
 		free(context);
 		context = NULL;
-		LOCKED_FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
 	context->slotPool = (struct p11SlotPool_t *) calloc(1, sizeof(struct p11SlotPool_t));
@@ -177,7 +179,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 		free(context->sessionPool);
 		free(context);
 		context = NULL;
-		LOCKED_FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
 	rv = initSessionPool(context->sessionPool);
@@ -203,10 +205,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 		free(context->slotPool);
 		free(context);
 		context = NULL;
-		LOCKED_FUNC_RETURNS(rv);
+		FUNC_RETURNS(rv);
 	}
 
-	LOCKED_FUNC_RETURNS(CKR_OK);
+	FUNC_RETURNS(CKR_OK);
 }
 
 
@@ -221,16 +223,15 @@ CK_DECLARE_FUNCTION(CK_RV, C_Finalize)
 		CK_VOID_PTR   pReserved  /* reserved.  Should be NULL_PTR */
 )
 {
+	/************************************/
+	/* This function is not thread safe */
+	/************************************/
 	FUNC_CALLED();
 
 	if (context != NULL) {
-#ifdef DEBUG
-		mutex_lock(&context->mutex);
 		mutex_destroy(&context->mutex);
-#endif
 		terminateSessionPool(context->sessionPool);
 		free(context->sessionPool);
-
 		terminateSlotPool(context->slotPool);
 		free(context->slotPool);
 #ifdef DEBUG
