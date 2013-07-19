@@ -87,14 +87,14 @@
 		CK_RV _rc_ = (rc); \
 		debug("Function %s completes with rc=%d.\n", __FUNCTION__, _rc_); \
 		mutex_unlock(&context->mutex); \
-		return rc; \
+		return _rc_; \
 }
 
 #define LOCKED_FUNC_FAILS(rc, msg) { \
 		CK_RV _rc_ = (rc); \
 		debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, _rc_, (msg)); \
 		mutex_unlock(&context->mutex); \
-		return rc; \
+		return _rc_; \
 }
 
 #define LOCKED_UNLOCK { mutex_unlock(&context->mutex); }
