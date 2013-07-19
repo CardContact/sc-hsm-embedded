@@ -100,12 +100,14 @@
 				debug("Function %s called.\n", __FUNCTION__); \
 		}
 		#define FUNC_RETURNS(rc) { \
-				debug("Function %s completes with rc=%d.\n", __FUNCTION__, (rc)); \
-				return rc; \
+				CK_RV _rc_ = (rc); \
+				debug("Function %s completes with rc=%d.\n", __FUNCTION__, _rc_); \
+				return _rc_; \
 		}
 		#define FUNC_FAILS(rc, msg) { \
-				debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, (rc), (msg)); \
-				return rc; \
+				CK_RV _rc_ = (rc); \
+				debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, _rc_, (msg)); \
+				return _rc_; \
 		}
 	#else
 		#define LOCKED_FUNC_RETURNS(rc) { \
@@ -113,7 +115,6 @@
 				return (rc); \
 		}
 		#define LOCKED_FUNC_FAILS(rc, msg) { \
-				CK_RV _rc_ = (rc); \
 				mutex_unlock(&context->mutex); \
 				return (rc); \
 		}
@@ -127,24 +128,23 @@
 	#define mutex_lock(mutex)
 	#define mutex_unlock(mutex)
 	#define mutex_destroy(mutex)
-	#define LOCKED_FUNC_ENTER
+	#define LOCKED_FUNC_ENTER {
 	#define LOCKED_FUNC_GIVEUP_LOCK {
 	#define LOCKED_FUNC_REAQUIRE_LOCK }
-	#define LOCKED_FUNC_LEAVE
+	#define LOCKED_FUNC_LEAVE }
 	#ifdef DEBUG
 		#define FUNC_CALLED() { \
 				debug("Function %s called.\n", __FUNCTION__); \
 		}
 		#define FUNC_RETURNS(rc) { \
 				debug("Function %s completes with rc=%d.\n", __FUNCTION__, (rc)); \
-				return rc; \
+				return (rc); \
 		}
 		#define FUNC_FAILS(rc, msg) { \
 				debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, (rc), (msg)); \
-				return rc; \
+				return (rc); \
 		}
 	#else
-		#define LOCKED_FUNC_FAILS(rc, msg) return (rc)
 		#define FUNC_CALLED()
 		#define FUNC_RETURNS(rc) return rc
 		#define FUNC_FAILS(rc, msg) return (rc)
