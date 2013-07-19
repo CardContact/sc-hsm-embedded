@@ -119,9 +119,11 @@ int SC_Open(const char *pin)
 			return ERR_CARD;
 	}
 	rc = SCardListReaders(hContext, 0, (LPTSTR)&readerNames, &readersLen);
-	if (rc != SCARD_S_SUCCESS)
+	if (rc != SCARD_S_SUCCESS) {
+		rc = SCardReleaseContext(hContext);
+		hContext = 0;
 		return ERR_CARD;
-
+	}
 	found = 0;
 	for (readerName = readerNames; readerName[0] != 0; readerName += len) {
 		DWORD proto;
@@ -133,12 +135,17 @@ int SC_Open(const char *pin)
 		}
 	}
 	SCardFreeMemory(hContext, readerNames);
-	if (!found)
+	if (!found) {
+		rc = SCardDisconnect(hCard, SCARD_LEAVE_CARD);
+		rc = SCardReleaseContext(hContext);
+		hContext = 0;
 		return ERR_CARD;
+	}
 	rc = SC_Logon(pin);
 	if (rc < 0) {
 		printf("Logon error\n");
-		SCardDisconnect(hCard, SCARD_LEAVE_CARD);
+		rc = SCardDisconnect(hCard, SCARD_LEAVE_CARD);
+		rc = SCardReleaseContext(hContext);
 		return ERR_PIN;
 	}
 	return 0;
