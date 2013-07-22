@@ -12,11 +12,11 @@ AC_PROG_CC
 
 AC_ARG_ENABLE(debug,
 AS_HELP_STRING([--enable-debug],[include debugging output]),
-[CPPFLAGS+=" -DDEBUG"], [])
+[CPPFLAGS="$CPPFLAGS -DDEBUG"], [])
 
 AC_ARG_ENABLE(ctapi,
 AS_HELP_STRING([--enable-ctapi],[enable CT-API support (disables PC/SC)]),
-[CPPFLAGS+=" -DCTAPI"], [enable_pcsc="yes"])
+[CPPFLAGS="$CPPFLAGS -DCTAPI"], [enable_pcsc="yes"])
 
 PKG_CHECK_MODULES(LIBUSB, libusb-1.0)
 
