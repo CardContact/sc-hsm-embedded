@@ -70,7 +70,7 @@ typedef int (*CTModFunc_t) (scr_t *,                   /* specified SCR Data */
  * Data structure encapsulating all necessary data elements of the reader interface
  * and the communication protocol
  */
-typedef struct scr {
+struct scr {
 
 	/** Card terminal number */
 	unsigned short ctn;
@@ -110,7 +110,7 @@ typedef struct scr {
 
 	struct ccidT1     *t1;       /* Context structure for T=1 protocol  */
 
-} scr_t;
+};
 
 
 #endif
