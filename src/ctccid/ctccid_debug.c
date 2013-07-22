@@ -40,7 +40,8 @@
 #include <sys/stat.h>
 #include <time.h>
 
-#ifdef WIN32
+#ifdef _WIN32
+#include <Windows.h>
 #include <io.h>
 #include <ctype.h>
 #endif
@@ -170,5 +171,24 @@ void ctccid_termDebug()
 		debugFileHandle = NULL;
 	}
 }
+
+#ifdef _WIN32
+BOOL APIENTRY DllMain(
+	HMODULE hModule,
+	DWORD  ul_reason_for_call,
+	LPVOID lpReserved)
+{
+	switch (ul_reason_for_call) {
+	case DLL_PROCESS_ATTACH:
+	case DLL_THREAD_ATTACH:
+	case DLL_THREAD_DETACH:
+		break;
+	case DLL_PROCESS_DETACH:
+		ctccid_termDebug();
+		break;
+	}
+	return TRUE;
+}
+#endif
 
 #endif /* DEBUG */

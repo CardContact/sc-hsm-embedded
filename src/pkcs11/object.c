@@ -579,15 +579,13 @@ int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate)
 	struct p11Attribute_t *attr;
 	struct p11Attribute_t *pAttribute;
 
-	pAttribute = (struct p11Attribute_t *) malloc (sizeof(struct p11Attribute_t));
+	pAttribute = (struct p11Attribute_t *)calloc(1, sizeof(struct p11Attribute_t));
 
 	if (pAttribute == NULL) {
 		return -1;
 	}
 
-	memset(pAttribute, 0x00, sizeof(struct p11Attribute_t));
-	memcpy(&pAttribute->attrData, pTemplate, sizeof(CK_ATTRIBUTE));
-
+	pAttribute->attrData = *pTemplate;
 	pAttribute->attrData.pValue = malloc(pAttribute->attrData.ulValueLen);
 
 	if (pAttribute->attrData.pValue == NULL) {
@@ -654,53 +652,37 @@ int findAttributeInTemplate(CK_ATTRIBUTE_TYPE attributeType, CK_ATTRIBUTE_PTR pT
 
 int removeAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTemplate)
 {
-	struct p11Attribute_t *attr = NULL;
 	struct p11Attribute_t *prev = NULL;
-	int rc;
+	struct p11Attribute_t *attr;
 
-	rc = findAttribute(object, attributeTemplate, &attr);
-
-	/* no object for this template found */
-	if (rc < 0) {
-		return rc;
-	}
-
-	if (rc > 0) {      /* there is more than one element in the pool */
-		prev = object->attrList;
-
-		while (prev->next->attrData.type != attributeTemplate->type) {
-			prev = prev->next;
+	/* implicit findAttribute, beause we need the predecessor */
+	for (attr = object->attrList; attr != NULL; attr = (prev = attr)->next) {
+		if (attr->attrData.type == attributeTemplate->type) {
+			if (prev == NULL)
+				object->attrList = NULL;
+			else
+				prev->next = attr->next;
+			free(attr->attrData.pValue);
+			free(attr);
+			return CKR_OK;
 		}
-
-		prev->next = attr->next;
 	}
-
-	free(attr->attrData.pValue);
-	free(attr);
-
-	if (rc == 0) {      /* We removed the last element from the list */
-		object->attrList = NULL;
-	}
-
-	return CKR_OK;
+	/* attribute not found */
+	return -1;
 }
 
 
 
 int removeAllAttributes(struct p11Object_t *object)
 {
-	struct p11Attribute_t *pAttr, *pAttr2;
-
-	pAttr = object->attrList;
-
+	struct p11Attribute_t *pAttr = object->attrList;
 	while (pAttr) {
-		pAttr2 = pAttr;
+		struct p11Attribute_t *This = pAttr;
 		pAttr = pAttr->next;
-		free(pAttr2);
+		free(This->attrData.pValue);
+		free(This);
 	}
-
 	return 0;
-
 }
 
 

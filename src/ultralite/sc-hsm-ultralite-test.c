@@ -30,6 +30,7 @@
  * @author Christoph Brunhuber
  */
 
+#include <memory.h>
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
@@ -38,6 +39,9 @@
 #include "sc-hsm-ultralite.h"
 
 #ifdef _WIN32
+#ifdef _DEBUG
+#include <crtdbg.h>
+#endif
 #include <windows.h>
 #ifndef usleep
 #define usleep(us) Sleep((us) / 1000)
@@ -176,6 +180,9 @@ usage: %s pin label [count [wait-in-milliseconds]] (signs a test hash)\n\
 			argv[0], argv[0], argv[0]);
 		return 1;
 	}
+#if defined(_WIN32) && defined(_DEBUG)
+	atexit((void(*)(void))_CrtDumpMemoryLeaks);
+#endif
 	if (argc >= 3) {
 		if (strcmp(argv[1], "--reset-pin") == 0) {
 			ResetPin(argv[2], argc == 3 ? NULL : argv[3]);
