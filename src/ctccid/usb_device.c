@@ -98,6 +98,18 @@ static char* libusb_error_to_string(const int error) {
 
 #endif
 
+/*
+ * Context for libusb/libusbx
+ */
+static libusb_context *context = NULL;
+
+/*
+ * Reference counter for context
+ */
+static int refcnt = 0;
+
+
+
 /**
  * Open USB device at the specified port and allocate necessary resources
  *
@@ -111,22 +123,33 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 	int rc, cnt, i;
 	libusb_device **devs, *dev;
 
-	rc = libusb_init(NULL);
+	/*
+	 * We implement our own context handling to avoid a bug in the default context implementation
+	 * of the libusbx library version <= 1.0.15
+	 *
+	 * See https://github.com/libusbx/libusbx/commit/ce75e9af3f9242ec328b0dc2336b69ff24287a3c#libusb/core.c
+	 */
+	if (!context) {
+		rc = libusb_init(&context);
 
-	if (rc != LIBUSB_SUCCESS) {
+		if (rc != LIBUSB_SUCCESS) {
 #ifdef DEBUG
-		ctccid_debug("libusb_init failed. rc = %i (%s)\n", rc, libusb_error_to_string(rc));
+			ctccid_debug("libusb_init failed. rc = %i (%s)\n", rc, libusb_error_to_string(rc));
 #endif
-		return ERR_USB;
+			return ERR_USB;
+		}
 	}
 
+	refcnt++;
+
 #ifdef DEBUG
-	libusb_set_debug(NULL, 3);
+	libusb_set_debug(context, 3);
 #endif
 
-	cnt = libusb_get_device_list(NULL, &devs);
+	cnt = libusb_get_device_list(context, &devs);
 
 	if (cnt < 0) {
+		refcnt--;
 		return ERR_NO_READER;
 	}
 
@@ -187,7 +210,11 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 #endif
 			free(*device);
 			libusb_free_device_list(devs, 1);
-			libusb_exit(NULL);
+			refcnt--;
+			if (refcnt == 0) {
+				libusb_exit(context);
+				context = NULL;
+			}
 			return ERR_USB;
 		}
 
@@ -200,7 +227,11 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 			libusb_close((*device)->handle);
 			free(*device);
 			libusb_free_device_list(devs, 1);
-			libusb_exit(NULL);
+			refcnt--;
+			if (refcnt == 0) {
+				libusb_exit(context);
+				context = NULL;
+			}
 			return ERR_USB;
 		}
 
@@ -213,7 +244,11 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 			libusb_close((*device)->handle);
 			free(*device);
 			libusb_free_device_list(devs, 1);
-			libusb_exit(NULL);
+			refcnt--;
+			if (refcnt == 0) {
+				libusb_exit(context);
+				context = NULL;
+			}
 			return ERR_USB;
 		}
 
@@ -260,7 +295,11 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 	libusb_free_device_list(devs, 1);
 
 	if (rc == ERR_NO_READER) {
-		libusb_exit(NULL);
+		refcnt--;
+		if (refcnt == 0) {
+			libusb_exit(context);
+			context = NULL;
+		}
 	}
 
 	return rc;
@@ -294,7 +333,11 @@ int USB_Close(usb_device_t **device)
 	free(*device);
 	*device = NULL;
 
-	libusb_exit(NULL);
+	refcnt--;
+	if (refcnt == 0) {
+		libusb_exit(context);
+		context = NULL;
+	}
 
 	return USB_OK;
 }
