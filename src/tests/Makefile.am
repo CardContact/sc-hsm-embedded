@@ -10,4 +10,4 @@ ctccid_test_LDADD = $(top_builddir)/src/ctccid/libctccid.la
 
 sc_hsm_pkcs11_test_SOURCES = sc-hsm-pkcs11-test.c
 
-sc_hsm_pkcs11_test_LDFLAGS = -ldl -lpthread
+sc_hsm_pkcs11_test_LDFLAGS = -ldl -lpthread $(top_builddir)/src/common/libcommon.la
