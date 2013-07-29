@@ -53,7 +53,7 @@ int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicOb
 
 int findObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject);
 
-int removeObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject);
+int removeTokenObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject);
 
 int removeObjectLeavingAttributes(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject);
 

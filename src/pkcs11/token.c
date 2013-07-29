@@ -62,50 +62,18 @@
  */
 int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicObject)
 {
-	struct p11Object_t *obj, *tmp;
-
 	object->token = token;
 
-	tmp = publicObject == TRUE ? token->tokenObjList : token->tokenPrivObjList;
+	if (!object->handle) {
+		object->handle = token->freeObjectNumber++;
+	}
 
-	if (tmp == NULL) {
-
-		object->next = NULL;
-
-		if (publicObject) {
-			token->numberOfTokenObjects = 1;
-			token->tokenObjList = object;
-		} else {
-			token->numberOfPrivateTokenObjects = 1;
-			token->tokenPrivObjList = object;
-		}
-
-		if (!object->handle) {
-			object->handle = token->freeObjectNumber++;
-		}
-
+	if (publicObject) {
+		addObjectToList(&token->tokenObjList, object);
+		token->numberOfTokenObjects++;
 	} else {
-
-		obj = tmp;
-
-		while (obj->next != NULL) {
-			obj = obj->next;
-		}
-
-		obj->next = object;
-
-		if (publicObject) {
-			token->numberOfTokenObjects++;
-		} else {
-			token->numberOfPrivateTokenObjects++;
-		}
-
-		if (!object->handle) {
-			object->handle = token->freeObjectNumber++;
-		}
-
-		object->next = NULL;
-
+		addObjectToList(&token->tokenPrivObjList, object);
+		token->numberOfPrivateTokenObjects++;
 	}
 
 	object->dirtyFlag = 1;
@@ -130,9 +98,7 @@ int findObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, struct p11Obje
 	*object = NULL;
 
 	while (obj != NULL) {
-
 		if (obj->handle == handle) {
-
 			*object = obj;
 			return pos;
 		}
@@ -155,47 +121,20 @@ int findObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, struct p11Obje
  *
  * @return          0 or -1 if error
  */
-int removeObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject)
+int removeTokenObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject)
 {
-	struct p11Object_t *object = NULL;
-	struct p11Object_t *prev = NULL;
 	int rc;
 
-	rc = findObject(token, handle, &object, publicObject);
-
-	/* no object with this handle found */
-	if (rc < 0) {
-		return rc;
-	}
-
-	if (rc > 0) {      /* there is more than one element in the pool */
-
-		prev = publicObject == TRUE ? token->tokenObjList : token->tokenPrivObjList;
-
-		while (prev->next->handle != handle) {
-			prev = prev->next;
-		}
-
-		prev->next = object->next;
-
-	}
-
-	removeAllAttributes(object);
-
-	free(object);
-
 	if (publicObject) {
+		rc = removeObjectFromList(&token->tokenObjList, handle);
+		if (rc != CKR_OK)
+			return rc;
 		token->numberOfTokenObjects--;
 	} else {
+		rc = removeObjectFromList(&token->tokenPrivObjList, handle);
+		if (rc != CKR_OK)
+			return rc;
 		token->numberOfPrivateTokenObjects--;
-	}
-
-	if (rc == 0) {      /* We removed the last element from the list */
-		if (publicObject) {
-			token->tokenObjList = NULL;
-		} else {
-			token->tokenPrivObjList = NULL;
-		}
 	}
 
 	return CKR_OK;
@@ -212,22 +151,7 @@ int removeObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicOb
  */
 static void removePrivateObjects(struct p11Token_t *token)
 {
-	struct p11Object_t *pObject = NULL;
-	struct p11Object_t *tmp = NULL;
-
-	/* clear the private token objects */
-	pObject = token->tokenPrivObjList;
-
-	while (pObject) {
-		tmp = pObject->next;
-
-		removeAllAttributes(pObject);
-		free(pObject);
-
-		pObject = tmp;
-	}
-
-	token->tokenPrivObjList = NULL;
+	removeAllObjectsFromList(&token->tokenPrivObjList);
 	token->numberOfPrivateTokenObjects = 0;
 }
 
@@ -242,22 +166,7 @@ static void removePrivateObjects(struct p11Token_t *token)
  */
 static void removePublicObjects(struct p11Token_t *token)
 {
-	struct p11Object_t *pObject = NULL;
-	struct p11Object_t *tmp = NULL;
-
-	/* clear the public token objects */
-	pObject = token->tokenObjList;
-
-	while (pObject) {
-		tmp = pObject->next;
-
-		removeAllAttributes(pObject);
-		free(pObject);
-
-		pObject = tmp;
-	}
-
-	token->tokenObjList = NULL;
+	removeAllObjectsFromList(&token->tokenObjList);
 	token->numberOfTokenObjects = 0;
 }
 
@@ -404,4 +313,3 @@ void freeToken(struct p11Slot_t *slot)
 		slot->token = NULL;
 	}
 }
-

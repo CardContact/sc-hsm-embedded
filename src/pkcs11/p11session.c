@@ -103,11 +103,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 	session->flags = flags;
 	session->activeObjectHandle = CK_INVALID_HANDLE;
 
-	rv = addSession(context->sessionPool, session);
-
-	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
-	}
+	addSession(context->sessionPool, session);
 
 	*phSession = session->handle;               /* we got a valid handle by calling addSession() */
 

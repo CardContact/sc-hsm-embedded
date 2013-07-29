@@ -128,7 +128,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 		rv = synchronizeToken(slot, slot->token);
 
 		if (rv != CKR_OK) {
-			removeObject(slot->token, pObject->handle, pObject->publicObj);
+			removeTokenObject(slot->token, pObject->handle, pObject->publicObj);
 			FUNC_RETURNS(rv);
 		}
 	} else {
@@ -220,7 +220,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DestroyObject)(
 		destroyObject(slot, slot->token, pObject);
 
 		/* remove the object from the list */
-		removeObject(slot->token, hObject, pObject->publicObj);
+		removeTokenObject(slot->token, hObject, pObject->publicObj);
 
 		rv = synchronizeToken(slot, slot->token);
 
@@ -715,7 +715,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsFinal)(
 )
 {
 	int rv;
-	struct p11Object_t *pObject, *pTempObject;
 	struct p11Session_t *session;
 
 	FUNC_CALLED();
@@ -730,17 +729,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsFinal)(
 		FUNC_RETURNS(rv);
 	}
 
-	pObject = session->searchObj.searchList;
-
-	while (pObject) {
-		pTempObject = pObject->next;
-		free(pObject);
-		pObject = pTempObject;
-	}
-
-	session->searchObj.searchNumOfObjects = 0;
-	session->searchObj.objectsCollected = 0;
-	session->searchObj.searchList = NULL;
+	clearSearchList(session);
 
 	FUNC_RETURNS(CKR_OK);
 }

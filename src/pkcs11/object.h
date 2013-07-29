@@ -122,6 +122,12 @@ int removeAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTempla
 
 int removeAllAttributes(struct p11Object_t *object);
 
+void addObjectToList(struct p11Object_t **ppObject, struct p11Object_t *object);
+
+int removeObjectFromList(struct p11Object_t **ppObject, CK_OBJECT_HANDLE handle);
+
+void removeAllObjectsFromList(struct p11Object_t **ppObject);
+
 int createObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);
 
 int createStorageObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);

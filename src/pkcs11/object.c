@@ -576,19 +576,17 @@ int isValidPtr(void *ptr)
 
 int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate)
 {
-	struct p11Attribute_t *attr;
-	struct p11Attribute_t *pAttribute;
+	struct p11Attribute_t *pAttribute, **ppAttribute;
 
-	pAttribute = (struct p11Attribute_t *) malloc (sizeof(struct p11Attribute_t));
+	pAttribute = (struct p11Attribute_t *) calloc (1, sizeof(struct p11Attribute_t));
 
 	if (pAttribute == NULL) {
 		return -1;
 	}
 
-	memset(pAttribute, 0x00, sizeof(struct p11Attribute_t));
-	memcpy(&pAttribute->attrData, pTemplate, sizeof(CK_ATTRIBUTE));
+	pAttribute->attrData = *pTemplate;
 
-	pAttribute->attrData.pValue = malloc(pAttribute->attrData.ulValueLen);
+	pAttribute->attrData.pValue = calloc(pAttribute->attrData.ulValueLen, 1);
 
 	if (pAttribute->attrData.pValue == NULL) {
 		free(pAttribute);
@@ -597,17 +595,11 @@ int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate)
 
 	memcpy(pAttribute->attrData.pValue, pTemplate->pValue, pAttribute->attrData.ulValueLen);
 
-	if (object->attrList == NULL) {
-		object->attrList = pAttribute;
-	} else {
-		attr = object->attrList;
-
-		while (attr->next != NULL) {
-			attr = attr->next;
-		}
-
-		attr->next = pAttribute;
+	ppAttribute = &object->attrList;
+	while (*ppAttribute != NULL) {
+		ppAttribute = &((*ppAttribute)->next);
 	}
+	*ppAttribute = pAttribute;
 
 	return CKR_OK;
 }
@@ -639,7 +631,7 @@ int findAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTemplate
 
 int findAttributeInTemplate(CK_ATTRIBUTE_TYPE attributeType, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount)
 {
-	unsigned int i;
+	int i;
 
 	for (i = 0; i < ulCount; i++) {
 		if (pTemplate[i].type == attributeType) {
@@ -654,33 +646,21 @@ int findAttributeInTemplate(CK_ATTRIBUTE_TYPE attributeType, CK_ATTRIBUTE_PTR pT
 
 int removeAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTemplate)
 {
-	struct p11Attribute_t *attr = NULL;
-	struct p11Attribute_t *prev = NULL;
-	int rc;
+	struct p11Attribute_t *pAttr, **ppAttr;
 
-	rc = findAttribute(object, attributeTemplate, &attr);
-
-	/* no object for this template found */
-	if (rc < 0) {
-		return rc;
+	ppAttr = &object->attrList;
+	while (*ppAttr && ((*ppAttr)->attrData.type != attributeTemplate->type)) {
+		ppAttr = &((*ppAttr)->next);
 	}
 
-	if (rc > 0) {      /* there is more than one element in the pool */
-		prev = object->attrList;
+	if (*ppAttr == NULL)
+		return CKR_GENERAL_ERROR;
 
-		while (prev->next->attrData.type != attributeTemplate->type) {
-			prev = prev->next;
-		}
+	pAttr = *ppAttr;
+	*ppAttr = (*ppAttr)->next;
 
-		prev->next = attr->next;
-	}
-
-	free(attr->attrData.pValue);
-	free(attr);
-
-	if (rc == 0) {      /* We removed the last element from the list */
-		object->attrList = NULL;
-	}
+	free(pAttr->attrData.pValue);
+	free(pAttr);
 
 	return CKR_OK;
 }
@@ -689,18 +669,72 @@ int removeAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTempla
 
 int removeAllAttributes(struct p11Object_t *object)
 {
-	struct p11Attribute_t *pAttr, *pAttr2;
-
-	pAttr = object->attrList;
-
-	while (pAttr) {
-		pAttr2 = pAttr;
-		pAttr = pAttr->next;
-		free(pAttr2);
+	while(object->attrList) {
+		if (removeAttribute(object, &object->attrList->attrData) != CKR_OK)
+			return CKR_GENERAL_ERROR;
 	}
 
-	return 0;
+	return CKR_OK;
+}
 
+
+
+/**
+ * Add a PKCS11 object to a linked list of objects
+ * The object is inserted at the first position in the list
+ *
+ * @param list address of the pointer to the first entry in the list
+ * @param object the object to be added
+ */
+void addObjectToList(struct p11Object_t **list, struct p11Object_t *object)
+{
+	object->next = *list;
+	*list = object;
+}
+
+
+
+/**
+ * Remove a PKCS11 object from a linked list of objects
+ * The object is removed and allocated memory freed
+ *
+ * @param list address of the pointer to the first entry in the list
+ * @param handle the handle of the object to be removed
+ * @return CKR_OK or CKR_OBJECT_HANDLE_INVALID
+ */
+int removeObjectFromList(struct p11Object_t **list, CK_OBJECT_HANDLE handle)
+{
+	struct p11Object_t *object;
+
+	while (*list && ((*list)->handle != handle)) {
+		list = &((*list)->next);
+	}
+
+	if (*list == NULL)
+		return CKR_OBJECT_HANDLE_INVALID;
+
+	object = *list;
+	*list = (*list)->next;
+
+	removeAllAttributes(object);
+	free(object);
+
+	return CKR_OK;
+}
+
+
+
+/**
+ * Remove all objects from a linked list of objects
+ *
+ * @param list address of the pointer to the first entry in the list
+ */
+void removeAllObjectsFromList(struct p11Object_t **list)
+{
+	while(*list) {
+		if (removeObjectFromList(list, (*list)->handle) != CKR_OK)
+			return;
+	}
 }
 
 
@@ -712,17 +746,13 @@ int dumpAttributeList(struct p11Object_t *pObject)
 	CK_ATTRIBUTE_PTR attr;
 	struct p11Attribute_t *p11Attr;
 
-
 	debug("\n******** attribute list for object ********\n");
 
 	p11Attr = pObject->attrList;
 
 	while (p11Attr != NULL) {
-
 		attr = &p11Attr->attrData;
-
 		dumpAttribute(attr);
-
 		p11Attr = p11Attr->next;
 	}
 

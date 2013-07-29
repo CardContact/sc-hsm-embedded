@@ -175,18 +175,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
-	rv = initSessionPool(context->sessionPool);
-
-	if (rv != CKR_OK) {
-#ifdef DEBUG
-		debug("[C_Initialize] Error initializing session pool ...\n");
-#endif
-		free(context->sessionPool);
-		free(context->slotPool);
-		free(context);
-		context = NULL;
-		FUNC_RETURNS(rv);
-	}
+	initSessionPool(context->sessionPool);
 
 	rv = initSlotPool(context->slotPool);
 

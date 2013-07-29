@@ -40,146 +40,70 @@
 
 
 /**
- * initSessionPool initializes the session-pool structure.
+ * Initialize the session-pool structure
  *
  * @param pool       Pointer to session-pool structure.
- *
- * @return
- *                   <P><TABLE>
- *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
- *                   <TR>
- *                   <TD>CKR_OK                                 </TD>
- *                   <TD>Success                                </TD>
- *                   </TR>
- *                   </TABLE></P>
  */
-int initSessionPool(struct p11SessionPool_t *pool)
+void initSessionPool(struct p11SessionPool_t *pool)
 {
 	pool->list = NULL;
 	pool->nextSessionHandle = 1;     /* Set initial value of session handles to 1 */
 	                                 /* Valid handles have a non-zero value       */
 	pool->numberOfSessions = 0;
-
-	return CKR_OK;
-}
-
-
-
-int terminateSessionPool(struct p11SessionPool_t *pool)
-{
-	struct p11Session_t *pSession, *pFreeSession;
-	struct p11Object_t *pObject, *tmp;
-
-	pSession = pool->list;
-
-	/* clear the session pool */
-	while (pSession) {
-
-		/* clear the search objects */
-		pObject = pSession->searchObj.searchList;
-
-		while (pObject) {
-			tmp = pObject->next;
-
-			removeAllAttributes(pObject);
-			free(pObject);
-
-			pObject = tmp;
-		}
-
-		/* clear the session */
-		pObject = pSession->sessionObjList;
-
-		while (pObject) {
-			tmp = pObject->next;
-
-			removeAllAttributes(pObject);
-			free(pObject);
-
-			pObject = tmp;
-		}
-
-		pFreeSession = pSession;
-
-		pSession = pSession->next;
-
-		free(pFreeSession);
-
-	}
-
-	return 0;
 }
 
 
 
 /**
- * addSession adds a session to the session-pool.
- *
- * This funcions sets the handle of the session object to a valid value.
+ * Terminate the session pool, removing all objects and freeing allocated memory
  *
  * @param pool       Pointer to session-pool structure.
- * @param session    Pointer to session structure.
- *
- * @return
- *                   <P><TABLE>
- *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
- *                   <TR>
- *                   <TD>CKR_OK                                 </TD>
- *                   <TD>Success                                </TD>
- *                   </TR>
- *                   </TABLE></P>
  */
-int addSession(struct p11SessionPool_t *pool, struct p11Session_t *session)
+void terminateSessionPool(struct p11SessionPool_t *pool)
 {
-	struct p11Session_t *prevSession;
+	while(pool->list) {
+		if (removeSession(pool, pool->list->handle) != CKR_OK)
+			return;
+	}
+}
+
+
+
+/**
+ * Add a session to the session-pool
+ *
+ * This function sets the handle of the session object to a valid value.
+ *
+ * @param pool       Pointer to session-pool structure
+ * @param session    Pointer to session structure
+ */
+void addSession(struct p11SessionPool_t *pool, struct p11Session_t *session)
+{
+	struct p11Session_t **pSession;
 
 	session->next = NULL;
 
-	if (pool->list == NULL) {
+	pSession = &pool->list;
+	while(*pSession)
+		pSession = &(*pSession)->next;
 
-		pool->list = session;
-
-	} else {
-
-		prevSession = pool->list;
-
-		while (prevSession->next != NULL) {
-			prevSession = prevSession->next;
-		}
-
-		prevSession->next = session;
-
-	}
+	*pSession = session;
 
 	session->handle = pool->nextSessionHandle++;
 	pool->numberOfSessions++;
-
-	return CKR_OK;
 }
 
 
 
 /**
- * findSessionByHandle finds a slot in the slot-pool.
- * The session is specified by its handle.
+ * Find a slot in the slot-pool by it's slot handle
  *
  * @param pool       Pointer to slot-pool structure.
  * @param handle     The handle of the session.
  * @param session    Pointer to session structure.
  *                   If the session is found, this pointer holds the specific session structure - otherwise NULL.
  *
- * @return
- *                   <P><TABLE>
- *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
- *                   <TR>
- *                   <TD>CKR_OK                                 </TD>
- *                   <TD>Success                                </TD>
- *                   </TR>
- *                   <TR>
- *                   <TD>CKR_SESSION_HANDLE_INVALID             </TD>
- *                   <TD>The specified session was not found    </TD>
- *                   </TR>
- *                   </TABLE></P>
+ * @return CKR_OK or CKR_SESSION_HANDLE_INVALID
  */
 int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle, struct p11Session_t **session)
 {
@@ -203,12 +127,11 @@ int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle,
 
 
 /**
- * findSessionBySlotID finds a slot in the slot-pool.
- * The session is specified by the slotID of the used slot..
+ * Find a slot in the slot-pool by it's related slot
  *
- * @param pool       Pointer to slot-pool structure.
- * @param slotID     The slot identifier.
- * @param session    Pointer to session structure.
+ * @param pool       Pointer to slot-pool structure
+ * @param slotID     The slot identifier
+ * @param session    Pointer to session structure
  *                   If the session is found, this pointer holds the specific session structure - otherwise NULL.
  *
  * @return
@@ -233,9 +156,7 @@ int findSessionBySlotID(struct p11SessionPool_t *pool, CK_SLOT_ID slotID, struct
 	pos = 0;
 
 	while (psession != NULL) {
-
 		if (psession->slotID == slotID) {
-
 			*session = psession;
 			return pos;
 		}
@@ -245,36 +166,22 @@ int findSessionBySlotID(struct p11SessionPool_t *pool, CK_SLOT_ID slotID, struct
 	}
 
 	return -1;
-
 }
 
 
 
 /**
- * removeSession removes a session from the session-pool.
- * The session to remove is specified by the session handle.
+ * Remove a session from the session-pool
  *
- * @param pool       Pointer to session-pool structure.
- * @param handle     The handle of the session.
+ * @param pool       Pointer to session-pool structure
+ * @param handle     The handle of the session
  *
- * @return
- *                   <P><TABLE>
- *                   <TR><TD>Code</TD><TD>Meaning</TD></TR>
- *                   <TR>
- *                   <TD>CKR_OK                              </TD>
- *                   <TD>Success                             </TD>
- *                   </TR>
- *                   <TR>
- *                   <TD>CKR_SESSION_HANDLE_INVALID          </TD>
- *                   <TD>The specified session was not found </TD>
- *                   </TR>
- *                   </TABLE></P>
+ * @return CKR_OK, CKR_SESSION_HANDLE_INVALID, CKR_GENERAL_ERROR
  */
 int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle)
 {
 	struct p11Session_t *session;
 	struct p11Session_t **pSession;
-	struct p11Object_t *object, *tmp;
 
 	pSession = &pool->list;
 	while (*pSession && (*pSession)->handle != handle) {
@@ -289,13 +196,11 @@ int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle)
 
 	*pSession = session->next;
 
-	object = session->sessionObjList;
+	clearSearchList(session);
 
-	while (object) {
-		tmp = object->next;
-		removeAllAttributes(object);
-		free(object);
-		object = tmp;
+	while(session->sessionObjList) {
+		if (removeSessionObject(session, session->sessionObjList->handle) != CKR_OK)
+			return CKR_GENERAL_ERROR;
 	}
 
 	if (session->cryptoBuffer) {
@@ -310,11 +215,17 @@ int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle)
 	pool->numberOfSessions--;
 
 	return CKR_OK;
-
 }
 
 
 
+/**
+ * Return the current session state
+ *
+ * @param session    the session
+ * @param token      the token this session is bound to (prevent duplicate slot lookup)
+ * @return One of the CK_STATE values
+ */
 CK_STATE getSessionState(struct p11Session_t *session, struct p11Token_t *token)
 {
 	CK_STATE state;
@@ -337,40 +248,31 @@ CK_STATE getSessionState(struct p11Session_t *session, struct p11Token_t *token)
 
 
 
-int addSessionObject(struct p11Session_t *session, struct p11Object_t *object)
+/**
+ * Add an object to the list of session objects
+ *
+ * @param session    the session
+ * @param object     the object to add
+ */
+void addSessionObject(struct p11Session_t *session, struct p11Object_t *object)
 {
-	struct p11Object_t *obj;
-
-	if (session->sessionObjList == NULL) {
-
-		session->sessionObjList = object;
-		object->next = NULL;
-		session->numberOfSessionObjects = 1;
+	if (session->freeSessionObjNumber == 0) {
 		session->freeSessionObjNumber = 0xA000;
-		object->handle = session->freeSessionObjNumber++;
-
-	} else {
-
-		obj = session->sessionObjList;
-
-		while (obj->next != NULL) {
-			obj = obj->next;
-		}
-
-		obj->next = object;
-		session->numberOfSessionObjects++;
-		object->handle = session->freeSessionObjNumber++;
-		object->next = NULL;
-
 	}
 
+	object->handle = session->freeSessionObjNumber++;
 	object->dirtyFlag = 0;
 
-	return CKR_OK;
+	addObjectToList(&session->sessionObjList, object);
+
+	session->numberOfSessionObjects++;
 }
 
 
 
+/**
+ * Find a session object by it's handle
+ */
 int findSessionObject(struct p11Session_t *session, CK_OBJECT_HANDLE handle, struct p11Object_t **object)
 {
 	struct p11Object_t *obj;
@@ -380,9 +282,7 @@ int findSessionObject(struct p11Session_t *session, CK_OBJECT_HANDLE handle, str
 	*object = NULL;
 
 	while (obj != NULL) {
-
 		if (obj->handle == handle) {
-
 			*object = obj;
 			return pos;
 		}
@@ -396,71 +296,47 @@ int findSessionObject(struct p11Session_t *session, CK_OBJECT_HANDLE handle, str
 
 
 
+/**
+ * Remove a session object
+ */
 int removeSessionObject(struct p11Session_t *session, CK_OBJECT_HANDLE handle)
 {
-	struct p11Object_t *object = NULL;
-	struct p11Object_t *prev = NULL;
 	int rc;
 
-	rc = findSessionObject(session, handle, &object);
+	rc = removeObjectFromList(&session->sessionObjList, handle);
 
-	/* no object with this handle found */
-	if (rc < 0) {
+	if (rc != CKR_OK)
 		return rc;
-	}
-
-	if (rc > 0) {      /* there is more than one element in the pool */
-
-		prev = session->sessionObjList;
-
-		while (prev->next->handle != handle) {
-			prev = prev->next;
-		}
-
-		prev->next = object->next;
-
-	}
-
-	removeAllAttributes(object);
-
-	free(object);
 
 	session->numberOfSessionObjects--;
-
-	if (rc == 0) {      /* We removed the last element from the list */
-		session->sessionObjList = NULL;
-	}
-
-	object->dirtyFlag = 0;
 
 	return CKR_OK;
 }
 
 
 
+/**
+ * Add an object to the search list by make a shallow copy of the object
+ */
 int addObjectToSearchList(struct p11Session_t *session, struct p11Object_t *object)
 {
 	struct p11Object_t *obj;
 	struct p11Object_t *tmp;
 
-	tmp = (struct p11Object_t *) malloc(sizeof(*object));
+	tmp = (struct p11Object_t *)calloc(1, sizeof(struct p11Object_t));
 
 	if (tmp == NULL) {
 		return -1;
 	}
 
-	memset(tmp, 0x00, sizeof(*tmp));
-	memcpy(tmp, object, sizeof(*object));
+	*tmp = *object;
 
 	if (session->searchObj.searchList == NULL) {
-
 		session->searchObj.searchList = tmp;
 		tmp->next = NULL;
 		session->searchObj.searchNumOfObjects = 1;
 		session->searchObj.objectsCollected = 0;
-
 	} else {
-
 		obj = session->searchObj.searchList;
 
 		while (obj->next != NULL) {
@@ -470,7 +346,6 @@ int addObjectToSearchList(struct p11Session_t *session, struct p11Object_t *obje
 		obj->next = tmp;
 		session->searchObj.searchNumOfObjects++;
 		tmp->next = NULL;
-
 	}
 
 	return CKR_OK;
@@ -478,6 +353,38 @@ int addObjectToSearchList(struct p11Session_t *session, struct p11Object_t *obje
 
 
 
+/**
+ * Clear the search results list
+ */
+void clearSearchList(struct p11Session_t *session)
+{
+	struct p11Object_t *pObject, *pTempObject;
+
+	pObject = session->searchObj.searchList;
+
+	// Objects on the search list are not a deep copy of the actual object
+	// thats why we don't use removeAllObjectsFromList() here
+	while (pObject) {
+		pTempObject = pObject->next;
+		free(pObject);
+		pObject = pTempObject;
+	}
+
+	session->searchObj.searchNumOfObjects = 0;
+	session->searchObj.objectsCollected = 0;
+	session->searchObj.searchList = NULL;
+}
+
+
+
+/**
+ * Append data to an internal buffer for token that don not implement an update() function
+ *
+ * @param session   the session
+ * @param data      the data to be added
+ * @param length    length of the data to be added
+ * @return CKR_OK or CKR_HOST_MEMORY
+ */
 int appendToCryptoBuffer(struct p11Session_t *session, CK_BYTE_PTR data, CK_ULONG length)
 {
 	if (session->cryptoBufferMax < session->cryptoBufferSize + length) {
@@ -503,6 +410,11 @@ int appendToCryptoBuffer(struct p11Session_t *session, CK_BYTE_PTR data, CK_ULON
 
 
 
+/**
+ * Clear crypto buffer used to collect input data
+ *
+ * @param session   the session
+ */
 void clearCryptoBuffer(struct p11Session_t *session)
 {
 	if (session->cryptoBuffer) {
