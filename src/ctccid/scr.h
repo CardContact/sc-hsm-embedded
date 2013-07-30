@@ -39,8 +39,8 @@
 #define usleep(us) Sleep((us) / 1000)
 #endif
 
+#include <common/mutex.h>
 #include "usb_device.h"
-#include "mutex.h"
 
 /**
  * Maximum number of readers

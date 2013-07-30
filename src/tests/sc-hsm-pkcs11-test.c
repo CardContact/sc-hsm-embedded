@@ -1204,7 +1204,7 @@ void main(int argc, char *argv[])
 	LIB_HANDLE dlhandle;
 	CK_RV (*C_GetFunctionList)(CK_FUNCTION_LIST_PTR_PTR);
 	char *p11libname = P11LIBNAME;
-
+	CK_C_INITIALIZE_ARGS initArgs;
 
 	if (argc == 2) {
 		p11libname = argv[1];
@@ -1224,9 +1224,12 @@ void main(int argc, char *argv[])
 
 	(*C_GetFunctionList)(&p11);
 
+	memset(&initArgs, 0, sizeof(initArgs));
+	initArgs.flags = CKF_OS_LOCKING_OK;
+
 	printf("Calling C_Initialize ");
 
-	rc = p11->C_Initialize(NULL);
+	rc = p11->C_Initialize(&initArgs);
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0), verdict(rc == CKR_OK));
 
 	if (rc != CKR_OK) {

@@ -38,7 +38,6 @@
 #include "ctapi.h"
 #include "ctbcs.h"
 #include "scr.h"
-#include "mutex.h"
 
 extern int ccidT1Term (struct scr *ctx);
 

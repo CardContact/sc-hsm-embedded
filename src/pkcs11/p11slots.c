@@ -81,9 +81,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotList)(
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
+	// updateSlots() potentially changes a lot of internal structures
+	// which is why both are protected here using the global lock
+	p11LockMutex(context->mutex);
+
 	rv = updateSlots(context->slotPool);
 
 	if (rv != CKR_OK) {
+		p11UnlockMutex(context->mutex);
 		FUNC_RETURNS(rv);
 	}
 
@@ -112,6 +117,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotList)(
 	}
 	*pulCount = i;
 
+	p11UnlockMutex(context->mutex);
+
 	FUNC_RETURNS(rv);
 }
 
@@ -137,6 +144,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotInfo)(
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
+	// updateSlots() and getToken() potentially change a lot of internal structures
+	// which is why both are protected here using the global lock
+	p11LockMutex(context->mutex);
+
 	rv = updateSlots(context->slotPool);
 
 	if (rv != CKR_OK) {
@@ -152,6 +163,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotInfo)(
 	getToken(slot, &token);				// Update token status
 
 	memcpy(pInfo, &(slot->info), sizeof(CK_SLOT_INFO));
+
+	p11UnlockMutex(context->mutex);
 
 	FUNC_RETURNS(CKR_OK);
 }

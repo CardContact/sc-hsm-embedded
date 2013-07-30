@@ -17,5 +17,6 @@ libsc_hsm_pkcs11_la_LIBADD = $(PCSC_LIBS)
 endif
 
 libsc_hsm_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
+	$(top_builddir)/src/common/libcommon.la \
 	-export-symbols "$(srcdir)/libpkcs11.exports" \
 	-module -shared -avoid-version -no-undefined

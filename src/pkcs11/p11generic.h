@@ -152,7 +152,13 @@ struct p11Context_t {
 
 	struct p11SlotPool_t *slotPool;         /**< Pointer to pool of available slots       */
 
+	void *mutex;                            /**< Global lock used to protect internals    */
 };
+
+CK_RV p11CreateMutex(CK_VOID_PTR_PTR ppMutex);
+CK_RV p11DestroyMutex(CK_VOID_PTR pMutex);
+CK_RV p11LockMutex(CK_VOID_PTR pMutex);
+CK_RV p11UnlockMutex(CK_VOID_PTR pMutex);
 
 #endif /* ___P11GENERIC_H_INC___ */
 

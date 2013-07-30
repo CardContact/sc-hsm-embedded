@@ -103,6 +103,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 	session->flags = flags;
 	session->activeObjectHandle = CK_INVALID_HANDLE;
 
+	p11LockMutex(context->mutex);
+
 	addSession(context->sessionPool, session);
 
 	*phSession = session->handle;               /* we got a valid handle by calling addSession() */
@@ -110,6 +112,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 	if (!(flags & CKF_RW_SESSION)) {
 		token->rosessions++;
 	}
+
+	p11UnlockMutex(context->mutex);
 
 	FUNC_RETURNS(CKR_OK);
 }
@@ -143,11 +147,15 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseSession)(
 		FUNC_RETURNS(rv);
 	}
 
+	p11LockMutex(context->mutex);
+
 	if (slot->token && !(session->flags & CKF_RW_SESSION)) {
 		slot->token->rosessions--;
 	}
 
 	rv = removeSession(context->sessionPool, hSession);
+
+	p11UnlockMutex(context->mutex);
 
 	if (rv < 0) {
 		FUNC_RETURNS(rv);
@@ -318,19 +326,25 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
 		return rv;
 	}
 
+	p11LockMutex(context->mutex);
+
 	if ((token->user == CKU_USER) || (token->user == CKU_SO)) {
+		p11UnlockMutex(context->mutex);
 		FUNC_RETURNS(CKR_USER_ALREADY_LOGGED_IN);
 	}
 
 	if (userType == CKU_USER) {
 		if (!(token->info.flags & CKF_USER_PIN_INITIALIZED)) {
+			p11UnlockMutex(context->mutex);
 			FUNC_RETURNS(CKR_USER_PIN_NOT_INITIALIZED);
 		}
 	} else {
 		if (!(session->flags & CKF_RW_SESSION)) {
+			p11UnlockMutex(context->mutex);
 			FUNC_RETURNS(CKR_SESSION_READ_ONLY);
 		}
 		if (token->rosessions) {
+			p11UnlockMutex(context->mutex);
 			FUNC_RETURNS(CKR_SESSION_READ_ONLY_EXISTS);
 		}
 	}
@@ -338,10 +352,12 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
 	rv = logIn(slot, userType, pPin, ulPinLen);
 
 	if (rv != CKR_OK) {
+		p11UnlockMutex(context->mutex);
 		FUNC_RETURNS(rv);
 	}
 
 	token->user = userType;
+	p11UnlockMutex(context->mutex);
 
 	FUNC_RETURNS(CKR_OK);
 }

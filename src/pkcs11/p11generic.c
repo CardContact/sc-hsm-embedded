@@ -33,6 +33,8 @@
 
 #include <string.h>
 
+#include <common/mutex.h>
+
 #include <pkcs11/p11generic.h>
 #include <pkcs11/session.h>
 #include <pkcs11/slotpool.h>
@@ -48,6 +50,92 @@
  *
  */
 struct p11Context_t *context = NULL;
+
+static CK_C_INITIALIZE_ARGS initArgs;
+
+
+
+CK_RV p11CreateMutex(CK_VOID_PTR_PTR ppMutex)
+{
+	if (initArgs.CreateMutex) {
+		return (*initArgs.CreateMutex)(ppMutex);
+	}
+	return CKR_OK;
+}
+
+
+
+CK_RV p11DestroyMutex(CK_VOID_PTR pMutex)
+{
+	if (initArgs.DestroyMutex) {
+		return (*initArgs.DestroyMutex)(pMutex);
+	}
+	return CKR_OK;
+}
+
+
+
+CK_RV p11LockMutex(CK_VOID_PTR pMutex)
+{
+	if (initArgs.LockMutex) {
+		return (*initArgs.LockMutex)(pMutex);
+	}
+	return CKR_OK;
+}
+
+
+
+CK_RV p11UnlockMutex(CK_VOID_PTR pMutex)
+{
+	if (initArgs.UnlockMutex) {
+		return (*initArgs.UnlockMutex)(pMutex);
+	}
+	return CKR_OK;
+}
+
+
+
+static CK_RV osCreateMutex(CK_VOID_PTR_PTR ppMutex)
+{
+	MUTEX *m = (MUTEX *)calloc(1, sizeof(*m));
+	if (m == NULL)
+		return CKR_HOST_MEMORY;
+	if (mutex_init(m) != 0)
+		return CKR_GENERAL_ERROR;
+	*ppMutex = (CK_VOID_PTR)m;
+	return CKR_OK;
+}
+
+
+
+static CK_RV osDestroyMutex(CK_VOID_PTR pMutex)
+{
+	if (mutex_destroy((MUTEX *)pMutex) != 0)
+		return CKR_GENERAL_ERROR;
+
+	free(pMutex);
+	return CKR_OK;
+}
+
+
+
+static CK_RV osLockMutex(CK_VOID_PTR pMutex)
+{
+	if (mutex_lock((MUTEX *)pMutex) != 0)
+		return CKR_GENERAL_ERROR;
+
+	return CKR_OK;
+}
+
+
+
+static CK_RV osUnlockMutex(CK_VOID_PTR pMutex)
+{
+	if (mutex_unlock((MUTEX *)pMutex) != 0)
+		return CKR_GENERAL_ERROR;
+
+	return CKR_OK;
+}
 
 
 
@@ -142,6 +230,21 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 {
 	int rv = CKR_OK;
 
+	memset(&initArgs, 0 , sizeof(initArgs));
+
+	if (pInitArgs) {
+		initArgs = *(CK_C_INITIALIZE_ARGS_PTR)pInitArgs;
+		if (initArgs.pReserved != NULL)
+			return CKR_ARGUMENTS_BAD;
+	}
+
+	if (initArgs.flags & CKF_OS_LOCKING_OK) {
+		initArgs.CreateMutex = osCreateMutex;
+		initArgs.DestroyMutex = osDestroyMutex;
+		initArgs.LockMutex = osLockMutex;
+		initArgs.UnlockMutex = osUnlockMutex;
+	}
+
 	/* Make sure the cryptoki has not been initialized */
 	if (context != NULL) {
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
@@ -152,6 +255,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 	if (context == NULL) {
 		return CKR_HOST_MEMORY;
 	}
+
+	rv = p11CreateMutex(&context->mutex);
+	if (rv != CKR_OK)
+		return CKR_OK;
 
 #ifdef DEBUG
 	initDebug(context);
@@ -219,6 +326,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_Finalize)
 		termDebug(context);
 #endif
 
+		p11DestroyMutex(context->mutex);
+
 		free(context);
 		context = NULL;
 	}
@@ -267,10 +376,16 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetInfo)
 	strbpcpy(pInfo->manufacturerID,
 			"CardContact (www.cardcontact.de)",
 			sizeof(pInfo->manufacturerID));
+#ifdef CTAPI
 	strbpcpy(pInfo->libraryDescription,
 			"SmartCard-HSM R/O with CT-API",
 			sizeof(pInfo->libraryDescription));
-	pInfo->libraryVersion.major = 1;
+#else
+	strbpcpy(pInfo->libraryDescription,
+			"SmartCard-HSM R/O with PC/SC",
+			sizeof(pInfo->libraryDescription));
+#endif
+	pInfo->libraryVersion.major = 2;
 	pInfo->libraryVersion.minor = 0;
 
 	FUNC_RETURNS(CKR_OK);

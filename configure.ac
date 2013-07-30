@@ -30,6 +30,7 @@ AM_CONDITIONAL([ENABLE_CTAPI], [test "${enable_pcsc}" != "yes"])
 AC_CONFIG_FILES([
     Makefile
     src/Makefile
+    src/common/Makefile
     src/ctccid/Makefile
     src/pkcs11/Makefile
     src/tests/Makefile
