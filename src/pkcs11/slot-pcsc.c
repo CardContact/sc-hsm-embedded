@@ -642,6 +642,11 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		slot->info.firmwareVersion.major = 0;
 
 		slot->info.flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
+
+		if (!strncmp((char *)p, "REINER SCT", 10)) {
+			slot->maxRAPDU = 1000;
+			slot->maxCAPDU = 1000;
+		}
 		addSlot(context->slotPool, slot);
 
 #ifdef DEBUG

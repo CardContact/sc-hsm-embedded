@@ -114,14 +114,14 @@ struct p11Slot_t {
 	int closed;                       /**< Slot hardware currently absent      */
 	unsigned long hasFeatureVerifyPINDirect;
 #ifndef CTAPI
-	char readername[MAX_READERNAME];  /**< The directory that holds this slot  */
+	char readername[MAX_READERNAME];  /**< The reader name for this slot       */
 	SCARDCONTEXT context;             /**< Card manager context for slot       */
 	SCARDHANDLE card;                 /**< Handle to card                      */
 #endif
-
-	struct p11Token_t *token;       /**< Pointer to token in the slot        */
-
-	struct p11Slot_t *next;         /**< Pointer to next available slot      */
+	int maxCAPDU;                     /**< Maximum length of command APDU      */
+	int maxRAPDU;                     /**< Maximum length of response APDU     */
+	struct p11Token_t *token;         /**< Pointer to token in the slot        */
+	struct p11Slot_t *next;           /**< Pointer to next available slot      */
 };
 
 

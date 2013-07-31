@@ -308,12 +308,15 @@ static int selectApplication(struct p11Token_t *token)
 
 
 
-static int readEF(struct p11Slot_t *slot, bytestring fid, unsigned char *content, size_t len)
+static int readCertEF(struct p11Slot_t *slot, bytestring fid, unsigned char *content, size_t len)
 {
-	int rc;
+	int rc, le, ne, ofs, maxapdu;
 	unsigned short SW1SW2;
+	unsigned char *po;
+
 	FUNC_CALLED();
 
+	// Select EF
 	rc = transmitAPDU(slot, 0x00, 0xA4, 0x02, 0x0C,
 			fid->len, fid->val,
 			0, NULL, 0, &SW1SW2);
@@ -326,9 +329,11 @@ static int readEF(struct p11Slot_t *slot, bytestring fid, unsigned char *content
 		FUNC_FAILS(-1, "File not found");
 	}
 
-	rc = transmitAPDU(slot, 0x00, 0xB0, 0, 0,
+	// Read first 5 bytes to determine tag and length
+	ofs = 0;
+	rc = transmitAPDU(slot, 0x00, 0xB0, ofs >> 8, ofs & 0xFF,
 			0, NULL,
-			65536, content, len, &SW1SW2);
+			5, content + ofs, len - ofs, &SW1SW2);
 
 	if (rc < 0) {
 		FUNC_FAILS(rc, "transmitAPDU failed");
@@ -338,7 +343,46 @@ static int readEF(struct p11Slot_t *slot, bytestring fid, unsigned char *content
 		FUNC_FAILS(-1, "Read EF failed");
 	}
 
-	FUNC_RETURNS(rc);
+	ofs += rc;
+
+	// Restrict the number of byte in Le to either the maximum APDU size of STARCOS or
+	// the maximum APDU size of the reader, if any.
+	maxapdu = 1920;
+	if (slot->maxRAPDU && (slot->maxRAPDU < maxapdu))
+		maxapdu = slot->maxRAPDU;
+	maxapdu -= 2;		// Accommodate SW1/SW2
+
+	le = 65536;			// Read all if no certificate
+	if (*content == 0x30) {
+		po = content;
+		asn1Tag(&po);
+		rc = asn1Length(&po);
+		rc += po - content;
+		le = rc - ofs;
+	}
+
+	do	{
+		ne = le;
+		if ((le != 65536) && (le > maxapdu))
+			ne = maxapdu;
+
+		rc = transmitAPDU(slot, 0x00, 0xB0, ofs >> 8, ofs & 0xFF,
+				0, NULL,
+				ne, content + ofs, len - ofs, &SW1SW2);
+
+		if (rc < 0) {
+			FUNC_FAILS(rc, "transmitAPDU failed");
+		}
+
+		if ((SW1SW2 != 0x9000) && (SW1SW2 != 0x6B00)) {
+			FUNC_FAILS(-1, "Read EF failed");
+		}
+		ofs += rc;
+		if (le != 65536)
+			le -= rc;
+	} while ((rc > 0) && (ofs < len) && (le > 0));
+
+	FUNC_RETURNS(ofs);
 }
 
 
@@ -789,7 +833,7 @@ static int addCertificateObject(struct p11Token_t *token, struct p15CertificateD
 
 	FUNC_CALLED();
 
-	rc = readEF(token->slot, &p15->efidOrPath, certValue, sizeof(certValue));
+	rc = readCertEF(token->slot, &p15->efidOrPath, certValue, sizeof(certValue));
 
 	if (rc < 0) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate");
