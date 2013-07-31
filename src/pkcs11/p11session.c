@@ -398,7 +398,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_Logout)(
 
 	slot->token->user = 0xFF;
 
+	p11LockMutex(context->mutex);
+
 	rv = logOut(slot);
+
+	p11UnlockMutex(context->mutex);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
