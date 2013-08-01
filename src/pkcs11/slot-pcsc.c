@@ -394,7 +394,7 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 	WORD feature;
 	DWORD featurecode, lenr, atrlen,readernamelen,state,protocol;
 	unsigned char buf[256];
-	unsigned char atr[MAX_ATR_SIZE];
+	unsigned char atr[36];
 
 	FUNC_CALLED();
 
