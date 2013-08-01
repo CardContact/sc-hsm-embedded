@@ -43,6 +43,7 @@
 #ifdef _WIN32
 #include "ext-win/dirent.h"
 #define snprintf _snprintf
+#define strdup _strdup
 #else
 #include <unistd.h>
 #include <dirent.h>
@@ -136,28 +137,28 @@ void sign_all_files(const char* pin, const char* label, const char* path)
 		if (entry->d_name[0] == '.')
 			continue;
 
-		/* Create the full path to the entry */
-		n = snprintf(entry_path, sizeof(entry_path), "%s/%s", path, entry->d_name);
-		if (n < 0 || n >= sizeof(entry_path)) {
-			printf("ERROR constructing entry path for %s/%s\n", path, entry->d_name);
-			continue;
-		}
-
-		/* Recursively call this function on sub-directories */
-		if (entry->d_type == DT_DIR) {
-			sign_all_files(pin, label, entry_path);
-			continue;
-		}
-
 		/* Skip any .p7s files  TODO: delete any orphaned .p7s files*/
 		ext = strrchr(entry->d_name, '.');
 		if (ext && (strcmp(ext, ".p7s") == 0))
 			continue;
 
+		/* Create the full path to the entry */
+		n = snprintf(entry_path, sizeof(entry_path), "%s/%s", path, entry->d_name);
+		if (n < 0 || n >= sizeof(entry_path)) {
+			printf("ERROR constructing entry path for '%s/%s'\n", path, entry->d_name);
+			continue;
+		}
+
 		/* Stat the entry */
 		if (stat(entry_path, &entry_info) == -1) {
 			int e = errno;
 			printf("ERROR opening file '%s': %s\n", entry_path, strerror(e));
+			continue;
+		}
+
+		/* Recursively call this function on sub-directories */
+		if (S_ISDIR(entry_info.st_mode)) {
+			sign_all_files(pin, label, entry_path);
 			continue;
 		}
 
@@ -225,8 +226,10 @@ void sign_all_files(const char* pin, const char* label, const char* path)
 
 int main(int argc, char** argv)
 {
-	const char * pin, * label, * path;
+	const char * pin, * label;
+	char* path;
 	struct stat info;
+	int i;
 
 	/* Check args */
 	if (argc != 4) {
@@ -235,7 +238,12 @@ int main(int argc, char** argv)
 	}
 	pin = argv[1];
 	label = argv[2];
-	path = argv[3];
+	path = strdup(argv[3]);
+
+	/* Trim trailing slashes from path */
+	i = strlen(path);
+	while (--i >= 0 && (path[i] == '/' || path[i] == '\\'))
+		path[i] = 0;
 
 	/* Verify the specified folder exists */
 	if (stat(path, &info) == -1) {
@@ -244,10 +252,7 @@ int main(int argc, char** argv)
 		return e;
 	}
 
-	/*
-	 * TODO: Create a mutex for controlling access to token.
-	 * NOTE: Only necessary for simultaneous access to token.
-	 */
+	/* TODO: Create a mutex for controlling access to token. Only necessary for simultaneous access to token. */
 
 	/* Sign all files in the specified directory */
 	sign_all_files(pin, label, path);
@@ -255,7 +260,7 @@ int main(int argc, char** argv)
 	/* Clean up */
 	release_template();
 
-	/* TODO: Destroy mutex */
+	/* TODO: Destroy mutex. Only necessary for simultaneous access to token. */
 
 #if defined(_WIN32) && defined(DEBUG)
 	_CrtDumpMemoryLeaks();
