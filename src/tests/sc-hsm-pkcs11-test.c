@@ -316,6 +316,7 @@ static int optTestRSADecryption = 0;
 static int optTestPINBlock = 0;
 static int optTestMultiOnly = 0;
 static int optOneThreadPerToken = 0;
+static int optNoClass3Tests = 0;
 
 static char namebuf[40]; /* used by main thread */
 
@@ -1098,7 +1099,7 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	rc = p11->C_GetTokenInfo(sessioninfo.slotID, &tokeninfo);
 	printf("Token flags %lx - %s\n", tokeninfo.flags, verdict((tokeninfo.flags & (CKF_USER_PIN_COUNT_LOW|CKF_USER_PIN_FINAL_TRY|CKF_USER_PIN_LOCKED)) == 0));
 
-	if (tokeninfo.flags & CKF_PROTECTED_AUTHENTICATION_PATH) {
+	if ((tokeninfo.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !optNoClass3Tests) {
 
 		printf("Calling C_Logout ");
 		rc = p11->C_Logout(session);
@@ -1214,6 +1215,7 @@ void usage()
 	printf("  --test-pin-block           Enable PIN blocking test\n");
 	printf("  --test-multithreading-only Perform multihreading tests only\n");
 	printf("  --one-thread-per-token     Create a single thread per token rather than distributing %d\n", NUM_THREADS);
+	printf("  --no-class3-tests          No PIN tests with attached class 3 PIN PAD\n");
 }
 
 
@@ -1251,6 +1253,8 @@ void decodeArgs(int argc, char **argv)
 			optTestMultiOnly = 1;
 		} else if (!strcmp(*argv, "--one-thread-per-token")) {
 			optOneThreadPerToken = 1;
+		} else if (!strcmp(*argv, "--no-class3-tests")) {
+			optNoClass3Tests = 1;
 		} else {
 			printf("Unknown argument %s\n", *argv);
 			usage();

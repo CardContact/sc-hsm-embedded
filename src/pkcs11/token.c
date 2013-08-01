@@ -335,7 +335,7 @@ int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p
 
 
 /**
- * Release allow memory allocated for token
+ * Release allocated memory allocated for token
  *
  * @param slot      The slot in which the token is inserted
  */
