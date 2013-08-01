@@ -144,6 +144,7 @@ struct p11TokenDriver {
 	/**< Allow driver to check if card is a candidate based on the ATR                      */
 	int (*isCandidate)(unsigned char *atr, size_t atrLen);
 	int (*newToken)(struct p11Slot_t *slot, struct p11Token_t **token);
+	void (*freeToken)(struct p11Slot_t *slot);
 	int (*getMechanismList)(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount);
 	int (*getMechanismInfo)(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo);
 	int (*login)(struct p11Slot_t *slot, int userType, unsigned char *pin, int pinlen);

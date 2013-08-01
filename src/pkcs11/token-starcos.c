@@ -139,7 +139,7 @@ struct p15PrivateKeyDescription prkd_eUserPKI[] = {
 			P15_KT_RSA,
 			{ "C.CH.AUT" },
 			1,
-			{ (unsigned char[]){ 0x01 }, 1 },
+			{ (unsigned char[]){ 0x03 }, 1 },
 			P15_SIGN|P15_DECIPHER,
 			2048,
 			0x82
@@ -153,7 +153,7 @@ struct p15CertificateDescription certd_eUserPKI[] = {
 		0,                                          // isCA
 		P15_CT_X509,                                // Certificate type
 		{ "C.CH.AUT" },                             // Label
-		{ (unsigned char[]){ 0x01 }, 1 },           // Id
+		{ (unsigned char[]){ 0x03 }, 1 },           // Id
 		{ (unsigned char[]){ 0xC0, 0x03 }, 2 }      // efifOrPath
 	},
 	{
@@ -266,6 +266,40 @@ static struct starcosPrivateData *getPrivateData(struct p11Token_t *token)
 
 
 
+static void lock(struct p11Token_t *token)
+{
+	struct starcosPrivateData *sc;
+
+	FUNC_CALLED();
+
+	sc = getPrivateData(token);
+	if (sc->primarySlot) {
+		sc = getPrivateData(sc->primarySlot->token);
+	}
+	p11LockMutex(sc->mutex);
+
+#ifdef DEBUG
+	debug("Lock released\n");
+#endif
+}
+
+
+
+static void unlock(struct p11Token_t *token)
+{
+	struct starcosPrivateData *sc;
+
+	FUNC_CALLED();
+
+	sc = getPrivateData(token);
+	if (sc->primarySlot) {
+		sc = getPrivateData(sc->primarySlot->token);
+	}
+	p11UnlockMutex(sc->mutex);
+}
+
+
+
 static int selectApplication(struct p11Token_t *token)
 {
 	int rc, *sa;
@@ -279,8 +313,8 @@ static int selectApplication(struct p11Token_t *token)
 
 	appl = &starcosApplications[sc->application];
 
-	if (sc->primaryToken) {
-		sa = &(getPrivateData(sc->primaryToken)->selectedApplication);
+	if (sc->primarySlot) {
+		sa = &(getPrivateData(sc->primarySlot->token)->selectedApplication);
 	} else {
 		sa = &sc->selectedApplication;
 	}
@@ -634,14 +668,18 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 		FUNC_RETURNS(CKR_OK);
 	}
 
+	lock(pObject->token);
+
 	rc = selectApplication(pObject->token);
 	if (rc < 0) {
+		unlock(pObject->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "selecting application failed");
 	}
 
 	if (mech != CKM_RSA_PKCS) {
 		rc = digest(pObject->token, mech, pData, ulDataLen);
 		if (rc != CKR_OK) {
+			unlock(pObject->token);
 			FUNC_FAILS(rc, "digesting failed");
 		}
 		pData = NULL;
@@ -650,6 +688,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 
 	rc = getAlgorithmIdForSigning(pObject->token, mech, &s);
 	if (rc != CKR_OK) {
+		unlock(pObject->token);
 		FUNC_FAILS(rc, "getAlgorithmIdForSigning() failed");
 	}
 
@@ -669,10 +708,12 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 		0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {
+		unlock(pObject->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
 	if (SW1SW2 != 0x9000) {
+		unlock(pObject->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "MANAGE SE failed");
 	}
 
@@ -681,15 +722,18 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 			0, pSignature, *pulSignatureLen, &SW1SW2);
 
 	if (rc < 0) {
+		unlock(pObject->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
 	if (SW1SW2 == 0x6982) {
+		unlock(pObject->token);
 		logOut(pObject->token->slot);
 		FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "User not logged in");
 	}
 
 	if (SW1SW2 != 0x9000) {
+		unlock(pObject->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Signature operation failed");
 	}
 
@@ -709,6 +753,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 		}
 	}
 
+	unlock(pObject->token);
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -1196,6 +1241,15 @@ static int logout(struct p11Slot_t *slot)
 
 
 
+static void freeStarcosToken(struct p11Slot_t *slot)
+{
+	struct starcosPrivateData *sc;
+	sc = getPrivateData(slot->token);
+	p11DestroyMutex(sc->mutex);
+}
+
+
+
 struct p11TokenDriver starcos_token;
 
 /**
@@ -1240,6 +1294,7 @@ static int newStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	sc = getPrivateData(ptoken);
 	sc->application = STARCOS_DEFAULT;
 	sc->selectedApplication = -1;
+	p11CreateMutex(&sc->mutex);
 
 	strbpcpy(ptoken->info.label, starcosApplications[sc->application].name, sizeof(ptoken->info.label));
 
@@ -1324,6 +1379,7 @@ struct p11TokenDriver starcos_token = {
 	"Starcos",
 	isCandidate,
 	newStarcosToken,
+	freeStarcosToken,
 	getMechanismList,
 	getMechanismInfo,
 	login,

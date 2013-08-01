@@ -270,7 +270,7 @@ int synchronizeToken(struct p11Slot_t *slot, struct p11Token_t *token)
  */
 int logIn(struct p11Slot_t *slot, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen)
 {
-	return (slot->token->drv->login)(slot, userType, pPin, ulPinLen);
+	return slot->token->drv->login(slot, userType, pPin, ulPinLen);
 }
 
 
@@ -290,7 +290,7 @@ int logOut(struct p11Slot_t *slot)
 
 	removePrivateObjects(slot->token);
 
-	return (slot->token->drv->logout)(slot);
+	return slot->token->drv->logout(slot);
 }
 
 
@@ -311,7 +311,7 @@ int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p
 
 	for (drv = tokenDriver; *drv != NULL; drv++) {
 		if (((*drv)->isCandidate)(atr, atrlen)) {
-			rc = ((*drv)->newToken)(slot, token);
+			rc = (*drv)->newToken(slot, token);
 			if (rc == CKR_OK)
 				FUNC_RETURNS(rc);
 
@@ -321,7 +321,7 @@ int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p
 	}
 
 	for (drv = tokenDriver; *drv != NULL; drv++) {
-		rc = ((*drv)->newToken)(slot, token);
+		rc = (*drv)->newToken(slot, token);
 		if (rc == CKR_OK)
 			FUNC_RETURNS(rc);
 
@@ -342,6 +342,9 @@ int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p
 void freeToken(struct p11Slot_t *slot)
 {
 	if (slot->token) {
+		if (slot->token->drv->freeToken)
+			slot->token->drv->freeToken(slot);
+
 		removePrivateObjects(slot->token);
 		removePublicObjects(slot->token);
 		free(slot->token);

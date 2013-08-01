@@ -395,6 +395,7 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 	DWORD featurecode, lenr, atrlen,readernamelen,state,protocol;
 	unsigned char buf[256];
 	unsigned char atr[36];
+	char *po;
 
 	FUNC_CALLED();
 
@@ -461,7 +462,9 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 #ifdef DEBUG
 				debug("Slot supports feature VERIFY_PIN_DIRECT - setting CKF_PROTECTED_AUTHENTICATION_PATH for token\n");
 #endif
-				ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
+				po = getenv("PKCS11_IGNORE_PINPAD");
+				if (!po || (*po == '0'))
+					ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
 			}
 		}
 	}

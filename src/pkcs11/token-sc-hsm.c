@@ -1031,6 +1031,7 @@ struct p11TokenDriver sc_hsm_token = {
 	"SmartCard-HSM",
 	isCandidate,
 	newSmartCardHSMToken,
+	NULL,
 	getMechanismList,
 	getMechanismInfo,
 	sc_hsm_login,
