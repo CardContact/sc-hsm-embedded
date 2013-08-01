@@ -345,14 +345,14 @@ static int readCertEF(struct p11Slot_t *slot, bytestring fid, unsigned char *con
 
 	ofs += rc;
 
-	// Restrict the number of byte in Le to either the maximum APDU size of STARCOS or
+	// Restrict the number of bytes in Le to either the maximum APDU size of STARCOS or
 	// the maximum APDU size of the reader, if any.
 	maxapdu = 1920;
 	if (slot->maxRAPDU && (slot->maxRAPDU < maxapdu))
 		maxapdu = slot->maxRAPDU;
 	maxapdu -= 2;		// Accommodate SW1/SW2
 
-	le = 65536;			// Read all if no certificate
+	le = 65536;			// Read all if no certificate found
 	if (*content == 0x30) {
 		po = content;
 		asn1Tag(&po);
@@ -363,7 +363,8 @@ static int readCertEF(struct p11Slot_t *slot, bytestring fid, unsigned char *con
 
 	do	{
 		ne = le;
-		if ((le != 65536) && (le > maxapdu))
+		// Restrict Ne to the maximum APDU length allowed
+		if (((le != 65536) || slot->noExtLengthReadAll) && (le > maxapdu))
 			ne = maxapdu;
 
 		rc = transmitAPDU(slot, 0x00, 0xB0, ofs >> 8, ofs & 0xFF,
@@ -374,7 +375,7 @@ static int readCertEF(struct p11Slot_t *slot, bytestring fid, unsigned char *con
 			FUNC_FAILS(rc, "transmitAPDU failed");
 		}
 
-		if ((SW1SW2 != 0x9000) && (SW1SW2 != 0x6B00)) {
+		if ((SW1SW2 != 0x9000) && (SW1SW2 != 0x6B00) && (SW1SW2 != 0x6282)) {
 			FUNC_FAILS(-1, "Read EF failed");
 		}
 		ofs += rc;

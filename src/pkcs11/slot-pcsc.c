@@ -643,10 +643,21 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 
 		slot->info.flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
 
+		// The REINER SCT readers have an APDU buffer limitation of 1014 bytes
 		if (!strncmp((char *)p, "REINER SCT", 10)) {
+#ifdef DEBUG
+			debug("Detected a REINER SCT reader\n");
+#endif
+			if (!strncmp((char *)p, "REINER SCT cyberJack ecom_a", 27)) {
+				debug("Detected a 'REINER SCT cyberJack ecom_a' reader. Limiting use of Le='000000'\n");
+				// Some REINER SCT readers fail if Le='000000' returns more than
+				// 1014 bytes.
+				slot->noExtLengthReadAll = 1;
+			}
 			slot->maxRAPDU = 1000;
 			slot->maxCAPDU = 1000;
 		}
+
 		addSlot(context->slotPool, slot);
 
 #ifdef DEBUG

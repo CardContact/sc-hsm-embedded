@@ -120,6 +120,7 @@ struct p11Slot_t {
 #endif
 	int maxCAPDU;                     /**< Maximum length of command APDU      */
 	int maxRAPDU;                     /**< Maximum length of response APDU     */
+	int noExtLengthReadAll;           /**< Prevent using Le='000000'           */
 	struct p11Token_t *token;         /**< Pointer to token in the slot        */
 	struct p11Slot_t *next;           /**< Pointer to next available slot      */
 };
