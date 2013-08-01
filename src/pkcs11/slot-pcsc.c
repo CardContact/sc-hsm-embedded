@@ -428,7 +428,7 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 		FUNC_FAILS(CKR_DEVICE_ERROR, pcsc_error_to_string(rc));
 	}
 
-	rc = newToken(slot, atr, strlen, &ptoken);
+	rc = newToken(slot, atr, atrlen, &ptoken);
 
 	if (rc != CKR_OK) {
 		FUNC_FAILS(rc, "newToken() failed");
