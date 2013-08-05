@@ -266,16 +266,22 @@ static struct starcosPrivateData *getPrivateData(struct p11Token_t *token)
 
 
 
+static struct p11Token_t *getBaseToken(struct p11Token_t *token)
+{
+	if (!token->slot->primarySlot)
+		return token;
+	return token->slot->primarySlot->token;
+}
+
+
+
 static void lock(struct p11Token_t *token)
 {
 	struct starcosPrivateData *sc;
 
 	FUNC_CALLED();
 
-	sc = getPrivateData(token);
-	if (sc->primarySlot) {
-		sc = getPrivateData(sc->primarySlot->token);
-	}
+	sc = getPrivateData(getBaseToken(token));
 	p11LockMutex(sc->mutex);
 
 #ifdef DEBUG
@@ -291,10 +297,7 @@ static void unlock(struct p11Token_t *token)
 
 	FUNC_CALLED();
 
-	sc = getPrivateData(token);
-	if (sc->primarySlot) {
-		sc = getPrivateData(sc->primarySlot->token);
-	}
+	sc = getPrivateData(getBaseToken(token));
 	p11UnlockMutex(sc->mutex);
 }
 
@@ -313,8 +316,8 @@ static int selectApplication(struct p11Token_t *token)
 
 	appl = &starcosApplications[sc->application];
 
-	if (sc->primarySlot) {
-		sa = &(getPrivateData(sc->primarySlot->token)->selectedApplication);
+	if (token->slot->primarySlot) {
+		sa = &(getPrivateData(getBaseToken(token))->selectedApplication);
 	} else {
 		sa = &sc->selectedApplication;
 	}
@@ -1156,10 +1159,19 @@ static int login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 
 	FUNC_CALLED();
 
+	lock(slot->token);
+
+	rc = selectApplication(slot->token);
+	if (rc < 0) {
+		unlock(slot->token);
+		FUNC_FAILS(rc, "selecting application failed");
+	}
+
 	sc = getPrivateData(slot->token);
 
 	if (userType == CKU_SO) {
 		if (pinlen != 16) {
+			unlock(slot->token);
 			FUNC_FAILS(CKR_ARGUMENTS_BAD, "SO-PIN must be 16 characters long");
 		}
 		// Store SO PIN
@@ -1187,6 +1199,7 @@ static int login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 			rc = encodeF2B(pin, pinlen, f2b);
 
 			if (rc != CKR_OK) {
+				unlock(slot->token);
 				FUNC_FAILS(rc, "Could not encode PIN");
 			}
 
@@ -1197,18 +1210,21 @@ static int login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 
 
 		if (rc < 0) {
+			unlock(slot->token);
 			FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 		}
 
 		rc = updatePinStatus(slot->token, SW1SW2);
 
 		if (rc != CKR_OK) {
+			unlock(slot->token);
 			FUNC_FAILS(rc, "login failed");
 		}
 
 		rc = loadPrivateObjects(slot->token);
 	}
 
+	unlock(slot->token);
 	FUNC_RETURNS(rc);
 }
 
@@ -1243,6 +1259,14 @@ static int logout(struct p11Slot_t *slot)
 
 static void freeStarcosToken(struct p11Slot_t *slot)
 {
+	struct p11Slot_t *vslot;
+
+	if (!slot->primarySlot) {
+		getVirtualSlot(slot, 0, &vslot);
+		removeToken(vslot);
+		getVirtualSlot(slot, 1, &vslot);
+		removeToken(vslot);
+	}
 	struct starcosPrivateData *sc;
 	sc = getPrivateData(slot->token);
 	p11DestroyMutex(sc->mutex);
@@ -1259,7 +1283,7 @@ struct p11TokenDriver starcos_token;
  * @param token     Pointer to pointer updated with newly created token structure
  * @return          CKR_OK or any other Cryptoki error code
  */
-static int newStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token)
+static int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, int application)
 {
 	struct p11Token_t *ptoken;
 	struct starcosPrivateData *sc;
@@ -1292,7 +1316,7 @@ static int newStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	ptoken->drv = &starcos_token;
 
 	sc = getPrivateData(ptoken);
-	sc->application = STARCOS_DEFAULT;
+	sc->application = application;
 	sc->selectedApplication = -1;
 	p11CreateMutex(&sc->mutex);
 
@@ -1312,6 +1336,72 @@ static int newStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	updatePinStatus(ptoken, rc);
 
 	*token = ptoken;
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+/**
+ * Create a new STARCOS token if token detection and initialization is successful
+ *
+ * @param slot      The slot in which a token was detected
+ * @param token     Pointer to pointer updated with newly created token structure
+ * @return          CKR_OK or any other Cryptoki error code
+ */
+static int newStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token)
+{
+	struct p11Token_t *ptoken;
+	struct p11Slot_t *vslot;
+	int rc;
+
+	FUNC_CALLED();
+
+	rc = createStarcosToken(slot, &ptoken, STARCOS_EUSERPKI);
+	if (rc != CKR_OK)
+		FUNC_FAILS(rc, "Base token creation failed");
+
+	if (slot->hasFeatureVerifyPINDirect)
+		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
+
+	rc = addToken(slot, ptoken);
+	if (rc != CKR_OK) {
+		FUNC_FAILS(rc, "addToken() failed");
+	}
+
+	*token = ptoken;
+
+	rc = getVirtualSlot(slot, 0, &vslot);
+	if (rc != CKR_OK)
+		FUNC_FAILS(rc, "Virtual slot creation failed");
+
+	rc = createStarcosToken(vslot, &ptoken, STARCOS_ESIGN1);
+	if (rc != CKR_OK)
+		FUNC_FAILS(rc, "Token creation failed");
+
+	if (vslot->hasFeatureVerifyPINDirect)
+		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
+
+	rc = addToken(vslot, ptoken);
+	if (rc != CKR_OK)
+		FUNC_FAILS(rc, "addToken() failed");
+
+
+	getVirtualSlot(slot, 1, &vslot);
+	if (rc != CKR_OK)
+		FUNC_FAILS(rc, "Virtual slot creation failed");
+
+	rc = createStarcosToken(vslot, &ptoken, STARCOS_ESIGN2);
+	if (rc != CKR_OK)
+		FUNC_FAILS(rc, "Token creation failed");
+
+	if (vslot->hasFeatureVerifyPINDirect)
+		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
+
+	rc = addToken(vslot, ptoken);
+	if (rc != CKR_OK)
+		FUNC_FAILS(rc, "addToken() failed");
+
 	FUNC_RETURNS(CKR_OK);
 }
 

@@ -55,6 +55,9 @@
 
 extern struct p11Context_t *context;
 
+#define MAX_READERS 8
+static unsigned short numberOfReaders = 0;
+
 
 
 /*
@@ -137,7 +140,7 @@ int transmitAPDUviaCTAPI(struct p11Slot_t *slot, int todad,
 	dad  = todad;
 	lenr = rapdu_len;
 
-	rc = CT_data((unsigned short)slot->id, &dad, &sad, capdu_len, capdu, &lenr, rapdu);
+	rc = CT_data(slot->ctn, &dad, &sad, capdu_len, capdu, &lenr, rapdu);
 
 	if (rc < 0)
 		FUNC_FAILS(rc, "CT_data failed");
@@ -217,9 +220,7 @@ static int checkForNewCTAPIToken(struct p11Slot_t *slot)
 		FUNC_FAILS(rc, "newToken failed()");
 	}
 
-	rc = addToken(slot, ptoken);
-
-	FUNC_RETURNS(rc);
+	FUNC_RETURNS(CKR_OK);
 }
 
 
@@ -309,7 +310,7 @@ int updateCTAPISlots(struct p11SlotPool_t *pool)
 	slot = pool->list;
 	while (slot) {
 		if (slot->closed) {
-			ctn = (unsigned short)slot->id;
+			ctn = slot->ctn;
 			rc = CT_init(ctn, ctn);
 
 			if (rc != OK) {
@@ -323,8 +324,8 @@ int updateCTAPISlots(struct p11SlotPool_t *pool)
 		slot = slot->next;
 	}
 
-	while (pool->numberOfSlots < MAX_SLOTS) {
-		ctn = (unsigned short)pool->nextSlotID;
+	while (numberOfReaders < MAX_READERS) {
+		ctn = numberOfReaders;
 
 		rc = CT_init(ctn, ctn);
 
@@ -341,7 +342,8 @@ int updateCTAPISlots(struct p11SlotPool_t *pool)
 			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 		}
 
-		sprintf(scr, "CT-API Port #%d", ctn);
+		sprintf(scr, "CT-API Port %d", ctn);
+		slot->ctn = ctn;
 		strbpcpy(slot->info.slotDescription,
 				scr,
 				sizeof(slot->info.slotDescription));
@@ -358,6 +360,9 @@ int updateCTAPISlots(struct p11SlotPool_t *pool)
 
 		slot->info.flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
 		addSlot(context->slotPool, slot);
+		numberOfReaders++;
+
+		checkForNewCTAPIToken(slot);
 	}
 
 	FUNC_RETURNS(CKR_OK);
@@ -371,7 +376,7 @@ int closeCTAPISlot(struct p11Slot_t *slot)
 
 	FUNC_CALLED();
 
-	rc = CT_close((unsigned short)slot->id);
+	rc = CT_close(slot->ctn);
 
 	if (rc != OK) {
 #ifdef DEBUG

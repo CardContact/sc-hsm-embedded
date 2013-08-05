@@ -958,6 +958,11 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 	sc_hsm_loadObjects(ptoken, TRUE);
 
+	rc = addToken(slot, ptoken);
+	if (rc != CKR_OK) {
+		FUNC_FAILS(rc, "addToken() failed");
+	}
+
 	*token = ptoken;
 	return CKR_OK;
 }

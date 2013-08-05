@@ -317,6 +317,8 @@ static int optTestPINBlock = 0;
 static int optTestMultiOnly = 0;
 static int optOneThreadPerToken = 0;
 static int optNoClass3Tests = 0;
+static int optNoMultiThreadingTests = 0;
+static long optSlotId = -1;
 
 static char namebuf[40]; /* used by main thread */
 
@@ -625,6 +627,23 @@ void testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 
 		printf("Calling C_SignInit (Thread %i, Session %ld, Slot=%ld) - Multipart", id, session, slotid);
 		rc = p11->C_SignInit(session, &mech, hnd);
+
+		if (rc == CKR_OBJECT_HANDLE_INVALID) {
+			printf("Calling C_Login User ");
+			rc = p11->C_Login(session, CKU_USER, pin, pinlen);
+			printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK || rc == CKR_USER_ALREADY_LOGGED_IN));
+
+			printf("Calling findObject (Thread %i, Session %ld, Slot=%ld)\n", id, session, slotid);
+			rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
+
+			if (rc != CKR_OK) {
+				printf("Key %i not found (Thread %i, Session %ld, Slot=%ld)\n", keyno, id, session, slotid);
+				break;
+			}
+
+			printf("Calling C_SignInit (Thread %i, Session %ld, Slot=%ld) - Multipart", id, session, slotid);
+			rc = p11->C_SignInit(session, &mech, hnd);
+		}
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Calling C_SignUpdate (Thread %i, Session %ld, Slot=%ld - Part #1)", id, session, slotid);
@@ -742,7 +761,7 @@ void testRSASigningMultiThreading(CK_FUNCTION_LIST_PTR p11)
 				printf("C_GetSlotInfo() failed\n");
 				return;
 			}
-		} while(!(slotinfo.flags & CKF_TOKEN_PRESENT));
+		} while (!(slotinfo.flags & CKF_TOKEN_PRESENT) || ((optSlotId != -1) && (optSlotId != slotid)));
 
 		if (firstloop) {
 			tokens++;
@@ -1216,6 +1235,7 @@ void usage()
 	printf("  --test-multithreading-only Perform multihreading tests only\n");
 	printf("  --one-thread-per-token     Create a single thread per token rather than distributing %d\n", NUM_THREADS);
 	printf("  --no-class3-tests          No PIN tests with attached class 3 PIN PAD\n");
+	printf("  --no-multithreading-tests  No multihreading tests\n");
 }
 
 
@@ -1243,6 +1263,14 @@ void decodeArgs(int argc, char **argv)
 			argv++;
 			p11libname = *argv;
 			argc--;
+		} else if (!strcmp(*argv, "--slotid")) {
+			if (argc < 0) {
+				printf("Argument for --slotid missing\n");
+				exit(1);
+			}
+			argv++;
+			optSlotId = atol(*argv);
+			argc--;
 		} else if (!strcmp(*argv, "--test-insert-remove")) {
 			optTestInsertRemove = 1;
 		} else if (!strcmp(*argv, "--test-rsa-decryption")) {
@@ -1255,6 +1283,8 @@ void decodeArgs(int argc, char **argv)
 			optOneThreadPerToken = 1;
 		} else if (!strcmp(*argv, "--no-class3-tests")) {
 			optNoClass3Tests = 1;
+		} else if (!strcmp(*argv, "--no-multithreading-tests")) {
+			optNoMultiThreadingTests = 1;
 		} else {
 			printf("Unknown argument %s\n", *argv);
 			usage();
@@ -1273,7 +1303,7 @@ int main(int argc, char *argv[])
 	CK_ULONG slots;
 	CK_SESSION_HANDLE session;
 	CK_INFO info;
-	CK_SLOT_ID_PTR slotlist;
+	CK_SLOT_ID_PTR slotlist = NULL;
 	CK_SLOT_ID slotid;
 	CK_SLOT_INFO slotinfo;
 	CK_TOKEN_INFO tokeninfo;
@@ -1348,6 +1378,9 @@ int main(int argc, char *argv[])
 		slotid = *(slotlist + i);
 		i++;
 
+		if ((optSlotId != -1) && (optSlotId != slotid))
+			continue;
+
 		if (optTestInsertRemove)
 			testInsertRemove(p11, slotid);
 
@@ -1414,7 +1447,8 @@ int main(int argc, char *argv[])
 	}
 
 #ifndef WIN32
-	testRSASigningMultiThreading(p11);
+	if (!optNoMultiThreadingTests)
+		testRSASigningMultiThreading(p11);
 #endif
 
 	printf("Calling C_Finalize ");

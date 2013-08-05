@@ -48,6 +48,8 @@
 #include "slot-pcsc.h"
 #endif
 
+extern struct p11Context_t *context;
+
 
 
 /**
@@ -213,6 +215,9 @@ int transmitAPDU(struct p11Slot_t *slot,
 	int rc;
 	unsigned char apdu[4098];
 
+	if (slot->primarySlot)
+		slot = slot->primarySlot;
+
 #ifdef DEBUG
 	char scr[4196], *po;
 
@@ -302,6 +307,9 @@ int transmitVerifyPinAPDU(struct p11Slot_t *slot,
 	int rc;
 	unsigned char apdu[4098];
 
+	if (slot->primarySlot)
+		slot = slot->primarySlot;
+
 #ifdef DEBUG
 	char scr[4196], *po;
 
@@ -345,17 +353,82 @@ int transmitVerifyPinAPDU(struct p11Slot_t *slot,
 }
 
 
+
+void appendStr(CK_UTF8CHAR_PTR dest, int destlen, char *str)
+{
+	int i = destlen;
+
+	while ((i > 0) && (dest[i - 1] == ' '))
+		i--;
+
+	strncpy((char *)dest + i, str, destlen - i);
+}
+
+
+
+int getVirtualSlot(struct p11Slot_t *slot, int index, struct p11Slot_t **vslot)
+{
+	struct p11Slot_t *newslot;
+	char postfix[3];
+
+	FUNC_CALLED();
+
+	if ((index < 0) || (index > sizeof(slot->virtualSlots) / sizeof(*slot->virtualSlots)))
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Index must not exceed size of virtual slot list");
+
+	if (slot->primarySlot)
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Slot is a virtual slot");
+
+	if (slot->virtualSlots[index]) {
+		*vslot = slot->virtualSlots[index];
+		FUNC_RETURNS(CKR_OK);
+	}
+
+	newslot = (struct p11Slot_t *) calloc(1, sizeof(struct p11Slot_t));
+
+	if (newslot == NULL)
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+
+	*newslot = *slot;
+	newslot->token = NULL;
+	newslot->next = NULL;
+	newslot->primarySlot = slot;
+	slot->virtualSlots[index] = newslot;
+
+	postfix[0] = '.';
+	postfix[1] = '2' + index;
+	postfix[2] = 0;
+
+	appendStr(newslot->info.slotDescription, sizeof(slot->info.slotDescription), postfix);
+
+	addSlot(context->slotPool, newslot);
+
+	*vslot = newslot;
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
 int getToken(struct p11Slot_t *slot, struct p11Token_t **token)
 {
 	int rc;
+	struct p11Slot_t *pslot;
+
 	FUNC_CALLED();
 
+	// Checking for new or removed token is always performed on the
+	// primary slot
+	pslot = slot;
+	if (pslot->primarySlot)
+		pslot = pslot->primarySlot;
+
 #ifdef CTAPI
-	rc = getCTAPIToken(slot, token);
+	rc = getCTAPIToken(pslot, token);
 #else
-	rc = getPCSCToken(slot, token);
+	rc = getPCSCToken(pslot, token);
 #endif
 
+	*token = slot->token;
 	return rc;
 }
 
@@ -400,6 +473,9 @@ int closeSlot(struct p11Slot_t *slot)
 	int rc;
 
 	FUNC_CALLED();
+
+	if (slot->primarySlot)
+		FUNC_RETURNS(CKR_OK);
 
 #ifdef CTAPI
 	rc = closeCTAPISlot(slot);

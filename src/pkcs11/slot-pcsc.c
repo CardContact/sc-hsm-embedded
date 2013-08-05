@@ -418,6 +418,34 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 		FUNC_FAILS(CKR_DEVICE_ERROR, pcsc_error_to_string(rv));
 	}
 
+	if (!slot->hasFeatureVerifyPINDirect) {
+		rv = SCardControl(slot->card, SCARD_CTL_CODE(3400), NULL,0, buf, sizeof(buf), &lenr);
+
+#ifdef DEBUG
+		debug("SCardControl (CM_IOCTL_GET_FEATURE_REQUEST): %s\n", pcsc_error_to_string(rv));
+#endif
+
+		if (rv != SCARD_S_SUCCESS) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "SCardControl failed");
+		}
+
+		for (i = 0; i < lenr; i += 6) {
+			feature = buf[i];
+			featurecode = (buf[i + 2] << 24) + (buf[i + 3] << 16) + (buf[i + 4] << 8) + buf[i + 5];
+#ifdef DEBUG
+			debug("%s - 0x%08X\n", pcsc_feature_to_string(feature), featurecode);
+#endif
+			if (feature == FEATURE_VERIFY_PIN_DIRECT) {
+				po = getenv("PKCS11_IGNORE_PINPAD");
+				if (!po || (*po == '0'))
+#ifdef DEBUG
+				debug("Slot supports feature VERIFY_PIN_DIRECT - setting CKF_PROTECTED_AUTHENTICATION_PATH for token\n");
+#endif
+					slot->hasFeatureVerifyPINDirect = featurecode;
+			}
+		}
+	}
+
 	readernamelen = 0;
 	atrlen = sizeof(atr);
 
@@ -432,41 +460,6 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 
 	if (rc != CKR_OK) {
 		FUNC_FAILS(rc, "newToken() failed");
-	}
-
-	rc = addToken(slot, ptoken);
-
-	if (rc != CKR_OK) {
-		FUNC_FAILS(rc, "addToken() failed");
-	}
-
-	if (!slot->hasFeatureVerifyPINDirect) {
-		rv = SCardControl(slot->card, SCARD_CTL_CODE(3400), NULL,0, buf, sizeof(buf), &lenr);
-
-#ifdef DEBUG
-		debug("SCardControl (CM_IOCTL_GET_FEATURE_REQUEST): %s\n", pcsc_error_to_string(rv));
-#endif
-
-		if (rv != SCARD_S_SUCCESS) {
-			FUNC_FAILS(CKR_DEVICE_ERROR, "SCardControl failed");
-		}
-
-		for (i = 0; i < lenr; i += 6){
-			feature = buf[i];
-			featurecode = (buf[i + 2] << 24) + (buf[i + 3] << 16) + (buf[i + 4] << 8) + buf[i + 5];
-#ifdef DEBUG
-			debug("%s - 0x%08X\n", pcsc_feature_to_string(feature), featurecode);
-#endif
-			if (feature == FEATURE_VERIFY_PIN_DIRECT) {
-				slot->hasFeatureVerifyPINDirect = featurecode;
-#ifdef DEBUG
-				debug("Slot supports feature VERIFY_PIN_DIRECT - setting CKF_PROTECTED_AUTHENTICATION_PATH for token\n");
-#endif
-				po = getenv("PKCS11_IGNORE_PINPAD");
-				if (!po || (*po == '0'))
-					ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
-			}
-		}
 	}
 
 	FUNC_RETURNS(rc);
@@ -533,6 +526,7 @@ static int checkForRemovedPCSCToken(struct p11Slot_t *slot)
 int getPCSCToken(struct p11Slot_t *slot, struct p11Token_t **token)
 {
 	int rc;
+
 	FUNC_CALLED();
 
 	if (slot->token) {
@@ -591,7 +585,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		debug("%s\n", p);
 #endif
 
-		/* Check if the already have a slot for the reader */
+		/* Check if we already have a slot for the reader */
 		slot = pool->list;
 		match = FALSE;
 		while (slot) {
@@ -666,6 +660,9 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 #ifdef DEBUG
 		debug("Added slot (%lu, %s) - slot counter is %i\n", slot->id, slot->readername, slotCounter);
 #endif
+
+		checkForNewPCSCToken(slot);
+
 		p += strlen(p) + 1;
 	}
 

@@ -38,8 +38,6 @@
 #include <pkcs11/p11generic.h>
 #include <pkcs11/cryptoki.h>
 
-#define MAX_SLOTS 8
-
 int initSlotPool(struct p11SlotPool_t *pool);
 
 int terminateSlotPool(struct p11SlotPool_t *pool);

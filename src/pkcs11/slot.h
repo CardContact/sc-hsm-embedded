@@ -70,4 +70,6 @@ int addToken(struct p11Slot_t *slot, struct p11Token_t *token);
 
 int removeToken(struct p11Slot_t *slot);
 
+int getVirtualSlot(struct p11Slot_t *slot, int index, struct p11Slot_t **vslot);
+
 #endif /* ___SLOT_H_INC___ */

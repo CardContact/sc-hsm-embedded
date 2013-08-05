@@ -46,7 +46,6 @@ struct starcosPrivateData {
 	int                 application;
 	int                 selectedApplication;
 	unsigned char       *publickeys[256];
-	struct p11Slot_t    *primarySlot;
 	void                *mutex;
 };
 

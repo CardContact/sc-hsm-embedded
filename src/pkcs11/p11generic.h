@@ -113,7 +113,9 @@ struct p11Slot_t {
 	CK_SLOT_INFO info;                /**< General information about the slot  */
 	int closed;                       /**< Slot hardware currently absent      */
 	unsigned long hasFeatureVerifyPINDirect;
-#ifndef CTAPI
+#ifdef CTAPI
+	unsigned short ctn;               /**< Card terminal number                */
+#else
 	char readername[MAX_READERNAME];  /**< The reader name for this slot       */
 	SCARDCONTEXT context;             /**< Card manager context for slot       */
 	SCARDHANDLE card;                 /**< Handle to card                      */
@@ -121,6 +123,8 @@ struct p11Slot_t {
 	int maxCAPDU;                     /**< Maximum length of command APDU      */
 	int maxRAPDU;                     /**< Maximum length of response APDU     */
 	int noExtLengthReadAll;           /**< Prevent using Le='000000'           */
+	struct p11Slot_t *primarySlot;    /**< Base slot if slot is virtual        */
+	struct p11Slot_t *virtualSlots[2];/**< Virtual slots using this as base    */
 	struct p11Token_t *token;         /**< Pointer to token in the slot        */
 	struct p11Slot_t *next;           /**< Pointer to next available slot      */
 };
