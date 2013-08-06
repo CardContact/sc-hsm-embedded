@@ -949,6 +949,10 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	ptoken->info.ulSessionCount = CK_UNAVAILABLE_INFORMATION;
 
 	ptoken->info.flags = CKF_WRITE_PROTECTED | CKF_LOGIN_REQUIRED;
+
+	if (slot->hasFeatureVerifyPINDirect)
+		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
+
 	ptoken->user = 0xFF;
 	ptoken->drv = &sc_hsm_token;
 
