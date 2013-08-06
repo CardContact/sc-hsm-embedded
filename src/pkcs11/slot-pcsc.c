@@ -437,11 +437,12 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 #endif
 			if (feature == FEATURE_VERIFY_PIN_DIRECT) {
 				po = getenv("PKCS11_IGNORE_PINPAD");
-				if (!po || (*po == '0'))
+				if (!po || (*po == '0')) {
 #ifdef DEBUG
-				debug("Slot supports feature VERIFY_PIN_DIRECT - setting CKF_PROTECTED_AUTHENTICATION_PATH for token\n");
+					debug("Slot supports feature VERIFY_PIN_DIRECT - setting CKF_PROTECTED_AUTHENTICATION_PATH for token\n");
 #endif
 					slot->hasFeatureVerifyPINDirect = featurecode;
+				}
 			}
 		}
 	}
