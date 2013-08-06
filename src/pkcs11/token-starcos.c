@@ -170,6 +170,7 @@ struct p15CertificateDescription certd_eUserPKI[] = {
 struct starcosApplication {
 	char *name;
 	struct bytestring_s aid;
+	int aidId;
 	unsigned char pinref;
 	int isQES;
 	struct p15PrivateKeyDescription *privateKeys;
@@ -186,6 +187,7 @@ struct starcosApplication starcosApplications[] = {
 		{
 				"STARCOS.eSign1",
 				{ aid_eSign, sizeof(aid_eSign) },
+				1,
 				0x81,
 				1,
 				prkd_eSign1,
@@ -196,6 +198,7 @@ struct starcosApplication starcosApplications[] = {
 		{
 				"STARCOS.eSign2",
 				{ aid_eSign, sizeof(aid_eSign) },
+				1,
 				0x86,
 				1,
 				prkd_eSign2,
@@ -206,6 +209,7 @@ struct starcosApplication starcosApplications[] = {
 		{
 				"STARCOS.eUserPKI",
 				{ aid_eUserPKI, sizeof(aid_eUserPKI) },
+				2,
 				0x06,
 				0,
 				prkd_eUserPKI,
@@ -322,7 +326,7 @@ static int selectApplication(struct p11Token_t *token)
 		sa = &sc->selectedApplication;
 	}
 
-	if (sc->application == *sa) {
+	if (appl->aidId == *sa) {
 		return 0;
 	}
 
@@ -338,7 +342,7 @@ static int selectApplication(struct p11Token_t *token)
 		FUNC_FAILS(-1, "Selecting application failed");
 	}
 
-	*sa = sc->application;
+	*sa = appl->aidId;
 
 	FUNC_RETURNS(0);
 }
@@ -966,6 +970,7 @@ static int addPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDes
 			{ CKA_DECRYPT, &true, sizeof(true) },
 			{ CKA_SIGN, &true, sizeof(true) },
 			{ CKA_SIGN_RECOVER, &true, sizeof(true) },
+			{ CKA_ALWAYS_AUTHENTICATE, &true, sizeof(true) },
 			{ CKA_UNWRAP, &false, sizeof(false) },
 			{ CKA_EXTRACTABLE, &false, sizeof(false) },
 			{ CKA_ALWAYS_SENSITIVE, &true, sizeof(true) },
@@ -998,6 +1003,7 @@ static int addPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDes
 	template[9].pValue = p15->usage & P15_DECIPHER ? &true : &false;
 	template[10].pValue = p15->usage & P15_SIGN ? &true : &false;
 	template[11].pValue = p15->usage & P15_SIGNRECOVER ? &true : &false;
+	template[12].pValue = p15->usage & P15_NONREPUDIATION ? &true : &false;
 
 	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE) - 2;
 
@@ -1317,7 +1323,7 @@ static int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token,
 
 	sc = getPrivateData(ptoken);
 	sc->application = application;
-	sc->selectedApplication = -1;
+	sc->selectedApplication = 0;
 	p11CreateMutex(&sc->mutex);
 
 	strbpcpy(ptoken->info.label, starcosApplications[sc->application].name, sizeof(ptoken->info.label));

@@ -200,7 +200,7 @@ struct id2name_t p11CKRName[] = {
 #define CKT_LONG        4
 #define CKT_ULONG       5
 
-#define P11CKA			58
+#define P11CKA			59
 
 struct id2name_t p11CKAName[P11CKA + 1] = {
 		{ CKA_CLASS                              , "CKA_CLASS", CKT_LONG },
@@ -261,6 +261,7 @@ struct id2name_t p11CKAName[P11CKA + 1] = {
 		{ CKA_HW_FEATURE_TYPE                    , "CKA_HW_FEATURE_TYPE", 0 },
 		{ CKA_RESET_ON_INIT                      , "CKA_RESET_ON_INIT", 0 },
 		{ CKA_HAS_RESET                          , "CKA_HAS_RESET", 0 },
+		{ CKA_ALWAYS_AUTHENTICATE                , "CKA_ALWAYS_AUTHENTICATE", CKT_BBOOL },
 		{ 0, NULL }
 };
 
@@ -1431,6 +1432,10 @@ int main(int argc, char *argv[])
 			listObjects(p11, session, attr, 0);
 
 			testLogin(p11, session);
+
+			// List all objects
+			memset(attr, 0, sizeof(attr));
+			listObjects(p11, session, attr, 0);
 
 			testRSASigning(p11, slotid, 0);
 
