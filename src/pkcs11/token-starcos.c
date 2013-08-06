@@ -232,10 +232,13 @@ unsigned char algo_SHA224[] =           { 0x89, 0x02, 0x14, 0x60 };
 unsigned char algo_SHA256[] =           { 0x89, 0x02, 0x14, 0x30 };
 unsigned char algo_SHA384[] =           { 0x89, 0x02, 0x14, 0x40 };
 unsigned char algo_SHA512[] =           { 0x89, 0x02, 0x14, 0x50 };
+unsigned char algo_PKCS15_DECRYPT[] =   { 0x89, 0x02, 0x11, 0x31 };
+unsigned char algo_OAEP_DECRYPT[] =     { 0x89, 0x02, 0x11, 0x32 };
 
 
 static const CK_MECHANISM_TYPE p11MechanismList[] = {
 		CKM_RSA_PKCS,
+		CKM_RSA_PKCS_OAEP,
 		CKM_SHA1_RSA_PKCS,
 		CKM_SHA224_RSA_PKCS,
 		CKM_SHA256_RSA_PKCS,
@@ -536,15 +539,19 @@ static int getAlgorithmIdForDigest(struct p11Token_t *token, CK_MECHANISM_TYPE m
 
 
 
-static int getAlgorithmIdForDecryption(CK_MECHANISM_TYPE mech)
+static int getAlgorithmIdForDecryption(CK_MECHANISM_TYPE mech, unsigned char **algotlv)
 {
 	switch(mech) {
-	case CKM_RSA_X_509:
 	case CKM_RSA_PKCS:
-//		return ALGO_RSA_DECRYPT;
+		*algotlv = algo_PKCS15_DECRYPT;
+		break;
+	case CKM_RSA_PKCS_OAEP:
+		*algotlv = algo_OAEP_DECRYPT;
+		break;
 	default:
-		return -1;
+		return CKR_MECHANISM_INVALID;
 	}
+	return CKR_OK;
 }
 
 
@@ -768,73 +775,79 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 
 static int starcos_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 {
-	int algo;
+	unsigned char *algotlv;
 
 	FUNC_CALLED();
 
-	algo = getAlgorithmIdForDecryption(mech->mechanism);
-	if (algo < 0) {
-		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
-	}
-
-	FUNC_RETURNS(CKR_OK);
-}
-
-
-
-static int stripPKCS15Padding(unsigned char *scr, int len, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
-{
-	int c1,c2,c3;
-
-	c1 = *scr++ == 0x00;
-	c2 = *scr++ == 0x02;
-	len -= 2;
-	while ((len > 0) && *scr) {
-		scr++;
-		len--;
-	}
-	c3 = len > 0;
-
-	if (!(c1 && c2 && c3)) {
-		return CKR_ENCRYPTED_DATA_INVALID;
-	}
-
-	scr++;
-	len--;
-
-	if (len > *pulDataLen) {
-		return CKR_BUFFER_TOO_SMALL;
-	}
-
-	memcpy(pData, scr, len);
-	*pulDataLen = len;
-
-	return CKR_OK;
+	FUNC_RETURNS(getAlgorithmIdForDecryption(mech->mechanism, &algotlv));
 }
 
 
 
 static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
-	int rc, algo;
+	int rc, len;
+	unsigned char *d,*s;
 	unsigned short SW1SW2;
-	unsigned char scr[256];
+	unsigned char scr[257];
 
 	FUNC_CALLED();
+
+	if (ulEncryptedDataLen != 256)
+		FUNC_FAILS(CKR_ENCRYPTED_DATA_LEN_RANGE, "Cryptogram size must be 256 byte");
 
 	if (pData == NULL) {
 		*pulDataLen = pObject->keysize >> 3;
 		FUNC_RETURNS(CKR_OK);
 	}
 
-	algo = getAlgorithmIdForDecryption(mech);
-	if (algo < 0) {
-		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
+	lock(pObject->token);
+
+	rc = selectApplication(pObject->token);
+	if (rc < 0) {
+		unlock(pObject->token);
+		FUNC_FAILS(CKR_DEVICE_ERROR, "selecting application failed");
 	}
 
-	rc = transmitAPDU(pObject->token->slot, 0x80, 0x62, (unsigned char)pObject->tokenid, (unsigned char)algo,
-			ulEncryptedDataLen, pEncryptedData,
+	rc = getAlgorithmIdForDecryption(mech, &s);
+	if (rc != CKR_OK) {
+		unlock(pObject->token);
+		FUNC_FAILS(rc, "getAlgorithmIdForDecryption() failed");
+	}
+
+	d = scr;
+	*d++ = *s++;
+	len = *s;
+	*d++ = *s++;
+	while (len--) {
+		*d++ = *s++;
+	}
+	*d++ = 0x84;
+	*d++ = 0x01;
+	*d++ = (unsigned char)pObject->tokenid;
+
+	rc = transmitAPDU(pObject->token->slot, 0x00, 0x22, 0x41, 0xB8,
+		d - scr, scr,
+		0, NULL, 0, &SW1SW2);
+
+	if (rc < 0) {
+		unlock(pObject->token);
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+	}
+
+	if (SW1SW2 != 0x9000) {
+		unlock(pObject->token);
+		FUNC_FAILS(CKR_DEVICE_ERROR, "MANAGE SE failed");
+	}
+
+	scr[0] = 0x81;
+	memcpy(scr + 1, pEncryptedData, ulEncryptedDataLen);
+
+	rc = transmitAPDU(pObject->token->slot, 0x00, 0x2A, 0x80, 0x86,
+			257, scr,
 			0, scr, sizeof(scr), &SW1SW2);
+
+	unlock(pObject->token);
 
 	if (rc < 0) {
 		FUNC_FAILS(rc, "transmitAPDU failed");
@@ -844,18 +857,12 @@ static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech
 		FUNC_FAILS(CKR_ENCRYPTED_DATA_INVALID, "Decryption operation failed");
 	}
 
-	if (mech == CKM_RSA_X_509) {
-		if (rc > *pulDataLen) {
-			FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "supplied buffer too small");
-		}
-		*pulDataLen = rc;
-		memcpy(pData, scr, rc);
-	} else {
-		rc = stripPKCS15Padding(scr, rc, pData, pulDataLen);
-		if (rc < 0) {
-			FUNC_FAILS(CKR_ENCRYPTED_DATA_INVALID, "Invalid PKCS#1 padding");
-		}
+	if (rc > *pulDataLen) {
+		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "supplied buffer too small");
 	}
+
+	*pulDataLen = rc;
+	memcpy(pData, scr, rc);
 
 	FUNC_RETURNS(CKR_OK);
 }
@@ -1446,6 +1453,11 @@ static int getMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
 
 	switch (type) {
 	case CKM_RSA_PKCS:
+		pInfo->flags = CKF_SIGN|CKF_DECRYPT;
+		break;
+	case CKM_RSA_PKCS_OAEP:
+		pInfo->flags = CKF_DECRYPT;
+		break;
 	case CKM_SHA1_RSA_PKCS:
 	case CKM_SHA224_RSA_PKCS:
 	case CKM_SHA256_RSA_PKCS:
@@ -1457,8 +1469,6 @@ static int getMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
 	case CKM_SHA384_RSA_PKCS_PSS:
 	case CKM_SHA512_RSA_PKCS_PSS:
 		pInfo->flags = CKF_SIGN;
-		pInfo->ulMinKeySize = 2048;
-		pInfo->ulMaxKeySize = 2048;
 		break;
 
 	default:
@@ -1466,6 +1476,8 @@ static int getMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
 		break;
 	}
 
+	pInfo->ulMinKeySize = 2048;
+	pInfo->ulMaxKeySize = 2048;
 	FUNC_RETURNS(rv);
 }
 

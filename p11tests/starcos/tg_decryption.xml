@@ -43,65 +43,7 @@
 
 
 
-	<testcase id="200_CKM_RSA_X_509">
-		<name>Plain RSA Block Decryption</name>
-		<description>
-			<p>Perform a raw RSA decryption operation with a 256 byte input block and a 2048 bit key</p>
-		</description>
-		<requirement>
-			<p>Use Case Decryption</p>
-		</requirement>
-		<reference>
-			<p></p>
-		</reference>
-		<Script><![CDATA[
-var p = new PKCS11Provider(this.parameter.provider);
-try	{
-	var slot = getSlot(p);
-
-	print("Using slot: " + slot);
-	
-	// Open R/O session
-	var s = new PKCS11Session(p, slot, false);
-	
-	// Login with USER PIN
-	s.login(this.parameter.pin);
-	
-	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (RSA2048)");
-	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
-
-	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (RSA2048)");
-	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
-	
-	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
-	var cert = new X509(certbin);
-	print(cert);
-	var publicKey = cert.getPublicKey();
-
-	var msg = new ByteString("Hello World", ASCII);
-	
-	var crypto = new Crypto();
-	var cryptogram = crypto.encrypt(publicKey, Crypto.RSA, msg);
-	
-	// Test with single step C_Decrypt
-	s.decryptInit(PKCS11Session.CKM_RSA_X_509, privateKey);
-	var plain = s.decrypt(cryptogram);
-	
-	print("Plain : " + plain);
-	this.assertTrue(plain.length == 256, "Must return 256 bytes");
-	this.assertTrue(plain.right(msg.length).equals(msg), "Did not recover message");
-	
-	s.close();
-
-} finally {
-	p.cleanup();
-}
-		]]></Script>
-	</testcase>
-
-
-
-	<testcase id="201_CKM_RSA_PKCS1">
+	<testcase id="200_CKM_RSA_PKCS1">
 		<name>PKCS#1 V1.5 RSA Block Decryption</name>
 		<description>
 			<p>Perform a RSA decrypt operation with a 256 byte input block and a 2048 bit key and unpad PKCS#1 V1.5 encoding</p>
@@ -125,10 +67,10 @@ try	{
 	// Login with USER PIN
 	s.login(this.parameter.pin);
 	
-	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (RSA2048)");
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, this.parameter.testkey);
 	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
 
-	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (RSA2048)");
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, this.parameter.testkey);
 	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
 	
 	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
@@ -143,6 +85,63 @@ try	{
 	
 	// Test with single step C_Decrypt
 	s.decryptInit(PKCS11Session.CKM_RSA_PKCS, privateKey);
+	var plain = s.decrypt(cryptogram);
+	
+	print("Plain : " + plain);
+	this.assertTrue(plain.equals(msg), "Did not recover message");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="201_CKM_RSA_PKCS_OAEP">
+		<name>PKCS#1 OAEP Block Decryption</name>
+		<description>
+			<p>Perform a OAEP RSA decryption operation with a 256 byte input block and a 2048 bit key</p>
+		</description>
+		<requirement>
+			<p>Use Case Decryption</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p);
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, this.parameter.testkey);
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, this.parameter.testkey);
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+
+	var msg = new ByteString("Hello World", ASCII);
+	
+	var crypto = new Crypto();
+	var cryptogram = crypto.encrypt(publicKey, Crypto.RSA_OAEP_SHA256, msg);
+	
+	// Test with single step C_Decrypt
+	s.decryptInit(PKCS11Session.CKM_RSA_PKCS_OAEP, privateKey);
 	var plain = s.decrypt(cryptogram);
 	
 	print("Plain : " + plain);

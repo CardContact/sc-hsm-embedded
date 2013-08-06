@@ -339,7 +339,7 @@ testRunner.addTestGroupFromXML("tg_enumerate.xml", param);
 //testRunner.addTestGroupFromXML("tg_generatekeys.xml", param);
 //testRunner.addTestGroupFromXML("tg_certificate.xml", param);
 testRunner.addTestGroupFromXML("tg_signing.xml", param);
-// testRunner.addTestGroupFromXML("tg_decryption.xml", param);
+testRunner.addTestGroupFromXML("tg_decryption.xml", param);
 //testRunner.addTestGroupFromXML("tg_dataobjects.xml", param);
 //testRunner.addTestGroupFromXML("tg_delete.xml", param);
 
