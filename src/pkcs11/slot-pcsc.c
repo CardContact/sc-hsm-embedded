@@ -647,7 +647,9 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 			debug("Detected a REINER SCT reader\n");
 #endif
 			if (!strncmp((char *)p, "REINER SCT cyberJack ecom_a", 27)) {
+#ifdef DEBUG
 				debug("Detected a 'REINER SCT cyberJack ecom_a' reader. Limiting use of Le='000000'\n");
+#endif
 				// Some REINER SCT readers fail if Le='000000' returns more than
 				// 1014 bytes.
 				slot->noExtLengthReadAll = 1;
