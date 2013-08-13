@@ -1,0 +1,3 @@
+#!/bin/bash
+
+./sc-hsm-pkcs11-test --module ../pkcs11/.libs/libsc-hsm-pkcs11.so --pin 123456 --no-multithreading-tests --no-class3-tests
