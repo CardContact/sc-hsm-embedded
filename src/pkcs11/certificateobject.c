@@ -49,7 +49,7 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 
 static struct attributesForObject_t attributesCertificateObject[NEEDED_ATTRIBUTES_CERTIFICATEOBJECT] = {
 		{{CKA_CERTIFICATE_TYPE, NULL, 0}, FALSE},
-		{{CKA_ID, NULL, 0}, FALSE},
+		{{CKA_ID, NULL, 0}, TRUE},
 		{{CKA_VALUE, NULL, 0}, FALSE}
 };
 
@@ -339,6 +339,11 @@ int decodeModulusExponentFromSPKI(unsigned char *spki,
 
 	if (tag != ASN1_INTEGER) {
 		return -1;
+	}
+
+	if (*value == 0) {
+		value++;
+		length--;
 	}
 
 	modulus->type = CKA_MODULUS;

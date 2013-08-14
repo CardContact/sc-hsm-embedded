@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+
+<RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:em="http://www.mozilla.org/2004/em-rdf#">
+
+  <Description about="urn:mozilla:install-manifest">
+    <em:id>sc-hsm-pkcs11@cardcontact.de</em:id>
+    <em:name>SmartCard-HSM PKCS#11 Installer</em:name>
+    <em:description>Installs the PKCS#11 module in Firefox or Thunderbird with the "Friendly" flag set</em:description>
+    <em:version>0.1</em:version>
+    <em:creator>CardContact</em:creator>
+    <em:homepageURL>http://www.smartcard-hsm.com</em:homepageURL>
+    <em:type>2</em:type>
+
+    <!-- Mozilla Firefox -->
+    <em:targetApplication>
+      <Description>
+        <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
+        <em:minVersion>4.0</em:minVersion>
+        <em:maxVersion>10.*</em:maxVersion>
+      </Description>
+    </em:targetApplication>
+    
+    <!-- Mozilla Thunderbird -->
+    <em:targetApplication>
+      <Description>
+        <em:id>{3550f703-e582-4d05-9a08-453d09bdfdc6}</em:id>
+        <em:minVersion>4.0</em:minVersion>
+        <em:maxVersion>10.*</em:maxVersion>
+      </Description>
+    </em:targetApplication>
+  </Description>
+</RDF>

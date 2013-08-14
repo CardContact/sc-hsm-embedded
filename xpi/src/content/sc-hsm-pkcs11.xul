@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<!DOCTYPE window>
+<overlay xmlns= "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+  <script type="text/javascript"
+     src="chrome://sc-hsm-pkcs11/content/sc-hsm-pkcs11.js">
+  </script>
+</overlay>

@@ -1,0 +1,3 @@
+content   sc-hsm-pkcs11                 content/
+
+overlay   chrome://browser/content/browser.xul  chrome://sc-hsm-pkcs11/content/sc-hsm-pkcs11.xul
