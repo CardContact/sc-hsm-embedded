@@ -33,6 +33,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <pkcs11/p11generic.h>
 #include <pkcs11/slotpool.h>
@@ -138,23 +139,16 @@ int terminateSlotPool(struct p11SlotPool_t *pool)
  */
 int addSlot(struct p11SlotPool_t *pool, struct p11Slot_t *slot)
 {
-	struct p11Slot_t *prevSlot;
+	struct p11Slot_t **ppSlot;
 
 	FUNC_CALLED();
 
-	slot->next = NULL;
+	ppSlot = &pool->list;
+	while (*ppSlot && (memcmp(slot->info.slotDescription, (*ppSlot)->info.slotDescription, sizeof(slot->info.slotDescription)) >= 0))
+		ppSlot = &(*ppSlot)->next;
 
-	if (pool->list == NULL) {
-		pool->list = slot;
-	} else {
-		prevSlot = pool->list;
-
-		while (prevSlot->next != NULL) {
-			prevSlot = prevSlot->next;
-		}
-
-		prevSlot->next = slot;
-	}
+	slot->next = *ppSlot;
+	*ppSlot = slot;
 
 	pool->numberOfSlots++;
 
