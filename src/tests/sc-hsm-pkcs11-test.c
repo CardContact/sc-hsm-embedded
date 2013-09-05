@@ -46,6 +46,7 @@
 
 #ifndef _WIN32
 
+#include <unistd.h>
 #include <dlfcn.h>
 #define LIB_HANDLE void*
 #define P11LIBNAME "/usr/local/lib/libsc-hsm-pkcs11.so"
@@ -321,7 +322,7 @@ static int optTestHotplug = 0;
 static int optOneThreadPerToken = 0;
 static int optNoClass3Tests = 0;
 static int optNoMultiThreadingTests = 0;
-static int optThreadsPerToken = 2;
+static int optThreadsPerToken = 1;
 static long optSlotId = -1;
 static char *optTokenFilter = "";
 
@@ -626,14 +627,15 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 
 		len = sizeof(signature);
 		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, strlen(tbs), signature, &len);
-		printf("C_Sign (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK || rc == CKR_DEVICE_REMOVED));
+		printf("C_Sign (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK || rc == CKR_DEVICE_REMOVED || rc == CKR_TOKEN_NOT_PRESENT));
 
-		if (rc == CKR_DEVICE_REMOVED)
+		if (rc == CKR_DEVICE_REMOVED || rc == CKR_TOKEN_NOT_PRESENT)
 			goto out;
 
-		bin2str(scr, sizeof(scr), signature, len);
-		printf("Signature:\n%s\n", scr);
-
+		if (rc == CKR_OK) {
+			bin2str(scr, sizeof(scr), signature, len);
+			printf("Signature:\n%s\n", scr);
+		}
 
 		rc = p11->C_SignInit(session, &mech, hnd);
 		printf("C_SignInit (Thread %i, Session %ld, Slot=%ld) - Multipart - %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf));
@@ -669,13 +671,15 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 
 		len = sizeof(signature);
 		rc = p11->C_SignFinal(session, signature, &len);
-		printf("C_SignFinal (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK || rc == CKR_DEVICE_REMOVED));
+		printf("C_SignFinal (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK || rc == CKR_DEVICE_REMOVED || rc == CKR_TOKEN_NOT_PRESENT));
 
-		if (rc == CKR_DEVICE_REMOVED)
+		if (rc == CKR_DEVICE_REMOVED || rc == CKR_TOKEN_NOT_PRESENT)
 			goto out;
 
-		bin2str(scr, sizeof(scr), signature, len);
-		printf("Signature:\n%s\n", scr);
+		if (rc == CKR_OK) {
+			bin2str(scr, sizeof(scr), signature, len);
+			printf("Signature:\n%s\n", scr);
+		}
 
 		keyno++;
 	}
@@ -717,6 +721,7 @@ void testRSASigningMultiThreading(CK_FUNCTION_LIST_PTR p11)
 	CK_SLOT_ID slotid;
 	CK_SLOT_ID_PTR slotlist;
 	CK_SLOT_INFO slotinfo;
+	CK_TOKEN_INFO tokeninfo;
 	pthread_t threads[NUM_THREADS];
 	time_t start, stop;
 	pthread_attr_t attr;
@@ -755,7 +760,7 @@ void testRSASigningMultiThreading(CK_FUNCTION_LIST_PTR p11)
 	nothreads = 0;
 
 	for (t = 0; t < NUM_THREADS; t++) {
-		do	{
+		while(1) {
 			if (slotindex >= slots) {
 				if (!tokens) {
 					printf("No slot with a token found\n");
@@ -775,7 +780,19 @@ void testRSASigningMultiThreading(CK_FUNCTION_LIST_PTR p11)
 				printf("C_GetSlotInfo() failed\n");
 				return;
 			}
-		} while (!(slotinfo.flags & CKF_TOKEN_PRESENT) || ((optSlotId != -1) && (optSlotId != slotid)));
+
+			if (!(slotinfo.flags & CKF_TOKEN_PRESENT))
+				continue;
+
+			if ((optSlotId != -1) && (optSlotId != slotid))
+				continue;
+
+			rc = p11->C_GetTokenInfo(slotid, &tokeninfo);
+			if (*optTokenFilter && strncmp(optTokenFilter, (const char *)tokeninfo.label, strlen(optTokenFilter)))
+				continue;
+
+			break;
+		}
 
 		if (firstloop) {
 			tokens++;
@@ -1272,10 +1289,10 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 	CK_SLOT_ID_PTR slotlist;
 	CK_SLOT_INFO slotinfo;
 	CK_TOKEN_INFO tokeninfo;
-	pthread_t threads[NUM_THREADS];
+	pthread_t threads[100];
 	pthread_attr_t attr;
 	void *status;
-	struct thread_data data[NUM_THREADS];
+	struct thread_data data[100];
 	int rc, tokens, nothreads, t;
 
 	/* Initialize and set thread detached attribute */
@@ -1321,6 +1338,10 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 				tokens++;
 
 				for (t = slotindex * optThreadsPerToken; t < (slotindex + 1) * optThreadsPerToken; t++) {
+					if (t >= 100) {
+						printf("ERROR: Can not handle more than 100 threads");
+						exit(1);
+					}
 					if (!data[t].p11) {
 						data[t].p11 = p11;
 						data[t].slotid = slotid;
@@ -1330,7 +1351,7 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 						rc = pthread_create(&threads[t], &attr, SignThread, (void *)&data[t]);
 
 						if (rc) {
-							printf("ERROR; return code from pthread_create() is %d\n", rc);
+							printf("ERROR: return code from pthread_create() is %d\n", rc);
 							exit(1);
 						}
 						nothreads++;
@@ -1338,7 +1359,13 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 				}
 			}
 		}
-	} while (tokens > 0);
+		if (tokens > 0) {
+			usleep(5000000);
+		} else {
+			usleep(500000);
+		}
+//	} while (tokens > 0);
+	} while (testsfailed == 0);
 
 	/* Free attribute and wait for the other threads */
 	pthread_attr_destroy(&attr);
@@ -1355,7 +1382,7 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 
 void usage()
 {
-	printf("sc-hsm-tool [--module <p11-file>] [--pin <user-pin>] [--token <tokenname>]\n");
+	printf("sc-hsm-tool [--module <p11-file>] [--pin <user-pin>] [--token <tokenname>] [--optThreadsPerToken <count>]\n");
 	printf("  --test-insert-remove       Enable insert / remove test\n");
 	printf("  --test-rsa-decryption      Enable RSA decryption test (requires matching cryptogram in testRSADecryption()\n");
 	printf("  --test-pin-block           Enable PIN blocking test\n");
@@ -1406,6 +1433,14 @@ void decodeArgs(int argc, char **argv)
 			}
 			argv++;
 			optSlotId = atol(*argv);
+			argc--;
+		} else if (!strcmp(*argv, "--threads")) {
+			if (argc < 0) {
+				printf("Argument for --threads missing\n");
+				exit(1);
+			}
+			argv++;
+			optThreadsPerToken = atol(*argv);
 			argc--;
 		} else if (!strcmp(*argv, "--test-insert-remove")) {
 			optTestInsertRemove = 1;

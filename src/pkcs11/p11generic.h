@@ -126,6 +126,7 @@ struct p11Slot_t {
 	struct p11Slot_t *primarySlot;    /**< Base slot if slot is virtual        */
 	struct p11Slot_t *virtualSlots[2];/**< Virtual slots using this as base    */
 	struct p11Token_t *token;         /**< Pointer to token in the slot        */
+	struct p11Token_t *removedToken;  /**< Removed but not freed token         */
 	struct p11Slot_t *next;           /**< Pointer to next available slot      */
 };
 
@@ -148,7 +149,7 @@ struct p11TokenDriver {
 	/**< Allow driver to check if card is a candidate based on the ATR                      */
 	int (*isCandidate)(unsigned char *atr, size_t atrLen);
 	int (*newToken)(struct p11Slot_t *slot, struct p11Token_t **token);
-	void (*freeToken)(struct p11Slot_t *slot);
+	void (*freeToken)(struct p11Token_t *token);
 	int (*getMechanismList)(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount);
 	int (*getMechanismInfo)(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo);
 	int (*login)(struct p11Slot_t *slot, int userType, unsigned char *pin, int pinlen);

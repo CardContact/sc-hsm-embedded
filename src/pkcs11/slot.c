@@ -37,6 +37,7 @@
 #include <pkcs11/slot.h>
 #include <pkcs11/token.h>
 #include <pkcs11/slotpool.h>
+#include <pkcs11/session.h>
 
 #ifdef DEBUG
 #include <pkcs11/debug.h>
@@ -77,6 +78,11 @@ int addToken(struct p11Slot_t *slot, struct p11Token_t *token)
 		return CKR_FUNCTION_FAILED;
 	}
 
+	if (slot->removedToken) {
+		freeToken(slot->removedToken);
+		slot->removedToken = NULL;
+	}
+
 	slot->token = token;                     /* Add token to slot                */
 	slot->info.flags |= CKF_TOKEN_PRESENT;   /* indicate the presence of a token */
 
@@ -105,13 +111,34 @@ int addToken(struct p11Slot_t *slot, struct p11Token_t *token)
  */
 int removeToken(struct p11Slot_t *slot)
 {
+	int i;
+	struct p11Token_t *token;
+
 	if (slot->token == NULL) {
 		return CKR_FUNCTION_FAILED;
 	}
 
+	if (!slot->primarySlot) {
+		// Remove token from associated virtual slots
+		for (i = 0; i < sizeof(slot->virtualSlots) / sizeof(slot->virtualSlots[0]); i++) {
+			if (slot->virtualSlots[i]) {
+				removeToken(slot->virtualSlots[i]);
+			}
+		}
+	}
+
+	if (slot->removedToken) {
+		freeToken(slot->removedToken);
+		slot->removedToken = NULL;
+	}
+
+	// A removed token is not immediately released from memory to give running
+	// threads a change to complete token operations.
+	slot->removedToken = slot->token;
+	slot->token = NULL;
 	slot->info.flags &= ~CKF_TOKEN_PRESENT;
+
 	closeSessionsForSlot(context->sessionPool, slot->id);
-	freeToken(slot);
 
 	return CKR_OK;
 }
@@ -312,10 +339,9 @@ int transmitVerifyPinAPDU(struct p11Slot_t *slot,
 		slot = slot->primarySlot;
 
 #ifdef DEBUG
-	char scr[4196], *po;
+	char scr[4196];
 
 	sprintf(scr, "C-APDU: %02X %02X %02X %02X ", CLA, INS, P1, P2);
-	po = strchr(scr, '\0');
 
 	debug("%s\n", scr);
 #endif
@@ -412,9 +438,6 @@ int getVirtualSlot(struct p11Slot_t *slot, int index, struct p11Slot_t **vslot)
 
 int getToken(struct p11Slot_t *slot, struct p11Token_t **token)
 {
-	int rc;
-	struct p11Slot_t *pslot;
-
 	FUNC_CALLED();
 
 	*token = slot->token;

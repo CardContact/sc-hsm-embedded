@@ -31,6 +31,10 @@
  * @brief   Crypto mechanisms at the PKCS#11 interface
  */
 
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+
 #include <pkcs11/p11generic.h>
 #include <pkcs11/session.h>
 #include <pkcs11/slot.h>
@@ -60,6 +64,14 @@ int handleDeviceError(CK_SESSION_HANDLE hSession) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
+	// Even if SCardTransmit report a communication error with the card, the card present
+	// switch and the card present status in the resource manager will still report a present card
+	//
+	// Wait 100ms to make sure the card status detection reports accurate results
+#ifndef _WIN32
+	usleep(100000);
+#endif
+
 	rv = findSessionByHandle(context->sessionPool, hSession, &session);
 
 	if (rv == CKR_SESSION_HANDLE_INVALID) {
@@ -82,7 +94,7 @@ int handleDeviceError(CK_SESSION_HANDLE hSession) {
 		FUNC_RETURNS(rv);
 	}
 
-	return CKR_DEVICE_ERROR;
+	FUNC_RETURNS(CKR_DEVICE_ERROR);
 }
 
 

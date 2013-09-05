@@ -339,15 +339,14 @@ int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p
  *
  * @param slot      The slot in which the token is inserted
  */
-void freeToken(struct p11Slot_t *slot)
+void freeToken(struct p11Token_t *token)
 {
-	if (slot->token) {
-		if (slot->token->drv->freeToken)
-			slot->token->drv->freeToken(slot);
+	if (token) {
+		if (token->drv->freeToken)
+			token->drv->freeToken(token);
 
-		removePrivateObjects(slot->token);
-		removePublicObjects(slot->token);
-		free(slot->token);
-		slot->token = NULL;
+		removePrivateObjects(token);
+		removePublicObjects(token);
+		free(token);
 	}
 }

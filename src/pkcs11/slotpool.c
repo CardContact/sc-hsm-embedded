@@ -107,7 +107,13 @@ int terminateSlotPool(struct p11SlotPool_t *pool)
 	/* clear the slot pool */
 	while (pSlot) {
 		if (pSlot->token) {
-			freeToken(pSlot);
+			freeToken(pSlot->token);
+			pSlot->token = NULL;
+		}
+
+		if (pSlot->removedToken) {
+			freeToken(pSlot->removedToken);
+			pSlot->removedToken = NULL;
 		}
 
 		closeSlot(pSlot);

@@ -747,6 +747,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 	}
 
 	if (SW1SW2 == 0x6982) {
+		pObject->token->checkPINAfterSigning = 1;
 		unlock(pObject->token);
 		logOut(pObject->token->slot);
 		FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "User not logged in");
@@ -1349,18 +1350,11 @@ static int logout(struct p11Slot_t *slot)
 
 
 
-static void freeStarcosToken(struct p11Slot_t *slot)
+static void freeStarcosToken(struct p11Token_t *token)
 {
-	struct p11Slot_t *vslot;
-
-	if (!slot->primarySlot) {
-		getVirtualSlot(slot, 0, &vslot);
-		removeToken(vslot);
-		getVirtualSlot(slot, 1, &vslot);
-		removeToken(vslot);
-	}
 	struct starcosPrivateData *sc;
-	sc = getPrivateData(slot->token);
+
+	sc = getPrivateData(token);
 	p11DestroyMutex(sc->mutex);
 }
 
@@ -1415,7 +1409,7 @@ static int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token,
 	strbpcpy(ptoken->info.label, starcosApplications[sc->application].name, sizeof(ptoken->info.label));
 
 	// For QES application check PIN status after C_Sign
-	ptoken->checkPINAfterSigning = starcosApplications[sc->application].isQES;
+//	ptoken->checkPINAfterSigning = starcosApplications[sc->application].isQES;
 
 	loadPublicObjects(ptoken);
 

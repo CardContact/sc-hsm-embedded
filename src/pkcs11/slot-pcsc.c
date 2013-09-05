@@ -283,7 +283,7 @@ int transmitAPDUviaPCSC(struct p11Slot_t *slot,
 	FUNC_CALLED();
 
 	if (!slot->card) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "No card handle");
+		FUNC_FAILS(-1, "No card handle");
 	}
 
 	lenr = rapdu_len;
@@ -295,7 +295,7 @@ int transmitAPDUviaPCSC(struct p11Slot_t *slot,
 #endif
 
 	if (rc != SCARD_S_SUCCESS) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "SCardTransmit failed");
+		FUNC_FAILS(-1, "SCardTransmit failed");
 	}
 
 	FUNC_RETURNS(lenr);
@@ -316,7 +316,7 @@ int transmitVerifyPinAPDUviaPCSC(struct p11Slot_t *slot,
 	FUNC_CALLED();
 
 	if (!slot->card) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "No card handle");
+		FUNC_FAILS(-1, "No card handle");
 	}
 
 	verify.bTimeOut = 0x00;
@@ -355,7 +355,7 @@ int transmitVerifyPinAPDUviaPCSC(struct p11Slot_t *slot,
 #endif
 
 	if (rc != SCARD_S_SUCCESS) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "SCardControl failed");
+		FUNC_FAILS(-1, "SCardControl failed");
 	}
 
 	FUNC_RETURNS(lenr);
