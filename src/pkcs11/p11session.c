@@ -83,7 +83,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = getToken(slot, &token);
+	rv = getValidatedToken(slot, &token);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -184,12 +184,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseAllSessions)(
 		FUNC_FAILS(CKR_SESSION_HANDLE_INVALID,"Session pool not initialized");
 	}
 
-	while((session = context->sessionPool->list)) {
-		rv = C_CloseSession(session->handle);
-		if (rv != CKR_OK) {
-			FUNC_FAILS(rv, "Could not close session");
-		}
-	}
+	p11LockMutex(context->mutex);
+
+	closeSessionsForSlot(context, slotID);
+
+	p11UnlockMutex(context->mutex);
 
 	FUNC_RETURNS(CKR_OK);
 }
@@ -229,7 +228,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSessionInfo)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = getToken(slot, &token);
+	rv = getValidatedToken(slot, &token);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -320,7 +319,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = getToken(slot, &token);
+	rv = getValidatedToken(slot, &token);
 
 	if (rv != CKR_OK) {
 		return rv;
@@ -390,7 +389,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Logout)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = getToken(slot, &token);
+	rv = getValidatedToken(slot, &token);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);

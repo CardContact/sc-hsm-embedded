@@ -110,9 +110,10 @@ int removeToken(struct p11Slot_t *slot)
 	}
 
 	slot->info.flags &= ~CKF_TOKEN_PRESENT;
+	closeSessionsForSlot(context->sessionPool, slot->id);
 	freeToken(slot);
 
-	return CKR_TOKEN_NOT_PRESENT;
+	return CKR_OK;
 }
 
 
@@ -276,7 +277,7 @@ int transmitAPDU(struct p11Slot_t *slot,
 	}
 
 #ifdef DEBUG
-	if (rc > 0) {
+	if (rc > 0 && InData) {
 		sprintf(scr, "R-APDU: Lr=%02X(%d) ", rc, rc);
 		po = strchr(scr, '\0');
 		if (rc > 2048) {
@@ -416,17 +417,35 @@ int getToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 	FUNC_CALLED();
 
+	*token = slot->token;
+
+	FUNC_RETURNS(slot->token ? CKR_OK : CKR_TOKEN_NOT_PRESENT);
+}
+
+
+
+int getValidatedToken(struct p11Slot_t *slot, struct p11Token_t **token)
+{
+	int rc;
+	struct p11Slot_t *pslot;
+
+	FUNC_CALLED();
+
 	// Checking for new or removed token is always performed on the
 	// primary slot
 	pslot = slot;
 	if (pslot->primarySlot)
 		pslot = pslot->primarySlot;
 
+	p11LockMutex(context->mutex);
+
 #ifdef CTAPI
 	rc = getCTAPIToken(pslot, token);
 #else
 	rc = getPCSCToken(pslot, token);
 #endif
+
+	p11UnlockMutex(context->mutex);
 
 	*token = slot->token;
 	return rc;

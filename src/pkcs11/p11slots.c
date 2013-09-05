@@ -84,7 +84,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotList)(
 	i = 0;
 
 	while (slot != NULL) {
-		if (!tokenPresent || (getToken(slot, &token) == CKR_OK)) {
+		if (!tokenPresent || (getValidatedToken(slot, &token) == CKR_OK)) {
 			if (pSlotList && (i < *pulCount)) {
 				pSlotList[i] = slot->id;
 			}
@@ -148,11 +148,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotInfo)(
 		FUNC_RETURNS(rv);
 	}
 
-	getToken(slot, &token);				// Update token status
+	p11UnlockMutex(context->mutex);
+
+	getValidatedToken(slot, &token);				// Update token status
 
 	memcpy(pInfo, &(slot->info), sizeof(CK_SLOT_INFO));
-
-	p11UnlockMutex(context->mutex);
 
 	FUNC_RETURNS(CKR_OK);
 }
@@ -185,7 +185,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetTokenInfo)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = getToken(slot, &token);
+	rv = getValidatedToken(slot, &token);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -249,7 +249,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismList)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = getToken(slot, &token);
+	rv = getValidatedToken(slot, &token);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -288,7 +288,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismInfo)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = getToken(slot, &token);
+	rv = getValidatedToken(slot, &token);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -366,7 +366,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitPIN)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = getToken(slot, &token);
+	rv = getValidatedToken(slot, &token);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -414,7 +414,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetPIN)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = getToken(slot, &token);
+	rv = getValidatedToken(slot, &token);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);

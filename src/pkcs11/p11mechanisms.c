@@ -43,6 +43,50 @@ extern struct p11Context_t *context;
 
 
 
+/**
+ * If a crypto operation returns CKR_DEVICE_ERROR, then check if the token
+ * is still present.
+ *
+ */
+int handleDeviceError(CK_SESSION_HANDLE hSession) {
+	int rv;
+	struct p11Session_t *session;
+	struct p11Slot_t *slot;
+	struct p11Token_t *token;
+
+	FUNC_CALLED();
+
+	if (context == NULL) {
+		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+
+	if (rv == CKR_SESSION_HANDLE_INVALID) {
+		FUNC_RETURNS(CKR_DEVICE_REMOVED);
+	}
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	rv = findSlot(context->slotPool, session->slotID, &slot);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	rv = getValidatedToken(slot, &token);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	return CKR_DEVICE_ERROR;
+}
+
+
+
 /*  C_EncryptInit initializes an encryption operation. */
 CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 		CK_SESSION_HANDLE hSession,
@@ -85,6 +129,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 
 	if (pObject->C_EncryptInit != NULL) {
 		rv = pObject->C_EncryptInit(pObject, pMechanism);
+		if (rv == CKR_DEVICE_ERROR) {
+			rv = handleDeviceError(hSession);
+			FUNC_FAILS(rv, "Device error reported");
+		}
 	} else {
 		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
@@ -143,6 +191,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
 
 	if (pObject->C_Encrypt != NULL) {
 		rv = pObject->C_Encrypt(pObject, pSession->activeMechanism, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
+		if (rv == CKR_DEVICE_ERROR) {
+			rv = handleDeviceError(hSession);
+			FUNC_FAILS(rv, "Device error reported");
+		}
 	} else {
 		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
@@ -197,6 +249,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptUpdate)(
 
 	if (pObject->C_EncryptUpdate != NULL) {
 		rv = pObject->C_EncryptUpdate(pObject, pSession->activeMechanism, pPart, ulPartLen, pEncryptedPart, pulEncryptedPartLen);
+		if (rv == CKR_DEVICE_ERROR) {
+			rv = handleDeviceError(hSession);
+			FUNC_FAILS(rv, "Device error reported");
+		}
 	} else {
 		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
@@ -248,6 +304,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptFinal)(
 
 	if (pObject->C_EncryptFinal != NULL) {
 		rv = pObject->C_EncryptFinal(pObject, pSession->activeMechanism, pLastEncryptedPart, pulLastEncryptedPartLen);
+		if (rv == CKR_DEVICE_ERROR) {
+			rv = handleDeviceError(hSession);
+			FUNC_FAILS(rv, "Device error reported");
+		}
 	} else {
 		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
@@ -304,6 +364,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptInit)(
 
 	if (pObject->C_DecryptInit != NULL) {
 		rv = pObject->C_DecryptInit(pObject, pMechanism);
+		if (rv == CKR_DEVICE_ERROR) {
+			rv = handleDeviceError(hSession);
+			FUNC_FAILS(rv, "Device error reported");
+		}
 	} else {
 		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
@@ -367,6 +431,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_Decrypt)(
 
 	if (pObject->C_Decrypt != NULL) {
 		rv = pObject->C_Decrypt(pObject, pSession->activeMechanism, pEncryptedData, ulEncryptedDataLen, pData, pulDataLen);
+		if (rv == CKR_DEVICE_ERROR) {
+			rv = handleDeviceError(hSession);
+			FUNC_FAILS(rv, "Device error reported");
+		}
 	} else {
 		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
@@ -421,6 +489,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptUpdate)(
 
 	if (pObject->C_DecryptUpdate != NULL) {
 		rv = pObject->C_DecryptUpdate(pObject, pSession->activeMechanism, pEncryptedPart, ulEncryptedPartLen, pPart, pulPartLen);
+		if (rv == CKR_DEVICE_ERROR) {
+			rv = handleDeviceError(hSession);
+			FUNC_FAILS(rv, "Device error reported");
+		}
 	} else {
 		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
@@ -472,6 +544,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptFinal)(
 
 	if (pObject->C_DecryptFinal != NULL) {
 		rv = pObject->C_DecryptFinal(pObject, pSession->activeMechanism, pLastPart, pulLastPartLen);
+		if (rv == CKR_DEVICE_ERROR) {
+			rv = handleDeviceError(hSession);
+			FUNC_FAILS(rv, "Device error reported");
+		}
 	} else {
 		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
@@ -631,6 +707,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignInit)(
 
 	if (pObject->C_SignInit != NULL) {
 		rv = pObject->C_SignInit(pObject, pMechanism);
+		if (rv == CKR_DEVICE_ERROR) {
+			rv = handleDeviceError(hSession);
+			FUNC_FAILS(rv, "Device error reported");
+		}
 	} else {
 		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
@@ -694,6 +774,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
 
 	if (pObject->C_Sign != NULL) {
 		rv = pObject->C_Sign(pObject, pSession->activeMechanism, pData, ulDataLen, pSignature, pulSignatureLen);
+		if (rv == CKR_DEVICE_ERROR) {
+			rv = handleDeviceError(hSession);
+			FUNC_FAILS(rv, "Device error reported");
+		}
 	} else {
 		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
@@ -746,6 +830,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignUpdate)(
 
 	if (pObject->C_SignUpdate != NULL) {
 		rv = pObject->C_SignUpdate(pObject, pSession->activeMechanism, pPart, ulPartLen);
+		if (rv == CKR_DEVICE_ERROR) {
+			rv = handleDeviceError(hSession);
+			FUNC_FAILS(rv, "Device error reported");
+		}
 	} else {
 		rv = appendToCryptoBuffer(pSession, pPart, ulPartLen);
 	}
@@ -801,9 +889,17 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 
 	if (pObject->C_SignFinal != NULL) {
 		rv = pObject->C_SignFinal(pObject, pSession->activeMechanism, pSignature, pulSignatureLen);
+		if (rv == CKR_DEVICE_ERROR) {
+			rv = handleDeviceError(hSession);
+			FUNC_FAILS(rv, "Device error reported");
+		}
 	} else {
 		if (pObject->C_Sign != NULL) {
 			rv = pObject->C_Sign(pObject, pSession->activeMechanism, pSession->cryptoBuffer, pSession->cryptoBufferSize, pSignature, pulSignatureLen);
+			if (rv == CKR_DEVICE_ERROR) {
+				rv = handleDeviceError(hSession);
+				FUNC_FAILS(rv, "Device error reported");
+			}
 		} else {
 			FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 		}

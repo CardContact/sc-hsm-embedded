@@ -96,9 +96,9 @@ void addSession(struct p11SessionPool_t *pool, struct p11Session_t *session)
 
 
 /**
- * Find a slot in the slot-pool by it's slot handle
+ * Find a session in the session pool by it's slot handle
  *
- * @param pool       Pointer to slot-pool structure.
+ * @param pool       Pointer to session pool structure.
  * @param handle     The handle of the session.
  * @param session    Pointer to session structure.
  *                   If the session is found, this pointer holds the specific session structure - otherwise NULL.
@@ -127,9 +127,9 @@ int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle,
 
 
 /**
- * Find a slot in the slot-pool by it's related slot
+ * Find a session in the session pool by it's related slot
  *
- * @param pool       Pointer to slot-pool structure
+ * @param pool       Pointer to session structure
  * @param slotID     The slot identifier
  * @param session    Pointer to session structure
  *                   If the session is found, this pointer holds the specific session structure - otherwise NULL.
@@ -215,6 +215,30 @@ int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle)
 	pool->numberOfSessions--;
 
 	return CKR_OK;
+}
+
+
+
+/**
+ * Close all sessions opened for a slot
+ *
+ * @param pool       Pointer to session-pool structure
+ * @param slotID     The slot ID
+ */
+void closeSessionsForSlot(struct p11SessionPool_t *pool, CK_SLOT_ID slotID)
+{
+	struct p11Session_t *session;
+
+	session = pool->list;
+
+	while (session != NULL) {
+		if (session->slotID == slotID) {
+			removeSession(pool, session->handle);
+			session = pool->list;
+		} else {
+			session = session->next;
+		}
+	}
 }
 
 

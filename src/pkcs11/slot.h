@@ -38,38 +38,28 @@
 #include <pkcs11/p11generic.h>
 
 int addToken(struct p11Slot_t *slot, struct p11Token_t *token);
-
 int removeToken(struct p11Slot_t *slot);
-
 int encodeCommandAPDU(
 		unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
 		size_t Nc, unsigned char *OutData, int Ne,
 		unsigned char *apdu, size_t apdu_len);
-
 int transmitAPDU(struct p11Slot_t *slot,
 		unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
 		int OutLen, unsigned char *OutData,
 		int InLen, unsigned char *InData, int InSize, unsigned short *SW1SW2);
-
 int transmitVerifyPinAPDU(struct p11Slot_t *slot,
 		unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2,
 		int OutLen, unsigned char *OutData,
 		unsigned short *SW1SW2,
 		unsigned char pinformat, unsigned char minpinsize, unsigned char maxpinsize,
 		unsigned char pinblockstring, unsigned char pinlengthformat);
-
 int getToken(struct p11Slot_t *slot, struct p11Token_t **token);
-
+int getValidatedToken(struct p11Slot_t *slot, struct p11Token_t **token);
 int findSlotObject(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject);
-
 int updateSlots(struct p11SlotPool_t *pool);
-
 int closeSlot(struct p11Slot_t *slot);
-
 int addToken(struct p11Slot_t *slot, struct p11Token_t *token);
-
 int removeToken(struct p11Slot_t *slot);
-
 int getVirtualSlot(struct p11Slot_t *slot, int index, struct p11Slot_t **vslot);
 
 #endif /* ___SLOT_H_INC___ */

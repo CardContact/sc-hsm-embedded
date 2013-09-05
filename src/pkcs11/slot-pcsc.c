@@ -295,7 +295,7 @@ int transmitAPDUviaPCSC(struct p11Slot_t *slot,
 #endif
 
 	if (rc != SCARD_S_SUCCESS) {
-		FUNC_FAILS(-1, "SCardTransmit failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "SCardTransmit failed");
 	}
 
 	FUNC_RETURNS(lenr);
@@ -355,7 +355,7 @@ int transmitVerifyPinAPDUviaPCSC(struct p11Slot_t *slot,
 #endif
 
 	if (rc != SCARD_S_SUCCESS) {
-		FUNC_FAILS(-1, "SCardControl failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "SCardControl failed");
 	}
 
 	FUNC_RETURNS(lenr);
@@ -520,8 +520,18 @@ static int checkForRemovedPCSCToken(struct p11Slot_t *slot)
 
 	if (rv == SCARD_S_SUCCESS) {
 		FUNC_RETURNS(CKR_OK);
-	} else if (rv == SCARD_W_REMOVED_CARD) {
+	} else if ((rv == SCARD_W_REMOVED_CARD) || (rv == SCARD_E_INVALID_HANDLE) || (rv == SCARD_E_READER_UNAVAILABLE)) {
 		rc = removeToken(slot);
+		if (rc != CKR_OK) {
+			FUNC_RETURNS(rc);
+		}
+
+		// Check if a new token was inserted in the meantime
+		rc = checkForNewPCSCToken(slot);
+
+		if (rc == CKR_TOKEN_NOT_PRESENT) {
+			FUNC_RETURNS(CKR_DEVICE_REMOVED);
+		}
 	} else {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error getting PC/SC card terminal status");
 	}
@@ -582,6 +592,10 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 	debug("SCardListReaders: %s\n", pcsc_error_to_string(rc));
 #endif
 
+	if (rc == SCARD_E_NO_READERS_AVAILABLE) {
+		FUNC_RETURNS(CKR_OK);
+	}
+
 	if (rc != SCARD_S_SUCCESS) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error listing PC/SC card terminals");
 	}
@@ -607,6 +621,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		/* Skip the reader as we already have a slot for it */
 		if (match) {
 			p += strlen(p) + 1;
+			slot->closed = FALSE;
 			continue;
 		}
 

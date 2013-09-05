@@ -671,6 +671,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 	unsigned short SW1SW2;
 	unsigned char scr[256],*s, *d;
 	struct starcosPrivateData *sc;
+	struct p11Slot_t *slot;
 
 	FUNC_CALLED();
 
@@ -683,7 +684,11 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 		FUNC_RETURNS(CKR_OK);
 	}
 
+	slot = pObject->token->slot;
 	lock(pObject->token);
+	if (!slot->token) {
+		FUNC_RETURNS(CKR_DEVICE_REMOVED);
+	}
 
 	rc = selectApplication(pObject->token);
 	if (rc < 0) {
@@ -791,6 +796,7 @@ static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech
 	unsigned char *d,*s;
 	unsigned short SW1SW2;
 	unsigned char scr[257];
+	struct p11Slot_t *slot;
 
 	FUNC_CALLED();
 
@@ -802,7 +808,11 @@ static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech
 		FUNC_RETURNS(CKR_OK);
 	}
 
+	slot = pObject->token->slot;
 	lock(pObject->token);
+	if (!slot->token) {
+		FUNC_RETURNS(CKR_DEVICE_REMOVED);
+	}
 
 	rc = selectApplication(pObject->token);
 	if (rc < 0) {
@@ -1239,6 +1249,9 @@ static int login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 	FUNC_CALLED();
 
 	lock(slot->token);
+	if (!slot->token) {
+		FUNC_RETURNS(CKR_DEVICE_REMOVED);
+	}
 
 	rc = selectApplication(slot->token);
 	if (rc < 0) {

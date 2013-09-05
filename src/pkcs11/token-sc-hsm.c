@@ -474,11 +474,11 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 	}
 
 	if (rc < 0) {
-		FUNC_FAILS(rc, "transmitAPDU failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
 	if (SW1SW2 != 0x9000) {
-		FUNC_FAILS(-1, "Signature operation failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Signature operation failed");
 	}
 
 	if ((algo == ALGO_EC_RAW) || (algo == ALGO_EC_SHA1)) {
@@ -565,7 +565,7 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 			0, scr, sizeof(scr), &SW1SW2);
 
 	if (rc < 0) {
-		FUNC_FAILS(rc, "transmitAPDU failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
 	if (SW1SW2 != 0x9000) {

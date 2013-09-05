@@ -91,7 +91,7 @@ void debug(char *format, ...)
 	time_t elapsed;
 	va_list argptr;
 
-	if (context->debugFileHandle == NULL) {
+	if ((context == NULL) || (context->debugFileHandle == NULL)) {
 		return;
 	}
 

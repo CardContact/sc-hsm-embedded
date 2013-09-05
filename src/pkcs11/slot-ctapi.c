@@ -275,6 +275,16 @@ static int checkForRemovedCTAPIToken(struct p11Slot_t *slot)
 	}
 
 	rc = removeToken(slot);
+	if (rc != CKR_OK) {
+		FUNC_RETURNS(rc);
+	}
+
+	// Check if a new token was inserted in the meantime
+	rc = checkForNewCTAPIToken(slot);
+
+	if (rc == CKR_TOKEN_NOT_PRESENT) {
+		FUNC_RETURNS(CKR_DEVICE_REMOVED);
+	}
 
 	FUNC_RETURNS(rc);
 }

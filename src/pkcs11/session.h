@@ -96,6 +96,7 @@ void addSession(struct p11SessionPool_t *pool, struct p11Session_t *session);
 int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle, struct p11Session_t **session);
 int findSessionBySlotID(struct p11SessionPool_t *pool, CK_SLOT_ID slotID, struct p11Session_t **session);
 int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle);
+void closeSessionsForSlot(struct p11SessionPool_t *pool, CK_SLOT_ID slotID);
 CK_STATE getSessionState(struct p11Session_t *session, struct p11Token_t *token);
 void addSessionObject(struct p11Session_t *session, struct p11Object_t *object);
 int findSessionObject(struct p11Session_t *session, CK_OBJECT_HANDLE handle, struct p11Object_t **object);

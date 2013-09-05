@@ -589,7 +589,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
 	rv = findSlot(context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+		FUNC_RETURNS(CKR_TOKEN_NOT_PRESENT);
 	}
 
 #ifdef DEBUG
@@ -611,6 +611,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
 			addObjectToSearchList(session, pObject);
 		}
 		pObject = pObject->next;
+	}
+
+	if (!slot->token) {
+		FUNC_RETURNS(rv);
 	}
 
 	/* public token objects */
