@@ -639,6 +639,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 #endif
 
 		if (rc != SCARD_S_SUCCESS) {
+			free(slot);
 			SCardFreeMemory(globalContext, readers );
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Could not establish context to PC/SC manager");
 		}

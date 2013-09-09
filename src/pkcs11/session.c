@@ -114,6 +114,9 @@ int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle,
 
 	while (psession != NULL) {
 		if (psession->handle == handle) {
+			if (psession->isRemoved) {
+				return CKR_DEVICE_REMOVED;
+			}
 			*session = psession;
 			return CKR_OK;
 		}
@@ -238,6 +241,29 @@ void closeSessionsForSlot(struct p11SessionPool_t *pool, CK_SLOT_ID slotID)
 		} else {
 			session = session->next;
 		}
+	}
+}
+
+
+
+/**
+ * Mark all sessions closing for a slot. This will make the session unusable but will not yet
+ * remove them from memory.
+ *
+ * @param pool       Pointer to session-pool structure
+ * @param slotID     The slot ID
+ */
+void tokenRemovedForSessionsOnSlot(struct p11SessionPool_t *pool, CK_SLOT_ID slotID)
+{
+	struct p11Session_t *session;
+
+	session = pool->list;
+
+	while (session != NULL) {
+		if (session->slotID == slotID) {
+			session->isRemoved = 1;
+		}
+		session = session->next;
 	}
 }
 

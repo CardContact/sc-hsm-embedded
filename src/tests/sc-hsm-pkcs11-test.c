@@ -1346,7 +1346,7 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 						data[t].p11 = p11;
 						data[t].slotid = slotid;
 						data[t].thread_id = t;
-						data[t].iterations = 10;
+						data[t].iterations = 1;
 
 						rc = pthread_create(&threads[t], &attr, SignThread, (void *)&data[t]);
 
@@ -1359,11 +1359,13 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 				}
 			}
 		}
+		free(slotlist);
 		if (tokens > 0) {
 			usleep(5000000);
 		} else {
 			usleep(500000);
 		}
+		break;
 //	} while (tokens > 0);
 	} while (testsfailed == 0);
 
@@ -1628,6 +1630,7 @@ int main(int argc, char *argv[])
 				printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 			}
 		}
+		free(slotlist);
 
 #ifndef WIN32
 		if (!optNoMultiThreadingTests)

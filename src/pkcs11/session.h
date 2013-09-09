@@ -55,8 +55,8 @@ struct p11Session_t {
 
 	CK_SLOT_ID slotID;                  /**< The id of the slot for this session                */
 	CK_FLAGS flags;                     /**< The flags of this session                          */
-//	CK_STATE state;                     /**< The session state                                  */
 	CK_SESSION_HANDLE handle;           /**< The handle of the session                          */
+	int isRemoved;                      /**< The token has been removed                         */
 	int activeObjectHandle;             /**< The handle of the active object, -1 if no object   */
 	CK_MECHANISM_TYPE activeMechanism;	/**< The currently active mechanism                     */
 	CK_BYTE_PTR cryptoBuffer;           /**< Buffer storing intermediate results                */
@@ -97,6 +97,7 @@ int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle,
 int findSessionBySlotID(struct p11SessionPool_t *pool, CK_SLOT_ID slotID, struct p11Session_t **session);
 int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle);
 void closeSessionsForSlot(struct p11SessionPool_t *pool, CK_SLOT_ID slotID);
+void tokenRemovedForSessionsOnSlot(struct p11SessionPool_t *pool, CK_SLOT_ID slotID);
 CK_STATE getSessionState(struct p11Session_t *session, struct p11Token_t *token);
 void addSessionObject(struct p11Session_t *session, struct p11Object_t *object);
 int findSessionObject(struct p11Session_t *session, CK_OBJECT_HANDLE handle, struct p11Object_t **object);

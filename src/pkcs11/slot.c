@@ -132,13 +132,14 @@ int removeToken(struct p11Slot_t *slot)
 		slot->removedToken = NULL;
 	}
 
-	// A removed token is not immediately released from memory to give running
-	// threads a change to complete token operations.
+	// A removed token and associated sessions are not immediately released from memory
+	// to give running threads a change to complete token operations.
 	slot->removedToken = slot->token;
 	slot->token = NULL;
 	slot->info.flags &= ~CKF_TOKEN_PRESENT;
 
-	closeSessionsForSlot(context->sessionPool, slot->id);
+	// Final close with resource deallocation is done from freeToken().
+	tokenRemovedForSessionsOnSlot(context->sessionPool, slot->id);
 
 	return CKR_OK;
 }

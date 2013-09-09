@@ -315,12 +315,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_Finalize)
 	FUNC_CALLED();
 
 	if (context != NULL) {
+		p11LockMutex(context->mutex);
 
 		terminateSessionPool(context->sessionPool);
-		free(context->sessionPool);
-
 		terminateSlotPool(context->slotPool);
+		free(context->sessionPool);
 		free(context->slotPool);
+
+		p11UnlockMutex(context->mutex);
 
 #ifdef DEBUG
 		termDebug(context);
