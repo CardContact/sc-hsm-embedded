@@ -343,7 +343,7 @@ int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p
 void freeToken(struct p11Token_t *token)
 {
 	if (token) {
-		closeSessionsForSlot(context->sessionPool, token->slot->id);
+		closeSessionsForSlot(&context->sessionPool, token->slot->id);
 
 		if (token->drv->freeToken)
 			token->drv->freeToken(token);

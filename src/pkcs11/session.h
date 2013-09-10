@@ -72,20 +72,6 @@ struct p11Session_t {
 	struct p11Session_t *next;          /**< Pointer to next active session      */
 };
 
-/**
- * Internal structure to store information for session management and a list
- * of all active sessions.
- *
- */
-
-struct p11SessionPool_t {
-
-	CK_ULONG numberOfSessions;              /**< Number of active sessions             */
-	CK_SESSION_HANDLE nextSessionHandle;    /**< Value of next assigned session handle */
-
-	struct p11Session_t *list;              /**< Pointer to first session in pool      */
-
-};
 
 
 /* function prototypes */

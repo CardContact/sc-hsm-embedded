@@ -265,33 +265,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 	FUNC_CALLED();
 #endif
 
-	context->sessionPool = (struct p11SessionPool_t *) calloc(1, sizeof(struct p11SessionPool_t));
+	initSessionPool(&context->sessionPool);
 
-	if (context->sessionPool == NULL) {
-		free(context);
-		context = NULL;
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
-	}
-
-	context->slotPool = (struct p11SlotPool_t *) calloc(1, sizeof(struct p11SlotPool_t));
-
-	if (context->slotPool == NULL) {
-		free(context->sessionPool);
-		free(context);
-		context = NULL;
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
-	}
-
-	initSessionPool(context->sessionPool);
-
-	rv = initSlotPool(context->slotPool);
+	rv = initSlotPool(&context->slotPool);
 
 	if (rv != CKR_OK) {
 #ifdef DEBUG
 		debug("[C_Initialize] Error initializing slot pool ...\n");
 #endif
-		free(context->sessionPool);
-		free(context->slotPool);
 		free(context);
 		context = NULL;
 		FUNC_RETURNS(rv);
@@ -317,10 +298,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_Finalize)
 	if (context != NULL) {
 		p11LockMutex(context->mutex);
 
-		terminateSessionPool(context->sessionPool);
-		terminateSlotPool(context->slotPool);
-		free(context->sessionPool);
-		free(context->slotPool);
+		terminateSessionPool(&context->sessionPool);
+		terminateSlotPool(&context->slotPool);
 
 		p11UnlockMutex(context->mutex);
 

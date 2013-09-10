@@ -144,6 +144,19 @@ struct p11SlotPool_t {
 
 
 
+/**
+ * Internal structure to store information for session management and a list
+ * of all active sessions.
+ *
+ */
+struct p11SessionPool_t {
+	CK_ULONG numberOfSessions;              /**< Number of active sessions             */
+	CK_SESSION_HANDLE nextSessionHandle;    /**< Value of next assigned session handle */
+	struct p11Session_t *list;              /**< Pointer to first session in pool      */
+};
+
+
+
 struct p11TokenDriver {
 	const char *name;                   /**< Name of driver                                 */
 	/**< Allow driver to check if card is a candidate based on the ATR                      */
@@ -169,9 +182,9 @@ struct p11Context_t {
 
 	FILE *debugFileHandle;
 
-	struct p11SessionPool_t *sessionPool;   /**< Pointer to session pool                  */
+	struct p11SessionPool_t sessionPool;    /**< Session pool                             */
 
-	struct p11SlotPool_t *slotPool;         /**< Pointer to pool of available slots       */
+	struct p11SlotPool_t slotPool;          /**< Pool of available slots                  */
 
 	void *mutex;                            /**< Global lock used to protect internals    */
 };

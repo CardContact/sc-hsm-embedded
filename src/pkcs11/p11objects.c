@@ -75,7 +75,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -113,7 +113,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 		return rv;
 	}
 
-	rv = findSlot(context->slotPool, session->slotID, &slot);
+	rv = findSlot(&context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -187,13 +187,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_DestroyObject)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlot(context->slotPool, session->slotID, &slot);
+	rv = findSlot(&context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -261,13 +261,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetObjectSize)(
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlot(context->slotPool, session->slotID, &slot);
+	rv = findSlot(&context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -328,13 +328,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetAttributeValue)(
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlot(context->slotPool, session->slotID, &slot);
+	rv = findSlot(&context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -428,13 +428,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlot(context->slotPool, session->slotID, &slot);
+	rv = findSlot(&context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -580,13 +580,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlot(context->slotPool, session->slotID, &slot);
+	rv = findSlot(&context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(CKR_TOKEN_NOT_PRESENT);
@@ -674,7 +674,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjects)(
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -727,7 +727,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsFinal)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);

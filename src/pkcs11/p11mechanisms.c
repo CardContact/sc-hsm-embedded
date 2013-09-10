@@ -72,7 +72,7 @@ int handleDeviceError(CK_SESSION_HANDLE hSession) {
 	usleep(100000);
 #endif
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv == CKR_SESSION_HANDLE_INVALID) {
 		FUNC_RETURNS(CKR_DEVICE_REMOVED);
@@ -82,7 +82,7 @@ int handleDeviceError(CK_SESSION_HANDLE hSession) {
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlot(context->slotPool, session->slotID, &slot);
+	rv = findSlot(&context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -117,7 +117,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -127,7 +127,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 		FUNC_FAILS(CKR_OPERATION_ACTIVE, "Operation is already active");
 	}
 
-	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -179,7 +179,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -189,7 +189,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
 		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
-	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -237,7 +237,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptUpdate)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -247,7 +247,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptUpdate)(
 		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
-	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -292,7 +292,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptFinal)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -302,7 +302,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptFinal)(
 		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
-	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -352,7 +352,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptInit)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -362,7 +362,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptInit)(
 		FUNC_FAILS(CKR_OPERATION_ACTIVE, "Operation is already active");
 	}
 
-	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -415,7 +415,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Decrypt)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -425,7 +425,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Decrypt)(
 		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
-	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -477,7 +477,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptUpdate)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -487,7 +487,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptUpdate)(
 		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
-	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -532,7 +532,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptFinal)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -542,7 +542,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptFinal)(
 		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
-	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -695,7 +695,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignInit)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -705,7 +705,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignInit)(
 		FUNC_FAILS(CKR_OPERATION_ACTIVE, "Operation is already active");
 	}
 
-	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -758,7 +758,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -768,7 +768,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
 		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
-	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -818,7 +818,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignUpdate)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -828,7 +828,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignUpdate)(
 		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
-	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -873,7 +873,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &pSession);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -883,7 +883,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
 	}
 
-	rv = findSlot(context->slotPool, pSession->slotID, &pSlot);
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);

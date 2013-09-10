@@ -77,7 +77,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
-	rv = findSlot(context->slotPool, slotID, &slot);
+	rv = findSlot(&context->slotPool, slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -105,7 +105,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 
 	p11LockMutex(context->mutex);
 
-	addSession(context->sessionPool, session);
+	addSession(&context->sessionPool, session);
 
 	*phSession = session->handle;               /* we got a valid handle by calling addSession() */
 
@@ -135,13 +135,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseSession)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlot(context->slotPool, session->slotID, &slot);
+	rv = findSlot(&context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -153,7 +153,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseSession)(
 		slot->token->rosessions--;
 	}
 
-	rv = removeSession(context->sessionPool, hSession);
+	rv = removeSession(&context->sessionPool, hSession);
 
 	p11UnlockMutex(context->mutex);
 
@@ -177,7 +177,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseAllSessions)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	if (context->sessionPool == NULL) {
+	if (&context->sessionPool == NULL) {
 		FUNC_FAILS(CKR_SESSION_HANDLE_INVALID,"Session pool not initialized");
 	}
 
@@ -213,13 +213,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSessionInfo)(
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlot(context->slotPool, session->slotID, &slot);
+	rv = findSlot(&context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -304,13 +304,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
 		FUNC_RETURNS(CKR_ARGUMENTS_BAD);
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlot(context->slotPool, session->slotID, &slot);
+	rv = findSlot(&context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -374,13 +374,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_Logout)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlot(context->slotPool, session->slotID, &slot);
+	rv = findSlot(&context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);

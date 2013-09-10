@@ -138,7 +138,7 @@ int removeToken(struct p11Slot_t *slot)
 	slot->info.flags &= ~CKF_TOKEN_PRESENT;
 
 	// Final close with resource deallocation is done from freeToken().
-	tokenRemovedForSessionsOnSlot(context->sessionPool, slot->id);
+	tokenRemovedForSessionsOnSlot(&context->sessionPool, slot->id);
 
 	return CKR_OK;
 }
@@ -431,7 +431,7 @@ int getVirtualSlot(struct p11Slot_t *slot, int index, struct p11Slot_t **vslot)
 
 	appendStr(newslot->info.slotDescription, sizeof(slot->info.slotDescription), postfix);
 
-	addSlot(context->slotPool, newslot);
+	addSlot(&context->slotPool, newslot);
 
 	*vslot = newslot;
 	FUNC_RETURNS(CKR_OK);

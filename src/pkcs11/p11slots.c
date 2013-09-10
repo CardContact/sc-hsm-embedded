@@ -73,14 +73,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotList)(
 	// which is why both are protected here using the global lock
 	p11LockMutex(context->mutex);
 
-	rv = updateSlots(context->slotPool);
+	rv = updateSlots(&context->slotPool);
 
 	if (rv != CKR_OK) {
 		p11UnlockMutex(context->mutex);
 		FUNC_RETURNS(rv);
 	}
 
-	slot = context->slotPool->list;
+	slot = context->slotPool.list;
 	i = 0;
 
 	while (slot != NULL) {
@@ -136,13 +136,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotInfo)(
 	// which is why both are protected here using the global lock
 	p11LockMutex(context->mutex);
 
-	rv = updateSlots(context->slotPool);
+	rv = updateSlots(&context->slotPool);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlot(context->slotPool, slotID, &slot);
+	rv = findSlot(&context->slotPool, slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -179,7 +179,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetTokenInfo)(
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
-	rv = findSlot(context->slotPool, slotID, &slot);
+	rv = findSlot(&context->slotPool, slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -243,7 +243,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismList)(
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
-	rv = findSlot(context->slotPool, slotID, &slot);
+	rv = findSlot(&context->slotPool, slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -282,7 +282,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismInfo)(
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
-	rv = findSlot(context->slotPool, slotID, &slot);
+	rv = findSlot(&context->slotPool, slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -318,14 +318,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitToken)(
 	}
 
 	/* Check the slot ID */
-	rv = findSlot(context->slotPool, slotID, &slot);
+	rv = findSlot(&context->slotPool, slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
 
 	/* Check if there is an open session */
-	findSessionBySlotID(context->sessionPool, slotID, &session);
+	findSessionBySlotID(&context->sessionPool, slotID, &session);
 
 	if (session != NULL) {
 		FUNC_FAILS(CKR_SESSION_EXISTS, "A session on the token exists");
@@ -354,13 +354,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitPIN)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlot(context->slotPool, session->slotID, &slot);
+	rv = findSlot(&context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -402,13 +402,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetPIN)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	rv = findSessionByHandle(context->sessionPool, hSession, &session);
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlot(context->slotPool, session->slotID, &slot);
+	rv = findSlot(&context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);

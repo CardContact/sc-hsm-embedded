@@ -719,11 +719,12 @@ SignThread(void *arg) {
 	d = (struct thread_data *) arg;
 
 	rc = CKR_OK;
-	for (i = 0; i < d->iterations && rc == CKR_OK; i++) {
+	while (d->iterations && rc == CKR_OK) {
 		rc = testRSASigning(d->p11, d->slotid, d->thread_id);
+		d->iterations--;
 	}
 
-	d->p11 = NULL;
+	d->iterations = 0;
 	return 0;
 }
 
@@ -1368,7 +1369,15 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 							printf("ERROR: return code from pthread_create() is %d\n", rc);
 							exit(1);
 						}
+
 						nothreads++;
+					} else {
+						if (!data[t].iterations) {
+							rc = pthread_join(threads[t], &status);
+							free(status);
+							printf("Thread %d completed\n", t);
+							data[t].p11 = NULL;
+						}
 					}
 				}
 			}
@@ -1379,7 +1388,6 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 		} else {
 			usleep(500000);
 		}
-		break;
 //	} while (tokens > 0);
 	} while (testsfailed == 0);
 
@@ -1389,6 +1397,7 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 	for (t = 0; t < NUM_THREADS; t++) {
 		if (data[t].p11) {
 			rc = pthread_join(threads[t], &status);
+			free(status);
 			printf("Thread %d completed\n", t);
 		}
 	}

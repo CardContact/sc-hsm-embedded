@@ -680,7 +680,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 			slot->maxCAPDU = 1000;
 		}
 
-		addSlot(context->slotPool, slot);
+		addSlot(&context->slotPool, slot);
 
 #ifdef DEBUG
 		debug("Added slot (%lu, %s) - slot counter is %i\n", slot->id, slot->readername, slotCounter);
