@@ -58,7 +58,7 @@ struct p15PrivateKeyDescription prkd_eSign1[] = {
 			P15_KT_RSA,
 			{ "C.CH.DS" },
 			1,
-			{ (unsigned char[]){ 0x01 }, 1 },
+			{ (unsigned char *)"\x01", 1 },
 			P15_SIGN|P15_NONREPUDIATION,
 			2048,
 			0x84
@@ -72,7 +72,7 @@ struct p15PrivateKeyDescription prkd_eSign2[] = {
 			P15_KT_RSA,
 			{ "C2.CH.DS" },
 			1,
-			{ (unsigned char[]){ 0x02 }, 1 },
+			{ (unsigned char *)"\x02", 1 },
 			P15_SIGN|P15_NONREPUDIATION,
 			2048,
 			0x85
@@ -86,22 +86,22 @@ struct p15CertificateDescription certd_eSign1[] = {
 		0,                                          // isCA
 		P15_CT_X509,                                // Certificate type
 		{ "C.CH.DS" },                              // Label
-		{ (unsigned char[]){ 0x01 }, 1 },           // Id
-		{ (unsigned char[]){ 0xC0, 0x01}, 2 }       // efifOrPath
+		{ (unsigned char *)"\x01", 1 },				// Id
+		{ (unsigned char *)"\xC0\x01", 2 }			// efifOrPath
 	},
 	{
 		1,
 		P15_CT_X509,
 		{ "C.CA.DS" },
-		{ (unsigned char[]){ 0x11 }, 1 },
-		{ (unsigned char[]){ 0xC0, 0x11 }, 2 }
+		{ (unsigned char *)"\x11", 1 },
+		{ (unsigned char *)"\xC0\x11", 2 }
 	},
 	{
 		0,
 		P15_CT_X509_ATTRIBUTE,
 		{ "C.ATTRIBUTE.DS" },
-		{ (unsigned char[]){ 0x21 }, 1 },
-		{ (unsigned char[]){ 0xC0, 0x13 }, 2 }
+		{ (unsigned char *)"\x21", 1 },
+		{ (unsigned char *)"\xC0\x13", 2 }
 	},
 };
 
@@ -113,22 +113,22 @@ struct p15CertificateDescription certd_eSign2[] = {
 		0,
 		P15_CT_X509,
 		{ "C2.CH.DS" },
-		{ (unsigned char[]){ 0x02 }, 1 },
-		{ (unsigned char[]){ 0xC0, 0x02 }, 2 }
+		{ (unsigned char *)"\x02", 1 },
+		{ (unsigned char *)"\xC0\x02", 2 }
 	},
 	{
 		1,
 		P15_CT_X509,
 		{ "C2.CA.DS" },
-		{ (unsigned char[]){ 0x12 }, 1 },
-		{ (unsigned char[]){ 0xC0, 0x12 }, 2 }
+		{ (unsigned char *)"\x12", 1 },
+		{ (unsigned char *)"\xC0\x12", 2 }
 	},
 	{
 		0,
 		P15_CT_X509_ATTRIBUTE,
 		{ "C2.ATTRIBUTE.DS" },
-		{ (unsigned char[]){ 0x22 }, 1 },
-		{ (unsigned char[]){ 0xC0, 0x14 }, 2 }
+		{ (unsigned char *)"\x22", 1 },
+		{ (unsigned char *)"\xC0\x14", 2 }
 	}
 };
 
@@ -140,7 +140,7 @@ struct p15PrivateKeyDescription prkd_eUserPKI[] = {
 			P15_KT_RSA,
 			{ "C.CH.AUT" },
 			1,
-			{ (unsigned char[]){ 0x03 }, 1 },
+			{ (unsigned char *)"\x03", 1 },
 			P15_SIGN|P15_DECIPHER,
 			2048,
 			0x82
@@ -154,15 +154,15 @@ struct p15CertificateDescription certd_eUserPKI[] = {
 		0,                                          // isCA
 		P15_CT_X509,                                // Certificate type
 		{ "C.CH.AUT" },                             // Label
-		{ (unsigned char[]){ 0x03 }, 1 },           // Id
-		{ (unsigned char[]){ 0xC0, 0x03 }, 2 }      // efifOrPath
+		{ (unsigned char *)"\x03", 1 },				// Id
+		{ (unsigned char *)"\xC0\x03", 2 }			// efifOrPath
 	},
 	{
 		0,
 		P15_CT_X509,
 		{ "C.CA.AUT" },
-		{ (unsigned char[]){ 0x11 }, 1 },
-		{ (unsigned char[]){ 0xC0, 0x01 }, 2 }
+		{ (unsigned char *)"\x11", 1 },
+		{ (unsigned char *)"\xC0\x01", 2 }
 	}
 };
 

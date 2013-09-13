@@ -112,7 +112,6 @@ int addToken(struct p11Slot_t *slot, struct p11Token_t *token)
 int removeToken(struct p11Slot_t *slot)
 {
 	int i;
-	struct p11Token_t *token;
 
 	if (slot->token == NULL) {
 		return CKR_FUNCTION_FAILED;
@@ -243,13 +242,15 @@ int transmitAPDU(struct p11Slot_t *slot,
 {
 	int rc;
 	unsigned char apdu[4098];
+#ifdef DEBUG
+	char scr[4196];
+	char *po;
+#endif
 
 	if (slot->primarySlot)
 		slot = slot->primarySlot;
 
 #ifdef DEBUG
-	char scr[4196], *po;
-
 	sprintf(scr, "C-APDU: %02X %02X %02X %02X ", CLA, INS, P1, P2);
 	po = strchr(scr, '\0');
 
@@ -335,13 +336,14 @@ int transmitVerifyPinAPDU(struct p11Slot_t *slot,
 {
 	int rc;
 	unsigned char apdu[4098];
+#ifdef DEBUG
+	char scr[4196];
+#endif
 
 	if (slot->primarySlot)
 		slot = slot->primarySlot;
 
 #ifdef DEBUG
-	char scr[4196];
-
 	sprintf(scr, "C-APDU: %02X %02X %02X %02X ", CLA, INS, P1, P2);
 
 	debug("%s\n", scr);

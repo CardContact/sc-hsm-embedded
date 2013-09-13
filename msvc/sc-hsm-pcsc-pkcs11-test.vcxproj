@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\common\mutex.c" />
     <ClCompile Include="..\src\tests\sc-hsm-pkcs11-test.c" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

@@ -43,6 +43,7 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include <string.h>
 
 /**
  * A string of bytes with determined length

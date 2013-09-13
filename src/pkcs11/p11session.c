@@ -171,9 +171,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseAllSessions)(
 		CK_SLOT_ID slotID
 )
 {
-	CK_RV rv;
-	struct p11Session_t *session;
-
 	FUNC_CALLED();
 
 	if (context == NULL) {
@@ -186,7 +183,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseAllSessions)(
 
 	p11LockMutex(context->mutex);
 
-	closeSessionsForSlot(context, slotID);
+	closeSessionsForSlot(context->sessionPool, slotID);
 
 	p11UnlockMutex(context->mutex);
 

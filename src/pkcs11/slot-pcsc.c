@@ -409,7 +409,7 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 	debug("SCardConnect (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rv));
 #endif
 
-	if (rv == SCARD_E_NO_SMARTCARD) {
+	if (rv == SCARD_E_NO_SMARTCARD || rv == SCARD_W_REMOVED_CARD) {
 		FUNC_RETURNS(CKR_TOKEN_NOT_PRESENT);
 	}
 
@@ -425,30 +425,29 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 		debug("SCardControl (CM_IOCTL_GET_FEATURE_REQUEST): %s\n", pcsc_error_to_string(rv));
 #endif
 
-		if (rv != SCARD_S_SUCCESS) {
-			FUNC_FAILS(CKR_DEVICE_ERROR, "SCardControl failed");
-		}
-
-		for (i = 0; i < lenr; i += 6) {
-			feature = buf[i];
-			featurecode = (buf[i + 2] << 24) + (buf[i + 3] << 16) + (buf[i + 4] << 8) + buf[i + 5];
-#ifdef DEBUG
-			debug("%s - 0x%08X\n", pcsc_feature_to_string(feature), featurecode);
-#endif
-			if (feature == FEATURE_VERIFY_PIN_DIRECT) {
-				po = getenv("PKCS11_IGNORE_PINPAD");
-#ifdef DEBUG
-				if (po) {
-					debug("PKCS11_IGNORE_PINPAD=%s\n", po);
-				} else {
-					debug("PKCS11_IGNORE_PINPAD not found\n");
-				}
-#endif
-				if (!po || (*po == '0')) {
-#ifdef DEBUG
-					debug("Slot supports feature VERIFY_PIN_DIRECT - setting CKF_PROTECTED_AUTHENTICATION_PATH for token\n");
-#endif
-					slot->hasFeatureVerifyPINDirect = featurecode;
+		/* Ignore the feature codes if an error occured */
+		if (rv == SCARD_S_SUCCESS) {
+			for (i = 0; i < lenr; i += 6) {
+				feature = buf[i];
+				featurecode = (buf[i + 2] << 24) + (buf[i + 3] << 16) + (buf[i + 4] << 8) + buf[i + 5];
+	#ifdef DEBUG
+				debug("%s - 0x%08X\n", pcsc_feature_to_string(feature), featurecode);
+	#endif
+				if (feature == FEATURE_VERIFY_PIN_DIRECT) {
+					po = getenv("PKCS11_IGNORE_PINPAD");
+	#ifdef DEBUG
+					if (po) {
+						debug("PKCS11_IGNORE_PINPAD=%s\n", po);
+					} else {
+						debug("PKCS11_IGNORE_PINPAD not found\n");
+					}
+	#endif
+					if (!po || (*po == '0')) {
+	#ifdef DEBUG
+						debug("Slot supports feature VERIFY_PIN_DIRECT - setting CKF_PROTECTED_AUTHENTICATION_PATH for token\n");
+	#endif
+						slot->hasFeatureVerifyPINDirect = featurecode;
+					}
 				}
 			}
 		}

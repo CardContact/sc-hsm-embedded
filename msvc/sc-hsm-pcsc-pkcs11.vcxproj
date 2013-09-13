@@ -19,7 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\common\mutex.c" />
     <ClCompile Include="..\src\pkcs11\asn1.c" />
+    <ClCompile Include="..\src\pkcs11\bytestring.c" />
     <ClCompile Include="..\src\pkcs11\certificateobject.c" />
     <ClCompile Include="..\src\pkcs11\dataobject.c" />
     <ClCompile Include="..\src\pkcs11\debug.c" />
@@ -31,16 +33,19 @@
     <ClCompile Include="..\src\pkcs11\p11slots.c" />
     <ClCompile Include="..\src\pkcs11\pkcs15.c" />
     <ClCompile Include="..\src\pkcs11\privatekeyobject.c" />
+    <ClCompile Include="..\src\pkcs11\publickeyobject.c" />
     <ClCompile Include="..\src\pkcs11\session.c" />
     <ClCompile Include="..\src\pkcs11\slot-pcsc.c" />
     <ClCompile Include="..\src\pkcs11\slot.c" />
     <ClCompile Include="..\src\pkcs11\slotpool.c" />
     <ClCompile Include="..\src\pkcs11\strbpcpy.c" />
     <ClCompile Include="..\src\pkcs11\token-sc-hsm.c" />
+    <ClCompile Include="..\src\pkcs11\token-starcos.c" />
     <ClCompile Include="..\src\pkcs11\token.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pkcs11\asn1.h" />
+    <ClInclude Include="..\src\pkcs11\bytestring.h" />
     <ClInclude Include="..\src\pkcs11\certificateobject.h" />
     <ClInclude Include="..\src\pkcs11\cryptoki.h" />
     <ClInclude Include="..\src\pkcs11\dataobject.h" />
@@ -52,12 +57,14 @@
     <ClInclude Include="..\src\pkcs11\pkcs11t.h" />
     <ClInclude Include="..\src\pkcs11\pkcs15.h" />
     <ClInclude Include="..\src\pkcs11\privatekeyobject.h" />
+    <ClInclude Include="..\src\pkcs11\publickeyobject.h" />
     <ClInclude Include="..\src\pkcs11\session.h" />
     <ClInclude Include="..\src\pkcs11\slot-pcsc.h" />
     <ClInclude Include="..\src\pkcs11\slot.h" />
     <ClInclude Include="..\src\pkcs11\slotpool.h" />
     <ClInclude Include="..\src\pkcs11\strbpcpy.h" />
     <ClInclude Include="..\src\pkcs11\token-sc-hsm.h" />
+    <ClInclude Include="..\src\pkcs11\token-starcos.h" />
     <ClInclude Include="..\src\pkcs11\token.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 
 #include <common/mutex.h>
 
@@ -92,6 +93,19 @@ size_t getline(char** pp, size_t* pl, FILE* f)
 	}
 	memcpy(*pp, buf, *pl);
 	return *pl - 1;
+}
+
+void usleep(unsigned int usec) 
+{ 
+    HANDLE timer; 
+    LARGE_INTEGER ft; 
+  
+    ft.QuadPart = -(10 * (__int64)usec); 
+  
+    timer = CreateWaitableTimer(NULL, TRUE, NULL); 
+    SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0); 
+    WaitForSingleObject(timer, INFINITE); 
+    CloseHandle(timer); 
 }
 
 #endif /* _WIN32 */
@@ -1293,7 +1307,7 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 	pthread_attr_t attr;
 	void *status;
 	struct thread_data data[100];
-	int rc, tokens, nothreads, t;
+	int rc, tokens, nothreads = 0, t;
 
 	/* Initialize and set thread detached attribute */
 	pthread_attr_init(&attr);

@@ -40,5 +40,5 @@ int bsCompare(bytestring s1, bytestring s2)
 	if (s1->len != s2->len) {
 		return s1->len - s2->len;
 	}
-	return memcmp(s1->val, s2->val);
+	return memcmp(s1->val, s2->val, s1->len);
 }
