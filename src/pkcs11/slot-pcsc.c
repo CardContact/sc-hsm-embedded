@@ -39,6 +39,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <assert.h>
 
 #include <pkcs11/slot.h>
 #include <pkcs11/token.h>
@@ -409,7 +410,7 @@ static int checkForNewPCSCToken(struct p11Slot_t *slot)
 	debug("SCardConnect (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rv));
 #endif
 
-	if (rv == SCARD_E_NO_SMARTCARD || rv == SCARD_W_REMOVED_CARD) {
+	if (rv == SCARD_E_NO_SMARTCARD || rv == SCARD_W_REMOVED_CARD || rv == SCARD_E_SHARING_VIOLATION) {
 		FUNC_RETURNS(CKR_TOKEN_NOT_PRESENT);
 	}
 
@@ -525,6 +526,12 @@ static int checkForRemovedPCSCToken(struct p11Slot_t *slot)
 			FUNC_RETURNS(rc);
 		}
 
+		rc = SCardDisconnect(slot->card, SCARD_UNPOWER_CARD);
+
+#ifdef DEBUG
+		debug("SCardDisconnect (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rc));
+#endif
+
 		// Check if a new token was inserted in the meantime
 		rc = checkForNewPCSCToken(slot);
 
@@ -553,7 +560,98 @@ int getPCSCToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	}
 
 	*token = slot->token;
-	return rc;
+	FUNC_RETURNS(rc);
+}
+
+
+
+int lockPCSCSlot(struct p11Slot_t *slot)
+{
+	DWORD dwActiveProtocol;
+	LONG rv;
+
+	FUNC_CALLED();
+
+	rv = SCardReconnect(slot->card, SCARD_SHARE_EXCLUSIVE, SCARD_PROTOCOL_T1, SCARD_LEAVE_CARD, &dwActiveProtocol);
+
+#ifdef DEBUG
+	debug("SCardReconnect (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rv));
+#endif
+
+	if (rv != SCARD_S_SUCCESS)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not reconnect to card");
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+int unlockPCSCSlot(struct p11Slot_t *slot)
+{
+	DWORD dwActiveProtocol;
+	LONG rv;
+
+	FUNC_CALLED();
+
+	rv = SCardReconnect(slot->card, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T1, SCARD_LEAVE_CARD, &dwActiveProtocol);
+
+#ifdef DEBUG
+	debug("SCardReconnect (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rv));
+#endif
+
+	if (rv != SCARD_S_SUCCESS)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not reconnect to card");
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+/**
+ * Match an references against a filter expression
+ *
+ * The following assertions are valid:
+ *
+ * assert(matchFilter("ABC", "ABC") == 1);
+ * assert(matchFilter("ABC", "ABCD") == 0);
+ * assert(matchFilter("ABC", "*") == 1);
+ * assert(matchFilter("ABC", "A*") == 1);
+ * assert(matchFilter("ABC", "B*") == 0);
+ * assert(matchFilter("ABC", "???") == 1);
+ * assert(matchFilter("ABC", "????") == 0);
+ * assert(matchFilter("ABC", "??") == 0);
+ * assert(matchFilter("ABC", "?BC") == 1);
+ * assert(matchFilter("ABC", "*C") == 1);
+ * assert(matchFilter("ABC", "*B*") == 1);
+ * assert(matchFilter("ABC", "*C*") == 0);
+ */
+int matchFilter(char *value, char *filter)
+{
+	if (!filter)
+		return 1;
+
+	while(*value) {
+		if ((*value != *filter) && (*filter != '*') && (*filter != '?'))
+			return 0;
+
+		if (*filter == '*') {
+			filter++;
+			value++;
+
+			if (!*filter)		// * is last element
+				return 1;
+
+			while(*value && (*value != *filter))
+				value++;
+
+			continue;
+		}
+
+		value++;
+		filter++;
+	}
+
+	return *filter ? 0 : 1;
 }
 
 
@@ -562,6 +660,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 {
 	struct p11Slot_t *slot;
 	LPTSTR readers = NULL;
+	char *filter;
 	DWORD cch = SCARD_AUTOALLOCATE;
 	LPTSTR p;
 	LONG rc;
@@ -599,6 +698,8 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error listing PC/SC card terminals");
 	}
 
+	filter = getenv("PKCS11_READER_FILTER");
+
 	/* Determine the total number of readers */
 	p = readers;
 	while (*p != '\0') {
@@ -621,6 +722,11 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		if (match) {
 			p += strlen(p) + 1;
 			slot->closed = FALSE;
+			continue;
+		}
+
+		if (!matchFilter(p, filter)) {
+			p += strlen(p) + 1;
 			continue;
 		}
 

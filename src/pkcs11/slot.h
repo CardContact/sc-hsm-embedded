@@ -56,6 +56,8 @@ int transmitVerifyPinAPDU(struct p11Slot_t *slot,
 int getToken(struct p11Slot_t *slot, struct p11Token_t **token);
 int getValidatedToken(struct p11Slot_t *slot, struct p11Token_t **token);
 int findSlotObject(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject);
+int lockSlot(struct p11Slot_t *slot);
+int unlockSlot(struct p11Slot_t *slot);
 int updateSlots(struct p11SlotPool_t *pool);
 int closeSlot(struct p11Slot_t *slot);
 int addToken(struct p11Slot_t *slot, struct p11Token_t *token);

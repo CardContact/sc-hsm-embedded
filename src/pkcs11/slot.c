@@ -479,6 +479,48 @@ int getValidatedToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 
 
+/**
+ * Gain exclusive access to the token in the slot, preventing other processes to access the token
+ */
+int lockSlot(struct p11Slot_t *slot)
+{
+	struct p11Slot_t *pslot;
+	int rc;
+
+	pslot = slot;
+	if (pslot->primarySlot)
+		pslot = pslot->primarySlot;
+
+#ifdef CTAPI
+	rc = 0;
+#else
+	rc = lockPCSCSlot(pslot);
+#endif
+}
+
+
+
+/**
+ * Release exclusive access to the token in the slot
+ */
+int unlockSlot(struct p11Slot_t *slot)
+{
+	struct p11Slot_t *pslot;
+	int rc;
+
+	pslot = slot;
+	if (pslot->primarySlot)
+		pslot = pslot->primarySlot;
+
+#ifdef CTAPI
+	rc = 0;
+#else
+	rc = unlockPCSCSlot(pslot);
+#endif
+}
+
+
+
 int findSlotObject(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject)
 {
 	int rc;
