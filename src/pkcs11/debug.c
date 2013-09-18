@@ -69,18 +69,30 @@ void decodeBCDString(unsigned char *Inbuff, int len, char *Outbuff)
 
 void initDebug(struct p11Context_t *context)
 {
-	static const char debug_fn[] = "/var/tmp/sc-hsm-embedded/pkcs11.log";
+	static const char debug_fn[] = "/var/tmp/sc-hsm-embedded/pkcs11-%d.log";
+	char scr[128];
+#ifdef WIN32
+	DWORD pid;
+#else
+	pid_t pid;
+#endif
 
 	if (context->debugFileHandle != NULL) {
 		return;
 	}
 
-	context->debugFileHandle = fopen(debug_fn, "a+");
+#ifdef WIN32
+	pid = GetCurrentProcessId();
+#else
+	pid = getpid();
+#endif
+	sprintf(scr, debug_fn, pid);
+	context->debugFileHandle = fopen(scr, "a+");
 
 	if (context->debugFileHandle != NULL) {
 		fprintf(context->debugFileHandle, "Debugging initialized ...\n");
 	} else {
-		fprintf(stderr, "Can't create: '%s'.\n", debug_fn);
+		fprintf(stderr, "Can't create: '%s'.\n", scr);
 	}
 }
 
