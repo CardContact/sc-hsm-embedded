@@ -183,7 +183,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseAllSessions)(
 
 	p11LockMutex(context->mutex);
 
-	closeSessionsForSlot(context->sessionPool, slotID);
+	closeSessionsForSlot(&context->sessionPool, slotID);
 
 	p11UnlockMutex(context->mutex);
 
