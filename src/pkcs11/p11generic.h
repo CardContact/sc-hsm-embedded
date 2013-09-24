@@ -90,8 +90,7 @@ struct p11Token_t {
 	int rosessions;                     /**< Number of read/only sessions                   */
 	CK_ULONG freeObjectNumber;          /**< The number of objects in this token            */
 
-//	CK_MECHANISM_TYPE mechanism;        /**< Mechanisms supported by token                  */
-	int checkPINAfterSigning;           /**< Detect logout after QES C_Sign                 */
+	int pinUseCounter;                  /**< Number of crypto operations per PIN verify     */
 
 	CK_ULONG numberOfTokenObjects;      /**< The number of public objects in this token     */
 	struct p11Object_t *tokenObjList;   /**< Pointer to first object in pool                */

@@ -580,7 +580,7 @@ int findObject(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBUTE
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (cnt == 0) {
-		return CKR_GENERAL_ERROR;
+		return CKR_ARGUMENTS_BAD;
 	}
 
 	*phnd = hnd;
@@ -1101,6 +1101,15 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	int rc;
 	CK_SESSION_INFO sessioninfo;
 	CK_TOKEN_INFO tokeninfo;
+	CK_OBJECT_HANDLE hnd;
+	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
+	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
+	CK_KEY_TYPE keyType = CKK_RSA;
+	CK_ATTRIBUTE template[] = {
+			{ CKA_CLASS, &class, sizeof(class) },
+			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) }
+	};
+
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session, &sessioninfo);
@@ -1115,6 +1124,10 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		exit(1);
 	}
 
+	printf("Find a private key after login");
+	rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), 0, &hnd);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session, &sessioninfo);
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
@@ -1123,6 +1136,13 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	printf("Calling C_Logout ");
 	rc = p11->C_Logout(session);
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Find a private key after logout");
+	rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), 0, &hnd);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_ARGUMENTS_BAD));
+
+	rc = p11->C_SignInit(session, &mech, hnd);
+	printf("C_SignInit - %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_KEY_HANDLE_INVALID));
 
 	printf("Calling C_GetSessionInfo ");
 	rc = p11->C_GetSessionInfo(session, &sessioninfo);

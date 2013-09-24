@@ -296,7 +296,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	if (userType != CKU_USER && userType != CKU_SO) {
+	if (userType != CKU_USER && userType != CKU_SO && userType != CKU_CONTEXT_SPECIFIC) {
 		FUNC_RETURNS(CKR_USER_TYPE_INVALID);
 	}
 
@@ -324,12 +324,12 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
 
 	p11LockMutex(context->mutex);
 
-	if ((token->user == CKU_USER) || (token->user == CKU_SO)) {
+	if ((userType != CKU_CONTEXT_SPECIFIC) && (token->user == CKU_USER || token->user == CKU_SO)) {
 		p11UnlockMutex(context->mutex);
 		FUNC_RETURNS(CKR_USER_ALREADY_LOGGED_IN);
 	}
 
-	if (userType == CKU_USER) {
+	if (userType == CKU_USER || userType == CKU_CONTEXT_SPECIFIC) {
 		if (!(token->info.flags & CKF_USER_PIN_INITIALIZED)) {
 			p11UnlockMutex(context->mutex);
 			FUNC_RETURNS(CKR_USER_PIN_NOT_INITIALIZED);
@@ -352,7 +352,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_Login)(
 		FUNC_RETURNS(rv);
 	}
 
-	token->user = userType;
+	if (userType != CKU_CONTEXT_SPECIFIC)
+		token->user = userType;
+
 	p11UnlockMutex(context->mutex);
 
 	FUNC_RETURNS(CKR_OK);

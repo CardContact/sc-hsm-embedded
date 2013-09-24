@@ -538,6 +538,22 @@ int findSlotObject(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Ob
 
 
 
+int findSlotKey(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Object_t **object)
+{
+	int rc;
+
+	// Look in private object list
+	rc = findSlotObject(slot, handle, object, 0);
+
+	if (rc == CKR_OBJECT_HANDLE_INVALID)
+		// Look also in public object list for keys with CKA_ALWAYS_AUTHENTICATE
+		rc = findSlotObject(slot, handle, object, 1);
+
+	return rc == CKR_OBJECT_HANDLE_INVALID ? CKR_KEY_HANDLE_INVALID : rc;
+}
+
+
+
 int updateSlots(struct p11SlotPool_t *pool)
 {
 	int rc;

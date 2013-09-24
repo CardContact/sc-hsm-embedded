@@ -103,6 +103,10 @@ int findObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, struct p11Obje
 	struct p11Object_t *obj;
 	int pos = 0;            /* remember the current position in the list */
 
+	if (!publicObject && (token->user != CKU_USER)) {
+		return -1;
+	}
+
 	obj = publicObject == TRUE ? token->tokenObjList : token->tokenPrivObjList;
 	*object = NULL;
 
@@ -289,7 +293,7 @@ int logOut(struct p11Slot_t *slot)
 {
 	slot->token->user = 0xFF;
 
-	removePrivateObjects(slot->token);
+//	removePrivateObjects(slot->token);
 
 	return slot->token->drv->logout(slot);
 }

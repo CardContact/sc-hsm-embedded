@@ -133,7 +133,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlotObject(pSlot, hKey, &pObject, FALSE);
+	rv = findSlotKey(pSlot, hKey, &pObject);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -195,7 +195,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlotKey(pSlot, pSession->activeObjectHandle, &pObject);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -253,7 +253,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptUpdate)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlotKey(pSlot, pSession->activeObjectHandle, &pObject);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -308,7 +308,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptFinal)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlotKey(pSlot, pSession->activeObjectHandle, &pObject);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -368,7 +368,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptInit)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlotObject(pSlot, hKey, &pObject, FALSE);
+	rv = findSlotKey(pSlot, hKey, &pObject);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -431,7 +431,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Decrypt)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlotKey(pSlot, pSession->activeObjectHandle, &pObject);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -493,7 +493,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptUpdate)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlotKey(pSlot, pSession->activeObjectHandle, &pObject);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -548,7 +548,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptFinal)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlotKey(pSlot, pSession->activeObjectHandle, &pObject);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -711,7 +711,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignInit)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlotObject(pSlot, hKey, &pObject, FALSE);
+	rv = findSlotKey(pSlot, hKey, &pObject);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -774,7 +774,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlotKey(pSlot, pSession->activeObjectHandle, &pObject);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -834,7 +834,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignUpdate)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlotKey(pSlot, pSession->activeObjectHandle, &pObject);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
@@ -889,7 +889,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlotObject(pSlot, pSession->activeObjectHandle, &pObject, FALSE);
+	rv = findSlotKey(pSlot, pSession->activeObjectHandle, &pObject);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);

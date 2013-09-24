@@ -45,5 +45,6 @@ int populateIssuerSubjectSerial(struct p11Object_t *pObject);
 int getSubjectPublicKeyInfo(struct p11Object_t *pObject, unsigned char **spki);
 int decodeModulusExponentFromSPKI(unsigned char *spki, CK_ATTRIBUTE_PTR modulus, CK_ATTRIBUTE_PTR exponent);
 int decodeECParamsFromSPKI(unsigned char *spki, CK_ATTRIBUTE_PTR ecparams);
+int decodeECPointFromSPKI(unsigned char *spki, CK_ATTRIBUTE_PTR point);
 
 #endif /* ___SECRETKEYOBJECT_H_INC___ */

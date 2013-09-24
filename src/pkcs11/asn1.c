@@ -228,7 +228,7 @@ int asn1Encap(unsigned short Tag, unsigned char *Msg, int MsgLen)
  */
 unsigned char *asn1Find(unsigned char *data, unsigned char *path, int level)
 {
-	int d, p, datalen;
+	int d, p, l, datalen;
 	unsigned char *obj;
 
 	obj = data;
@@ -249,7 +249,8 @@ unsigned char *asn1Find(unsigned char *data, unsigned char *path, int level)
 		do	{
 			obj = data;
 			d = asn1Tag(&data);
-			data += asn1Length(&data);
+			l = asn1Length(&data);
+			data += l;
 			datalen -= data - obj;
 		} while ((datalen > 0) && (p != d));
 

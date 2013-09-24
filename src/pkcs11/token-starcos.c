@@ -158,7 +158,7 @@ struct p15CertificateDescription certd_eUserPKI[] = {
 		{ (unsigned char *)"\xC0\x03", 2 }			// efifOrPath
 	},
 	{
-		0,
+		1,
 		P15_CT_X509,
 		{ "C.CA.AUT" },
 		{ (unsigned char *)"\x11", 1 },
@@ -173,7 +173,7 @@ struct starcosApplication {
 	struct bytestring_s aid;
 	int aidId;
 	unsigned char pinref;
-	int isQES;
+	int qESKeyDRec;
 	struct p15PrivateKeyDescription *privateKeys;
 	size_t privateKeysLen;
 	struct p15CertificateDescription *certs;
@@ -190,7 +190,7 @@ struct starcosApplication starcosApplications[] = {
 				{ aid_eSign, sizeof(aid_eSign) },
 				1,
 				0x81,
-				1,
+				3,
 				prkd_eSign1,
 				sizeof(prkd_eSign1) / sizeof(struct p15PrivateKeyDescription),
 				certd_eSign1,
@@ -201,7 +201,7 @@ struct starcosApplication starcosApplications[] = {
 				{ aid_eSign, sizeof(aid_eSign) },
 				1,
 				0x86,
-				1,
+				6,
 				prkd_eSign2,
 				sizeof(prkd_eSign2) / sizeof(struct p15PrivateKeyDescription),
 				certd_eSign2,
@@ -429,6 +429,60 @@ static int readCertEF(struct p11Slot_t *slot, bytestring fid, unsigned char *con
 	} while ((rc > 0) && (ofs < len) && (le > 0));
 
 	FUNC_RETURNS(ofs);
+}
+
+
+
+static int determinePinUseCounter(struct p11Slot_t *slot, unsigned char recref)
+{
+	int rc;
+	unsigned short SW1SW2;
+	unsigned char rec[256], *p;
+	FUNC_CALLED();
+
+	// Select EF
+	rc = transmitAPDU(slot, 0x00, 0xA4, 0x02, 0x0C,
+			2, (unsigned char *)"\x00\x13",
+			0, NULL, 0, &SW1SW2);
+
+	if (rc < 0) {
+		FUNC_FAILS(rc, "transmitAPDU failed");
+	}
+
+	if (SW1SW2 != 0x9000) {
+		FUNC_FAILS(-1, "File not found");
+	}
+
+	// Read record, but leave 3 bytes to add encapsulating 30 81 FF later
+	rc = transmitAPDU(slot, 0x00, 0xB2, recref, 0x04,
+			0, NULL,
+			0, rec, sizeof(rec) - 3, &SW1SW2);
+
+	if (rc < 0) {
+		FUNC_FAILS(rc, "transmitAPDU failed");
+	}
+
+	if (SW1SW2 != 0x9000) {
+		FUNC_FAILS(-1, "File not found");
+	}
+
+	rc = asn1Encap(0x30, rec, rc);
+	rc = asn1Validate(rec, rc);
+
+	if (rc > 0) {
+		FUNC_FAILS(rc, "ASN.1 structure invalid");
+	}
+
+	p = asn1Find(rec, "\x30\x7B\xA4\x9F\x22", 4);
+
+	if (!p) {
+		FUNC_RETURNS(0);
+	}
+
+	asn1Tag(&p);
+	asn1Tag(&p);
+
+	FUNC_RETURNS(*p == 0xFF ? 0 : *p);
 }
 
 
@@ -747,9 +801,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 	}
 
 	if (SW1SW2 == 0x6982) {
-		pObject->token->checkPINAfterSigning = 1;
 		unlock(pObject->token);
-		logOut(pObject->token->slot);
 		FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "User not logged in");
 	}
 
@@ -759,20 +811,6 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 	}
 
 	*pulSignatureLen = rc;
-
-	// For QES the signature PIN verification status is cleared after the signature operation
-	// if the use counter is set to 1. However the use counter can also be limited to 100
-	// or be unlimited, depending on the card profile. If the PIN remains verified after the
-	// first signature, then the check is disabled to save a VERIFY APDU for performance reasons
-	if (pObject->token->checkPINAfterSigning) {
-		sc = getPrivateData(pObject->token);
-		rc = checkPINStatus(pObject->token->slot, starcosApplications[sc->application].pinref);
-		if (rc != 0x9000) {
-			logOut(pObject->token->slot);
-		} else {
-			pObject->token->checkPINAfterSigning = 0;
-		}
-	}
 
 	unlock(pObject->token);
 	FUNC_RETURNS(CKR_OK);
@@ -934,7 +972,7 @@ static int addPublicKeyObject(struct p11Token_t *token, struct p15CertificateDes
 
 	if (rc != CKR_OK) {
 		free(pObject);
-		FUNC_FAILS(rc, "Could not create certificate key object");
+		FUNC_FAILS(rc, "Could not create public key object");
 	}
 
 	addObject(token, pObject, TRUE);
@@ -1026,9 +1064,11 @@ static int addCertificateObject(struct p11Token_t *token, struct p15CertificateD
 
 	addObject(token, pObject, TRUE);
 
-	rc = addPublicKeyObject(token, p15, spk);
+	if (!p15->isCA) {
+		addPublicKeyObject(token, p15, spk);
+	}
 
-	FUNC_RETURNS(rc);
+	FUNC_RETURNS(CKR_OK);
 }
 
 
@@ -1054,7 +1094,7 @@ static int addPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDes
 			{ CKA_DECRYPT, &true, sizeof(true) },
 			{ CKA_SIGN, &true, sizeof(true) },
 			{ CKA_SIGN_RECOVER, &true, sizeof(true) },
-			{ CKA_ALWAYS_AUTHENTICATE, &true, sizeof(true) },
+			{ CKA_ALWAYS_AUTHENTICATE, &false, sizeof(false) },
 			{ CKA_UNWRAP, &false, sizeof(false) },
 			{ CKA_EXTRACTABLE, &false, sizeof(false) },
 			{ CKA_ALWAYS_SENSITIVE, &true, sizeof(true) },
@@ -1064,7 +1104,7 @@ static int addPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDes
 	};
 	struct starcosPrivateData *sc;
 	struct p11Object_t *pObject;
-	int rc,attributes,id;
+	int rc,attributes,id,useAA;
 
 	FUNC_CALLED();
 
@@ -1087,7 +1127,11 @@ static int addPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDes
 	template[9].pValue = p15->usage & P15_DECIPHER ? &true : &false;
 	template[10].pValue = p15->usage & P15_SIGN ? &true : &false;
 	template[11].pValue = p15->usage & P15_SIGNRECOVER ? &true : &false;
-	template[12].pValue = p15->usage & P15_NONREPUDIATION ? &true : &false;
+
+	useAA = (p15->usage & P15_NONREPUDIATION) && (token->pinUseCounter == 1);
+
+//	template[3].pValue = useAA ? &false : &true;
+	template[12].pValue = useAA ? &true : &false;
 
 	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE) - 2;
 
@@ -1116,7 +1160,6 @@ static int addPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDes
 	rc = createPrivateKeyObject(template, attributes, pObject);
 
 	if (rc != CKR_OK) {
-//		freePrivateKeyDescription(&p15);
 		free(pObject);
 		FUNC_FAILS(rc, "Could not create private key object");
 	}
@@ -1128,25 +1171,20 @@ static int addPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDes
 
 	pObject->tokenid = p15->keyReference;
 	pObject->keysize = p15->keysize;
-	addObject(token, pObject, FALSE);
+	addObject(token, pObject, useAA ? TRUE : FALSE);
 
 	FUNC_RETURNS(CKR_OK);
 }
 
 
 
-static int loadPublicObjects(struct p11Token_t *token)
+static int loadObjects(struct p11Token_t *token)
 {
 	struct starcosPrivateData *sc;
 	struct starcosApplication *appl;
 	int rc,i;
 
 	FUNC_CALLED();
-
-	rc = selectApplication(token);
-	if (rc < 0) {
-		FUNC_FAILS(rc, "selecting application failed");
-	}
 
 	sc = getPrivateData(token);
 	appl = &starcosApplications[sc->application];
@@ -1161,27 +1199,6 @@ static int loadPublicObjects(struct p11Token_t *token)
 #endif
 		}
 	}
-
-	FUNC_RETURNS(CKR_OK);
-}
-
-
-
-static int loadPrivateObjects(struct p11Token_t *token)
-{
-	struct starcosPrivateData *sc;
-	struct starcosApplication *appl;
-	int rc,i;
-
-	FUNC_CALLED();
-
-	rc = selectApplication(token);
-	if (rc < 0) {
-		FUNC_FAILS(rc, "selecting application failed");
-	}
-
-	sc = getPrivateData(token);
-	appl = &starcosApplications[sc->application];
 
 	for (i = 0; i < appl->privateKeysLen; i++) {
 		struct p15PrivateKeyDescription *p15 = &appl->privateKeys[i];
@@ -1313,12 +1330,10 @@ static int login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 			unlock(slot->token);
 			FUNC_FAILS(rc, "login failed");
 		}
-
-		rc = loadPrivateObjects(slot->token);
 	}
 
 	unlock(slot->token);
-	FUNC_RETURNS(rc);
+	FUNC_RETURNS(CKR_OK);
 }
 
 
@@ -1332,19 +1347,6 @@ static int login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 static int logout(struct p11Slot_t *slot)
 {
 	FUNC_CALLED();
-#if 0
-	rc = selectApplet(slot);
-	if (rc < 0) {
-		FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "applet selection failed");
-	}
-
-	rc = checkPINStatus(slot);
-	if (rc < 0) {
-		FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "checkPINStatus failed");
-	}
-
-	updatePinStatus(slot->token, rc);
-#endif
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -1397,7 +1399,7 @@ static int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token,
 	ptoken->info.ulMaxRwSessionCount = CK_EFFECTIVELY_INFINITE;
 	ptoken->info.ulSessionCount = CK_UNAVAILABLE_INFORMATION;
 
-	ptoken->info.flags = CKF_WRITE_PROTECTED | CKF_LOGIN_REQUIRED;
+	ptoken->info.flags = CKF_WRITE_PROTECTED;
 	ptoken->user = 0xFF;
 	ptoken->drv = &starcos_token;
 
@@ -1408,10 +1410,30 @@ static int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token,
 
 	strbpcpy(ptoken->info.label, starcosApplications[sc->application].name, sizeof(ptoken->info.label));
 
-	// For QES application check PIN status after C_Sign
-//	ptoken->checkPINAfterSigning = starcosApplications[sc->application].isQES;
+	rc = selectApplication(ptoken);
 
-	loadPublicObjects(ptoken);
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Application not found on token");
+	}
+
+	if (sc->application != STARCOS_EUSERPKI) {
+		rc = determinePinUseCounter(slot, starcosApplications[sc->application].qESKeyDRec);
+
+		if (rc < 0) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Error querying PIN key use counter");
+		}
+
+		ptoken->pinUseCounter = rc;
+	}
+
+	if (ptoken->pinUseCounter != 1)
+		ptoken->info.flags |= CKF_LOGIN_REQUIRED;
+
+	rc = loadObjects(ptoken);
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error loading objects from token");
+	}
 
 	rc = checkPINStatus(slot, starcosApplications[sc->application].pinref);
 

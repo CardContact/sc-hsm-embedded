@@ -631,7 +631,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
 	state = getSessionState(session, slot->token);
 	if ((state == CKS_RW_USER_FUNCTIONS) ||
 		(state == CKS_RO_USER_FUNCTIONS)) {
-
 		pObject = slot->token->tokenPrivObjList;
 
 		while (pObject != NULL) {

@@ -173,6 +173,82 @@ static int readEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *con
 
 
 
+static int addPublicKeyObject(struct p11Token_t *token, struct p15PrivateKeyDescription *p15, unsigned char *spki)
+{
+	CK_OBJECT_CLASS class = CKO_PUBLIC_KEY;
+	CK_KEY_TYPE keyType = CKK_RSA;
+	CK_UTF8CHAR label[10];
+	CK_BBOOL true = CK_TRUE;
+	CK_BBOOL false = CK_FALSE;
+	CK_ULONG modulus_bits = 2048;
+	CK_ATTRIBUTE template[] = {
+			{ CKA_CLASS, &class, sizeof(class) },
+			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
+			{ CKA_TOKEN, &true, sizeof(true) },
+			{ CKA_PRIVATE, &false, sizeof(false) },
+			{ CKA_LABEL, label, sizeof(label) - 1 },
+			{ CKA_ID, NULL, 0 },
+			{ CKA_LOCAL, &true, sizeof(true) },
+			{ CKA_ENCRYPT, &true, sizeof(true) },
+			{ CKA_VERIFY, &true, sizeof(true) },
+			{ CKA_VERIFY_RECOVER, &true, sizeof(true) },
+			{ CKA_WRAP, &false, sizeof(false) },
+			{ CKA_TRUSTED, &false, sizeof(false) },
+			{ CKA_MODULUS_BITS, &modulus_bits, sizeof(modulus_bits) },
+			{ 0, NULL, 0 },
+			{ 0, NULL, 0 }
+	};
+	struct p11Object_t *pObject;
+	int rc, attributes;
+
+	FUNC_CALLED();
+
+	template[4].pValue = p15->coa.label;
+	template[4].ulValueLen = strlen(template[4].pValue);
+
+	if (p15->id.len) {
+		template[5].pValue = p15->id.val;
+		template[5].ulValueLen = p15->id.len;
+	}
+
+	pObject = calloc(sizeof(struct p11Object_t), 1);
+
+	if (pObject == NULL) {
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+	}
+
+	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE) - 2;
+
+	switch(p15->keytype) {
+	case P15_KEYTYPE_RSA:
+		keyType = CKK_RSA;
+		decodeModulusExponentFromSPKI(spki, &template[attributes], &template[attributes + 1]);
+		attributes += 2;
+		break;
+	case P15_KEYTYPE_ECC:
+		keyType = CKK_ECDSA;
+		decodeECParamsFromSPKI(spki, &template[attributes]);
+		decodeECPointFromSPKI(spki, &template[attributes + 1]);
+		attributes += 2;
+		break;
+	default:
+		free(pObject);
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Unknown key type in PRKD");
+	}
+
+	rc = createPublicKeyObject(template, attributes, pObject);
+
+	if (rc != CKR_OK) {
+		free(pObject);
+		FUNC_FAILS(rc, "Could not create public key object");
+	}
+
+	addObject(token, pObject, TRUE);
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
 static int addEECertificateObject(struct p11Token_t *token, unsigned char id)
 {
 	CK_OBJECT_CLASS class = CKO_CERTIFICATE;
@@ -259,12 +335,14 @@ static int addEECertificateObject(struct p11Token_t *token, unsigned char id)
 	if (getSubjectPublicKeyInfo(pObject, &spk) == CKR_OK) {
 		sc = getPrivateData(token);
 		sc->publickeys[id] = spk;
+		addPublicKeyObject(token, p15, spk);
 	}
 
 	pObject->tokenid = (int)id;
 	pObject->keysize = p15->keysize;
 
 	addObject(token, pObject, TRUE);
+
 	freePrivateKeyDescription(&p15);
 	FUNC_RETURNS(CKR_OK);
 }
@@ -711,7 +789,7 @@ static int addPrivateKeyObject(struct p11Token_t *token, unsigned char id)
 
 
 
-static int sc_hsm_loadObjects(struct p11Token_t *token, int publicObjects)
+static int sc_hsm_loadObjects(struct p11Token_t *token)
 {
 	unsigned char filelist[MAX_FILES * 2];
 	struct p11Slot_t *slot = token->slot;
@@ -729,32 +807,35 @@ static int sc_hsm_loadObjects(struct p11Token_t *token, int publicObjects)
 		prefix = filelist[i];
 		id = filelist[i + 1];
 
-		if (publicObjects) {
-			switch(prefix) {
-			case KEY_PREFIX:
-				if (id != 0) {				// Skip Device Authentication Key
-					rc = addEECertificateObject(token, id);
-					if (rc != CKR_OK) {
+		switch(prefix) {
+		case KEY_PREFIX:
+			if (id != 0) {				// Skip Device Authentication Key
+				rc = addEECertificateObject(token, id);
+				if (rc != CKR_OK) {
 #ifdef DEBUG
-						debug("addCertificateObject failed with rc=%d\n", rc);
+					debug("addCertificateObject failed with rc=%d\n", rc);
 #endif
-					}
 				}
-				break;
 			}
-		} else {
-			switch(prefix) {
-			case KEY_PREFIX:
-				if (id != 0) {				// Skip Device Authentication Key
-					rc = addPrivateKeyObject(token, id);
-					if (rc != CKR_OK) {
+			break;
+		}
+	}
+
+	for (i = 0; i < listlen; i += 2) {
+		prefix = filelist[i];
+		id = filelist[i + 1];
+
+		switch(prefix) {
+		case KEY_PREFIX:
+			if (id != 0) {				// Skip Device Authentication Key
+				rc = addPrivateKeyObject(token, id);
+				if (rc != CKR_OK) {
 #ifdef DEBUG
-						debug("addPrivateKeyObject failed with rc=%d\n", rc);
+					debug("addPrivateKeyObject failed with rc=%d\n", rc);
 #endif
-					}
 				}
-				break;
 			}
+			break;
 		}
 	}
 	FUNC_RETURNS(CKR_OK);
@@ -855,8 +936,6 @@ static int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin
 		if (rc != CKR_OK) {
 			FUNC_FAILS(rc, "sc_hsm_login failed");
 		}
-
-		rc = sc_hsm_loadObjects(slot->token, FALSE);
 	}
 
 	FUNC_RETURNS(rc);
@@ -960,7 +1039,7 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 //	sc = getPrivateData(ptoken);
 
-	sc_hsm_loadObjects(ptoken, TRUE);
+	sc_hsm_loadObjects(ptoken);
 
 	rc = addToken(slot, ptoken);
 	if (rc != CKR_OK) {
