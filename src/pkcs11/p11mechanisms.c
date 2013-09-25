@@ -780,12 +780,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
 		FUNC_RETURNS(rv);
 	}
 
-	if (pSignature != NULL) {
-		pSession->activeObjectHandle = CK_INVALID_HANDLE;
-	}
-
 	if (pObject->C_Sign != NULL) {
 		rv = pObject->C_Sign(pObject, pSession->activeMechanism, pData, ulDataLen, pSignature, pulSignatureLen);
+
+		if ((pSignature != NULL) && (rv != CKR_BUFFER_TOO_SMALL)) {
+			pSession->activeObjectHandle = CK_INVALID_HANDLE;
+		}
+
 		if (rv == CKR_DEVICE_ERROR) {
 			rv = handleDeviceError(hSession);
 			FUNC_FAILS(rv, "Device error reported");
@@ -901,6 +902,12 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 
 	if (pObject->C_SignFinal != NULL) {
 		rv = pObject->C_SignFinal(pObject, pSession->activeMechanism, pSignature, pulSignatureLen);
+
+		if ((pSignature != NULL) && (rv != CKR_BUFFER_TOO_SMALL)) {
+			pSession->activeObjectHandle = CK_INVALID_HANDLE;
+			clearCryptoBuffer(pSession);
+		}
+
 		if (rv == CKR_DEVICE_ERROR) {
 			rv = handleDeviceError(hSession);
 			FUNC_FAILS(rv, "Device error reported");
@@ -908,6 +915,12 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 	} else {
 		if (pObject->C_Sign != NULL) {
 			rv = pObject->C_Sign(pObject, pSession->activeMechanism, pSession->cryptoBuffer, pSession->cryptoBufferSize, pSignature, pulSignatureLen);
+
+			if ((pSignature != NULL) && (rv != CKR_BUFFER_TOO_SMALL)) {
+				pSession->activeObjectHandle = CK_INVALID_HANDLE;
+				clearCryptoBuffer(pSession);
+			}
+
 			if (rv == CKR_DEVICE_ERROR) {
 				rv = handleDeviceError(hSession);
 				FUNC_FAILS(rv, "Device error reported");
@@ -915,10 +928,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 		} else {
 			FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 		}
-	}
-
-	if (pSignature != NULL) {
-		clearCryptoBuffer(pSession);
 	}
 
 	FUNC_RETURNS(rv);

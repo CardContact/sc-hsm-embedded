@@ -741,6 +741,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 	}
 
 	if (*pulSignatureLen < signaturelen) {
+		*pulSignatureLen = signaturelen;
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Signature length is larger than buffer");
 	}
 
@@ -913,11 +914,11 @@ static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech
 		FUNC_FAILS(CKR_ENCRYPTED_DATA_INVALID, "Decryption operation failed");
 	}
 
+	*pulDataLen = rc;
 	if (rc > *pulDataLen) {
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "supplied buffer too small");
 	}
 
-	*pulDataLen = rc;
 	memcpy(pData, scr, rc);
 
 	FUNC_RETURNS(CKR_OK);

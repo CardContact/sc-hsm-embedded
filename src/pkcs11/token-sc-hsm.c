@@ -532,6 +532,7 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 	}
 
 	if (*pulSignatureLen < signaturelen) {
+		*pulSignatureLen = signaturelen;
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Signature length is larger than buffer");
 	}
 
@@ -661,6 +662,7 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 
 	if (mech == CKM_RSA_X_509) {
 		if (rc > *pulDataLen) {
+			*pulDataLen = rc;
 			FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "supplied buffer too small");
 		}
 		*pulDataLen = rc;

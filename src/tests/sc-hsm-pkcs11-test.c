@@ -639,6 +639,12 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 
 		printf("Signature size = %lu\n", len);
 
+		len--;
+		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, strlen(tbs), signature, &len);
+		printf("C_Sign (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_BUFFER_TOO_SMALL));
+
+		printf("Signature size = %lu\n", len);
+
 		len = sizeof(signature);
 		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, strlen(tbs), signature, &len);
 		printf("C_Sign (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK || rc == CKR_DEVICE_REMOVED || rc == CKR_TOKEN_NOT_PRESENT));
@@ -680,6 +686,12 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 		len = 0;
 		rc = p11->C_SignFinal(session, NULL, &len);
 		printf("C_SignFinal (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Signature size = %lu\n", len);
+
+		len--;
+		rc = p11->C_SignFinal(session, signature, &len);
+		printf("C_SignFinal (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_BUFFER_TOO_SMALL));
 
 		printf("Signature size = %lu\n", len);
 
