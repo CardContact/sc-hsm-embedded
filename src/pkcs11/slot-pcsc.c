@@ -699,12 +699,17 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 	}
 
 	filter = getenv("PKCS11_READER_FILTER");
+#ifdef DEBUG
+	if (filter) {
+		debug("Reader filter '%s'\n", filter);
+	}
+#endif
 
 	/* Determine the total number of readers */
 	p = readers;
 	while (*p != '\0') {
 #ifdef DEBUG
-		debug("%s\n", p);
+		debug("Found reader '%s'\n", p);
 #endif
 
 		/* Check if we already have a slot for the reader */

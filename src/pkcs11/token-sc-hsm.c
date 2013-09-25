@@ -515,14 +515,24 @@ static void applyPKCSPadding(unsigned char *di, int dilen, unsigned char *buff, 
 
 static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
 {
-	int rc, algo, len;
+	int rc, algo, signaturelen;
 	unsigned short SW1SW2;
 	unsigned char scr[256];
 	FUNC_CALLED();
 
+	rc = getSignatureSize(mech, pObject);
+	if (rc < 0) {
+		FUNC_FAILS(CKR_MECHANISM_INVALID, "Unknown mechanism");
+	}
+	signaturelen = rc;
+
 	if (pSignature == NULL) {
-		*pulSignatureLen = getSignatureSize(mech, pObject);
+		*pulSignatureLen = signaturelen;
 		FUNC_RETURNS(CKR_OK);
+	}
+
+	if (*pulSignatureLen < signaturelen) {
+		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Signature length is larger than buffer");
 	}
 
 	algo = getAlgorithmIdForSigning(mech);
@@ -536,13 +546,12 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 				0, scr, sizeof(scr), &SW1SW2);
 	} else {
 		if (mech == CKM_RSA_PKCS) {
-			len = getSignatureSize(mech, pObject);
-			if (len > sizeof(scr)) {
+			if (signaturelen > sizeof(scr)) {
 				FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Signature length is larger than buffer");
 			}
-			applyPKCSPadding(pData, ulDataLen, scr, len);
+			applyPKCSPadding(pData, ulDataLen, scr, signaturelen);
 			rc = transmitAPDU(pObject->token->slot, 0x80, 0x68, (unsigned char)pObject->tokenid, (unsigned char)algo,
-				len, scr,
+				signaturelen, scr,
 				0, pSignature, *pulSignatureLen, &SW1SW2);
 		} else {
 			rc = transmitAPDU(pObject->token->slot, 0x80, 0x68, (unsigned char)pObject->tokenid, (unsigned char)algo,
@@ -658,8 +667,8 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 		memcpy(pData, scr, rc);
 	} else {
 		rc = stripPKCS15Padding(scr, rc, pData, pulDataLen);
-		if (rc < 0) {
-			FUNC_FAILS(CKR_ENCRYPTED_DATA_INVALID, "Invalid PKCS#1 padding");
+		if (rc != CKR_OK) {
+			FUNC_FAILS(rc, "Invalid PKCS#1 padding");
 		}
 	}
 

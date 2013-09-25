@@ -721,7 +721,7 @@ static int starcos_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech
 
 static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
 {
-	int rc, len;
+	int rc, len, signaturelen;
 	unsigned short SW1SW2;
 	unsigned char scr[256],*s, *d;
 	struct starcosPrivateData *sc;
@@ -729,13 +729,19 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 
 	FUNC_CALLED();
 
+	rc = getSignatureSize(mech, pObject);
+	if (rc < 0) {
+		FUNC_FAILS(CKR_MECHANISM_INVALID, "Unknown mechanism");
+	}
+	signaturelen = rc;
+
 	if (pSignature == NULL) {
-		rc = getSignatureSize(mech, pObject);
-		if (rc < 0) {
-			FUNC_FAILS(CKR_MECHANISM_INVALID, "Unknown mechanism");
-		}
-		*pulSignatureLen = rc;
+		*pulSignatureLen = signaturelen;
 		FUNC_RETURNS(CKR_OK);
+	}
+
+	if (*pulSignatureLen < signaturelen) {
+		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Signature length is larger than buffer");
 	}
 
 	slot = pObject->token->slot;
