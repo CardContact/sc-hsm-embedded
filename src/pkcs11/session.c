@@ -37,6 +37,7 @@
 
 #include <pkcs11/session.h>
 
+extern struct p11Context_t *context;
 
 
 /**
@@ -183,8 +184,10 @@ int findSessionBySlotID(struct p11SessionPool_t *pool, CK_SLOT_ID slotID, struct
  */
 int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle)
 {
+	int rc;
 	struct p11Session_t *session;
 	struct p11Session_t **pSession;
+	struct p11Slot_t *slot;
 
 	pSession = &pool->list;
 	while (*pSession && (*pSession)->handle != handle) {
@@ -198,6 +201,14 @@ int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle)
 	}
 
 	*pSession = session->next;
+
+	rc = findSlot(&context->slotPool, session->slotID, &slot);
+
+	if (rc == CKR_OK) {
+		if (slot->token && !(session->flags & CKF_RW_SESSION)) {
+			slot->token->rosessions--;
+		}
+	}
 
 	clearSearchList(session);
 

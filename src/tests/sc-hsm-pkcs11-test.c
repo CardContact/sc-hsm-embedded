@@ -41,8 +41,12 @@
 
 /* Number of threads used for multi-threading test */
 #define NUM_THREADS		30
+
 /* Default PIN unless --pin is defined */
 #define PIN "648219"
+
+/* Default SO-PIN unless --so-pin is defined */
+#define SOPIN "3537363231383830"
 
 
 #ifndef _WIN32
@@ -321,7 +325,7 @@ CK_UTF8CHAR *pin = (CK_UTF8CHAR *)PIN;
 CK_UTF8CHAR wrongpin[] = "111111";
 CK_ULONG pinlen = 6;
 
-CK_UTF8CHAR sopin[] = "3537363231383830";
+CK_UTF8CHAR *sopin = (CK_UTF8CHAR *)SOPIN;
 CK_ULONG sopinlen = 16;
 
 static MUTEX verdictMutex; /* initialized in main */
@@ -1206,6 +1210,26 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		printf("Calling C_GetTokenInfo ");
 		rc = p11->C_GetTokenInfo(sessioninfo.slotID, &tokeninfo);
 		printf("Token flags %lx - %s\n", tokeninfo.flags, verdict((tokeninfo.flags & (CKF_USER_PIN_COUNT_LOW|CKF_USER_PIN_FINAL_TRY|CKF_USER_PIN_LOCKED)) == (CKF_USER_PIN_LOCKED)));
+
+		printf("Calling C_Login(SO) ");
+		rc = p11->C_Login(session, CKU_SO, sopin, sopinlen);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Calling C_InitPIN() ");
+		rc = p11->C_InitPIN(session, pin, pinlen);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Calling C_GetTokenInfo ");
+		rc = p11->C_GetTokenInfo(sessioninfo.slotID, &tokeninfo);
+		printf("Token flags %lx - %s\n", tokeninfo.flags, verdict((tokeninfo.flags & (CKF_USER_PIN_COUNT_LOW|CKF_USER_PIN_FINAL_TRY|CKF_USER_PIN_LOCKED)) == 0));
+
+		printf("Calling C_SetPIN SO-PIN ");
+		rc = p11->C_SetPIN(session, sopin, sopinlen, sopin, sopinlen);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Calling C_Logout ");
+		rc = p11->C_Logout(session);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 	}
 
 	printf("Calling C_Login User ");
@@ -1220,6 +1244,10 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	printf("Calling C_GetTokenInfo ");
 	rc = p11->C_GetTokenInfo(sessioninfo.slotID, &tokeninfo);
 	printf("Token flags %lx - %s\n", tokeninfo.flags, verdict((tokeninfo.flags & (CKF_USER_PIN_COUNT_LOW|CKF_USER_PIN_FINAL_TRY|CKF_USER_PIN_LOCKED)) == 0));
+
+	printf("Calling C_SetPIN User ");
+	rc = p11->C_SetPIN(session, pin, pinlen, pin, pinlen);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if ((tokeninfo.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !optNoClass3Tests) {
 
@@ -1466,6 +1494,15 @@ void decodeArgs(int argc, char **argv)
 			argv++;
 			pin = (CK_UTF8CHAR_PTR)*argv;
 			pinlen = strlen((char *)pin);
+			argc--;
+		} else if (!strcmp(*argv, "--so-pin")) {
+			if (argc < 0) {
+				printf("Argument for --so-pin missing\n");
+				exit(1);
+			}
+			argv++;
+			sopin = (CK_UTF8CHAR_PTR)*argv;
+			sopinlen = strlen((char *)sopin);
 			argc--;
 		} else if (!strcmp(*argv, "--module")) {
 			if (argc < 0) {

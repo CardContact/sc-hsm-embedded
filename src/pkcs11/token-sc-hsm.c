@@ -32,6 +32,8 @@
  */
 
 #include <string.h>
+#include <ctype.h>
+
 #include "token-sc-hsm.h"
 
 #include <pkcs11/slot.h>
@@ -896,11 +898,38 @@ static int updatePinStatus(struct p11Token_t *token, int pinstatus)
 
 
 /**
+ * Encode SO-PIN from 16 hexadecimal characters into BCD encoding
+ */
+static int parseSOPIN(unsigned char *pin, unsigned char *encodedPIN)
+{
+	unsigned char *p, c;
+	int i;
+
+	p = encodedPIN;
+	for (i = 0; i < 16; i++, pin++) {
+		if (!(i & 1)) {
+			*p = 0;
+		}
+		c = toupper(*pin);
+		if (!isxdigit(c))
+			return -1;
+		*p = (*p << 4) | ((c >= '0') && (c <= '9') ? c - '0' : c - 'A');
+		if (i & 1) {
+			p++;
+		}
+	}
+
+	return 0;
+}
+
+
+
+/**
  * Perform PIN verification and make private objects visible
  *
  * @param slot      The slot in which the token is inserted
- * @param userType  One of CKU_SO or CKU_USER
- * @param pin       Pointer to PIN value or NULL is PIN shall be verified using PIN-Pad
+ * @param userType  One of CKU_SO, CKU_CONTEXT_SPECIFIC or CKU_USER
+ * @param pin       Pointer to PIN value or NULL if PIN shall be verified using PIN-Pad
  * @param pinLen    The length of the PIN supplied in pin
  * @return          CKR_OK or any other Cryptoki error code
  */
@@ -908,13 +937,19 @@ static int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin
 {
 	int rc = CKR_OK;
 	unsigned short SW1SW2;
+	struct token_sc_hsm *sc;
+
 	FUNC_CALLED();
 
 	if (userType == CKU_SO) {
+		sc = getPrivateData(slot->token);
+
 		if (pinlen != 16) {
-			FUNC_FAILS(CKR_ARGUMENTS_BAD, "SO-PIN must be 16 characters long");
+			FUNC_FAILS(CKR_PIN_LEN_RANGE, "SO-PIN must be 16 characters long");
 		}
-		// Store SO PIN
+		if (parseSOPIN(pin, sc->sopin) < 0) {
+			FUNC_FAILS(CKR_ARGUMENTS_BAD, "SO-PIN must contain only hexadecimal characters");
+		}
 	} else {
 
 		if (slot->hasFeatureVerifyPINDirect && !pinlen && !pin) {
@@ -963,7 +998,12 @@ static int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin
 static int sc_hsm_logout(struct p11Slot_t *slot)
 {
 	int rc;
+	struct token_sc_hsm *sc;
+
 	FUNC_CALLED();
+
+	sc = getPrivateData(slot->token);
+	memset(sc->sopin, 0, sizeof(sc->sopin));
 
 	rc = selectApplet(slot);
 	if (rc < 0) {
@@ -982,6 +1022,136 @@ static int sc_hsm_logout(struct p11Slot_t *slot)
 
 
 
+/**
+ * Initialize user pin in SO session
+ *
+ * @param slot      The slot in which the token is inserted
+ * @param pin       Pointer to PIN value or NULL if PIN shall be verified using PIN-Pad
+ * @param pinLen    The length of the PIN supplied in pin
+ * @return          CKR_OK or any other Cryptoki error code
+ */
+static int sc_hsm_initpin(struct p11Slot_t *slot, unsigned char *pin, int pinlen)
+{
+	int rc = CKR_OK;
+	unsigned short SW1SW2;
+	unsigned char data[24];
+	struct token_sc_hsm *sc;
+
+	FUNC_CALLED();
+
+	if ((pinlen < 0) || (pinlen > 16)) {
+		FUNC_FAILS(CKR_PIN_LEN_RANGE, "PIN must not exceed 16 characters");
+	}
+
+	sc = getPrivateData(slot->token);
+	memcpy(data, sc->sopin, sizeof(sc->sopin));
+	memcpy(data + sizeof(sc->sopin), pin, pinlen);
+
+#ifdef DEBUG
+	debug("Init PIN using provided PIN value\n");
+#endif
+	rc = transmitAPDU(slot, 0x00, 0x2C, 0x00, 0x81,
+		pinlen + sizeof(sc->sopin), data,
+		0, NULL, 0, &SW1SW2);
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+	}
+
+	if (SW1SW2 != 0x9000) {
+		FUNC_FAILS(CKR_PIN_INCORRECT, "Invalid SO-PIN");
+	}
+
+	rc = checkPINStatus(slot);
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+	}
+
+	updatePinStatus(slot->token, rc);
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+/**
+ * Change PIN in User or SO session
+ *
+ * @param slot      The slot in which the token is inserted
+ * @param oldpin    Pointer to PIN value or NULL if PIN shall be verified using PIN-Pad
+ * @param oldpinLen The length of the PIN supplied in oldpin
+ * @param newpin    Pointer to PIN value or NULL if PIN shall be verified using PIN-Pad
+ * @param newpinLen The length of the PIN supplied in newpin
+ * @return          CKR_OK or any other Cryptoki error code
+ */
+static int sc_hsm_setpin(struct p11Slot_t *slot, unsigned char *oldpin, int oldpinlen, unsigned char *newpin, int newpinlen)
+{
+	int rc = CKR_OK, len;
+	unsigned short SW1SW2;
+	unsigned char data[32], p2;
+	struct token_sc_hsm *sc;
+
+	FUNC_CALLED();
+
+	if (slot->token->user == CKU_SO) {
+		if (oldpinlen != 16) {
+			FUNC_FAILS(CKR_PIN_LEN_RANGE, "Old PIN must be 16 characters");
+		}
+
+		if (newpinlen != 16) {
+			FUNC_FAILS(CKR_PIN_LEN_RANGE, "New PIN must be 16 characters");
+		}
+
+		if (parseSOPIN(oldpin, data) < 0) {
+			FUNC_FAILS(CKR_ARGUMENTS_BAD, "Old SO-PIN must contain only hexadecimal characters");
+		}
+
+		if (parseSOPIN(newpin, data + 8) < 0) {
+			FUNC_FAILS(CKR_ARGUMENTS_BAD, "New SO-PIN must contain only hexadecimal characters");
+		}
+
+		len = 16;
+		p2 = 0x88;
+	} else {
+		if ((oldpinlen < 0) || (oldpinlen > 16)) {
+			FUNC_FAILS(CKR_PIN_LEN_RANGE, "Old PIN must not exceed 16 characters");
+		}
+
+		if ((newpinlen < 0) || (newpinlen > 16)) {
+			FUNC_FAILS(CKR_PIN_LEN_RANGE, "New PIN must not exceed 16 characters");
+		}
+
+		memcpy(data, oldpin, oldpinlen);
+		memcpy(data + oldpinlen, newpin, newpinlen);
+		len = oldpinlen + newpinlen;
+		p2 = 0x81;
+	}
+
+#ifdef DEBUG
+	debug("Set PIN using provided PIN value\n");
+#endif
+	rc = transmitAPDU(slot, 0x00, 0x24, 0x00, p2,
+		len, data,
+		0, NULL, 0, &SW1SW2);
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+	}
+
+	if (slot->token->user == CKU_SO) {
+		if (SW1SW2 != 0x9000) {
+			FUNC_FAILS(CKR_PIN_INCORRECT, "Incorrect old SO-PIN");
+		}
+	} else {
+		rc = updatePinStatus(slot->token, SW1SW2);
+	}
+
+	FUNC_RETURNS(rc);
+}
+
+
+
 struct p11TokenDriver sc_hsm_token;
 
 /**
@@ -994,7 +1164,6 @@ struct p11TokenDriver sc_hsm_token;
 int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 {
 	struct p11Token_t *ptoken;
-//	struct token_sc_hsm *sc;
 	int rc, pinstatus;
 
 	FUNC_CALLED();
@@ -1047,8 +1216,6 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	ptoken->drv = &sc_hsm_token;
 
 	updatePinStatus(ptoken, pinstatus);
-
-//	sc = getPrivateData(ptoken);
 
 	sc_hsm_loadObjects(ptoken);
 
@@ -1134,5 +1301,7 @@ struct p11TokenDriver sc_hsm_token = {
 	getMechanismList,
 	getMechanismInfo,
 	sc_hsm_login,
-	sc_hsm_logout
+	sc_hsm_logout,
+	sc_hsm_initpin,
+	sc_hsm_setpin
 };

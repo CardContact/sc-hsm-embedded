@@ -71,6 +71,7 @@
 
 struct token_sc_hsm {
 	unsigned char *publickeys[256];
+	unsigned char sopin[8];
 };
 
 struct p11TokenDriver *sc_hsm_getDriver();

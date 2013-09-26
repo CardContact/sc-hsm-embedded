@@ -126,7 +126,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseSession)(
 )
 {
 	int rv;
-	struct p11Slot_t *slot;
 	struct p11Session_t *session;
 
 	FUNC_CALLED();
@@ -141,17 +140,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseSession)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlot(&context->slotPool, session->slotID, &slot);
-
-	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
-	}
-
 	p11LockMutex(context->mutex);
-
-	if (slot->token && !(session->flags & CKF_RW_SESSION)) {
-		slot->token->rosessions--;
-	}
 
 	rv = removeSession(&context->sessionPool, hSession);
 

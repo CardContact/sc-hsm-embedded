@@ -166,6 +166,8 @@ struct p11TokenDriver {
 	int (*getMechanismInfo)(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo);
 	int (*login)(struct p11Slot_t *slot, int userType, unsigned char *pin, int pinlen);
 	int (*logout)(struct p11Slot_t *slot);
+	int (*initpin)(struct p11Slot_t *slot, unsigned char *pin, int pinlen);
+	int (*setpin)(struct p11Slot_t *slot, unsigned char *oldpin, int oldpinlen, unsigned char *newpin, int newpinlen);
 };
 
 

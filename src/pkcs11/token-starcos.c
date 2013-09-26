@@ -1231,7 +1231,7 @@ static int encodeF2B(unsigned char *pin, int pinlen, unsigned char *f2b)
 	FUNC_CALLED();
 
 	if ((pinlen <= 4) || (pinlen > 14)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "PIN length must be between 4 and 14");
+		FUNC_FAILS(CKR_PIN_LEN_RANGE, "PIN length must be between 4 and 14");
 	}
 
 	memset(f2b, 0xFF, 8);
@@ -1239,7 +1239,7 @@ static int encodeF2B(unsigned char *pin, int pinlen, unsigned char *f2b)
 
 	po = f2b + 1;
 	for (i = 0; i < pinlen; i++) {
-		if ((*pin < 0x30) || (*pin > 0x39)) {
+		if ((*pin < '0') || (*pin > '9')) {
 			FUNC_FAILS(CKR_ARGUMENTS_BAD, "PIN must be numeric");
 		}
 		if (i & 1) {
@@ -1287,11 +1287,12 @@ static int login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 	sc = getPrivateData(slot->token);
 
 	if (userType == CKU_SO) {
-		if (pinlen != 16) {
+		rc = encodeF2B(pin, pinlen, sc->sopin);
+
+		if (rc != CKR_OK) {
 			unlock(slot->token);
-			FUNC_FAILS(CKR_ARGUMENTS_BAD, "SO-PIN must be 16 characters long");
+			FUNC_FAILS(rc, "Could not encode PIN");
 		}
-		// Store SO PIN
 	} else {
 
 		if (slot->hasFeatureVerifyPINDirect && !pinlen && !pin) {
@@ -1346,14 +1347,171 @@ static int login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 
 
 /**
- * Reselect applet in order to reset authentication state
+ * Initialize user pin in SO session
+ *
+ * @param slot      The slot in which the token is inserted
+ * @param pin       Pointer to PIN value or NULL if PIN shall be verified using PIN-Pad
+ * @param pinLen    The length of the PIN supplied in pin
+ * @return          CKR_OK or any other Cryptoki error code
+ */
+static int initpin(struct p11Slot_t *slot, unsigned char *pin, int pinlen)
+{
+	int rc = CKR_OK;
+	unsigned short SW1SW2;
+	unsigned char data[16], pinref;
+	struct starcosPrivateData *sc;
+
+	FUNC_CALLED();
+
+	if (pinlen) {
+		rc = encodeF2B(pin, pinlen, data + 8);
+
+		if (rc != CKR_OK) {
+			FUNC_FAILS(rc, "Could not encode PIN");
+		}
+	}
+
+	lock(slot->token);
+	if (!slot->token) {
+		FUNC_RETURNS(CKR_DEVICE_REMOVED);
+	}
+
+	rc = selectApplication(slot->token);
+	if (rc < 0) {
+		unlock(slot->token);
+		FUNC_FAILS(rc, "selecting application failed");
+	}
+
+	sc = getPrivateData(slot->token);
+	memcpy(data, sc->sopin, sizeof(sc->sopin));
+	pinref = starcosApplications[sc->application].pinref;
+
+#ifdef DEBUG
+	debug("Init PIN using provided PIN value\n");
+#endif
+	if (pin) {
+		rc = transmitAPDU(slot, 0x00, 0x2C, 0x00, pinref,
+				sizeof(data), data,
+				0, NULL, 0, &SW1SW2);
+	} else {
+		rc = transmitAPDU(slot, 0x00, 0x2C, 0x01, pinref,
+				0, NULL,
+				0, NULL, 0, &SW1SW2);
+	}
+	if (rc < 0) {
+		unlock(slot->token);
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+	}
+
+	if (SW1SW2 != 0x9000) {
+		unlock(slot->token);
+		FUNC_FAILS(CKR_PIN_INCORRECT, "Invalid SO-PIN");
+	}
+
+	rc = checkPINStatus(slot, pinref);
+
+	if (rc < 0) {
+		unlock(slot->token);
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+	}
+
+	updatePinStatus(slot->token, rc);
+
+	unlock(slot->token);
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+/**
+ * Change PIN in User or SO session
+ *
+ * @param slot      The slot in which the token is inserted
+ * @param oldpin    Pointer to PIN value or NULL if PIN shall be verified using PIN-Pad
+ * @param oldpinLen The length of the PIN supplied in oldpin
+ * @param newpin    Pointer to PIN value or NULL if PIN shall be verified using PIN-Pad
+ * @param newpinLen The length of the PIN supplied in newpin
+ * @return          CKR_OK or any other Cryptoki error code
+ */
+static int setpin(struct p11Slot_t *slot, unsigned char *oldpin, int oldpinlen, unsigned char *newpin, int newpinlen)
+{
+	int rc = CKR_OK, len;
+	unsigned short SW1SW2;
+	unsigned char data[16], p2;
+	struct starcosPrivateData *sc;
+
+	FUNC_CALLED();
+
+	if (slot->token->user == CKU_SO) {
+		FUNC_FAILS(CKR_USER_TYPE_INVALID, "User not logged in");
+	}
+
+	rc = encodeF2B(oldpin, oldpinlen, data);
+
+	if (rc != CKR_OK) {
+		FUNC_FAILS(rc, "Could not encode OldPIN");
+	}
+
+	rc = encodeF2B(newpin, newpinlen, data + 8);
+
+	if (rc != CKR_OK) {
+		FUNC_FAILS(rc, "Could not encode NewPIN");
+	}
+
+	lock(slot->token);
+	if (!slot->token) {
+		FUNC_RETURNS(CKR_DEVICE_REMOVED);
+	}
+
+	rc = selectApplication(slot->token);
+	if (rc < 0) {
+		unlock(slot->token);
+		FUNC_FAILS(rc, "selecting application failed");
+	}
+
+	sc = getPrivateData(slot->token);
+
+#ifdef DEBUG
+	debug("Set PIN using provided PIN value\n");
+#endif
+	rc = transmitAPDU(slot, 0x00, 0x24, 0x00, starcosApplications[sc->application].pinref,
+		sizeof(data), data,
+		0, NULL, 0, &SW1SW2);
+
+	if (rc < 0) {
+		unlock(slot->token);
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+	}
+
+	if (slot->token->user == CKU_SO) {
+		if (SW1SW2 != 0x9000) {
+			unlock(slot->token);
+			FUNC_FAILS(CKR_PIN_INCORRECT, "Incorrect old SO-PIN");
+		}
+	} else {
+		rc = updatePinStatus(slot->token, SW1SW2);
+	}
+
+	FUNC_RETURNS(rc);
+}
+
+
+
+/**
+ * Starcos does not support a deauthentication for the User PIN
  *
  * @param slot      The slot in which the token is inserted
  * @return          CKR_OK or any other Cryptoki error code
  */
 static int logout(struct p11Slot_t *slot)
 {
+	struct starcosPrivateData *sc;
+
 	FUNC_CALLED();
+
+	sc = getPrivateData(slot->token);
+	memset(sc->sopin, 0, sizeof(sc->sopin));
+
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -1593,5 +1751,7 @@ struct p11TokenDriver starcos_token = {
 	getMechanismList,
 	getMechanismInfo,
 	login,
-	logout
+	logout,
+	initpin,
+	setpin
 };

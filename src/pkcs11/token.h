@@ -73,25 +73,17 @@
 #define MAX_CERTIFICATE_SIZE	4096
 
 int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p11Token_t **token);
-
 void freeToken(struct p11Token_t *token);
-
 int logIn(struct p11Slot_t *slot, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen);
-
 int logOut(struct p11Slot_t *slot);
-
+int initPIN(struct p11Slot_t *slot, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen);
+int setPIN(struct p11Slot_t *slot, CK_UTF8CHAR_PTR pOldPin, CK_ULONG ulOldPinLen, CK_UTF8CHAR_PTR pNewPin, CK_ULONG ulNewPinLen);
 int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicObject);
-
 int findObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject);
-
 int removeTokenObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject);
-
 int removeObjectLeavingAttributes(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject);
-
 int saveObjects(struct p11Slot_t *slot, struct p11Token_t *token, int publicObject);
-
 int destroyObject(struct p11Slot_t *slot, struct p11Token_t *token, struct p11Object_t *object);
-
 int synchronizeToken(struct p11Slot_t *slot, struct p11Token_t *token);
 
 #endif /* ___TOKEN_H_INC___ */

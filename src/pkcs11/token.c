@@ -293,9 +293,51 @@ int logOut(struct p11Slot_t *slot)
 {
 	slot->token->user = 0xFF;
 
-//	removePrivateObjects(slot->token);
-
 	return slot->token->drv->logout(slot);
+}
+
+
+
+/**
+ * Initialize PIN
+ *
+ * This token method is called from the C_InitPIN function at the PKCS#11 interface
+ *
+ * @param slot      The slot in which the token is inserted
+ * @param pPin      Pointer to PIN value or NULL is PIN shall be verified using PIN-Pad
+ * @param ulPinLen  The length of the PIN supplied in pPin
+ *
+ * @return          CKR_OK or any other Cryptoki error code
+ */
+int initPIN(struct p11Slot_t *slot, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen)
+{
+	if (slot->token->drv->initpin == NULL) {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+	return slot->token->drv->initpin(slot, pPin, ulPinLen);
+}
+
+
+
+/**
+ * Set PIN
+ *
+ * This token method is called from the C_SetPIN function at the PKCS#11 interface
+ *
+ * @param slot         The slot in which the token is inserted
+ * @param pOldPin      Pointer to old PIN value or NULL is PIN shall be changed using PIN-Pad
+ * @param ulOldPinLen  The length of the PIN supplied in pOldPin
+ * @param pNewPin      Pointer to new PIN value or NULL is PIN shall be verified using PIN-Pad
+ * @param ulNewPinLen  The length of the PIN supplied in pNewPin
+ *
+ * @return          CKR_OK or any other Cryptoki error code
+ */
+int setPIN(struct p11Slot_t *slot, CK_UTF8CHAR_PTR pOldPin, CK_ULONG ulOldPinLen, CK_UTF8CHAR_PTR pNewPin, CK_ULONG ulNewPinLen)
+{
+	if (slot->token->drv->setpin == NULL) {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+	return slot->token->drv->setpin(slot, pOldPin, ulOldPinLen, pNewPin, ulNewPinLen);
 }
 
 

@@ -354,6 +354,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitPIN)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
+	if ((pPin != NULL) && !isValidPtr(pPin)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
 	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
@@ -376,7 +380,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_InitPIN)(
 		FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "SO not logged in");
 	}
 
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	rv = initPIN(slot, pPin, ulPinLen);
+
+	FUNC_RETURNS(rv);
 }
 
 
@@ -402,6 +408,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetPIN)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
+	if ((pOldPin != NULL) && !isValidPtr(pOldPin)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if ((pNewPin != NULL) && !isValidPtr(pNewPin)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
 	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
 	if (rv != CKR_OK) {
@@ -420,5 +434,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetPIN)(
 		FUNC_RETURNS(rv);
 	}
 
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	rv = setPIN(slot, pOldPin, ulOldLen, pNewPin, ulNewLen);
+
+	FUNC_RETURNS(rv);
 }

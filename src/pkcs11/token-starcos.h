@@ -47,6 +47,7 @@ struct starcosPrivateData {
 	int                 selectedApplication;
 	unsigned char       *publickeys[256];
 	void                *mutex;
+	unsigned char       sopin[8];
 };
 
 #endif /* ___TOKEN_STARCOS_H_INC___ */
