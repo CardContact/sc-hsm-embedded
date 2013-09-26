@@ -1395,7 +1395,7 @@ static int initpin(struct p11Slot_t *slot, unsigned char *pin, int pinlen)
 				0, NULL, 0, &SW1SW2);
 	} else {
 		rc = transmitAPDU(slot, 0x00, 0x2C, 0x01, pinref,
-				0, NULL,
+				sizeof(sc->sopin), data,
 				0, NULL, 0, &SW1SW2);
 	}
 	if (rc < 0) {
