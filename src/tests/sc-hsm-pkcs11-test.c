@@ -341,6 +341,7 @@ static int optOneThreadPerToken = 0;
 static int optNoClass3Tests = 0;
 static int optNoMultiThreadingTests = 0;
 static int optThreadsPerToken = 1;
+static int optUnlockPIN = 0;
 static long optSlotId = -1;
 static char *optTokenFilter = "";
 
@@ -1465,6 +1466,26 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 
 
 
+void unlockPIN(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
+{
+	CK_RV rc;
+	CK_SESSION_HANDLE session;
+
+	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
+	printf("Calling C_OpenSession - %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	rc = p11->C_Login(session, CKU_SO, sopin, sopinlen);
+	printf("Calling C_Login(SO) - %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	rc = p11->C_InitPIN(session, NULL, 0);
+	printf("Calling C_InitPIN() - %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	rc = p11->C_CloseSession(session);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+}
+
+
+
 void usage()
 {
 	printf("sc-hsm-tool [--module <p11-file>] [--pin <user-pin>] [--token <tokenname>] [--optThreadsPerToken <count>]\n");
@@ -1476,6 +1497,7 @@ void usage()
 	printf("  --one-thread-per-token     Create a single thread per token rather than distributing %d\n", NUM_THREADS);
 	printf("  --no-class3-tests          No PIN tests with attached class 3 PIN PAD\n");
 	printf("  --no-multithreading-tests  No multihreading tests\n");
+	printf("  --unlock-pin               Unlock PIN without setting a new value\n");
 }
 
 
@@ -1552,6 +1574,8 @@ void decodeArgs(int argc, char **argv)
 			optNoClass3Tests = 1;
 		} else if (!strcmp(*argv, "--no-multithreading-tests")) {
 			optNoMultiThreadingTests = 1;
+		} else if (!strcmp(*argv, "--unlock-pin")) {
+			optUnlockPIN = 1;
 		} else {
 			printf("Unknown argument %s\n", *argv);
 			usage();
@@ -1689,6 +1713,11 @@ int main(int argc, char *argv[])
 
 				if (*optTokenFilter && strncmp(optTokenFilter, (const char *)tokeninfo.label, strlen(optTokenFilter)))
 					continue;
+
+				if (optUnlockPIN) {
+					unlockPIN(p11, slotid);
+					break;
+				}
 
 				testSessions(p11, slotid);
 

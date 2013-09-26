@@ -1045,12 +1045,13 @@ static int sc_hsm_initpin(struct p11Slot_t *slot, unsigned char *pin, int pinlen
 
 	sc = getPrivateData(slot->token);
 	memcpy(data, sc->sopin, sizeof(sc->sopin));
-	memcpy(data + sizeof(sc->sopin), pin, pinlen);
+	if (pin != NULL)
+		memcpy(data + sizeof(sc->sopin), pin, pinlen);
 
 #ifdef DEBUG
 	debug("Init PIN using provided PIN value\n");
 #endif
-	rc = transmitAPDU(slot, 0x00, 0x2C, 0x00, 0x81,
+	rc = transmitAPDU(slot, 0x00, 0x2C, pinlen ? 0x00 : 0x01, 0x81,
 		pinlen + sizeof(sc->sopin), data,
 		0, NULL, 0, &SW1SW2);
 
