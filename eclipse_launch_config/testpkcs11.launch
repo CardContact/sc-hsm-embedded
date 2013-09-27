@@ -17,7 +17,7 @@
 <stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_START_MODE" value="run"/>
 <booleanAttribute key="org.eclipse.cdt.launch.DEBUGGER_STOP_AT_MAIN" value="true"/>
 <stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_STOP_AT_MAIN_SYMBOL" value="main"/>
-<stringAttribute key="org.eclipse.cdt.launch.PROGRAM_ARGUMENTS" value="--module src/pkcs11/.libs/libsc-hsm-pkcs11.so"/>
+<stringAttribute key="org.eclipse.cdt.launch.PROGRAM_ARGUMENTS" value="--module src/pkcs11/.libs/libsc-hsm-pkcs11.so --token STARCOS.eUserPKI --pin 123456"/>
 <stringAttribute key="org.eclipse.cdt.launch.PROGRAM_NAME" value="src/tests/sc-hsm-pkcs11-test"/>
 <stringAttribute key="org.eclipse.cdt.launch.PROJECT_ATTR" value="sc-hsm-embedded"/>
 <booleanAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_AUTO_ATTR" value="true"/>

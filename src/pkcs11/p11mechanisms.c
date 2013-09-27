@@ -896,10 +896,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 		FUNC_RETURNS(rv);
 	}
 
-	if (pSignature != NULL) {
-		pSession->activeObjectHandle = CK_INVALID_HANDLE;
-	}
-
 	if (pObject->C_SignFinal != NULL) {
 		rv = pObject->C_SignFinal(pObject, pSession->activeMechanism, pSignature, pulSignatureLen);
 

@@ -1492,6 +1492,7 @@ static int setpin(struct p11Slot_t *slot, unsigned char *oldpin, int oldpinlen, 
 		rc = updatePinStatus(slot->token, SW1SW2);
 	}
 
+	unlock(slot->token);
 	FUNC_RETURNS(rc);
 }
 
