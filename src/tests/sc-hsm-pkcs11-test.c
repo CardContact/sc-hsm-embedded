@@ -1122,6 +1122,27 @@ void testSessions(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 
 
 
+void testTransportPIN(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
+{
+	int rc;
+	CK_SESSION_INFO sessioninfo;
+	CK_SESSION_HANDLE session;
+
+	printf("Calling C_OpenSession ");
+	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_SetPIN User ");
+	rc = p11->C_SetPIN(session, "12345", 5, pin, pinlen);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_CloseSession ");
+	rc = p11->C_CloseSession(session);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+}
+
+
+
 void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
 	int rc;
@@ -1716,6 +1737,10 @@ int main(int argc, char *argv[])
 			if (rc == CKR_OK) {
 				printf("Token label: %s\n", p11string(tokeninfo.label, sizeof(tokeninfo.label)));
 				printf("Token flags: %lx\n", tokeninfo.flags);
+
+				if (tokeninfo.flags & CKF_USER_PIN_TO_BE_CHANGED) {
+					testTransportPIN(p11, slotid);
+				}
 
 				if (optTestMultiOnly)
 					continue;

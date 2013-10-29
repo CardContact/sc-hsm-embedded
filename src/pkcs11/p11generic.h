@@ -91,6 +91,7 @@ struct p11Token_t {
 	CK_ULONG freeObjectNumber;          /**< The number of objects in this token            */
 
 	int pinUseCounter;                  /**< Number of crypto operations per PIN verify     */
+	int pinChangeRequired;              /**< PIN change required before use                 */
 
 	CK_ULONG numberOfTokenObjects;      /**< The number of public objects in this token     */
 	struct p11Object_t *tokenObjList;   /**< Pointer to first object in pool                */

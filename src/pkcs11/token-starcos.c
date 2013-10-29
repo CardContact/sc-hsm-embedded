@@ -433,7 +433,7 @@ static int readCertEF(struct p11Slot_t *slot, bytestring fid, unsigned char *con
 
 
 
-static int determinePinUseCounter(struct p11Slot_t *slot, unsigned char recref)
+static int determinePinUseCounter(struct p11Slot_t *slot, unsigned char recref, int *useCounter, int *lifeCycle)
 {
 	int rc;
 	unsigned short SW1SW2;
@@ -473,16 +473,26 @@ static int determinePinUseCounter(struct p11Slot_t *slot, unsigned char recref)
 		FUNC_FAILS(rc, "ASN.1 structure invalid");
 	}
 
+	*useCounter = 0;
 	p = asn1Find(rec, "\x30\x7B\xA4\x9F\x22", 4);
 
-	if (!p) {
-		FUNC_RETURNS(0);
+	if (p) {
+		asn1Tag(&p);
+		asn1Length(&p);
+
+		*useCounter = (*p == 0xFF ? 0 : *p);
 	}
 
-	asn1Tag(&p);
-	asn1Tag(&p);
+	p = asn1Find(rec, "\x30\x8A", 2);
 
-	FUNC_RETURNS(*p == 0xFF ? 0 : *p);
+	if (p) {
+		asn1Tag(&p);
+		asn1Length(&p);
+
+		*lifeCycle = *p;
+	}
+
+	FUNC_RETURNS(CKR_OK);
 }
 
 
@@ -618,10 +628,14 @@ static int updatePinStatus(struct p11Token_t *token, int pinstatus)
 {
 	int rc = CKR_OK;
 
-	token->info.flags &= ~(CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED | CKF_USER_PIN_FINAL_TRY | CKF_USER_PIN_LOCKED | CKF_USER_PIN_COUNT_LOW);
+	token->info.flags &= ~(CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED | CKF_USER_PIN_FINAL_TRY | CKF_USER_PIN_LOCKED | CKF_USER_PIN_COUNT_LOW | CKF_USER_PIN_TO_BE_CHANGED );
 
 	if (pinstatus != 0x6984) {
 		token->info.flags |= CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED;
+	}
+
+	if (token->pinChangeRequired) {
+		token->info.flags |= CKF_USER_PIN_TO_BE_CHANGED;
 	}
 
 	switch(pinstatus) {
@@ -1526,6 +1540,7 @@ static int setpin(struct p11Slot_t *slot, unsigned char *oldpin, int oldpinlen, 
 			FUNC_FAILS(CKR_PIN_INCORRECT, "Incorrect old SO-PIN");
 		}
 	} else {
+		slot->token->pinChangeRequired = FALSE;
 		rc = updatePinStatus(slot->token, SW1SW2);
 	}
 
@@ -1578,7 +1593,7 @@ static int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token,
 {
 	struct p11Token_t *ptoken;
 	struct starcosPrivateData *sc;
-	int rc;
+	int rc, lc;
 
 	FUNC_CALLED();
 
@@ -1620,13 +1635,16 @@ static int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token,
 	}
 
 	if (sc->application != STARCOS_EUSERPKI) {
-		rc = determinePinUseCounter(slot, starcosApplications[sc->application].qESKeyDRec);
+		lc = 0;
+		rc = determinePinUseCounter(slot, starcosApplications[sc->application].qESKeyDRec, &ptoken->pinUseCounter, &lc);
 
 		if (rc < 0) {
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Error querying PIN key use counter");
 		}
 
-		ptoken->pinUseCounter = rc;
+		if (lc == 0x23) {
+			ptoken->pinChangeRequired = TRUE;
+		}
 	}
 
 	if (ptoken->pinUseCounter != 1)
