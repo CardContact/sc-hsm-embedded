@@ -646,6 +646,7 @@ static int updatePinStatus(struct p11Token_t *token, int pinstatus)
 		rc = CKR_USER_PIN_NOT_INITIALIZED;
 		break;
 	case 0x6983:
+	case 0x63C0:
 		token->info.flags |= CKF_USER_PIN_LOCKED;
 		rc = CKR_PIN_LOCKED;
 		break;
@@ -1452,6 +1453,11 @@ static int initpin(struct p11Slot_t *slot, unsigned char *pin, int pinlen)
 	if (rc < 0) {
 		unlock(slot->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+	}
+
+	if (SW1SW2 == 0x6982) {
+		unlock(slot->token);
+		FUNC_FAILS(CKR_KEY_FUNCTION_NOT_PERMITTED, "Function not allowed");
 	}
 
 	if (SW1SW2 != 0x9000) {
