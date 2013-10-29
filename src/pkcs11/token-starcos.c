@@ -654,15 +654,11 @@ static int updatePinStatus(struct p11Token_t *token, int pinstatus)
 
 static int digest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned char *data, size_t len)
 {
-	int rc;
+	int rc,chunk;
 	unsigned short SW1SW2;
-	unsigned char scr[4106],*algo, *po;
+	unsigned char scr[1008],*algo, *po;
 
 	FUNC_CALLED();
-
-	if (len > 1000) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Data to be hashed must not exceed 1000 bytes");
-	}
 
 	rc = getAlgorithmIdForDigest(token, mech, &algo);
 	if (rc != CKR_OK) {
@@ -686,21 +682,62 @@ static int digest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned cha
 		FUNC_FAILS(CKR_DEVICE_ERROR, "MANAGE SE failed");
 	}
 
-	scr[0] = 0x90;
-	scr[1] = 0x00;
-	memcpy(scr + 2, data, len);
-	rc = asn1Encap(0x80, scr + 2, len) + 2;
+	if (len <= 1000) {
+		scr[0] = 0x90;
+		scr[1] = 0x00;
+		memcpy(scr + 2, data, len);
+		rc = asn1Encap(0x80, scr + 2, len) + 2;
 
-	rc = transmitAPDU(token->slot, 0x00, 0x2A, 0x90, 0xA0,
-		rc, scr,
-		0, NULL, 0, &SW1SW2);
+		rc = transmitAPDU(token->slot, 0x00, 0x2A, 0x90, 0xA0,
+				rc, scr,
+				0, NULL, 0, &SW1SW2);
 
-	if (rc < 0) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
-	}
+		if (rc < 0) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+		}
 
-	if (SW1SW2 != 0x9000) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Signature operation failed");
+		if (SW1SW2 != 0x9000) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Hash operation failed");
+		}
+	} else {
+		scr[0] = 0x90;
+		scr[1] = 0x00;
+
+		rc = transmitAPDU(token->slot, 0x10, 0x2A, 0x90, 0xA0,
+				2, scr,
+				0, NULL, 0, &SW1SW2);
+
+		if (rc < 0) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+		}
+
+		if (SW1SW2 != 0x9000) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Hash operation failed");
+		}
+
+		while (len > 0) {
+			// Chunk must be aligned to the hash block size
+			// As we support SHA-2 up to 512 we choose 7 * 128 as chunk size
+			chunk = (len > 896 ? 896 : len);
+
+			memcpy(scr, data, chunk);
+			rc = asn1Encap(0x80, scr, chunk);
+
+			rc = transmitAPDU(token->slot, len > chunk ? 0x10 : 0x00, 0x2A, 0x90, 0xA0,
+					rc, scr,
+					0, NULL, 0, &SW1SW2);
+
+			if (rc < 0) {
+				FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+			}
+
+			if (SW1SW2 != 0x9000) {
+				FUNC_FAILS(CKR_DEVICE_ERROR, "Hash operation failed");
+			}
+
+			len -= chunk;
+			data += chunk;
+		}
 	}
 
 	return CKR_OK;

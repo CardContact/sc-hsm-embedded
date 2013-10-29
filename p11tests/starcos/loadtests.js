@@ -8,7 +8,7 @@
  *
  * Consult your license package for usage terms and conditions.
  * 
- * @fileoverview SmartCard-HSM PKCS11 Tests
+ * @fileoverview STARCOS PKCS11 Tests
  */
 
 load("tools/TestRunner.js");
@@ -97,7 +97,7 @@ function str4class(c) {
 
 
 
-function getSlot(p) {
+function getSlot(p, token) {
 	var slots = p.getSlots();
 
 	var slot;
@@ -106,11 +106,13 @@ function getSlot(p) {
 	
 		if (s.isRemovableDevice()) {
 			if (s.isTokenPresent()) {
-				return (s.getId());
+				if (token.equals(s.getTokenLabel())) {
+					return (s.getId());
+				}
 			}
 		}
 	}
-	return 0;
+	return -1;
 }
 
 
@@ -141,207 +143,11 @@ function getObjectByLabel(s, clazz, label) {
 }
 
 
-/*
-function getPrivateKey(s, id) {
-	// Enumerate public and private objects
-	var objs = s.enumerateObjects();
-	
-//	print("Objects listed in R/O user session:");
-	for (var i = 0; i < objs.length; i++) {
-		var o = objs[i];
-		var cl = o.getNumberAttribute(PKCS11Object.CKA_CLASS);
-//		print("Class :" + str4class(cl));
-		
-		var kid = o.getAttribute(PKCS11Object.CKA_ID);
-//		if (kid != null) {
-//			print(" Id     :" + kid.toString(HEX));
-//		}
-		var label = o.getAttribute(PKCS11Object.CKA_LABEL);
-//		if (label != null) {
-//			print(" Label :" + label.toString(ASCII));
-//		}
-		if ((cl == PKCS11Object.CKO_PRIVATE_KEY) && (kid.equals(id))) {
-//			print("Matching private key: " + label.toString(UTF8));
-			return o;
-		}
-	}
-	return null;
-}
-
-
-
-function getCertificate(s, id) {
-	// Enumerate public and private objects
-	var objs = s.enumerateObjects();
-	
-//	print("Objects listed in R/O user session:");
-	for (var i = 0; i < objs.length; i++) {
-		var o = objs[i];
-		var cl = o.getNumberAttribute(PKCS11Object.CKA_CLASS);
-//		print("Class :" + str4class(cl));
-		
-		var kid = o.getAttribute(PKCS11Object.CKA_ID);
-//		if (kid != null) {
-//			print(" Id     :" + kid.toString(HEX));
-//		}
-		var label = o.getAttribute(PKCS11Object.CKA_LABEL);
-//		if (label != null) {
-//			print(" Label :" + label.toString(ASCII));
-//		}
-		if ((cl == PKCS11Object.CKO_CERTIFICATE) && (kid.equals(id))) {
-//			print("Matching certificate: " + label.toString(UTF8));
-			return o;
-		}
-	}
-	return null;
-}
-*/
-
-
-function generateRSAKeyPair(s, label, keysize) {
-
-	var priAttr = new Array();
-	priAttr[PKCS11Object.CKA_TOKEN] = true;
-	priAttr[PKCS11Object.CKA_SIGN] = true;
-	priAttr[PKCS11Object.CKA_DECRYPT] = true;
-	priAttr[PKCS11Object.CKA_UNWRAP] = true;
-	priAttr[PKCS11Object.CKA_SENSITIVE] = true;
-	priAttr[PKCS11Object.CKA_PRIVATE] = true;
-	priAttr[PKCS11Object.CKA_LABEL] = label;
-
-	var pubAttr = new Array();
-	pubAttr[PKCS11Object.CKA_TOKEN] = true;
-	pubAttr[PKCS11Object.CKA_VERIFY] = true;
-	pubAttr[PKCS11Object.CKA_ENCRYPT] = true;
-	pubAttr[PKCS11Object.CKA_WRAP] = true;
-	pubAttr[PKCS11Object.CKA_MODULUS_BITS] = keysize;
-	pubAttr[PKCS11Object.CKA_PUBLIC_EXPONENT] = new ByteString("010001", HEX);
-	pubAttr[PKCS11Object.CKA_LABEL] = label;
-
-	var keys = s.generateKeyPair(PKCS11Session.CKM_RSA_PKCS_KEY_PAIR_GEN, null, pubAttr, priAttr);
-
-	var pub = keys[0];
-
-	var cl = pub.getNumberAttribute(PKCS11Object.CKA_CLASS);
-	print("Class  : " + str4class(cl));
-
-	var kid = pub.getAttribute(PKCS11Object.CKA_ID);
-	print(" Id    : " + kid.toString(HEX));
-
-	var label = pub.getAttribute(PKCS11Object.CKA_LABEL);
-	print(" Label : " + label.toString(ASCII));
-
-	var value = pub.getAttribute(PKCS11Object.CKA_VALUE);
-	print(" Value : " + value.toString(HEX));
-
-	var pk = new ASN1(value);
-	print(pk);
-	var key = new Key();
-	key.setType(Key.PUBLIC);
-	key.setComponent(Key.MODULUS, pk.get(0).value);
-	key.setComponent(Key.EXPONENT, pk.get(1).value);
-	return key;
-}
-
-
-
-function generateECCKeyPair(s, label, curve) {
-
-	var curveoid = new ByteString(curve, OID);
-	var curveasn = new ASN1(ASN1.OBJECT_IDENTIFIER, curveoid);
-	
-	var priAttr = new Array();
-	priAttr[PKCS11Object.CKA_TOKEN] = true;
-	priAttr[PKCS11Object.CKA_SIGN] = true;
-	priAttr[PKCS11Object.CKA_SENSITIVE] = true;
-	priAttr[PKCS11Object.CKA_PRIVATE] = true;
-	priAttr[PKCS11Object.CKA_LABEL] = label;
-
-	var pubAttr = new Array();
-	pubAttr[PKCS11Object.CKA_TOKEN] = true;
-	pubAttr[PKCS11Object.CKA_VERIFY] = true;
-	pubAttr[PKCS11Object.CKA_EC_PARAMS] = curveasn.getBytes();
-	pubAttr[PKCS11Object.CKA_LABEL] = label;
-
-	var keys = s.generateKeyPair(PKCS11Session.CKM_EC_KEY_PAIR_GEN, null, pubAttr, priAttr);
-
-	var pub = keys[0];
-
-	var cl = pub.getNumberAttribute(PKCS11Object.CKA_CLASS);
-	print("Class  : " + str4class(cl));
-
-	var kid = pub.getAttribute(PKCS11Object.CKA_ID);
-	print(" Id    : " + kid.toString(HEX));
-
-	var label = pub.getAttribute(PKCS11Object.CKA_LABEL);
-	print(" Label : " + label.toString(ASCII));
-
-	var value = pub.getAttribute(PKCS11Object.CKA_VALUE);
-	print(" Value : " + value.toString(HEX));
-
-	var pk = new ASN1(value);
-	print(pk);
-	var point = pk.value.bytes(1);
-	
-	var key = new Key();
-	key.setType(Key.PUBLIC);
-	key.setComponent(Key.ECC_CURVE_OID, curveoid);
-	key.setComponent(Key.ECC_QX, point.left(point.length >> 1));
-	key.setComponent(Key.ECC_QY, point.right(point.length >> 1));
-	return key;
-}
-
-
-
-function storeCertificate(s, label, cert) {
-	var attr = new Array();
-	attr[PKCS11Object.CKA_CLASS] = PKCS11Object.CKO_CERTIFICATE;
-	attr[PKCS11Object.CKA_CERTIFICATE_TYPE] = 0;  // CKC_X_509
-	attr[PKCS11Object.CKA_TOKEN] = true;
-	attr[PKCS11Object.CKA_LABEL] = label;
-	attr[PKCS11Object.CKA_VALUE] = cert.getBytes();
-
-	var o = new PKCS11Object(s, attr);
-
-	return o;
-}
-
-
-
-function issueCertificate(ca, s, cn, keysizeOrCurve, profile) {
-	var label = cn;
-	var subject = [ { C:"DE" }, { O:"CardContact" }, { OU:"CardContact Demo CA 1" }, { CN:cn } ];
-
-	print("Generating key pair for " + cn);
-	if (typeof(keysizeOrCurve) == "string") {
-		var publicKey = generateECCKeyPair(s, label, keysizeOrCurve);
-	} else {
-		var publicKey = generateRSAKeyPair(s, label, keysizeOrCurve);
-	}
-	
-	if (typeof(keysizeOrCurve) == "string") {
-		publicKey.setComponent(Key.ECC_CURVE_OID, new ByteString(keysizeOrCurve, OID));
-	}
-	
-	var extvalues = { email : emailaddress };
-	print("Issuing certificate for " + cn);
-	var cert = ca.issueCertificate(publicKey, subject, profile, extvalues);
-	print(cert);
-
-	storeCertificate(s, label, cert);
-}
-
-
-
-var testRunner = new TestRunner("SmartCard-HSM PKCS#11 Tests");
+var testRunner = new TestRunner("STARCOS PKCS#11 Tests");
 testRunner.addTestGroupFromXML("tg_enumerate.xml", param);
-//testRunner.addTestGroupFromXML("tg_initialize.xml", param);
-//testRunner.addTestGroupFromXML("tg_generatekeys.xml", param);
-//testRunner.addTestGroupFromXML("tg_certificate.xml", param);
 testRunner.addTestGroupFromXML("tg_signing.xml", param);
+testRunner.addTestGroupFromXML("tg_signing_qes.xml", param);
 testRunner.addTestGroupFromXML("tg_decryption.xml", param);
-//testRunner.addTestGroupFromXML("tg_dataobjects.xml", param);
-//testRunner.addTestGroupFromXML("tg_delete.xml", param);
 
 
 // Create and initialize simple CA

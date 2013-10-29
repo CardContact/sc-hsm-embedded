@@ -57,7 +57,11 @@
 		<Script><![CDATA[
 var p = new PKCS11Provider(this.parameter.provider);
 try	{
-	var slot = getSlot(p);
+	var slot = getSlot(p, "STARCOS.eUserPKI");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
 
 	print("Using slot: " + slot);
 	
@@ -67,10 +71,10 @@ try	{
 	// Login with USER PIN
 	s.login(this.parameter.pin);
 	
-	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, this.parameter.testkey);
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.AUT");
 	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
 
-	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, this.parameter.testkey);
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.AUT");
 	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
 	
 	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
@@ -114,7 +118,11 @@ try	{
 		<Script><![CDATA[
 var p = new PKCS11Provider(this.parameter.provider);
 try	{
-	var slot = getSlot(p);
+	var slot = getSlot(p, "STARCOS.eUserPKI");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
 
 	print("Using slot: " + slot);
 	
@@ -124,10 +132,10 @@ try	{
 	// Login with USER PIN
 	s.login(this.parameter.pin);
 	
-	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, this.parameter.testkey);
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.AUT");
 	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
 
-	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, this.parameter.testkey);
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.AUT");
 	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
 	
 	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);

@@ -6,7 +6,7 @@
 	id="tg_enumerate" arrayElement="testcase,function" arrayIndex="id,Name">
 	<name>Signing</name>
 	<description>
-		<p>Obtain information about SmartCard-HSM using PKCS#11 interface.</p>
+		<p>Obtain information about STARCOS card using PKCS#11 interface.</p>
 	</description>
 	<reference>
 		<p></p>
@@ -65,8 +65,8 @@ try	{
 	var cardTokenPresent = 0;
 	var slot;
 
-	for (var i = 0; i < slots.length; i++) {
-		var s = slots[i];
+	for (var j = 0; j < slots.length; j++) {
+		var s = slots[j];
 	
 		dumpSlotInfo(s);
 	
@@ -75,42 +75,36 @@ try	{
 			if (s.isTokenPresent()) {
 				cardTokenPresent++;
 				slot = s.getId();
-				break;
+				
+				// Open R/O session
+				var s = new PKCS11Session(p, slot, false);
+	
+				// Login with USER PIN
+				s.login(this.parameter.pin);
+	
+				// Enumerate public and private objects
+				var objs = s.enumerateObjects();
+	
+				print("Objects listed in R/O user session:");
+				for (var i = 0; i < objs.length; i++) {
+					var o = objs[i];
+					var cl = o.getNumberAttribute(PKCS11Object.CKA_CLASS);
+					print("Class :" + str4class(cl));
+		
+					var id = o.getAttribute(PKCS11Object.CKA_ID);
+					if (id != null) {
+						print(" Id     :" + id.toString(HEX));
+					}
+					var label = o.getAttribute(PKCS11Object.CKA_LABEL);
+					if (label != null) {
+						print(" Label :" + label.toString(ASCII));
+					}
+				}
+				s.close();
 			}
 		}
 	}
 	
-	// Open R/O session
-	var s = new PKCS11Session(p, slot, false);
-	
-	var privateKey = null;
-	
-	// Login with USER PIN
-	s.login(this.parameter.pin);
-	
-	// Enumerate public and private objects
-	var objs = s.enumerateObjects();
-	
-	print("Objects listed in R/O user session:");
-	for (var i = 0; i < objs.length; i++) {
-		var o = objs[i];
-		var cl = o.getNumberAttribute(PKCS11Object.CKA_CLASS);
-		print("Class :" + str4class(cl));
-		
-		var id = o.getAttribute(PKCS11Object.CKA_ID);
-		if (id != null) {
-			print(" Id     :" + id.toString(HEX));
-		}
-		var label = o.getAttribute(PKCS11Object.CKA_LABEL);
-		if (label != null) {
-			print(" Label :" + label.toString(ASCII));
-		}
-		if (cl == PKCS11Object.CKO_PRIVATE_KEY) {
-			privateKey = o;
-		}
-	}
-	
-	s.close();
 
 } finally {
 	p.cleanup();

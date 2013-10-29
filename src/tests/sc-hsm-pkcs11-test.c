@@ -606,6 +606,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 	CK_OBJECT_HANDLE hnd;
 	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
 	char *tbs = "Hello World";
+	char *largetbs;
 	CK_BYTE signature[256];
 	CK_ULONG len;
 	char scr[1024];
@@ -681,12 +682,20 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 		} else {
 			verdict(rc == CKR_OK);
 		}
-
+#if 1
 		rc = p11->C_SignUpdate(session, (CK_BYTE_PTR)tbs, 6);
 		printf("C_SignUpdate (Thread %i, Session %ld, Slot=%ld - Part #1) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		rc = p11->C_SignUpdate(session, (CK_BYTE_PTR)tbs + 6, strlen(tbs) - 6);
 		printf("C_SignUpdate (Thread %i, Session %ld, Slot=%ld - Part #2) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+#else
+		largetbs = calloc(1, 1000);
+		rc = p11->C_SignUpdate(session, (CK_BYTE_PTR)largetbs, 1000);
+		printf("C_SignUpdate (Thread %i, Session %ld, Slot=%ld - Part #1) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		rc = p11->C_SignUpdate(session, (CK_BYTE_PTR)largetbs, 1000);
+		printf("C_SignUpdate (Thread %i, Session %ld, Slot=%ld - Part #2) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+#endif
 
 		len = 0;
 		rc = p11->C_SignFinal(session, NULL, &len);
