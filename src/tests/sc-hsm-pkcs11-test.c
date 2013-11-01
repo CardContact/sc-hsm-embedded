@@ -605,6 +605,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 	};
 	CK_OBJECT_HANDLE hnd;
 	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
+//	CK_MECHANISM mech = { CKM_SHA256_RSA_PKCS_PSS, 0, 0 };
 	char *tbs = "Hello World";
 	char *largetbs;
 	CK_BYTE signature[256];
@@ -1276,9 +1277,9 @@ void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	rc = p11->C_GetTokenInfo(sessioninfo.slotID, &tokeninfo);
 	printf("Token flags %lx - %s\n", tokeninfo.flags, verdict((tokeninfo.flags & (CKF_USER_PIN_COUNT_LOW|CKF_USER_PIN_FINAL_TRY|CKF_USER_PIN_LOCKED)) == 0));
 
-	printf("Calling C_SetPIN User ");
-	rc = p11->C_SetPIN(session, pin, pinlen, pin, pinlen);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+//	printf("Calling C_SetPIN User ");
+//	rc = p11->C_SetPIN(session, pin, pinlen, pin, pinlen);
+//	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if ((tokeninfo.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !optNoClass3Tests) {
 

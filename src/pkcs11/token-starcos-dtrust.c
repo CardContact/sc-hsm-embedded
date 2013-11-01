@@ -28,7 +28,7 @@
  *
  * @file    token-starcos.c
  * @author  Andreas Schwier
- * @brief   Token implementation for a Starcos 3.5 ID ECC C1 based card
+ * @brief   Token implementation for a Starcos 3.4 QES C1 based card with D-Trust Profile
  */
 
 #include <string.h>
@@ -48,12 +48,10 @@
 #include <pkcs11/debug.h>
 
 
+static unsigned char atr34[] = { 0x3B,0xD8,0x18,0xFF,0x81,0xB1,0xFE,0x45,0x1F,0x03,0x80,0x64,0x04,0x1A,0xB4,0x03,0x81,0x05,0x61 };
 
-static unsigned char atr35[] = { 0x3B,0x9B,0x96,0xC0,0x0A,0x31,0xFE,0x45,0x80,0x67,0x04,0x1E,0xB5,0x01,0x00,0x89,0x4C,0x81,0x05,0x45 };
-static unsigned char atr352_1[] = { 0x3B,0xDB,0x96,0xFF,0x81,0x31,0xFE,0x45,0x80,0x67,0x05,0x34,0xB5,0x02,0x01,0xC0,0xA1,0x81,0x05,0x3C };
-static unsigned char atr352_2[] = { 0x3B,0xD9,0x96,0xFF,0x81,0x31,0xFE,0x45,0x80,0x31,0xB8,0x73,0x86,0x01,0xC0,0x81,0x05,0x02 };
 
-static struct p15PrivateKeyDescription prkd_eSign1[] = {
+static struct p15PrivateKeyDescription prkd_eSign[] = {
 		{
 			P15_KT_RSA,
 			{ "C.CH.DS" },
@@ -67,71 +65,22 @@ static struct p15PrivateKeyDescription prkd_eSign1[] = {
 
 
 
-static struct p15PrivateKeyDescription prkd_eSign2[] = {
-		{
-			P15_KT_RSA,
-			{ "C2.CH.DS" },
-			1,
-			{ (unsigned char *)"\x02", 1 },
-			P15_SIGN|P15_NONREPUDIATION,
-			2048,
-			0x85
-		}
-};
-
-
-
-static struct p15CertificateDescription certd_eSign1[] = {
+static struct p15CertificateDescription certd_eSign[] = {
 	{
 		0,                                          // isCA
 		P15_CT_X509,                                // Certificate type
 		{ "C.CH.DS" },                              // Label
 		{ (unsigned char *)"\x01", 1 },				// Id
-		{ (unsigned char *)"\xC0\x01", 2 }			// efifOrPath
+		{ (unsigned char *)"\xC1\x03", 2 }			// efifOrPath
 	},
 	{
 		1,
 		P15_CT_X509,
 		{ "C.CA.DS" },
 		{ (unsigned char *)"\x11", 1 },
-		{ (unsigned char *)"\xC0\x11", 2 }
-	},
-	{
-		0,
-		P15_CT_X509_ATTRIBUTE,
-		{ "C.ATTRIBUTE.DS" },
-		{ (unsigned char *)"\x21", 1 },
-		{ (unsigned char *)"\xC0\x13", 2 }
-	},
-};
-
-
-
-
-static struct p15CertificateDescription certd_eSign2[] = {
-	{
-		0,
-		P15_CT_X509,
-		{ "C2.CH.DS" },
-		{ (unsigned char *)"\x02", 1 },
-		{ (unsigned char *)"\xC0\x02", 2 }
-	},
-	{
-		1,
-		P15_CT_X509,
-		{ "C2.CA.DS" },
-		{ (unsigned char *)"\x12", 1 },
-		{ (unsigned char *)"\xC0\x12", 2 }
-	},
-	{
-		0,
-		P15_CT_X509_ATTRIBUTE,
-		{ "C2.ATTRIBUTE.DS" },
-		{ (unsigned char *)"\x22", 1 },
-		{ (unsigned char *)"\xC0\x14", 2 }
+		{ (unsigned char *)"\xC1\x04", 2 }
 	}
 };
-
 
 
 
@@ -143,7 +92,7 @@ static struct p15PrivateKeyDescription prkd_eUserPKI[] = {
 			{ (unsigned char *)"\x03", 1 },
 			P15_SIGN|P15_DECIPHER,
 			2048,
-			0x82
+			0x81
 		}
 };
 
@@ -155,61 +104,68 @@ static struct p15CertificateDescription certd_eUserPKI[] = {
 		P15_CT_X509,                                // Certificate type
 		{ "C.CH.AUT" },                             // Label
 		{ (unsigned char *)"\x03", 1 },				// Id
-		{ (unsigned char *)"\xC0\x03", 2 }			// efifOrPath
+		{ (unsigned char *)"\xC1\x00", 2 }			// efifOrPath
 	},
 	{
 		1,
 		P15_CT_X509,
 		{ "C.CA.AUT" },
 		{ (unsigned char *)"\x11", 1 },
-		{ (unsigned char *)"\xC0\x01", 2 }
+		{ (unsigned char *)"\xC1\x01", 2 }
 	}
 };
 
 
 
-static unsigned char aid_eSign[] = { 0xA0,0x00,0x00,0x01,0x67,0x45,0x53,0x49,0x47,0x4E };
-static unsigned char aid_eUserPKI[] = { 0xA0,0x00,0x00,0x05,0x25,0x65,0x55,0x73,0x65,0x72,0x01 };
+static unsigned char aid_eSign[] = { 0xD2,0x76,0x00,0x00,0x66,0x01 };
+static unsigned char aid_eUserPKI[] = { 0xA0,0x00,0x00,0x01,0x67,0x45,0x53,0x49,0x47,0x4E };
+static unsigned char aid_certs[] = { 0xA0,0x00,0x00,0x02,0x44,0x46,0x5F,0x43,0x65,0x72,0x74,0x73 };
+
 
 static struct starcosApplication starcosApplications[] = {
 		{
-				"STARCOS.eSign1",
+				"STARCOS.eSign",
 				{ aid_eSign, sizeof(aid_eSign) },
 				1,
 				0x81,
-				3,
-				prkd_eSign1,
-				sizeof(prkd_eSign1) / sizeof(struct p15PrivateKeyDescription),
-				certd_eSign1,
-				sizeof(certd_eSign1) / sizeof(struct p15CertificateDescription)
-		},
-		{
-				"STARCOS.eSign2",
-				{ aid_eSign, sizeof(aid_eSign) },
 				1,
-				0x86,
-				6,
-				prkd_eSign2,
-				sizeof(prkd_eSign2) / sizeof(struct p15PrivateKeyDescription),
-				certd_eSign2,
-				sizeof(certd_eSign2) / sizeof(struct p15CertificateDescription)
+				prkd_eSign,
+				sizeof(prkd_eSign) / sizeof(struct p15PrivateKeyDescription),
+				certd_eSign,
+				sizeof(certd_eSign) / sizeof(struct p15CertificateDescription)
 		},
 		{
 				"STARCOS.eUserPKI",
 				{ aid_eUserPKI, sizeof(aid_eUserPKI) },
 				2,
-				0x06,
+				0x01,
 				0,
 				prkd_eUserPKI,
 				sizeof(prkd_eUserPKI) / sizeof(struct p15PrivateKeyDescription),
 				certd_eUserPKI,
 				sizeof(certd_eUserPKI) / sizeof(struct p15CertificateDescription)
+		},
+		{		// Virtual application containing certificates
+				"",
+				{ aid_certs, sizeof(aid_certs) },
+				3,
+				0,
+				0,
+				0,
+				0,
+				0,
+				0
 		}
 };
 
 
 
 static unsigned char algo_PKCS15[] =           { 0x89, 0x02, 0x13, 0x23 };
+static unsigned char algo_PKCS15_SHA1[] =      { 0x89, 0x03, 0x13, 0x23 ,0x10 };
+static unsigned char algo_PKCS15_SHA224[] =    { 0x89, 0x03, 0x13, 0x23 ,0x60 };
+static unsigned char algo_PKCS15_SHA256[] =    { 0x89, 0x03, 0x13, 0x23 ,0x30 };
+static unsigned char algo_PKCS15_SHA384[] =    { 0x89, 0x03, 0x13, 0x23 ,0x40 };
+static unsigned char algo_PKCS15_SHA512[] =    { 0x89, 0x03, 0x13, 0x23 ,0x50 };
 static unsigned char algo_PSS_SHA1[] =         { 0x89, 0x03, 0x13, 0x33, 0x10 };
 static unsigned char algo_PSS_SHA224[] =       { 0x89, 0x03, 0x13, 0x33, 0x60 };
 static unsigned char algo_PSS_SHA256[] =       { 0x89, 0x03, 0x13, 0x33, 0x30 };
@@ -220,36 +176,20 @@ static unsigned char algo_SHA224[] =           { 0x89, 0x02, 0x14, 0x60 };
 static unsigned char algo_SHA256[] =           { 0x89, 0x02, 0x14, 0x30 };
 static unsigned char algo_SHA384[] =           { 0x89, 0x02, 0x14, 0x40 };
 static unsigned char algo_SHA512[] =           { 0x89, 0x02, 0x14, 0x50 };
-static unsigned char algo_PKCS15_DECRYPT[] =   { 0x89, 0x02, 0x11, 0x31 };
+static unsigned char algo_PKCS15_DECRYPT[] =   { 0x89, 0x02, 0x11, 0x30 };
 static unsigned char algo_OAEP_DECRYPT[] =     { 0x89, 0x02, 0x11, 0x32 };
 
 
 static const CK_MECHANISM_TYPE p11MechanismList[] = {
 		CKM_RSA_PKCS,
-		CKM_RSA_PKCS_OAEP,
-		CKM_SHA1_RSA_PKCS,
-		CKM_SHA224_RSA_PKCS,
-		CKM_SHA256_RSA_PKCS,
-		CKM_SHA384_RSA_PKCS,
-		CKM_SHA512_RSA_PKCS,
-		CKM_SHA1_RSA_PKCS_PSS,
-		CKM_SHA224_RSA_PKCS_PSS,
-		CKM_SHA256_RSA_PKCS_PSS,
-		CKM_SHA384_RSA_PKCS_PSS,
-		CKM_SHA512_RSA_PKCS_PSS
+		CKM_SHA256_RSA_PKCS_PSS
 };
 
 
 
 static int isCandidate(unsigned char *atr, size_t atrLen)
 {
-	if ((atrLen == sizeof(atr352_1)) && !memcmp(atr, atr352_1, atrLen))
-		return 1;
-
-	if ((atrLen == sizeof(atr352_2)) && !memcmp(atr, atr352_2, atrLen))
-		return 1;
-
-	if ((atrLen == sizeof(atr35)) && !memcmp(atr, atr35, atrLen))
+	if ((atrLen == sizeof(atr34)) && !memcmp(atr, atr34, atrLen))
 		return 1;
 
 	return 0;
@@ -301,7 +241,7 @@ static void unlock(struct p11Token_t *token)
 
 
 
-static int selectApplication(struct p11Token_t *token)
+static int switchApplication(struct p11Token_t *token, struct starcosApplication *application)
 {
 	int rc, *sa;
 	unsigned short SW1SW2;
@@ -317,12 +257,12 @@ static int selectApplication(struct p11Token_t *token)
 		sa = &sc->selectedApplication;
 	}
 
-	if (sc->application->aidId == *sa) {
+	if (application->aidId == *sa) {
 		return 0;
 	}
 
 	rc = transmitAPDU(token->slot, 0x00, 0xA4, 0x04, 0x0C,
-			sc->application->aid.len, sc->application->aid.val,
+			application->aid.len, application->aid.val,
 			0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {
@@ -333,9 +273,23 @@ static int selectApplication(struct p11Token_t *token)
 		FUNC_FAILS(-1, "Selecting application failed");
 	}
 
-	*sa = sc->application->aidId;
+	*sa = application->aidId;
 
 	FUNC_RETURNS(0);
+}
+
+
+
+static int selectApplication(struct p11Token_t *token)
+{
+	int rc, *sa;
+	unsigned short SW1SW2;
+	struct starcosPrivateData *sc;
+
+	FUNC_CALLED();
+
+	sc = getPrivateData(token);
+	FUNC_RETURNS(switchApplication(token, sc->application));
 }
 
 
@@ -379,7 +333,7 @@ static int readCertEF(struct p11Slot_t *slot, bytestring fid, unsigned char *con
 
 	// Restrict the number of bytes in Le to either the maximum APDU size of STARCOS or
 	// the maximum APDU size of the reader, if any.
-	maxapdu = 1920;
+	maxapdu = 584;
 	if (slot->maxRAPDU && (slot->maxRAPDU < maxapdu))
 		maxapdu = slot->maxRAPDU;
 	maxapdu -= 2;		// Accommodate SW1/SW2
@@ -429,7 +383,7 @@ static int determinePinUseCounter(struct p11Slot_t *slot, unsigned char recref, 
 
 	// Select EF
 	rc = transmitAPDU(slot, 0x00, 0xA4, 0x02, 0x0C,
-			2, (unsigned char *)"\x00\x13",
+			2, (unsigned char *)"\x00\x15",
 			0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {
@@ -461,7 +415,7 @@ static int determinePinUseCounter(struct p11Slot_t *slot, unsigned char recref, 
 	}
 
 	*useCounter = 0;
-	p = asn1Find(rec, "\x30\x7B\xA4\x9F\x22", 4);
+	p = asn1Find(rec, "\x30\x7B\x9F\x22", 3);
 
 	if (p) {
 		asn1Tag(&p);
@@ -528,12 +482,22 @@ static int getAlgorithmIdForSigning(struct p11Token_t *token, CK_MECHANISM_TYPE 
 {
 	switch(mech) {
 	case CKM_RSA_PKCS:
-	case CKM_SHA1_RSA_PKCS:
-	case CKM_SHA224_RSA_PKCS:
-	case CKM_SHA256_RSA_PKCS:
-	case CKM_SHA384_RSA_PKCS:
-	case CKM_SHA512_RSA_PKCS:
 		*algotlv = algo_PKCS15;
+		break;
+	case CKM_SHA1_RSA_PKCS:
+		*algotlv = algo_PKCS15_SHA1;
+		break;
+	case CKM_SHA224_RSA_PKCS:
+		*algotlv = algo_PKCS15_SHA224;
+		break;
+	case CKM_SHA256_RSA_PKCS:
+		*algotlv = algo_PKCS15_SHA256;
+		break;
+	case CKM_SHA384_RSA_PKCS:
+		*algotlv = algo_PKCS15_SHA384;
+		break;
+	case CKM_SHA512_RSA_PKCS:
+		*algotlv = algo_PKCS15_SHA512;
 		break;
 	case CKM_SHA1_RSA_PKCS_PSS:
 		*algotlv = algo_PSS_SHA1;
@@ -621,15 +585,12 @@ static int updatePinStatus(struct p11Token_t *token, int pinstatus)
 		token->info.flags |= CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED;
 	}
 
-	if (token->pinChangeRequired) {
-		token->info.flags |= CKF_USER_PIN_TO_BE_CHANGED;
-	}
-
 	switch(pinstatus) {
 	case 0x9000:
 		rc = CKR_OK;
 		break;
-	case 0x6984:
+	case 0x6985:
+		token->info.flags |= CKF_USER_PIN_TO_BE_CHANGED;
 		rc = CKR_USER_PIN_NOT_INITIALIZED;
 		break;
 	case 0x6983:
@@ -718,9 +679,7 @@ static int digest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned cha
 		}
 
 		while (len > 0) {
-			// Chunk must be aligned to the hash block size
-			// As we support SHA-2 up to 512 we choose 7 * 128 as chunk size
-			chunk = (len > 896 ? 896 : len);
+			chunk = (len > 576 ? 576 : len);
 
 			memcpy(scr, data, chunk);
 			rc = asn1Encap(0x80, scr, chunk);
@@ -1233,6 +1192,11 @@ static int loadObjects(struct p11Token_t *token)
 
 	sc = getPrivateData(token);
 
+	rc = switchApplication(token, &starcosApplications[2]);
+	if (rc != CKR_OK) {
+		FUNC_FAILS(rc, "Could not switch to DF.Certs");
+	}
+
 	for (i = 0; i < sc->application->certsLen; i++) {
 		struct p15CertificateDescription *p15 = &sc->application->certs[i];
 
@@ -1243,6 +1207,8 @@ static int loadObjects(struct p11Token_t *token)
 #endif
 		}
 	}
+
+	selectApplication(token);
 
 	for (i = 0; i < sc->application->privateKeysLen; i++) {
 		struct p15PrivateKeyDescription *p15 = &sc->application->privateKeys[i];
@@ -1578,7 +1544,7 @@ static void freeStarcosToken(struct p11Token_t *token)
  * @param token     Pointer to pointer updated with newly created token structure
  * @return          CKR_OK or any other Cryptoki error code
  */
-int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct p11TokenDriver *drv, struct starcosApplication *application)
+static int createDTrustToken(struct p11Slot_t *slot, struct p11Token_t **token, struct p11TokenDriver *drv, struct starcosApplication *application)
 {
 	struct p11Token_t *ptoken;
 	struct starcosPrivateData *sc;
@@ -1665,7 +1631,7 @@ int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct
 
 
 
-struct p11TokenDriver *getStarcosTokenDriver();
+struct p11TokenDriver *getDTrustTokenDriver();
 
 /**
  * Create a new STARCOS token if token detection and initialization is successful
@@ -1674,7 +1640,7 @@ struct p11TokenDriver *getStarcosTokenDriver();
  * @param token     Pointer to pointer updated with newly created token structure
  * @return          CKR_OK or any other Cryptoki error code
  */
-static int newStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token)
+static int newDTrustToken(struct p11Slot_t *slot, struct p11Token_t **token)
 {
 	struct p11Token_t *ptoken;
 	struct p11TokenDriver *drv;
@@ -1683,8 +1649,8 @@ static int newStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 	FUNC_CALLED();
 
-	drv = getStarcosTokenDriver();
-	rc = createStarcosToken(slot, &ptoken, drv, &starcosApplications[STARCOS_EUSERPKI]);
+	drv = getDTrustTokenDriver();
+	rc = createDTrustToken(slot, &ptoken, drv, &starcosApplications[0]);
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Base token creation failed");
 
@@ -1702,23 +1668,7 @@ static int newStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Virtual slot creation failed");
 
-	rc = createStarcosToken(vslot, &ptoken, drv, &starcosApplications[STARCOS_ESIGN1]);
-	if (rc != CKR_OK)
-		FUNC_FAILS(rc, "Token creation failed");
-
-	if (vslot->hasFeatureVerifyPINDirect)
-		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
-
-	rc = addToken(vslot, ptoken);
-	if (rc != CKR_OK)
-		FUNC_FAILS(rc, "addToken() failed");
-
-
-	getVirtualSlot(slot, 1, &vslot);
-	if (rc != CKR_OK)
-		FUNC_FAILS(rc, "Virtual slot creation failed");
-
-	rc = createStarcosToken(vslot, &ptoken, drv, &starcosApplications[STARCOS_ESIGN2]);
+	rc = createDTrustToken(vslot, &ptoken, drv, &starcosApplications[1]);
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Token creation failed");
 
@@ -1769,19 +1719,8 @@ static int getMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
 	case CKM_RSA_PKCS:
 		pInfo->flags = CKF_SIGN|CKF_DECRYPT;
 		break;
-	case CKM_RSA_PKCS_OAEP:
-		pInfo->flags = CKF_DECRYPT;
-		break;
 	case CKM_SHA1_RSA_PKCS:
-	case CKM_SHA224_RSA_PKCS:
-	case CKM_SHA256_RSA_PKCS:
-	case CKM_SHA384_RSA_PKCS:
-	case CKM_SHA512_RSA_PKCS:
-	case CKM_SHA1_RSA_PKCS_PSS:
-	case CKM_SHA224_RSA_PKCS_PSS:
 	case CKM_SHA256_RSA_PKCS_PSS:
-	case CKM_SHA384_RSA_PKCS_PSS:
-	case CKM_SHA512_RSA_PKCS_PSS:
 		pInfo->flags = CKF_SIGN;
 		break;
 
@@ -1797,12 +1736,12 @@ static int getMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
 
 
 
-struct p11TokenDriver *getStarcosTokenDriver()
+struct p11TokenDriver *getDTrustTokenDriver()
 {
-	static struct p11TokenDriver starcos_token = {
-		"3.5 ID ECC C1",
+	static struct p11TokenDriver token = {
+		"3.4 QES C1 DTR",
 		isCandidate,
-		newStarcosToken,
+		newDTrustToken,
 		freeStarcosToken,
 		getMechanismList,
 		getMechanismInfo,
@@ -1812,5 +1751,5 @@ struct p11TokenDriver *getStarcosTokenDriver()
 		setpin
 	};
 
-	return &starcos_token;
+	return &token;
 }

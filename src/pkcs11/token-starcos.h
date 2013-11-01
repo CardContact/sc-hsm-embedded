@@ -36,18 +36,32 @@
 
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/p11generic.h>
+#include <pkcs11/bytestring.h>
 
 #define STARCOS_ESIGN1          0
 #define STARCOS_ESIGN2          1
 #define STARCOS_EUSERPKI        2
 #define STARCOS_DEFAULT         STARCOS_EUSERPKI
 
+
+struct starcosApplication {
+	char *name;
+	struct bytestring_s aid;
+	int aidId;
+	unsigned char pinref;
+	int qESKeyDRec;
+	struct p15PrivateKeyDescription *privateKeys;
+	size_t privateKeysLen;
+	struct p15CertificateDescription *certs;
+	size_t certsLen;
+};
+
 struct starcosPrivateData {
-	int                 application;
-	int                 selectedApplication;
-	unsigned char       *publickeys[256];
-	void                *mutex;
-	unsigned char       sopin[8];
+	struct starcosApplication   *application;
+	int                         selectedApplication;
+	unsigned char               *publickeys[256];
+	void                        *mutex;
+	unsigned char               sopin[8];
 };
 
 #endif /* ___TOKEN_STARCOS_H_INC___ */

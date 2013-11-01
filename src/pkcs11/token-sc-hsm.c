@@ -1153,7 +1153,7 @@ static int sc_hsm_setpin(struct p11Slot_t *slot, unsigned char *oldpin, int oldp
 
 
 
-struct p11TokenDriver sc_hsm_token;
+struct p11TokenDriver *getSmartCardHSMTokenDriver();
 
 /**
  * Create a new SmartCard-HSM token if token detection and initialization is successful
@@ -1214,7 +1214,7 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
 
 	ptoken->user = 0xFF;
-	ptoken->drv = &sc_hsm_token;
+	ptoken->drv = getSmartCardHSMTokenDriver();
 
 	updatePinStatus(ptoken, pinstatus);
 
@@ -1294,15 +1294,20 @@ static int getMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
 
 
 
-struct p11TokenDriver sc_hsm_token = {
-	"SmartCard-HSM",
-	isCandidate,
-	newSmartCardHSMToken,
-	NULL,
-	getMechanismList,
-	getMechanismInfo,
-	sc_hsm_login,
-	sc_hsm_logout,
-	sc_hsm_initpin,
-	sc_hsm_setpin
-};
+struct p11TokenDriver *getSmartCardHSMTokenDriver()
+{
+	static struct p11TokenDriver sc_hsm_token = {
+		"SmartCard-HSM",
+		isCandidate,
+		newSmartCardHSMToken,
+		NULL,
+		getMechanismList,
+		getMechanismInfo,
+		sc_hsm_login,
+		sc_hsm_logout,
+		sc_hsm_initpin,
+		sc_hsm_setpin
+	};
+
+	return &sc_hsm_token;
+}

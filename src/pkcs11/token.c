@@ -51,11 +51,17 @@
 
 extern struct p11Context_t *context;
 
-extern struct p11TokenDriver sc_hsm_token;
-extern struct p11TokenDriver starcos_token;
+extern struct p11TokenDriver *getSmartCardHSMTokenDriver();
+extern struct p11TokenDriver *getStarcosTokenDriver();
+extern struct p11TokenDriver *getDTrustTokenDriver();
 
-static struct p11TokenDriver *tokenDriver[] = {
-		&sc_hsm_token, &starcos_token, NULL
+typedef struct p11TokenDriver *(*tokenDriver_t)();
+
+static tokenDriver_t tokenDriver[] = {
+		getSmartCardHSMTokenDriver,
+		getStarcosTokenDriver,
+		getDTrustTokenDriver,
+		NULL
 };
 
 
@@ -352,13 +358,15 @@ int setPIN(struct p11Slot_t *slot, CK_UTF8CHAR_PTR pOldPin, CK_ULONG ulOldPinLen
 int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p11Token_t **token)
 {
 	int rc;
-	struct p11TokenDriver **drv;
+	tokenDriver_t *t;
+	struct p11TokenDriver *drv;
 
 	FUNC_CALLED();
 
-	for (drv = tokenDriver; *drv != NULL; drv++) {
-		if (((*drv)->isCandidate)(atr, atrlen)) {
-			rc = (*drv)->newToken(slot, token);
+	for (t = tokenDriver; *t != NULL; t++) {
+		drv = (*t)();
+		if (drv->isCandidate(atr, atrlen)) {
+			rc = drv->newToken(slot, token);
 			if (rc == CKR_OK)
 				FUNC_RETURNS(rc);
 
@@ -367,8 +375,9 @@ int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p
 		}
 	}
 
-	for (drv = tokenDriver; *drv != NULL; drv++) {
-		rc = (*drv)->newToken(slot, token);
+	for (t = tokenDriver; *t != NULL; t++) {
+		drv = (*t)();
+		rc = drv->newToken(slot, token);
 		if (rc == CKR_OK)
 			FUNC_RETURNS(rc);
 
