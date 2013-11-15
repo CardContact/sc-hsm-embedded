@@ -64,4 +64,7 @@ struct starcosPrivateData {
 	unsigned char               sopin[8];
 };
 
+int encodeF2B(unsigned char *pin, int pinlen, unsigned char *f2b);
+int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct p11TokenDriver *drv, struct starcosApplication *application);
+
 #endif /* ___TOKEN_STARCOS_H_INC___ */

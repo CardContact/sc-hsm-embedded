@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
+#include <string.h>
 #include <ctccid/ctapi.h>
 #include "utils.h"
 #include "sc-hsm-ultralite.h"

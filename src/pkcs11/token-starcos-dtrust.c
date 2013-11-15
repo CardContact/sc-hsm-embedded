@@ -26,7 +26,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @file    token-starcos.c
+ * @file    token-starcos-dtrust.c
  * @author  Andreas Schwier
  * @brief   Token implementation for a Starcos 3.4 QES C1 based card with D-Trust Profile
  */
@@ -161,23 +161,9 @@ static struct starcosApplication starcosApplications[] = {
 
 
 static unsigned char algo_PKCS15[] =           { 0x89, 0x02, 0x13, 0x23 };
-static unsigned char algo_PKCS15_SHA1[] =      { 0x89, 0x03, 0x13, 0x23 ,0x10 };
-static unsigned char algo_PKCS15_SHA224[] =    { 0x89, 0x03, 0x13, 0x23 ,0x60 };
-static unsigned char algo_PKCS15_SHA256[] =    { 0x89, 0x03, 0x13, 0x23 ,0x30 };
-static unsigned char algo_PKCS15_SHA384[] =    { 0x89, 0x03, 0x13, 0x23 ,0x40 };
-static unsigned char algo_PKCS15_SHA512[] =    { 0x89, 0x03, 0x13, 0x23 ,0x50 };
-static unsigned char algo_PSS_SHA1[] =         { 0x89, 0x03, 0x13, 0x33, 0x10 };
-static unsigned char algo_PSS_SHA224[] =       { 0x89, 0x03, 0x13, 0x33, 0x60 };
 static unsigned char algo_PSS_SHA256[] =       { 0x89, 0x03, 0x13, 0x33, 0x30 };
-static unsigned char algo_PSS_SHA384[] =       { 0x89, 0x03, 0x13, 0x33, 0x40 };
-static unsigned char algo_PSS_SHA512[] =       { 0x89, 0x03, 0x13, 0x33, 0x50 };
-static unsigned char algo_SHA1[] =             { 0x89, 0x02, 0x14, 0x10 };
-static unsigned char algo_SHA224[] =           { 0x89, 0x02, 0x14, 0x60 };
 static unsigned char algo_SHA256[] =           { 0x89, 0x02, 0x14, 0x30 };
-static unsigned char algo_SHA384[] =           { 0x89, 0x02, 0x14, 0x40 };
-static unsigned char algo_SHA512[] =           { 0x89, 0x02, 0x14, 0x50 };
 static unsigned char algo_PKCS15_DECRYPT[] =   { 0x89, 0x02, 0x11, 0x30 };
-static unsigned char algo_OAEP_DECRYPT[] =     { 0x89, 0x02, 0x11, 0x32 };
 
 
 static const CK_MECHANISM_TYPE p11MechanismList[] = {
@@ -461,21 +447,13 @@ static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 {
 	switch(mech) {
 	case CKM_RSA_PKCS:
-	case CKM_SHA1_RSA_PKCS:
-	case CKM_SHA224_RSA_PKCS:
-	case CKM_SHA256_RSA_PKCS:
-	case CKM_SHA384_RSA_PKCS:
-	case CKM_SHA512_RSA_PKCS:
-	case CKM_SHA1_RSA_PKCS_PSS:
-	case CKM_SHA224_RSA_PKCS_PSS:
 	case CKM_SHA256_RSA_PKCS_PSS:
-	case CKM_SHA384_RSA_PKCS_PSS:
-	case CKM_SHA512_RSA_PKCS_PSS:
 		return pObject->keysize >> 3;
 	default:
 		return -1;
 	}
 }
+
 
 
 static int getAlgorithmIdForSigning(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned char **algotlv)
@@ -484,35 +462,8 @@ static int getAlgorithmIdForSigning(struct p11Token_t *token, CK_MECHANISM_TYPE 
 	case CKM_RSA_PKCS:
 		*algotlv = algo_PKCS15;
 		break;
-	case CKM_SHA1_RSA_PKCS:
-		*algotlv = algo_PKCS15_SHA1;
-		break;
-	case CKM_SHA224_RSA_PKCS:
-		*algotlv = algo_PKCS15_SHA224;
-		break;
-	case CKM_SHA256_RSA_PKCS:
-		*algotlv = algo_PKCS15_SHA256;
-		break;
-	case CKM_SHA384_RSA_PKCS:
-		*algotlv = algo_PKCS15_SHA384;
-		break;
-	case CKM_SHA512_RSA_PKCS:
-		*algotlv = algo_PKCS15_SHA512;
-		break;
-	case CKM_SHA1_RSA_PKCS_PSS:
-		*algotlv = algo_PSS_SHA1;
-		break;
-	case CKM_SHA224_RSA_PKCS_PSS:
-		*algotlv = algo_PSS_SHA224;
-		break;
 	case CKM_SHA256_RSA_PKCS_PSS:
 		*algotlv = algo_PSS_SHA256;
-		break;
-	case CKM_SHA384_RSA_PKCS_PSS:
-		*algotlv = algo_PSS_SHA384;
-		break;
-	case CKM_SHA512_RSA_PKCS_PSS:
-		*algotlv = algo_PSS_SHA512;
 		break;
 	default:
 		return CKR_MECHANISM_INVALID;
@@ -526,25 +477,8 @@ static int getAlgorithmIdForSigning(struct p11Token_t *token, CK_MECHANISM_TYPE 
 static int getAlgorithmIdForDigest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned char **algotlv)
 {
 	switch(mech) {
-	case CKM_SHA1_RSA_PKCS:
-	case CKM_SHA1_RSA_PKCS_PSS:
-		*algotlv = algo_SHA1;
-		break;
-	case CKM_SHA224_RSA_PKCS:
-	case CKM_SHA224_RSA_PKCS_PSS:
-		*algotlv = algo_SHA224;
-		break;
-	case CKM_SHA256_RSA_PKCS:
 	case CKM_SHA256_RSA_PKCS_PSS:
 		*algotlv = algo_SHA256;
-		break;
-	case CKM_SHA384_RSA_PKCS:
-	case CKM_SHA384_RSA_PKCS_PSS:
-		*algotlv = algo_SHA384;
-		break;
-	case CKM_SHA512_RSA_PKCS:
-	case CKM_SHA512_RSA_PKCS_PSS:
-		*algotlv = algo_SHA512;
 		break;
 	default:
 		return CKR_MECHANISM_INVALID;
@@ -560,9 +494,6 @@ static int getAlgorithmIdForDecryption(CK_MECHANISM_TYPE mech, unsigned char **a
 	switch(mech) {
 	case CKM_RSA_PKCS:
 		*algotlv = algo_PKCS15_DECRYPT;
-		break;
-	case CKM_RSA_PKCS_OAEP:
-		*algotlv = algo_OAEP_DECRYPT;
 		break;
 	default:
 		return CKR_MECHANISM_INVALID;
@@ -1135,7 +1066,6 @@ static int addPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDes
 
 	useAA = (p15->usage & P15_NONREPUDIATION) && (token->pinUseCounter == 1);
 
-//	template[3].pValue = useAA ? &false : &true;
 	template[12].pValue = useAA ? &true : &false;
 
 	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE) - 2;
@@ -1226,317 +1156,6 @@ static int loadObjects(struct p11Token_t *token)
 
 
 
-static int encodeF2B(unsigned char *pin, int pinlen, unsigned char *f2b)
-{
-	unsigned char *po;
-	int i;
-
-	FUNC_CALLED();
-
-	if ((pinlen <= 4) || (pinlen > 14)) {
-		FUNC_FAILS(CKR_PIN_LEN_RANGE, "PIN length must be between 4 and 14");
-	}
-
-	memset(f2b, 0xFF, 8);
-	f2b[0] = 0x20 | pinlen;
-
-	po = f2b + 1;
-	for (i = 0; i < pinlen; i++) {
-		if ((*pin < '0') || (*pin > '9')) {
-			FUNC_FAILS(CKR_ARGUMENTS_BAD, "PIN must be numeric");
-		}
-		if (i & 1) {
-			*po = (*po & 0xF0) | (*pin & 0x0F);
-			po++;
-		} else {
-			*po = (*po & 0x0F) | ((*pin & 0x0F) << 4);
-		}
-		pin++;
-	}
-	return CKR_OK;
-}
-
-
-
-/**
- * Perform PIN verification and make private objects visible
- *
- * @param slot      The slot in which the token is inserted
- * @param userType  One of CKU_SO or CKU_USER
- * @param pin       Pointer to PIN value or NULL is PIN shall be verified using PIN-Pad
- * @param pinLen    The length of the PIN supplied in pin
- * @return          CKR_OK or any other Cryptoki error code
- */
-static int login(struct p11Slot_t *slot, int userType, unsigned char *pin, int pinlen)
-{
-	int rc = CKR_OK;
-	unsigned short SW1SW2;
-	unsigned char f2b[8];
-	struct starcosPrivateData *sc;
-
-	FUNC_CALLED();
-
-	lock(slot->token);
-	if (!slot->token) {
-		FUNC_RETURNS(CKR_DEVICE_REMOVED);
-	}
-
-	rc = selectApplication(slot->token);
-	if (rc < 0) {
-		unlock(slot->token);
-		FUNC_FAILS(rc, "selecting application failed");
-	}
-
-	sc = getPrivateData(slot->token);
-
-	if (userType == CKU_SO) {
-		rc = encodeF2B(pin, pinlen, sc->sopin);
-
-		if (rc != CKR_OK) {
-			unlock(slot->token);
-			FUNC_FAILS(rc, "Could not encode PIN");
-		}
-	} else {
-
-		if (slot->hasFeatureVerifyPINDirect && !pinlen && !pin) {
-#ifdef DEBUG
-			debug("Verify PIN using CKF_PROTECTED_AUTHENTICATION_PATH\n");
-#endif
-			memset(f2b, 0xFF, 8);
-			f2b[0] = 0x20;
-
-			rc = transmitVerifyPinAPDU(slot, 0x00, 0x20, 0x00, sc->application->pinref,
-					8, f2b,
-					&SW1SW2,
-					PIN_SYSTEM_UNIT_BYTES + PIN_POSITION_1 + PIN_LEFT_JUSTIFICATION + PIN_FORMAT_BCD, /* bmFormatString */
-					0x06, 0x0F, /* Minimum and maximum length of PIN */
-					0x47, /* bmPINBlockString: inserted PIN length is 4 bits, 7 bytes PIN block*/
-					0x04 /* bmPINLengthFormat: system units are bits, PIN length position is 4 bits*/
-					);
-		} else {
-#ifdef DEBUG
-			debug("Verify PIN using provided PIN value\n");
-#endif
-			rc = encodeF2B(pin, pinlen, f2b);
-
-			if (rc != CKR_OK) {
-				unlock(slot->token);
-				FUNC_FAILS(rc, "Could not encode PIN");
-			}
-
-			rc = transmitAPDU(slot, 0x00, 0x20, 0x00, sc->application->pinref,
-					8, f2b,
-					0, NULL, 0, &SW1SW2);
-		}
-
-
-		if (rc < 0) {
-			unlock(slot->token);
-			FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
-		}
-
-		rc = updatePinStatus(slot->token, SW1SW2);
-
-		if (rc != CKR_OK) {
-			unlock(slot->token);
-			FUNC_FAILS(rc, "login failed");
-		}
-	}
-
-	unlock(slot->token);
-	FUNC_RETURNS(CKR_OK);
-}
-
-
-
-/**
- * Initialize user pin in SO session
- *
- * @param slot      The slot in which the token is inserted
- * @param pin       Pointer to PIN value or NULL if PIN shall be verified using PIN-Pad
- * @param pinLen    The length of the PIN supplied in pin
- * @return          CKR_OK or any other Cryptoki error code
- */
-static int initpin(struct p11Slot_t *slot, unsigned char *pin, int pinlen)
-{
-	int rc = CKR_OK;
-	unsigned short SW1SW2;
-	unsigned char data[16], pinref;
-	struct starcosPrivateData *sc;
-
-	FUNC_CALLED();
-
-	if (pinlen) {
-		rc = encodeF2B(pin, pinlen, data + 8);
-
-		if (rc != CKR_OK) {
-			FUNC_FAILS(rc, "Could not encode PIN");
-		}
-	}
-
-	lock(slot->token);
-	if (!slot->token) {
-		FUNC_RETURNS(CKR_DEVICE_REMOVED);
-	}
-
-	rc = selectApplication(slot->token);
-	if (rc < 0) {
-		unlock(slot->token);
-		FUNC_FAILS(rc, "selecting application failed");
-	}
-
-	sc = getPrivateData(slot->token);
-	memcpy(data, sc->sopin, sizeof(sc->sopin));
-	pinref = sc->application->pinref;
-
-#ifdef DEBUG
-	debug("Init PIN using provided PIN value\n");
-#endif
-	if (pin) {
-		rc = transmitAPDU(slot, 0x00, 0x2C, 0x00, pinref,
-				sizeof(data), data,
-				0, NULL, 0, &SW1SW2);
-	} else {
-		rc = transmitAPDU(slot, 0x00, 0x2C, 0x01, pinref,
-				sizeof(sc->sopin), data,
-				0, NULL, 0, &SW1SW2);
-	}
-	if (rc < 0) {
-		unlock(slot->token);
-		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
-	}
-
-	if (SW1SW2 == 0x6982) {
-		unlock(slot->token);
-		FUNC_FAILS(CKR_KEY_FUNCTION_NOT_PERMITTED, "Function not allowed");
-	}
-
-	if (SW1SW2 != 0x9000) {
-		unlock(slot->token);
-		FUNC_FAILS(CKR_PIN_INCORRECT, "Invalid SO-PIN");
-	}
-
-	rc = checkPINStatus(slot, pinref);
-
-	if (rc < 0) {
-		unlock(slot->token);
-		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
-	}
-
-	updatePinStatus(slot->token, rc);
-
-	unlock(slot->token);
-	FUNC_RETURNS(CKR_OK);
-}
-
-
-
-/**
- * Change PIN in User or SO session
- *
- * @param slot      The slot in which the token is inserted
- * @param oldpin    Pointer to PIN value or NULL if PIN shall be verified using PIN-Pad
- * @param oldpinLen The length of the PIN supplied in oldpin
- * @param newpin    Pointer to PIN value or NULL if PIN shall be verified using PIN-Pad
- * @param newpinLen The length of the PIN supplied in newpin
- * @return          CKR_OK or any other Cryptoki error code
- */
-static int setpin(struct p11Slot_t *slot, unsigned char *oldpin, int oldpinlen, unsigned char *newpin, int newpinlen)
-{
-	int rc = CKR_OK, len;
-	unsigned short SW1SW2;
-	unsigned char data[16], p2;
-	struct starcosPrivateData *sc;
-
-	FUNC_CALLED();
-
-	if (slot->token->user == CKU_SO) {
-		FUNC_FAILS(CKR_USER_TYPE_INVALID, "User not logged in");
-	}
-
-	rc = encodeF2B(oldpin, oldpinlen, data);
-
-	if (rc != CKR_OK) {
-		FUNC_FAILS(rc, "Could not encode OldPIN");
-	}
-
-	rc = encodeF2B(newpin, newpinlen, data + 8);
-
-	if (rc != CKR_OK) {
-		FUNC_FAILS(rc, "Could not encode NewPIN");
-	}
-
-	lock(slot->token);
-	if (!slot->token) {
-		FUNC_RETURNS(CKR_DEVICE_REMOVED);
-	}
-
-	rc = selectApplication(slot->token);
-	if (rc < 0) {
-		unlock(slot->token);
-		FUNC_FAILS(rc, "selecting application failed");
-	}
-
-	sc = getPrivateData(slot->token);
-
-#ifdef DEBUG
-	debug("Set PIN using provided PIN value\n");
-#endif
-	rc = transmitAPDU(slot, 0x00, 0x24, 0x00, sc->application->pinref,
-		sizeof(data), data,
-		0, NULL, 0, &SW1SW2);
-
-	if (rc < 0) {
-		unlock(slot->token);
-		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
-	}
-
-	if (slot->token->user == CKU_SO) {
-		if (SW1SW2 != 0x9000) {
-			unlock(slot->token);
-			FUNC_FAILS(CKR_PIN_INCORRECT, "Incorrect old SO-PIN");
-		}
-	} else {
-		slot->token->pinChangeRequired = FALSE;
-		rc = updatePinStatus(slot->token, SW1SW2);
-	}
-
-	unlock(slot->token);
-	FUNC_RETURNS(rc);
-}
-
-
-
-/**
- * Starcos does not support a deauthentication for the User PIN
- *
- * @param slot      The slot in which the token is inserted
- * @return          CKR_OK or any other Cryptoki error code
- */
-static int logout(struct p11Slot_t *slot)
-{
-	struct starcosPrivateData *sc;
-
-	FUNC_CALLED();
-
-	sc = getPrivateData(slot->token);
-	memset(sc->sopin, 0, sizeof(sc->sopin));
-
-	FUNC_RETURNS(CKR_OK);
-}
-
-
-
-static void freeStarcosToken(struct p11Token_t *token)
-{
-	struct starcosPrivateData *sc;
-
-	sc = getPrivateData(token);
-	p11DestroyMutex(sc->mutex);
-}
-
-
-
 /**
  * Create a new STARCOS token if token detection and initialization is successful
  *
@@ -1587,7 +1206,7 @@ static int createDTrustToken(struct p11Slot_t *slot, struct p11Token_t **token, 
 	rc = selectApplication(ptoken);
 
 	if (rc < 0) {
-		freeStarcosToken(ptoken);
+		drv->freeToken(ptoken);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Application not found on token");
 	}
 
@@ -1596,7 +1215,7 @@ static int createDTrustToken(struct p11Slot_t *slot, struct p11Token_t **token, 
 		rc = determinePinUseCounter(slot, sc->application->qESKeyDRec, &ptoken->pinUseCounter, &lc);
 
 		if (rc < 0) {
-			freeStarcosToken(ptoken);
+			drv->freeToken(ptoken);
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Error querying PIN key use counter");
 		}
 
@@ -1611,14 +1230,14 @@ static int createDTrustToken(struct p11Slot_t *slot, struct p11Token_t **token, 
 	rc = loadObjects(ptoken);
 
 	if (rc < 0) {
-		freeStarcosToken(ptoken);
+		drv->freeToken(ptoken);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error loading objects from token");
 	}
 
 	rc = checkPINStatus(slot, sc->application->pinref);
 
 	if (rc < 0) {
-		freeStarcosToken(ptoken);
+		drv->freeToken(ptoken);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error querying PIN status");
 	}
 
@@ -1736,20 +1355,19 @@ static int getMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
 
 
 
+struct p11TokenDriver *getStarcosTokenDriver();
+
 struct p11TokenDriver *getDTrustTokenDriver()
 {
-	static struct p11TokenDriver token = {
-		"3.4 QES C1 DTR",
-		isCandidate,
-		newDTrustToken,
-		freeStarcosToken,
-		getMechanismList,
-		getMechanismInfo,
-		login,
-		logout,
-		initpin,
-		setpin
-	};
+	static struct p11TokenDriver token;
+
+	token = *getStarcosTokenDriver();
+
+	token.name = "3.4 QES C1 DTR";
+	token.isCandidate = isCandidate;
+	token.newToken = newDTrustToken,
+	token.getMechanismList = getMechanismList;
+	token.getMechanismInfo = getMechanismInfo;
 
 	return &token;
 }
