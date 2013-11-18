@@ -496,6 +496,7 @@ int lockSlot(struct p11Slot_t *slot)
 #else
 	rc = lockPCSCSlot(pslot);
 #endif
+	return rc;
 }
 
 
@@ -517,6 +518,7 @@ int unlockSlot(struct p11Slot_t *slot)
 #else
 	rc = unlockPCSCSlot(pslot);
 #endif
+	return rc;
 }
 
 

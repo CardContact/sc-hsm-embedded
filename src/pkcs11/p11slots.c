@@ -37,6 +37,7 @@
 #include <pkcs11/session.h>
 #include <pkcs11/slotpool.h>
 #include <pkcs11/slot.h>
+#include <pkcs11/token.h>
 #include <pkcs11/debug.h>
 
 extern struct p11Context_t *context;

@@ -285,7 +285,7 @@ static int determinePinUseCounter(struct p11Slot_t *slot, unsigned char recref, 
 	}
 
 	*useCounter = 0;
-	p = asn1Find(rec, "\x30\x7B\xA4\x9F\x22", 4);
+	p = asn1Find(rec, (unsigned char *)"\x30\x7B\xA4\x9F\x22", 4);
 
 	if (p) {
 		asn1Tag(&p);
@@ -294,7 +294,7 @@ static int determinePinUseCounter(struct p11Slot_t *slot, unsigned char recref, 
 		*useCounter = (*p == 0xFF ? 0 : *p);
 	}
 
-	p = asn1Find(rec, "\x30\x8A", 2);
+	p = asn1Find(rec, (unsigned char *)"\x30\x8A", 2);
 
 	if (p) {
 		asn1Tag(&p);
@@ -587,7 +587,6 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 	int rc, len, signaturelen;
 	unsigned short SW1SW2;
 	unsigned char scr[256],*s, *d;
-	struct starcosPrivateData *sc;
 	struct p11Slot_t *slot;
 
 	FUNC_CALLED();
@@ -1300,9 +1299,9 @@ static int initpin(struct p11Slot_t *slot, unsigned char *pin, int pinlen)
  */
 static int setpin(struct p11Slot_t *slot, unsigned char *oldpin, int oldpinlen, unsigned char *newpin, int newpinlen)
 {
-	int rc = CKR_OK, len;
+	int rc = CKR_OK;
 	unsigned short SW1SW2;
-	unsigned char data[16], p2;
+	unsigned char data[16];
 	struct starcosPrivateData *sc;
 
 	FUNC_CALLED();

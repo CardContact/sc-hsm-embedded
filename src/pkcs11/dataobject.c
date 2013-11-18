@@ -44,12 +44,12 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 
 #endif
 
-#define NEEDED_ATTRIBUTES_DATAOBJECT   3
 
 static struct attributesForObject_t attributesDataObject[] = {
-		{{CKA_APPLICATION, 0, 0}, TRUE},
-		{{CKA_OBJECT_ID, NULL, 0}, TRUE},
-		{{CKA_VALUE, NULL, 0}, FALSE}
+		{{CKA_APPLICATION, 0, 0}, DEFAULT },
+		{{CKA_OBJECT_ID, NULL, 0}, DEFAULT },
+		{{CKA_VALUE, NULL, 0}, MANDATORY },
+		{{0, NULL, 0}, DEFAULT }
 };
 
 
@@ -59,8 +59,7 @@ static struct attributesForObject_t attributesDataObject[] = {
  */
 int createDataObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject)
 {
-	unsigned int i;
-	int index, rc;
+	int rc;
 
 	rc = createStorageObject(pTemplate, ulCount, pObject);
 
@@ -68,25 +67,11 @@ int createDataObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Obj
 		return rc;
 	}
 
-	for (i = 0; i < NEEDED_ATTRIBUTES_DATAOBJECT; i++) {
-		index = findAttributeInTemplate(attributesDataObject[i].attribute.type, pTemplate, ulCount);
-
-		if (index == -1) { /* The attribute is not present - is it optional? */
-			if (attributesDataObject[i].optional) {
-				addAttribute(pObject, &attributesDataObject[i].attribute);
-			} else { /* the attribute is not optional */
-				removeAllAttributes(pObject);
-				memset(pObject, 0x00, sizeof(*pObject));
-				return CKR_TEMPLATE_INCOMPLETE;
-			}
-		} else {
-			addAttribute(pObject, &pTemplate[index]);
-		}
-	}
+	rc = copyObjectAttributes(pTemplate, ulCount, pObject, attributesDataObject);
 
 #ifdef DEBUG
 	dumpAttributeList(pObject);
 #endif
 
-	return 0;
+	return rc;
 }

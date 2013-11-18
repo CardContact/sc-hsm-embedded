@@ -46,22 +46,20 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 
 extern CK_BBOOL ckFalse;
 
-#define NEEDED_ATTRIBUTES_PUBLICKEYOBJECT   13
-
-static struct attributesForObject_t attributesPublicKeyObject[NEEDED_ATTRIBUTES_PUBLICKEYOBJECT] = {
-		{{CKA_SUBJECT, 0, 0}, TRUE},
-		{{CKA_ENCRYPT, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_VERIFY, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_VERIFY_RECOVER, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_WRAP, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_TRUSTED, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_WRAP_TEMPLATE, 0, 0}, TRUE},
-		{{CKA_ALWAYS_AUTHENTICATE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_MODULUS, 0, 0}, TRUE},
-		{{CKA_MODULUS_BITS, 0, 0}, TRUE},
-		{{CKA_PUBLIC_EXPONENT, 0, 0}, TRUE},
-		{{CKA_EC_PARAMS, 0, 0}, TRUE},
-		{{CKA_EC_POINT, 0, 0}, TRUE}
+static struct attributesForObject_t attributesPublicKeyObject[] = {
+		{{CKA_SUBJECT, NULL, 0}, DEFAULT},
+		{{CKA_ENCRYPT, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_VERIFY, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_VERIFY_RECOVER, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_WRAP, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_TRUSTED, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_WRAP_TEMPLATE, 0, 0}, OPTIONAL},
+		{{CKA_MODULUS, 0, 0}, OPTIONAL},
+		{{CKA_MODULUS_BITS, 0, 0}, OPTIONAL},
+		{{CKA_PUBLIC_EXPONENT, 0, 0}, OPTIONAL},
+		{{CKA_EC_PARAMS, 0, 0}, OPTIONAL},
+		{{CKA_EC_POINT, 0, 0}, OPTIONAL},
+		{{0, NULL, 0}, DEFAULT }
 };
 
 
@@ -70,8 +68,7 @@ static struct attributesForObject_t attributesPublicKeyObject[NEEDED_ATTRIBUTES_
  */
 int createPublicKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject)
 {
-	unsigned int i;
-	int index, rc;
+	int rc;
 
 	rc = createKeyObject(pTemplate, ulCount, pObject);
 
@@ -79,25 +76,11 @@ int createPublicKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p
 		return rc;
 	}
 
-	for (i = 0; i < NEEDED_ATTRIBUTES_PUBLICKEYOBJECT; i++) {
-		index = findAttributeInTemplate(attributesPublicKeyObject[i].attribute.type, pTemplate, ulCount);
-
-		if (index == -1) { /* The attribute is not present - is it optional? */
-			if (attributesPublicKeyObject[i].optional) {
-				addAttribute(pObject, &attributesPublicKeyObject[i].attribute);
-			} else { /* the attribute is not optional */
-				removeAllAttributes(pObject);
-				memset(pObject, 0x00, sizeof(*pObject));
-				return CKR_TEMPLATE_INCOMPLETE;
-			}
-		} else {
-			addAttribute(pObject, &pTemplate[index]);
-		}
-	}
+	rc = copyObjectAttributes(pTemplate, ulCount, pObject, attributesPublicKeyObject);
 
 #ifdef DEBUG
 	dumpAttributeList(pObject);
 #endif
 
-	return 0;
+	return rc;
 }

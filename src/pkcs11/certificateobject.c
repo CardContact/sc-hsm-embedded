@@ -45,12 +45,11 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 
 #endif
 
-#define NEEDED_ATTRIBUTES_CERTIFICATEOBJECT   3
-
-static struct attributesForObject_t attributesCertificateObject[NEEDED_ATTRIBUTES_CERTIFICATEOBJECT] = {
-		{{CKA_CERTIFICATE_TYPE, NULL, 0}, FALSE},
-		{{CKA_ID, NULL, 0}, TRUE},
-		{{CKA_VALUE, NULL, 0}, FALSE}
+static struct attributesForObject_t attributesCertificateObject[] = {
+		{{CKA_CERTIFICATE_TYPE, NULL, 0}, MANDATORY},
+		{{CKA_ID, NULL, 0}, OPTIONAL},
+		{{CKA_VALUE, NULL, 0}, MANDATORY},
+		{{0, NULL, 0}, DEFAULT }
 };
 
 
@@ -60,8 +59,7 @@ static struct attributesForObject_t attributesCertificateObject[NEEDED_ATTRIBUTE
  */
 int createCertificateObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject)
 {
-	unsigned int i;
-	int index, rc;
+	int rc;
 
 	rc = createStorageObject(pTemplate, ulCount, pObject);
 
@@ -69,27 +67,13 @@ int createCertificateObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct
 		return rc;
 	}
 
-	for (i = 0; i < NEEDED_ATTRIBUTES_CERTIFICATEOBJECT; i++) {
-		index = findAttributeInTemplate(attributesCertificateObject[i].attribute.type, pTemplate, ulCount);
-
-		if (index == -1) { /* The attribute is not present - is it optional? */
-			if (attributesCertificateObject[i].optional) {
-				addAttribute(pObject, &attributesCertificateObject[i].attribute);
-			} else { /* the attribute is not optional */
-				removeAllAttributes(pObject);
-				memset(pObject, 0x00, sizeof(*pObject));
-				return CKR_TEMPLATE_INCOMPLETE;
-			}
-		} else {
-			addAttribute(pObject, &pTemplate[index]);
-		}
-	}
+	rc = copyObjectAttributes(pTemplate, ulCount, pObject, attributesCertificateObject);
 
 #ifdef DEBUG
 	dumpAttributeList(pObject);
 #endif
 
-	return 0;
+	return rc;
 }
 
 

@@ -46,24 +46,23 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 
 extern CK_BBOOL ckFalse;
 
-#define NEEDED_ATTRIBUTES_PRIVATEKEYOBJECT   15
-
-static struct attributesForObject_t attributesPrivateKeyObject[NEEDED_ATTRIBUTES_PRIVATEKEYOBJECT] = {
-		{{CKA_SUBJECT, 0, 0}, TRUE},
-		{{CKA_SENSITIVE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_DECRYPT, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_SIGN, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_SIGN_RECOVER, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_UNWRAP, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_EXTRACTABLE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_ALWAYS_SENSITIVE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_NEVER_EXTRACTABLE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_WRAP_WITH_TRUSTED, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_UNWRAP_TEMPLATE, 0, 0}, TRUE},
-		{{CKA_ALWAYS_AUTHENTICATE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_MODULUS, 0, 0}, TRUE},
-		{{CKA_PUBLIC_EXPONENT, 0, 0}, TRUE},
-		{{CKA_EC_PARAMS, 0, 0}, TRUE}
+static struct attributesForObject_t attributesPrivateKeyObject[] = {
+		{{CKA_SUBJECT, 0, 0}, DEFAULT},
+		{{CKA_SENSITIVE, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_DECRYPT, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_SIGN, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_SIGN_RECOVER, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_UNWRAP, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_EXTRACTABLE, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_ALWAYS_SENSITIVE, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_NEVER_EXTRACTABLE, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_WRAP_WITH_TRUSTED, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_UNWRAP_TEMPLATE, 0, 0}, DEFAULT},
+		{{CKA_ALWAYS_AUTHENTICATE, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_MODULUS, 0, 0}, OPTIONAL},
+		{{CKA_PUBLIC_EXPONENT, 0, 0}, OPTIONAL},
+		{{CKA_EC_PARAMS, 0, 0}, OPTIONAL},
+		{{0, NULL, 0}, DEFAULT }
 };
 
 
@@ -72,8 +71,7 @@ static struct attributesForObject_t attributesPrivateKeyObject[NEEDED_ATTRIBUTES
  */
 int createPrivateKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject)
 {
-	unsigned int i;
-	int index, rc;
+	int rc;
 
 	rc = createKeyObject(pTemplate, ulCount, pObject);
 
@@ -81,25 +79,11 @@ int createPrivateKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct 
 		return rc;
 	}
 
-	for (i = 0; i < NEEDED_ATTRIBUTES_PRIVATEKEYOBJECT; i++) {
-		index = findAttributeInTemplate(attributesPrivateKeyObject[i].attribute.type, pTemplate, ulCount);
-
-		if (index == -1) { /* The attribute is not present - is it optional? */
-			if (attributesPrivateKeyObject[i].optional) {
-				addAttribute(pObject, &attributesPrivateKeyObject[i].attribute);
-			} else { /* the attribute is not optional */
-				removeAllAttributes(pObject);
-				memset(pObject, 0x00, sizeof(*pObject));
-				return CKR_TEMPLATE_INCOMPLETE;
-			}
-		} else {
-			addAttribute(pObject, &pTemplate[index]);
-		}
-	}
+	rc = copyObjectAttributes(pTemplate, ulCount, pObject, attributesPrivateKeyObject);
 
 #ifdef DEBUG
 	dumpAttributeList(pObject);
 #endif
 
-	return 0;
+	return rc;
 }

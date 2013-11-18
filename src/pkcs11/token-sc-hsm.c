@@ -41,6 +41,7 @@
 #include <pkcs11/token.h>
 #include <pkcs11/certificateobject.h>
 #include <pkcs11/privatekeyobject.h>
+#include <pkcs11/publickeyobject.h>
 #include <pkcs11/strbpcpy.h>
 #include <pkcs11/asn1.h>
 #include <pkcs11/pkcs15.h>
@@ -829,18 +830,6 @@ static int sc_hsm_loadObjects(struct p11Token_t *token)
 					debug("addCertificateObject failed with rc=%d\n", rc);
 #endif
 				}
-			}
-			break;
-		}
-	}
-
-	for (i = 0; i < listlen; i += 2) {
-		prefix = filelist[i];
-		id = filelist[i + 1];
-
-		switch(prefix) {
-		case KEY_PREFIX:
-			if (id != 0) {				// Skip Device Authentication Key
 				rc = addPrivateKeyObject(token, id);
 				if (rc != CKR_OK) {
 #ifdef DEBUG
@@ -851,6 +840,7 @@ static int sc_hsm_loadObjects(struct p11Token_t *token)
 			break;
 		}
 	}
+
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -1091,7 +1081,6 @@ static int sc_hsm_setpin(struct p11Slot_t *slot, unsigned char *oldpin, int oldp
 	int rc = CKR_OK, len;
 	unsigned short SW1SW2;
 	unsigned char data[32], p2;
-	struct token_sc_hsm *sc;
 
 	FUNC_CALLED();
 

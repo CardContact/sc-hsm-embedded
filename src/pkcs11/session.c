@@ -36,6 +36,7 @@
 #include <string.h>
 
 #include <pkcs11/session.h>
+#include <pkcs11/slotpool.h>
 
 extern struct p11Context_t *context;
 

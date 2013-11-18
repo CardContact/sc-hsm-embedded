@@ -95,9 +95,14 @@ struct p11Object_t {
 
 };
 
+// MANDATORY: Attribute must be provided by the caller
+// DEFAULT: Attribute shall be created with default attribute
+// OPTIONAL: Attribute may be missing
+enum attributeCondition { MANDATORY, DEFAULT, OPTIONAL };
+
 struct attributesForObject_t {
     CK_ATTRIBUTE        attribute;  /* The attribute and its default value */
-    CK_BBOOL            optional;   /* Indicator - is the attribute optional (true or false) */
+    enum attributeCondition  condition;
 };
 
 #ifdef DEBUG
@@ -111,31 +116,20 @@ char *id2name(struct id2name_t *p, unsigned long id, unsigned long *attr);
 #endif
 
 int isValidPtr(void *ptr);
-
 int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate);
-
 int findAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTemplate, struct p11Attribute_t **attribute);
-
 int findAttributeInTemplate(CK_ATTRIBUTE_TYPE attributeType, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
-
 int removeAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTemplate);
-
 int removeAllAttributes(struct p11Object_t *object);
-
 void addObjectToList(struct p11Object_t **ppObject, struct p11Object_t *object);
-
 int removeObjectFromList(struct p11Object_t **ppObject, CK_OBJECT_HANDLE handle);
-
 void removeAllObjectsFromList(struct p11Object_t **ppObject);
-
 int createObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);
-
 int createStorageObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);
-
 int createKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);
-
+int copyObjectAttributes(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject,
+		struct attributesForObject_t *attr);
 int serializeObject(struct p11Object_t *pObject, unsigned char **pBuffer, unsigned int *bufLength);
-
 void dumpAttribute(CK_ATTRIBUTE_PTR attr);
 
 #endif /* ___OBJECT_H_INC___ */

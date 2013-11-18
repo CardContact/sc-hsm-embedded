@@ -235,7 +235,7 @@ struct id2name_t p11CKAName[P11CKA + 1] = {
 		{ CKA_AC_ISSUER                          , "CKA_AC_ISSUER", 0 },
 		{ CKA_OWNER                              , "CKA_OWNER", 0 },
 		{ CKA_ATTR_TYPES                         , "CKA_ATTR_TYPES", 0 },
-		{ CKA_TRUSTED                            , "CKA_TRUSTED", 0 },
+		{ CKA_TRUSTED                            , "CKA_TRUSTED", CKT_BBOOL },
 		{ CKA_KEY_TYPE                           , "CKA_KEY_TYPE", 0 },
 		{ CKA_SUBJECT                            , "CKA_SUBJECT", 0 },
 		{ CKA_ID                                 , "CKA_ID", CKT_BIN },
@@ -247,12 +247,12 @@ struct id2name_t p11CKAName[P11CKA + 1] = {
 		{ CKA_SIGN                               , "CKA_SIGN", CKT_BBOOL },
 		{ CKA_SIGN_RECOVER                       , "CKA_SIGN_RECOVER", CKT_BBOOL },
 		{ CKA_VERIFY                             , "CKA_VERIFY", CKT_BBOOL },
-		{ CKA_VERIFY_RECOVER                     , "CKA_VERIFY_RECOVER", 0 },
+		{ CKA_VERIFY_RECOVER                     , "CKA_VERIFY_RECOVER", CKT_BBOOL },
 		{ CKA_DERIVE                             , "CKA_DERIVE", CKT_BBOOL },
 		{ CKA_START_DATE                         , "CKA_START_DATE", CKT_DATE },
 		{ CKA_END_DATE                           , "CKA_END_DATE", CKT_DATE },
 		{ CKA_MODULUS                            , "CKA_MODULUS", 0 },
-		{ CKA_MODULUS_BITS                       , "CKA_MODULUS_BITS", 0 },
+		{ CKA_MODULUS_BITS                       , "CKA_MODULUS_BITS", CKT_ULONG },
 		{ CKA_PUBLIC_EXPONENT                    , "CKA_PUBLIC_EXPONENT", 0 },
 		{ CKA_PRIVATE_EXPONENT                   , "CKA_PRIVATE_EXPONENT", 0 },
 		{ CKA_PRIME_1                            , "CKA_PRIME_1", 0 },
@@ -607,7 +607,6 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
 //	CK_MECHANISM mech = { CKM_SHA256_RSA_PKCS_PSS, 0, 0 };
 	char *tbs = "Hello World";
-	char *largetbs;
 	CK_BYTE signature[256];
 	CK_ULONG len;
 	char scr[1024];
@@ -741,7 +740,7 @@ DWORD WINAPI
 SignThread(void *arg) {
 
 	struct thread_data *d;
-	int i, rc;
+	int rc;
 
 	d = (struct thread_data *) arg;
 
@@ -891,7 +890,7 @@ void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 			{ CKA_LABEL, &label, strlen((char *)label) }
 	};
 	CK_OBJECT_HANDLE hnd;
-	CK_MECHANISM mech_raw = { CKM_RSA_X_509, 0, 0 };
+//	CK_MECHANISM mech_raw = { CKM_RSA_X_509, 0, 0 };
 	CK_MECHANISM mech_p15 = { CKM_RSA_PKCS, 0, 0 };
 	CK_MECHANISM mech_oaep = { CKM_RSA_PKCS_OAEP, 0, 0 };
 	// Place valid cryptograms from use case tests here
@@ -1126,7 +1125,6 @@ void testSessions(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 void testTransportPIN(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 {
 	int rc;
-	CK_SESSION_INFO sessioninfo;
 	CK_SESSION_HANDLE session;
 
 	printf("Calling C_OpenSession ");
@@ -1134,7 +1132,7 @@ void testTransportPIN(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_SetPIN User ");
-	rc = p11->C_SetPIN(session, "12345", 5, pin, pinlen);
+	rc = p11->C_SetPIN(session, (CK_UTF8CHAR_PTR)"12345", 5, (CK_UTF8CHAR_PTR)pin, pinlen);
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_CloseSession ");

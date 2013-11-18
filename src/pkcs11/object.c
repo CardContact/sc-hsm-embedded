@@ -40,25 +40,23 @@ CK_BBOOL ckTrue = CK_TRUE, ckFalse = CK_FALSE;
 CK_MECHANISM_TYPE ckMechType = CK_UNAVAILABLE_INFORMATION;
 
 
-#define NEEDED_ATTRIBUTES_STORAGEOBJECT      4
-
-static struct attributesForObject_t attributesStorageObject[NEEDED_ATTRIBUTES_STORAGEOBJECT] = {
-		{{CKA_TOKEN, 0, 0}, FALSE},
-		{{CKA_PRIVATE, 0, 0}, FALSE},
-		{{CKA_MODIFIABLE, &ckTrue, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_LABEL, NULL, 0}, TRUE}
+static struct attributesForObject_t attributesStorageObject[] = {
+		{{CKA_TOKEN, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_PRIVATE, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_MODIFIABLE, &ckTrue, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_LABEL, NULL, 0}, DEFAULT},
+		{{0, NULL, 0}, DEFAULT }
 };
 
-#define NEEDED_ATTRIBUTES_KEYOBJECT          7
-
-static struct attributesForObject_t attributesKeyObject[NEEDED_ATTRIBUTES_KEYOBJECT] = {
-		{{CKA_KEY_TYPE, 0, 0}, FALSE},
-		{{CKA_ID, NULL, 0}, TRUE},
-		{{CKA_START_DATE, NULL, 0}, TRUE},
-		{{CKA_END_DATE, NULL, 0}, TRUE},
-		{{CKA_DERIVE, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_LOCAL, &ckFalse, sizeof(CK_BBOOL)}, TRUE},
-		{{CKA_KEY_GEN_MECHANISM, &ckMechType, sizeof(CK_MECHANISM_TYPE)}, TRUE}
+static struct attributesForObject_t attributesKeyObject[] = {
+		{{CKA_KEY_TYPE, 0, 0}, MANDATORY},
+		{{CKA_ID, NULL, 0}, DEFAULT},
+		{{CKA_START_DATE, NULL, 0}, DEFAULT},
+		{{CKA_END_DATE, NULL, 0}, DEFAULT},
+		{{CKA_DERIVE, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_LOCAL, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
+		{{CKA_KEY_GEN_MECHANISM, &ckMechType, sizeof(CK_MECHANISM_TYPE)}, DEFAULT},
+		{{0, NULL, 0}, DEFAULT }
 };
 
 
@@ -369,14 +367,14 @@ struct id2name_t p11CKAName[] = {
 { CKA_VALUE                              , "CKA_VALUE", CKT_BIN },
 { CKA_OBJECT_ID                          , "CKA_OBJECT_ID", 0 },
 { CKA_CERTIFICATE_TYPE                   , "CKA_CERTIFICATE_TYPE", CKT_ULONG },
-{ CKA_ISSUER                             , "CKA_ISSUER", 0 },
-{ CKA_SERIAL_NUMBER                      , "CKA_SERIAL_NUMBER", 0 },
+{ CKA_ISSUER                             , "CKA_ISSUER", CKT_BIN },
+{ CKA_SERIAL_NUMBER                      , "CKA_SERIAL_NUMBER", CKT_BIN },
 { CKA_AC_ISSUER                          , "CKA_AC_ISSUER", 0 },
 { CKA_OWNER                              , "CKA_OWNER", 0 },
 { CKA_ATTR_TYPES                         , "CKA_ATTR_TYPES", 0 },
 { CKA_TRUSTED                            , "CKA_TRUSTED", 0 },
 { CKA_KEY_TYPE                           , "CKA_KEY_TYPE", 0 },
-{ CKA_SUBJECT                            , "CKA_SUBJECT", 0 },
+{ CKA_SUBJECT                            , "CKA_SUBJECT", CKT_BIN },
 { CKA_ID                                 , "CKA_ID", CKT_BIN },
 { CKA_SENSITIVE                          , "CKA_SENSITIVE", CKT_BBOOL },
 { CKA_ENCRYPT                            , "CKA_ENCRYPT", CKT_BBOOL },
@@ -386,12 +384,12 @@ struct id2name_t p11CKAName[] = {
 { CKA_SIGN                               , "CKA_SIGN", CKT_BBOOL },
 { CKA_SIGN_RECOVER                       , "CKA_SIGN_RECOVER", CKT_BBOOL },
 { CKA_VERIFY                             , "CKA_VERIFY", CKT_BBOOL },
-{ CKA_VERIFY_RECOVER                     , "CKA_VERIFY_RECOVER", 0 },
+{ CKA_VERIFY_RECOVER                     , "CKA_VERIFY_RECOVER", CKT_BBOOL },
 { CKA_DERIVE                             , "CKA_DERIVE", CKT_BBOOL },
 { CKA_START_DATE                         , "CKA_START_DATE", CKT_DATE },
 { CKA_END_DATE                           , "CKA_END_DATE", CKT_DATE },
 { CKA_MODULUS                            , "CKA_MODULUS", 0 },
-{ CKA_MODULUS_BITS                       , "CKA_MODULUS_BITS", 0 },
+{ CKA_MODULUS_BITS                       , "CKA_MODULUS_BITS", CKT_LONG },
 { CKA_PUBLIC_EXPONENT                    , "CKA_PUBLIC_EXPONENT", 0 },
 { CKA_PRIVATE_EXPONENT                   , "CKA_PRIVATE_EXPONENT", 0 },
 { CKA_PRIME_1                            , "CKA_PRIME_1", 0 },
@@ -415,6 +413,9 @@ struct id2name_t p11CKAName[] = {
 { CKA_EC_PARAMS                          , "CKA_EC_PARAMS", 0 },
 { CKA_EC_POINT                           , "CKA_EC_POINT", 0 },
 { CKA_SECONDARY_AUTH                     , "CKA_SECONDARY_AUTH", 0 },
+{ CKA_WRAP_WITH_TRUSTED                  , "CKA_WRAP_WITH_TRUSTED", CKT_BBOOL },
+{ CKA_UNWRAP_TEMPLATE                    , "CKA_UNWRAP_TEMPLATE", CKT_BBOOL },
+{ CKA_ALWAYS_AUTHENTICATE                , "CKA_ALWAYS_AUTHENTICATE", CKT_BBOOL },
 { CKA_AUTH_PIN_FLAGS                     , "CKA_AUTH_PIN_FLAGS", 0 },
 { CKA_HW_FEATURE_TYPE                    , "CKA_HW_FEATURE_TYPE", 0 },
 { CKA_RESET_ON_INIT                      , "CKA_RESET_ON_INIT", 0 },
@@ -486,7 +487,7 @@ static void bin2str(char *st, int stlen, unsigned char *data, int datalen)
 	d = data;
 	i = datalen;
 
-	while (i && (stlen > 2)) {
+	while (i && (stlen > 4)) {
 		sprintf(st, "%02X", *d);
 
 		if (ascii && !isprint(*d) && *d)
@@ -496,6 +497,12 @@ static void bin2str(char *st, int stlen, unsigned char *data, int datalen)
 		stlen -= 2;
 		i--;
 		d++;
+	}
+
+	if (i) {
+		strcpy(st, "..");
+		st += 2;
+		stlen -= 2;
 	}
 
 	if (ascii && (stlen > datalen + 3)) {
@@ -513,7 +520,7 @@ static void bin2str(char *st, int stlen, unsigned char *data, int datalen)
 
 void dumpAttribute(CK_ATTRIBUTE_PTR attr)
 {
-	char attribute[30], scr[100];
+	char attribute[30], scr[200];
 	unsigned long atype;
 
 	strcpy(attribute, id2name(p11CKAName, attr->type, &atype));
@@ -578,6 +585,9 @@ int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate)
 {
 	struct p11Attribute_t *pAttribute, **ppAttribute;
 
+	if (pTemplate->ulValueLen && (pTemplate->pValue == NULL))
+		return -1;
+
 	pAttribute = (struct p11Attribute_t *) calloc (1, sizeof(struct p11Attribute_t));
 
 	if (pAttribute == NULL) {
@@ -593,7 +603,8 @@ int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate)
 		return -1;
 	}
 
-	memcpy(pAttribute->attrData.pValue, pTemplate->pValue, pAttribute->attrData.ulValueLen);
+	if (pTemplate->pValue)
+		memcpy(pAttribute->attrData.pValue, pTemplate->pValue, pAttribute->attrData.ulValueLen);
 
 	ppAttribute = &object->attrList;
 	while (*ppAttribute != NULL) {
@@ -769,7 +780,7 @@ int createObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_
 {
 	int index;
 
-	/* Check if the attribute is present */
+	/* Check if the CKA_CLASS attribute is present */
 
 	index = findAttributeInTemplate(CKA_CLASS, pTemplate, ulCount);
 
@@ -798,13 +809,13 @@ int createStorageObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11
 		return rc;
 	}
 
-	for (i = 0; i < NEEDED_ATTRIBUTES_STORAGEOBJECT; i++) {
+	for (i = 0; attributesStorageObject[i].attribute.type; i++) {
 		index = findAttributeInTemplate(attributesStorageObject[i].attribute.type, pTemplate, ulCount);
 
 		if (index == -1) { /* The attribute is not present - is it optional? */
-			if (attributesStorageObject[i].optional) {
+			if (attributesStorageObject[i].condition == DEFAULT) {
 				addAttribute(pObject, &attributesStorageObject[i].attribute);
-			} else { /* the attribute is not optional */
+			} else if (attributesStorageObject[i].condition != OPTIONAL) { /* the attribute is not optional */
 #ifdef DEBUG
 				debug("[createStorageObject] Error creating storage object - the following attribute is not present!");
 				dumpAttribute(&(attributesStorageObject[i].attribute));
@@ -834,10 +845,38 @@ int createStorageObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11
 
 
 
-int createKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject)
+int copyObjectAttributes(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject,
+		struct attributesForObject_t *attr)
 {
 	unsigned int i;
-	int index, rc;
+	int index, rc = CKR_OK;
+
+	for (i = 0; (attr[i].attribute.type && (rc == CKR_OK)) ; i++) {
+		index = findAttributeInTemplate(attr[i].attribute.type, pTemplate, ulCount);
+
+		if (index == -1) { /* The attribute is not present - is it optional? */
+			if (attr[i].condition == DEFAULT) {
+				rc = addAttribute(pObject, &attr[i].attribute);
+			} else if (attr[i].condition != OPTIONAL) { /* the attribute is not optional */
+#ifdef DEBUG
+				debug("[createKeyObject] Error creating object - the following attribute is not present!");
+				dumpAttribute(&(attr[i].attribute));
+#endif
+				return CKR_TEMPLATE_INCOMPLETE;
+			}
+		} else {
+			rc = addAttribute(pObject, &pTemplate[index]);
+		}
+	}
+
+	return rc;
+}
+
+
+
+int createKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject)
+{
+	int rc;
 
 	rc = createStorageObject(pTemplate, ulCount, pObject);
 
@@ -845,25 +884,9 @@ int createKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Obje
 		return rc;
 	}
 
-	for (i = 0; i < NEEDED_ATTRIBUTES_KEYOBJECT; i++) {
-		index = findAttributeInTemplate(attributesKeyObject[i].attribute.type, pTemplate, ulCount);
+	rc = copyObjectAttributes(pTemplate, ulCount, pObject, attributesKeyObject);
 
-		if (index == -1) { /* The attribute is not present - is it optional? */
-			if (attributesKeyObject[i].optional) {
-				addAttribute(pObject, &attributesKeyObject[i].attribute);
-			} else { /* the attribute is not optional */
-#ifdef DEBUG
-				debug("[createKeyObject] Error creating key object - the following attribute is not present!");
-				dumpAttribute(&(attributesKeyObject[i].attribute));
-#endif
-				return CKR_TEMPLATE_INCOMPLETE;
-			}
-		} else {
-			addAttribute(pObject, &pTemplate[index]);
-		}
-	}
-
-	return 0;
+	return rc;
 }
 
 
