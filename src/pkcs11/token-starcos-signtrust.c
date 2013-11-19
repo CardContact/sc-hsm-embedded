@@ -26,9 +26,9 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @file    token-starcos-bnotk.c
+ * @file    token-starcos-signtrust.c
  * @author  Andreas Schwier
- * @brief   Token implementation for a Starcos 3.5 ID ECC C1 based card with BNotK profile
+ * @brief   Token implementation for a Starcos 3.5 ID ECC C1 based card with Signtrust profile
  */
 
 #include <string.h>
@@ -49,9 +49,7 @@
 
 
 
-static unsigned char atr35[] = { 0x3B,0x9B,0x96,0xC0,0x0A,0x31,0xFE,0x45,0x80,0x67,0x04,0x1E,0xB5,0x01,0x00,0x89,0x4C,0x81,0x05,0x45 };
-static unsigned char atr352_1[] = { 0x3B,0xDB,0x96,0xFF,0x81,0x31,0xFE,0x45,0x80,0x67,0x05,0x34,0xB5,0x02,0x01,0xC0,0xA1,0x81,0x05,0x3C };
-static unsigned char atr352_2[] = { 0x3B,0xD9,0x96,0xFF,0x81,0x31,0xFE,0x45,0x80,0x31,0xB8,0x73,0x86,0x01,0xC0,0x81,0x05,0x02 };
+static unsigned char atr352ST[] = { 0x3B,0xDD,0x96,0xFF,0x81,0x31,0xFE,0x45,0x80,0x59,0x53,0x69,0x67,0x6E,0x74,0x72,0x75,0x73,0x74,0x81,0x05,0xA5 };
 
 static struct p15PrivateKeyDescription prkd_eSign1[] = {
 		{
@@ -87,21 +85,21 @@ static struct p15CertificateDescription certd_eSign1[] = {
 		P15_CT_X509,                                // Certificate type
 		{ "C.CH.DS" },                              // Label
 		{ (unsigned char *)"\x01", 1 },				// Id
-		{ (unsigned char *)"\xC0\x01", 2 }			// efifOrPath
+		{ (unsigned char *)"\xC0\x00", 2 }			// efifOrPath
 	},
 	{
 		1,
 		P15_CT_X509,
 		{ "C.CA.DS" },
 		{ (unsigned char *)"\x11", 1 },
-		{ (unsigned char *)"\xC0\x11", 2 }
+		{ (unsigned char *)"\xC0\x08", 2 }
 	},
 	{
 		0,
 		P15_CT_X509_ATTRIBUTE,
 		{ "C.ATTRIBUTE.DS" },
 		{ (unsigned char *)"\x21", 1 },
-		{ (unsigned char *)"\xC0\x13", 2 }
+		{ (unsigned char *)"\xC1\x00", 2 }
 	},
 };
 
@@ -114,21 +112,21 @@ static struct p15CertificateDescription certd_eSign2[] = {
 		P15_CT_X509,
 		{ "C2.CH.DS" },
 		{ (unsigned char *)"\x02", 1 },
-		{ (unsigned char *)"\xC0\x02", 2 }
+		{ (unsigned char *)"\xC0\x01", 2 }
 	},
 	{
 		1,
 		P15_CT_X509,
 		{ "C2.CA.DS" },
 		{ (unsigned char *)"\x12", 1 },
-		{ (unsigned char *)"\xC0\x12", 2 }
+		{ (unsigned char *)"\xC0\x09", 2 }
 	},
 	{
 		0,
 		P15_CT_X509_ATTRIBUTE,
 		{ "C2.ATTRIBUTE.DS" },
 		{ (unsigned char *)"\x22", 1 },
-		{ (unsigned char *)"\xC0\x14", 2 }
+		{ (unsigned char *)"\xC1\x03", 2 }
 	}
 };
 
@@ -143,7 +141,16 @@ static struct p15PrivateKeyDescription prkd_eUserPKI[] = {
 			{ (unsigned char *)"\x03", 1 },
 			P15_SIGN|P15_DECIPHER,
 			2048,
-			0x82
+			0x86
+		},
+		{
+			P15_KT_RSA,
+			{ "C.CH.ENC" },
+			1,
+			{ (unsigned char *)"\x04", 1 },
+			P15_DECIPHER,
+			2048,
+			0x93
 		}
 };
 
@@ -155,21 +162,35 @@ static struct p15CertificateDescription certd_eUserPKI[] = {
 		P15_CT_X509,                                // Certificate type
 		{ "C.CH.AUT" },                             // Label
 		{ (unsigned char *)"\x03", 1 },				// Id
-		{ (unsigned char *)"\xC0\x03", 2 }			// efifOrPath
+		{ (unsigned char *)"\xC5\x00", 2 }			// efifOrPath
 	},
 	{
 		1,
 		P15_CT_X509,
 		{ "C.CA.AUT" },
 		{ (unsigned char *)"\x11", 1 },
-		{ (unsigned char *)"\xC0\x01", 2 }
+		{ (unsigned char *)"\xC5\x08", 2 }
+	},
+	{
+		0,                                          // isCA
+		P15_CT_X509,                                // Certificate type
+		{ "C.CH.ENC" },                             // Label
+		{ (unsigned char *)"\x04", 1 },				// Id
+		{ (unsigned char *)"\xC2\x00", 2 }			// efifOrPath
+	},
+	{
+		1,
+		P15_CT_X509,
+		{ "C.CA.ENC" },
+		{ (unsigned char *)"\x12", 1 },
+		{ (unsigned char *)"\xC2\x08", 2 }
 	}
 };
 
 
 
-static unsigned char aid_eSign[] = { 0xA0,0x00,0x00,0x01,0x67,0x45,0x53,0x49,0x47,0x4E };
-static unsigned char aid_eUserPKI[] = { 0xA0,0x00,0x00,0x05,0x25,0x65,0x55,0x73,0x65,0x72,0x01 };
+static unsigned char aid_eSign[] = { 0xD2,0x76,0x00,0x00,0x66,0x01 };
+static unsigned char aid_eUserPKI[] = { 0xA0,0x00,0x00,0x01,0x67,0x45,0x53,0x49,0x47,0x4E };
 
 static struct starcosApplication starcosApplications[] = {
 		{
@@ -211,13 +232,7 @@ static struct starcosApplication starcosApplications[] = {
 
 static int isCandidate(unsigned char *atr, size_t atrLen)
 {
-	if ((atrLen == sizeof(atr352_1)) && !memcmp(atr, atr352_1, atrLen))
-		return 1;
-
-	if ((atrLen == sizeof(atr352_2)) && !memcmp(atr, atr352_2, atrLen))
-		return 1;
-
-	if ((atrLen == sizeof(atr35)) && !memcmp(atr, atr35, atrLen))
+	if ((atrLen == sizeof(atr352ST)) && !memcmp(atr, atr352ST, atrLen))
 		return 1;
 
 	return 0;
@@ -225,16 +240,16 @@ static int isCandidate(unsigned char *atr, size_t atrLen)
 
 
 
-struct p11TokenDriver *getBNotKTokenDriver();
+struct p11TokenDriver *getSigntrustTokenDriver();
 
 /**
- * Create a new BNotK token if token detection and initialization is successful
+ * Create a new STARCOS token if token detection and initialization is successful
  *
  * @param slot      The slot in which a token was detected
  * @param token     Pointer to pointer updated with newly created token structure
  * @return          CKR_OK or any other Cryptoki error code
  */
-static int newBNotKToken(struct p11Slot_t *slot, struct p11Token_t **token)
+static int newSigntrustToken(struct p11Slot_t *slot, struct p11Token_t **token)
 {
 	struct p11Token_t *ptoken;
 	struct p11TokenDriver *drv;
@@ -243,7 +258,7 @@ static int newBNotKToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 	FUNC_CALLED();
 
-	drv = getBNotKTokenDriver();
+	drv = getSigntrustTokenDriver();
 	rc = createStarcosToken(slot, &ptoken, drv, &starcosApplications[STARCOS_EUSERPKI]);
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Base token creation failed");
@@ -296,7 +311,7 @@ static int newBNotKToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 struct p11TokenDriver *getStarcosTokenDriver();
 
-struct p11TokenDriver *getBNotKTokenDriver()
+struct p11TokenDriver *getSigntrustTokenDriver()
 {
 	static struct p11TokenDriver starcos_token;
 
@@ -304,7 +319,7 @@ struct p11TokenDriver *getBNotKTokenDriver()
 
 	starcos_token.name = "3.5 ID ECC C1";
 	starcos_token.isCandidate = isCandidate;
-	starcos_token.newToken = newBNotKToken;
+	starcos_token.newToken = newSigntrustToken;
 
 	return &starcos_token;
 }
