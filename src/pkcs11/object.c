@@ -41,22 +41,22 @@ CK_MECHANISM_TYPE ckMechType = CK_UNAVAILABLE_INFORMATION;
 
 
 static struct attributesForObject_t attributesStorageObject[] = {
-		{{CKA_TOKEN, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
-		{{CKA_PRIVATE, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
-		{{CKA_MODIFIABLE, &ckTrue, sizeof(CK_BBOOL)}, DEFAULT},
-		{{CKA_LABEL, NULL, 0}, DEFAULT},
-		{{0, NULL, 0}, DEFAULT }
+		{{CKA_TOKEN, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_PRIVATE, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_MODIFIABLE, &ckTrue, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_LABEL, NULL, 0}, AC_DEFAULT},
+		{{0, NULL, 0}, AC_DEFAULT }
 };
 
 static struct attributesForObject_t attributesKeyObject[] = {
-		{{CKA_KEY_TYPE, 0, 0}, MANDATORY},
-		{{CKA_ID, NULL, 0}, DEFAULT},
-		{{CKA_START_DATE, NULL, 0}, DEFAULT},
-		{{CKA_END_DATE, NULL, 0}, DEFAULT},
-		{{CKA_DERIVE, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
-		{{CKA_LOCAL, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
-		{{CKA_KEY_GEN_MECHANISM, &ckMechType, sizeof(CK_MECHANISM_TYPE)}, DEFAULT},
-		{{0, NULL, 0}, DEFAULT }
+		{{CKA_KEY_TYPE, 0, 0}, AC_MANDATORY},
+		{{CKA_ID, NULL, 0}, AC_DEFAULT},
+		{{CKA_START_DATE, NULL, 0}, AC_DEFAULT},
+		{{CKA_END_DATE, NULL, 0}, AC_DEFAULT},
+		{{CKA_DERIVE, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_LOCAL, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_KEY_GEN_MECHANISM, &ckMechType, sizeof(CK_MECHANISM_TYPE)}, AC_DEFAULT},
+		{{0, NULL, 0}, AC_DEFAULT }
 };
 
 
@@ -813,9 +813,9 @@ int createStorageObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11
 		index = findAttributeInTemplate(attributesStorageObject[i].attribute.type, pTemplate, ulCount);
 
 		if (index == -1) { /* The attribute is not present - is it optional? */
-			if (attributesStorageObject[i].condition == DEFAULT) {
+			if (attributesStorageObject[i].condition == AC_DEFAULT) {
 				addAttribute(pObject, &attributesStorageObject[i].attribute);
-			} else if (attributesStorageObject[i].condition != OPTIONAL) { /* the attribute is not optional */
+			} else if (attributesStorageObject[i].condition != AC_OPTIONAL) { /* the attribute is not optional */
 #ifdef DEBUG
 				debug("[createStorageObject] Error creating storage object - the following attribute is not present!");
 				dumpAttribute(&(attributesStorageObject[i].attribute));
@@ -855,9 +855,9 @@ int copyObjectAttributes(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p1
 		index = findAttributeInTemplate(attr[i].attribute.type, pTemplate, ulCount);
 
 		if (index == -1) { /* The attribute is not present - is it optional? */
-			if (attr[i].condition == DEFAULT) {
+			if (attr[i].condition == AC_DEFAULT) {
 				rc = addAttribute(pObject, &attr[i].attribute);
-			} else if (attr[i].condition != OPTIONAL) { /* the attribute is not optional */
+			} else if (attr[i].condition != AC_OPTIONAL) { /* the attribute is not optional */
 #ifdef DEBUG
 				debug("[createKeyObject] Error creating object - the following attribute is not present!");
 				dumpAttribute(&(attr[i].attribute));

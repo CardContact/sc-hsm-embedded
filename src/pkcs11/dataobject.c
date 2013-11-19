@@ -46,10 +46,10 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 
 
 static struct attributesForObject_t attributesDataObject[] = {
-		{{CKA_APPLICATION, 0, 0}, DEFAULT },
-		{{CKA_OBJECT_ID, NULL, 0}, DEFAULT },
-		{{CKA_VALUE, NULL, 0}, MANDATORY },
-		{{0, NULL, 0}, DEFAULT }
+		{{CKA_APPLICATION, 0, 0}, AC_DEFAULT },
+		{{CKA_OBJECT_ID, NULL, 0}, AC_DEFAULT },
+		{{CKA_VALUE, NULL, 0}, AC_MANDATORY },
+		{{0, NULL, 0}, AC_DEFAULT }
 };
 
 

@@ -47,10 +47,10 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 #endif
 
 static struct attributesForObject_t attributesCertificateObject[] = {
-		{{CKA_CERTIFICATE_TYPE, NULL, 0}, MANDATORY},
-		{{CKA_ID, NULL, 0}, OPTIONAL},
-		{{CKA_VALUE, NULL, 0}, MANDATORY},
-		{{0, NULL, 0}, DEFAULT }
+		{{CKA_CERTIFICATE_TYPE, NULL, 0}, AC_MANDATORY},
+		{{CKA_ID, NULL, 0}, AC_OPTIONAL},
+		{{CKA_VALUE, NULL, 0}, AC_MANDATORY},
+		{{0, NULL, 0}, AC_DEFAULT }
 };
 
 

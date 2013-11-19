@@ -98,7 +98,7 @@ struct p11Object_t {
 // MANDATORY: Attribute must be provided by the caller
 // DEFAULT: Attribute shall be created with default attribute
 // OPTIONAL: Attribute may be missing
-enum attributeCondition { MANDATORY, DEFAULT, OPTIONAL };
+enum attributeCondition { AC_MANDATORY, AC_DEFAULT, AC_OPTIONAL };
 
 struct attributesForObject_t {
     CK_ATTRIBUTE        attribute;  /* The attribute and its default value */

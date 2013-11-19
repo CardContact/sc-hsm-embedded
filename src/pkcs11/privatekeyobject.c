@@ -48,22 +48,22 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 extern CK_BBOOL ckFalse;
 
 static struct attributesForObject_t attributesPrivateKeyObject[] = {
-		{{CKA_SUBJECT, 0, 0}, DEFAULT},
-		{{CKA_SENSITIVE, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
-		{{CKA_DECRYPT, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
-		{{CKA_SIGN, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
-		{{CKA_SIGN_RECOVER, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
-		{{CKA_UNWRAP, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
-		{{CKA_EXTRACTABLE, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
-		{{CKA_ALWAYS_SENSITIVE, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
-		{{CKA_NEVER_EXTRACTABLE, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
-		{{CKA_WRAP_WITH_TRUSTED, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
-		{{CKA_UNWRAP_TEMPLATE, 0, 0}, DEFAULT},
-		{{CKA_ALWAYS_AUTHENTICATE, &ckFalse, sizeof(CK_BBOOL)}, DEFAULT},
-		{{CKA_MODULUS, 0, 0}, OPTIONAL},
-		{{CKA_PUBLIC_EXPONENT, 0, 0}, OPTIONAL},
-		{{CKA_EC_PARAMS, 0, 0}, OPTIONAL},
-		{{0, NULL, 0}, DEFAULT }
+		{{CKA_SUBJECT, 0, 0}, AC_DEFAULT},
+		{{CKA_SENSITIVE, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_DECRYPT, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_SIGN, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_SIGN_RECOVER, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_UNWRAP, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_EXTRACTABLE, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_ALWAYS_SENSITIVE, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_NEVER_EXTRACTABLE, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_WRAP_WITH_TRUSTED, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_UNWRAP_TEMPLATE, 0, 0}, AC_DEFAULT},
+		{{CKA_ALWAYS_AUTHENTICATE, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_MODULUS, 0, 0}, AC_OPTIONAL},
+		{{CKA_PUBLIC_EXPONENT, 0, 0}, AC_OPTIONAL},
+		{{CKA_EC_PARAMS, 0, 0}, AC_OPTIONAL},
+		{{0, NULL, 0}, AC_DEFAULT }
 };
 
 
