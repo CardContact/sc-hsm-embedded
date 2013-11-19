@@ -317,7 +317,7 @@ struct p11TokenDriver *getSigntrustTokenDriver()
 
 	starcos_token = *getStarcosTokenDriver();
 
-	starcos_token.name = "3.5 ID ECC C1";
+	starcos_token.name = "3.5 ID ECC C1 ST";
 	starcos_token.isCandidate = isCandidate;
 	starcos_token.newToken = newSigntrustToken;
 

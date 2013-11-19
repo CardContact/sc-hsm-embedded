@@ -1247,6 +1247,8 @@ int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct
 	ptoken->info.ulMaxSessionCount = CK_EFFECTIVELY_INFINITE;
 	ptoken->info.ulMaxRwSessionCount = CK_EFFECTIVELY_INFINITE;
 	ptoken->info.ulSessionCount = CK_UNAVAILABLE_INFORMATION;
+	ptoken->info.firmwareVersion.major = 3;
+	ptoken->info.firmwareVersion.minor = 5;
 
 	ptoken->info.flags = CKF_WRITE_PROTECTED;
 	ptoken->user = 0xFF;
