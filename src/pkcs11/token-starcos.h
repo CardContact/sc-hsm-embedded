@@ -59,7 +59,6 @@ struct starcosApplication {
 struct starcosPrivateData {
 	struct starcosApplication   *application;
 	int                         selectedApplication;
-	unsigned char               *publickeys[256];
 	void                        *mutex;
 	unsigned char               sopin[8];
 };

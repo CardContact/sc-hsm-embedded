@@ -852,89 +852,11 @@ static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech
 
 
 
-static int addPublicKeyObject(struct p11Token_t *token, struct p15CertificateDescription *p15, unsigned char *spki)
-{
-	CK_OBJECT_CLASS class = CKO_PUBLIC_KEY;
-	CK_KEY_TYPE keyType = CKK_RSA;
-	CK_UTF8CHAR label[10];
-	CK_BBOOL true = CK_TRUE;
-	CK_BBOOL false = CK_FALSE;
-	CK_ULONG modulus_bits = 2048;
-	CK_ATTRIBUTE template[] = {
-			{ CKA_CLASS, &class, sizeof(class) },
-			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
-			{ CKA_TOKEN, &true, sizeof(true) },
-			{ CKA_PRIVATE, &false, sizeof(false) },
-			{ CKA_LABEL, label, sizeof(label) - 1 },
-			{ CKA_ID, NULL, 0 },
-			{ CKA_LOCAL, &true, sizeof(true) },
-			{ CKA_ENCRYPT, &true, sizeof(true) },
-			{ CKA_VERIFY, &true, sizeof(true) },
-			{ CKA_VERIFY_RECOVER, &true, sizeof(true) },
-			{ CKA_WRAP, &false, sizeof(false) },
-			{ CKA_TRUSTED, &false, sizeof(false) },
-			{ CKA_MODULUS_BITS, &modulus_bits, sizeof(modulus_bits) },
-			{ 0, NULL, 0 },
-			{ 0, NULL, 0 }
-	};
-	struct p11Object_t *pObject;
-	int rc, attributes;
-
-	FUNC_CALLED();
-
-	template[4].pValue = p15->coa.label;
-	template[4].ulValueLen = strlen(template[4].pValue);
-
-	if (p15->id.len) {
-		template[5].pValue = p15->id.val;
-		template[5].ulValueLen = p15->id.len;
-	}
-
-	pObject = calloc(sizeof(struct p11Object_t), 1);
-
-	if (pObject == NULL) {
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
-	}
-
-	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE) - 2;
-
-	decodeModulusExponentFromSPKI(spki, &template[attributes], &template[attributes + 1]);
-	attributes += 2;
-
-	rc = createPublicKeyObject(template, attributes, pObject);
-
-	if (rc != CKR_OK) {
-		free(pObject);
-		FUNC_FAILS(rc, "Could not create public key object");
-	}
-
-	addObject(token, pObject, TRUE);
-	FUNC_RETURNS(CKR_OK);
-}
-
-
-
 static int addCertificateObject(struct p11Token_t *token, struct p15CertificateDescription *p15)
 {
-	CK_OBJECT_CLASS class = CKO_CERTIFICATE;
-	CK_CERTIFICATE_TYPE certType = CKC_X_509;
-	CK_UTF8CHAR label[10];
-	CK_BBOOL true = CK_TRUE;
-	CK_BBOOL false = CK_FALSE;
-	CK_BYTE certValue[MAX_CERTIFICATE_SIZE];
-	CK_ATTRIBUTE template[] = {
-			{ CKA_CLASS, &class, sizeof(class) },
-			{ CKA_CERTIFICATE_TYPE, &certType, sizeof(certType) },
-			{ CKA_TOKEN, &true, sizeof(true) },
-			{ CKA_PRIVATE, &false, sizeof(false) },
-			{ CKA_LABEL, label, sizeof(label) - 1 },
-			{ CKA_ID, NULL, 0 },
-			{ CKA_VALUE, certValue, sizeof(certValue) }
-	};
+	unsigned char certValue[MAX_CERTIFICATE_SIZE];
 	struct p11Object_t *pObject;
-	struct starcosPrivateData *sc;
-	unsigned char *spk, *po;
-	int rc, len;
+	int rc;
 
 	FUNC_CALLED();
 
@@ -944,62 +866,13 @@ static int addCertificateObject(struct p11Token_t *token, struct p15CertificateD
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate");
 	}
 
-	if (certValue[0] != ASN1_SEQUENCE) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Error not a certificate");
-	}
+	rc = createCertificateObjectFromP15(p15, certValue, rc, &pObject);
 
-	po = certValue;
-	asn1Tag(&po);
-	len = asn1Length(&po);
-	po += len;
-
-	if ((po - certValue) > rc) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Certificate corrupted");
-	}
-
-	template[6].ulValueLen = po - certValue;
-
-	certType = (p15->certtype == P15_CT_X509) ? CKC_X_509 : CKC_X_509_ATTR_CERT;
-
-	template[4].pValue = p15->coa.label;
-	template[4].ulValueLen = strlen(template[4].pValue);
-
-	if (p15->id.len) {
-		template[5].pValue = p15->id.val;
-		template[5].ulValueLen = p15->id.len;
-	}
-
-	pObject = calloc(sizeof(struct p11Object_t), 1);
-
-	if (pObject == NULL) {
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
-	}
-
-	rc = createCertificateObject(template, 7, pObject);
-
-	if (rc != CKR_OK) {
-		free(pObject);
-		FUNC_FAILS(rc, "Could not create certificate key object");
-	}
-
-	rc = populateIssuerSubjectSerial(pObject);
-
-	if (rc != CKR_OK) {
-#ifdef DEBUG
-		debug("populateIssuerSubjectSerial() failed\n");
-#endif
-	}
-
-	if (getSubjectPublicKeyInfo(pObject, &spk) == CKR_OK) {
-		sc = getPrivateData(token);
-		sc->publickeys[p15->id.val[p15->id.len - 1]] = spk;
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create P11 certificate object");
 	}
 
 	addObject(token, pObject, TRUE);
-
-	if (!p15->isCA) {
-		addPublicKeyObject(token, p15, spk);
-	}
 
 	FUNC_RETURNS(CKR_OK);
 }
@@ -1008,102 +881,49 @@ static int addCertificateObject(struct p11Token_t *token, struct p15CertificateD
 
 static int addPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDescription *p15)
 {
-	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
-	CK_KEY_TYPE keyType = CKK_RSA;
-	CK_UTF8CHAR label[10];
-	CK_MECHANISM_TYPE genMechType = CKM_RSA_PKCS_KEY_PAIR_GEN;
-	CK_BBOOL true = CK_TRUE;
-	CK_BBOOL false = CK_FALSE;
+	CK_OBJECT_CLASS class = CKO_CERTIFICATE;
 	CK_ATTRIBUTE template[] = {
 			{ CKA_CLASS, &class, sizeof(class) },
-			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
-			{ CKA_TOKEN, &true, sizeof(true) },
-			{ CKA_PRIVATE, &true, sizeof(true) },
-			{ CKA_LABEL, label, sizeof(label) - 1 },
-			{ CKA_ID, NULL, 0 },
-			{ CKA_LOCAL, &true, sizeof(true) },
-			{ CKA_KEY_GEN_MECHANISM, &genMechType, sizeof(genMechType) },
-			{ CKA_SENSITIVE, &true, sizeof(true) },
-			{ CKA_DECRYPT, &true, sizeof(true) },
-			{ CKA_SIGN, &true, sizeof(true) },
-			{ CKA_SIGN_RECOVER, &true, sizeof(true) },
-			{ CKA_ALWAYS_AUTHENTICATE, &false, sizeof(false) },
-			{ CKA_UNWRAP, &false, sizeof(false) },
-			{ CKA_EXTRACTABLE, &false, sizeof(false) },
-			{ CKA_ALWAYS_SENSITIVE, &true, sizeof(true) },
-			{ CKA_NEVER_EXTRACTABLE, &true, sizeof(true) },
-			{ 0, NULL, 0 },
-			{ 0, NULL, 0 }
+			{ CKA_ID, NULL, 0 }
 	};
-	struct starcosPrivateData *sc;
-	struct p11Object_t *pObject;
-	int rc,attributes,id,useAA;
+	struct p11Object_t *p11prikey, *p11pubkey, *p11cert;
+	int rc,useAA;
 
 	FUNC_CALLED();
 
-	pObject = calloc(sizeof(struct p11Object_t), 1);
+	template[1].pValue = p15->id.val;
+	template[1].ulValueLen = p15->id.len;
 
-	if (pObject == NULL) {
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+	rc = findMatchingTokenObject(token, template, 2, &p11cert);
+
+	if (rc != CKR_OK) {
+		FUNC_FAILS(rc, "Could not find matching certificate");
 	}
-
-	template[4].pValue = p15->coa.label;
-	template[4].ulValueLen = strlen(template[4].pValue);
-
-	id = 0;
-	if (p15->id.val) {
-		template[5].pValue = p15->id.val;
-		template[5].ulValueLen = p15->id.len;
-		id = p15->id.val[p15->id.len - 1];
-	}
-
-	template[9].pValue = p15->usage & P15_DECIPHER ? &true : &false;
-	template[10].pValue = p15->usage & P15_SIGN ? &true : &false;
-	template[11].pValue = p15->usage & P15_SIGNRECOVER ? &true : &false;
 
 	useAA = (p15->usage & P15_NONREPUDIATION) && (token->pinUseCounter == 1);
 
-	template[12].pValue = useAA ? &true : &false;
-
-	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE) - 2;
-
-	switch(p15->keytype) {
-	case P15_KEYTYPE_RSA:
-		keyType = CKK_RSA;
-		sc = getPrivateData(token);
-		if (sc->publickeys[id]) {
-			decodeModulusExponentFromSPKI(sc->publickeys[id], &template[attributes], &template[attributes + 1]);
-			attributes += 2;
-		}
-		break;
-	case P15_KEYTYPE_ECC:
-		keyType = CKK_ECDSA;
-		sc = getPrivateData(token);
-		if (sc->publickeys[id]) {
-			decodeECParamsFromSPKI(sc->publickeys[id], &template[attributes]);
-			attributes += 1;
-		}
-		break;
-	default:
-		free(pObject);
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Unknown key type in PRKD");
-	}
-
-	rc = createPrivateKeyObject(template, attributes, pObject);
+	rc = createPrivateKeyObjectFromP15(p15, p11cert, useAA, &p11prikey);
 
 	if (rc != CKR_OK) {
-		free(pObject);
-		FUNC_FAILS(rc, "Could not create private key object");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create private key object");
 	}
 
-	pObject->C_SignInit = starcos_C_SignInit;
-	pObject->C_Sign = starcos_C_Sign;
-	pObject->C_DecryptInit = starcos_C_DecryptInit;
-	pObject->C_Decrypt = starcos_C_Decrypt;
+	p11prikey->C_SignInit = starcos_C_SignInit;
+	p11prikey->C_Sign = starcos_C_Sign;
+	p11prikey->C_DecryptInit = starcos_C_DecryptInit;
+	p11prikey->C_Decrypt = starcos_C_Decrypt;
 
-	pObject->tokenid = p15->keyReference;
-	pObject->keysize = p15->keysize;
-	addObject(token, pObject, useAA ? TRUE : FALSE);
+	p11prikey->tokenid = p15->keyReference;
+	p11prikey->keysize = p15->keysize;
+	addObject(token, p11prikey, useAA ? TRUE : FALSE);
+
+	rc = createPublicKeyObjectFromCertificate(p15, p11cert, &p11pubkey);
+
+	if (rc != CKR_OK) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create public key object");
+	}
+
+	addObject(token, p11pubkey, TRUE);
 
 	FUNC_RETURNS(CKR_OK);
 }

@@ -530,29 +530,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 
 
 
-static int isMatchingObject(struct p11Object_t *pObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount)
-{
-	struct p11Attribute_t *pAttribute;
-	int i, rv;
-
-	for (i = 0; i < ulCount; i++) {
-		rv = findAttribute(pObject, pTemplate + i, &pAttribute);
-
-		if (rv < 0) {
-			return CK_FALSE;
-		}
-		if (pTemplate[i].ulValueLen != pAttribute->attrData.ulValueLen) {
-			return CK_FALSE;
-		}
-		if (memcmp(pAttribute->attrData.pValue, pTemplate[i].pValue, pAttribute->attrData.ulValueLen)) {
-			return CK_FALSE;
-		}
-	}
-	return CK_TRUE;
-}
-
-
-
 /*  C_FindObjectsInit initializes a search for token and session objects
     that match a template. */
 CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(

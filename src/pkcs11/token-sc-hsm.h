@@ -70,7 +70,6 @@
 #define ID_SO_PIN				0x88		/* Security officer PIN identifier */
 
 struct token_sc_hsm {
-	unsigned char *publickeys[256];
 	unsigned char sopin[8];
 };
 

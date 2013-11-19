@@ -131,6 +131,37 @@ int findObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, struct p11Obje
 
 
 
+int findMatchingTokenObject(struct p11Token_t *token, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t **pObject)
+{
+	struct p11Object_t *p;
+
+	/* public token objects */
+	p = token->tokenObjList;
+
+	while (p != NULL) {
+		if (isMatchingObject(p, pTemplate, ulCount)) {
+			*pObject = p;
+			return CKR_OK;
+		}
+		p = p->next;
+	}
+
+	/* private token objects */
+	p = token->tokenPrivObjList;
+
+	while (p != NULL) {
+		if (isMatchingObject(p, pTemplate, ulCount)) {
+			*pObject = p;
+			return CKR_OK;
+		}
+		p = p->next;
+	}
+
+	return CKR_ARGUMENTS_BAD;
+}
+
+
+
 /**
  * Remove object from list of token objects
  *

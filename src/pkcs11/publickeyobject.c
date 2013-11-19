@@ -36,6 +36,8 @@
 #include <string.h>
 #include <pkcs11/object.h>
 #include <pkcs11/publickeyobject.h>
+#include <pkcs11/certificateobject.h>
+#include <pkcs11/pkcs15.h>
 
 #ifdef DEBUG
 #include <pkcs11/debug.h>
@@ -84,3 +86,90 @@ int createPublicKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p
 
 	return rc;
 }
+
+
+
+int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, struct p11Object_t *cert, struct p11Object_t **pObject)
+{
+	CK_OBJECT_CLASS class = CKO_PUBLIC_KEY;
+	CK_KEY_TYPE keyType = CKK_RSA;
+	CK_UTF8CHAR label[10];
+	CK_BBOOL true = CK_TRUE;
+	CK_BBOOL false = CK_FALSE;
+	CK_ULONG modulus_bits = 2048;
+	CK_ATTRIBUTE template[] = {
+			{ CKA_CLASS, &class, sizeof(class) },
+			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
+			{ CKA_TOKEN, &true, sizeof(true) },
+			{ CKA_PRIVATE, &false, sizeof(false) },
+			{ CKA_LABEL, label, sizeof(label) - 1 },
+			{ CKA_ID, NULL, 0 },
+			{ CKA_LOCAL, &true, sizeof(true) },
+			{ CKA_ENCRYPT, &true, sizeof(true) },
+			{ CKA_VERIFY, &true, sizeof(true) },
+			{ CKA_VERIFY_RECOVER, &true, sizeof(true) },
+			{ CKA_WRAP, &false, sizeof(false) },
+			{ CKA_TRUSTED, &false, sizeof(false) },
+			{ CKA_MODULUS_BITS, &modulus_bits, sizeof(modulus_bits) },
+			{ 0, NULL, 0 },
+			{ 0, NULL, 0 }
+	};
+	struct p11Object_t *p11o;
+	unsigned char *spki;
+	int rc, attributes;
+
+	FUNC_CALLED();
+
+	if (p15->coa.label) {
+		template[4].pValue = p15->coa.label;
+		template[4].ulValueLen = strlen(template[4].pValue);
+	}
+
+	if (p15->id.len) {
+		template[5].pValue = p15->id.val;
+		template[5].ulValueLen = p15->id.len;
+	}
+
+	rc = getSubjectPublicKeyInfo(cert, &spki);
+
+	if (rc != CKR_OK){
+		FUNC_FAILS(rc, "Could not create public key in certificate");
+	}
+
+	p11o = calloc(sizeof(struct p11Object_t), 1);
+
+	if (p11o == NULL) {
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+	}
+
+	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE) - 2;
+
+	switch(p15->keytype) {
+	case P15_KEYTYPE_RSA:
+		keyType = CKK_RSA;
+		decodeModulusExponentFromSPKI(spki, &template[attributes], &template[attributes + 1]);
+		attributes += 2;
+		break;
+	case P15_KEYTYPE_ECC:
+		keyType = CKK_ECDSA;
+		decodeECParamsFromSPKI(spki, &template[attributes]);
+		decodeECPointFromSPKI(spki, &template[attributes + 1]);
+		attributes += 2;
+		break;
+	default:
+		free(p11o);
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Unknown key type in PRKD");
+	}
+
+	rc = createPublicKeyObject(template, attributes, p11o);
+
+	if (rc != CKR_OK) {
+		free(p11o);
+		FUNC_FAILS(rc, "Could not create public key object");
+	}
+
+	*pObject = p11o;
+
+	FUNC_RETURNS(CKR_OK);
+}
+

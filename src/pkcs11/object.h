@@ -130,6 +130,8 @@ int createKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Obje
 int copyObjectAttributes(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *pObject,
 		struct attributesForObject_t *attr);
 int serializeObject(struct p11Object_t *pObject, unsigned char **pBuffer, unsigned int *bufLength);
+int isMatchingObject(struct p11Object_t *pObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
+
 void dumpAttribute(CK_ATTRIBUTE_PTR attr);
 
 #endif /* ___OBJECT_H_INC___ */

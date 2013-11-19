@@ -39,6 +39,7 @@
 #include <pkcs11/session.h>
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/object.h>
+#include <pkcs11/pkcs15.h>
 
 int createCertificateObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);
 int populateIssuerSubjectSerial(struct p11Object_t *pObject);
@@ -46,5 +47,6 @@ int getSubjectPublicKeyInfo(struct p11Object_t *pObject, unsigned char **spki);
 int decodeModulusExponentFromSPKI(unsigned char *spki, CK_ATTRIBUTE_PTR modulus, CK_ATTRIBUTE_PTR exponent);
 int decodeECParamsFromSPKI(unsigned char *spki, CK_ATTRIBUTE_PTR ecparams);
 int decodeECPointFromSPKI(unsigned char *spki, CK_ATTRIBUTE_PTR point);
+int createCertificateObjectFromP15(struct p15CertificateDescription *p15, unsigned char *cert, size_t certlen, struct p11Object_t **pObject);
 
 #endif /* ___SECRETKEYOBJECT_H_INC___ */

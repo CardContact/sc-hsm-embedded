@@ -35,6 +35,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <pkcs11/object.h>
+#include <pkcs11/certificateobject.h>
 #include <pkcs11/privatekeyobject.h>
 
 #ifdef DEBUG
@@ -87,3 +88,97 @@ int createPrivateKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct 
 
 	return rc;
 }
+
+
+
+int createPrivateKeyObjectFromP15(struct p15PrivateKeyDescription *p15, struct p11Object_t *cert, int useAA, struct p11Object_t **pObject)
+{
+	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
+	CK_KEY_TYPE keyType = CKK_RSA;
+	CK_MECHANISM_TYPE genMechType = CKM_RSA_PKCS_KEY_PAIR_GEN;
+	CK_BBOOL true = CK_TRUE;
+	CK_BBOOL false = CK_FALSE;
+	CK_ATTRIBUTE template[] = {
+			{ CKA_CLASS, &class, sizeof(class) },
+			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
+			{ CKA_TOKEN, &true, sizeof(true) },
+			{ CKA_PRIVATE, &true, sizeof(true) },
+			{ CKA_LABEL, NULL, 0 },
+			{ CKA_ID, NULL, 0 },
+			{ CKA_LOCAL, &true, sizeof(true) },
+			{ CKA_KEY_GEN_MECHANISM, &genMechType, sizeof(genMechType) },
+			{ CKA_SENSITIVE, &true, sizeof(true) },
+			{ CKA_DECRYPT, &true, sizeof(true) },
+			{ CKA_SIGN, &true, sizeof(true) },
+			{ CKA_SIGN_RECOVER, &true, sizeof(true) },
+			{ CKA_ALWAYS_AUTHENTICATE, &false, sizeof(false) },
+			{ CKA_UNWRAP, &false, sizeof(false) },
+			{ CKA_EXTRACTABLE, &false, sizeof(false) },
+			{ CKA_ALWAYS_SENSITIVE, &true, sizeof(true) },
+			{ CKA_NEVER_EXTRACTABLE, &true, sizeof(true) },
+			{ 0, NULL, 0 },
+			{ 0, NULL, 0 }
+	};
+	struct p11Object_t *p11o;
+	unsigned char *spki;
+	int rc, attributes;
+
+	FUNC_CALLED();
+
+	rc = getSubjectPublicKeyInfo(cert, &spki);
+
+	if (rc != CKR_OK){
+		FUNC_FAILS(rc, "Could not create public key in certificate");
+	}
+
+	p11o = calloc(sizeof(struct p11Object_t), 1);
+
+	if (p11o == NULL) {
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+	}
+
+	if (p15->coa.label) {
+		template[4].pValue = p15->coa.label;
+		template[4].ulValueLen = strlen(template[4].pValue);
+	}
+
+	if (p15->id.val) {
+		template[5].pValue = p15->id.val;
+		template[5].ulValueLen = p15->id.len;
+	}
+
+	template[9].pValue = p15->usage & P15_DECIPHER ? &true : &false;
+	template[10].pValue = p15->usage & P15_SIGN ? &true : &false;
+	template[11].pValue = p15->usage & P15_SIGNRECOVER ? &true : &false;
+	template[12].pValue = useAA ? &true : &false;
+
+	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE) - 2;
+
+	switch(p15->keytype) {
+	case P15_KEYTYPE_RSA:
+		keyType = CKK_RSA;
+		decodeModulusExponentFromSPKI(spki, &template[attributes], &template[attributes + 1]);
+		attributes += 2;
+		break;
+	case P15_KEYTYPE_ECC:
+		keyType = CKK_ECDSA;
+		decodeECParamsFromSPKI(spki, &template[attributes]);
+		attributes += 1;
+		break;
+	default:
+		free(p11o);
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Unknown key type in PRKD");
+	}
+
+	rc = createPrivateKeyObject(template, attributes, p11o);
+
+	if (rc != CKR_OK) {
+		free(p11o);
+		FUNC_FAILS(rc, "Could not create private key object");
+	}
+
+	*pObject = p11o;
+
+	FUNC_RETURNS(CKR_OK);
+}
+

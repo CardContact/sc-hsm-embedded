@@ -80,6 +80,7 @@ int initPIN(struct p11Slot_t *slot, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen);
 int setPIN(struct p11Slot_t *slot, CK_UTF8CHAR_PTR pOldPin, CK_ULONG ulOldPinLen, CK_UTF8CHAR_PTR pNewPin, CK_ULONG ulNewPinLen);
 int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicObject);
 int findObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject);
+int findMatchingTokenObject(struct p11Token_t *token, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t **pObject);
 int removeTokenObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject);
 int removeObjectLeavingAttributes(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject);
 int saveObjects(struct p11Slot_t *slot, struct p11Token_t *token, int publicObject);

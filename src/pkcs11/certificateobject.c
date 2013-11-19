@@ -38,6 +38,7 @@
 #include <pkcs11/certificateobject.h>
 #include <pkcs11/asn1.h>
 
+
 #ifdef DEBUG
 #include <pkcs11/debug.h>
 
@@ -454,3 +455,81 @@ int decodeECPointFromSPKI(unsigned char *spki,
 
 	return 0;
 }
+
+
+
+int createCertificateObjectFromP15(struct p15CertificateDescription *p15, unsigned char *cert, size_t certlen, struct p11Object_t **pObject)
+{
+	CK_OBJECT_CLASS class = CKO_CERTIFICATE;
+	CK_CERTIFICATE_TYPE certType = CKC_X_509;
+	CK_BBOOL true = CK_TRUE;
+	CK_BBOOL false = CK_FALSE;
+	CK_ATTRIBUTE template[] = {
+			{ CKA_CLASS, &class, sizeof(class) },
+			{ CKA_CERTIFICATE_TYPE, &certType, sizeof(certType) },
+			{ CKA_TOKEN, &true, sizeof(true) },
+			{ CKA_PRIVATE, &false, sizeof(false) },
+			{ CKA_LABEL, NULL, 0 },
+			{ CKA_ID, NULL, 0 },
+			{ CKA_VALUE, NULL, 0 }
+	};
+	struct p11Object_t *p11o;
+	unsigned char *po;
+	int rc, len;
+
+	FUNC_CALLED();
+
+	if ((*cert != ASN1_SEQUENCE) || (certlen < 5)) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error not a certificate");
+	}
+
+	po = cert;
+	asn1Tag(&po);
+	len = asn1Length(&po);
+	po += len;
+
+	if ((po - cert) > certlen) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Certificate corrupted");
+	}
+
+	template[6].pValue = cert;
+	template[6].ulValueLen = po - cert;
+
+	certType = (p15->certtype == P15_CT_X509) ? CKC_X_509 : CKC_X_509_ATTR_CERT;
+
+	if (p15->coa.label) {
+		template[4].pValue = p15->coa.label;
+		template[4].ulValueLen = strlen(template[4].pValue);
+	}
+
+	if (p15->id.len) {
+		template[5].pValue = p15->id.val;
+		template[5].ulValueLen = p15->id.len;
+	}
+
+	p11o = calloc(sizeof(struct p11Object_t), 1);
+
+	if (p11o == NULL) {
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+	}
+
+	rc = createCertificateObject(template, 7, p11o);
+
+	if (rc != CKR_OK) {
+		free(p11o);
+		FUNC_FAILS(rc, "Could not create certificate key object");
+	}
+
+	rc = populateIssuerSubjectSerial(p11o);
+
+	if (rc != CKR_OK) {
+#ifdef DEBUG
+		debug("populateIssuerSubjectSerial() failed\n");
+#endif
+	}
+
+	*pObject = p11o;
+
+	FUNC_RETURNS(CKR_OK);
+}
+
