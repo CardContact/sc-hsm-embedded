@@ -43,7 +43,8 @@
 #define NUM_THREADS		30
 
 /* Default PIN unless --pin is defined */
-#define PIN "648219"
+#define PIN_SC_HSM "648219"
+#define PIN_STARCOS "123456"
 
 /* Default SO-PIN unless --so-pin is defined */
 #define SOPIN "3537363231383830"
@@ -321,7 +322,7 @@ struct thread_data {
 
 char *p11libname = P11LIBNAME;
 
-CK_UTF8CHAR *pin = (CK_UTF8CHAR *)PIN;
+CK_UTF8CHAR *pin = NULL;
 CK_UTF8CHAR wrongpin[] = "111111";
 CK_ULONG pinlen = 6;
 
@@ -599,9 +600,11 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 	CK_SESSION_HANDLE session;
 	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
 	CK_KEY_TYPE keyType = CKK_RSA;
+	CK_BBOOL true = CK_TRUE;
 	CK_ATTRIBUTE template[] = {
 			{ CKA_CLASS, &class, sizeof(class) },
-			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) }
+			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
+			{ CKA_SIGN, &true, sizeof(true) }
 	};
 	CK_OBJECT_HANDLE hnd;
 	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
@@ -1737,8 +1740,15 @@ int main(int argc, char *argv[])
 				printf("Token label: %s\n", p11string(tokeninfo.label, sizeof(tokeninfo.label)));
 				printf("Token flags: %lx\n", tokeninfo.flags);
 
-				if (tokeninfo.flags & CKF_USER_PIN_TO_BE_CHANGED) {
-					testTransportPIN(p11, slotid);
+				if (pin == NULL) {
+					if (!strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
+						pin = (CK_UTF8CHAR_PTR)PIN_STARCOS;
+						pinlen = strlen(PIN_STARCOS);
+					} else {
+						pin = (CK_UTF8CHAR_PTR)PIN_SC_HSM;
+						pinlen = strlen(PIN_SC_HSM);
+					}
+					printf("Using PIN %s\n", pin);
 				}
 
 				if (optTestMultiOnly)
@@ -1746,6 +1756,12 @@ int main(int argc, char *argv[])
 
 				if (*optTokenFilter && strncmp(optTokenFilter, (const char *)tokeninfo.label, strlen(optTokenFilter)))
 					continue;
+
+#if 0
+				if (tokeninfo.flags & CKF_USER_PIN_TO_BE_CHANGED) {
+					testTransportPIN(p11, slotid);
+				}
+#endif
 
 				if (optUnlockPIN) {
 					unlockPIN(p11, slotid);
