@@ -804,7 +804,7 @@ static int addCertificateObject(struct p11Token_t *token, struct p15CertificateD
 
 	rc = createCertificateObjectFromP15(p15, certValue, rc, &pObject);
 
-	if (rc < 0) {
+	if (rc != CKR_OK) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create P11 certificate object");
 	}
 

@@ -544,7 +544,7 @@ static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char
 
 	rc = createCertificateObjectFromP15(&p15cert, certValue, rc, &p11cert);
 
-	if (rc < 0) {
+	if (rc != CKR_OK) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create P11 certificate object");
 	}
 
@@ -583,6 +583,49 @@ static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char
 
 
 
+static int addCACertificateObject(struct p11Token_t *token, unsigned char id)
+{
+	unsigned char certValue[MAX_CERTIFICATE_SIZE];
+	struct p11Object_t *p11cert;
+	struct p15CertificateDescription *p15cert;
+	unsigned char cd[MAX_P15_SIZE];
+	int rc;
+
+	FUNC_CALLED();
+
+	rc = readEF(token->slot, (CD_PREFIX << 8) | id, cd, sizeof(cd));
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate description");
+	}
+
+	rc = decodeCertificateDescription(cd, rc, &p15cert);
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error decoding certificate description");
+	}
+
+	rc = readEF(token->slot, (CA_CERTIFICATE_PREFIX << 8) | id, certValue, sizeof(certValue));
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate");
+	}
+
+	rc = createCertificateObjectFromP15(p15cert, certValue, rc, &p11cert);
+
+	if (rc != CKR_OK) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create P11 certificate object");
+	}
+
+	p11cert->tokenid = (int)id;
+
+	addObject(token, p11cert, TRUE);
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
 static int sc_hsm_loadObjects(struct p11Token_t *token)
 {
 	unsigned char filelist[MAX_FILES * 2];
@@ -610,6 +653,14 @@ static int sc_hsm_loadObjects(struct p11Token_t *token)
 					debug("addEECertificateAndKeyObjects failed with rc=%d\n", rc);
 #endif
 				}
+			}
+			break;
+		case CA_CERTIFICATE_PREFIX:
+			rc = addCACertificateObject(token, id);
+			if (rc != CKR_OK) {
+#ifdef DEBUG
+				debug("addCACertificateAndKeyObjects failed with rc=%d\n", rc);
+#endif
 			}
 			break;
 		}

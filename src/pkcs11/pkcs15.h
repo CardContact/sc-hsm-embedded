@@ -108,8 +108,9 @@ struct p15CertificateDescription {
 
 
 int decodePrivateKeyDescription(unsigned char *prkd, size_t prkdlen, struct p15PrivateKeyDescription **p15);
+int decodeCertificateDescription(unsigned char *cd, size_t cdlen, struct p15CertificateDescription **p15);
 void freePrivateKeyDescription(struct p15PrivateKeyDescription **p15);
-
+void freeCertificatePrivateKeyDescription(struct p15CertificateDescription **p15);
 
 /* Support for C++ compiler ----------------------------------------------- */
 

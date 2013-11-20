@@ -45,6 +45,9 @@ static int decodeCommonObjectAttributes(unsigned char *coa, int coalen, struct p
 	unsigned char *po;
 	char *label;
 
+	if (coalen <= 0)
+		return 0;
+
 	po = coa;
 	tag = asn1Tag(&po);
 
@@ -67,6 +70,9 @@ static int decodeCommonKeyAttributes(unsigned char *cka, int ckalen, struct p15P
 {
 	int tag,len;
 	unsigned char *po, *obj, *id;
+
+	if (ckalen <= 0)
+		return 0;
 
 	po = obj = cka;
 	tag = asn1Tag(&po);
@@ -108,6 +114,9 @@ static int decodeKeyAttributes(unsigned char *ka, int kalen, struct p15PrivateKe
 {
 	int tag,len;
 	unsigned char *po, *obj;
+
+	if (kalen <= 0)
+		return 0;
 
 	po = obj = ka;
 	tag = asn1Tag(&po);
@@ -230,7 +239,7 @@ static int decodePrivateKeyAttributes(unsigned char *prkd, int prkdlen, struct p
  * @param prkd      The first byte of the encoded structure
  * @param prkdlen   The length of the encoded structure
  * @param p15       Pointer to pointer updated with the newly allocated structure
- * @return          0 if successfull, -1 for structural errors
+ * @return          0 if successful, -1 for structural errors
  */
 int decodePrivateKeyDescription(unsigned char *prkd, size_t prkdlen, struct p15PrivateKeyDescription **p15)
 {
@@ -265,6 +274,129 @@ int decodePrivateKeyDescription(unsigned char *prkd, size_t prkdlen, struct p15P
 
 
 
+static int decodeCommonCertificateAttributes(unsigned char *cca, int ccalen, struct p15CertificateDescription *p15)
+{
+	int tag,len;
+	unsigned char *po, *obj, *id;
+
+	if (ccalen <= 0)
+		return 0;
+
+	po = obj = cca;
+	tag = asn1Tag(&po);
+	len = asn1Length(&po);
+
+	if ((tag != ASN1_OCTET_STRING) || (len <= 0)) {
+		return -1;
+	}
+
+	id = calloc(len, 1);
+	if (id == NULL) {
+		return -1;
+	}
+	memcpy(id, po, len);
+	p15->id.val = id;
+	p15->id.len = len;
+
+	po += len;
+
+	return 0;
+}
+
+
+
+static int decodeCertificateAttributes(unsigned char *cd, int cdlen, struct p15CertificateDescription *p15)
+{
+	int rc,tag,len;
+	unsigned char *po, *obj;
+
+	if (cdlen <= 0) {				// Nothing to decode
+		return 0;
+	}
+
+	po = obj = cd;
+
+	tag = asn1Tag(&po);
+	if (tag != ASN1_SEQUENCE) {
+		return -1;
+	}
+
+	len = asn1Length(&po);
+
+	rc = decodeCommonObjectAttributes(po, len, &p15->coa);
+	if (rc < 0) {
+		return rc;
+	}
+
+	po += len;
+
+	if ((po - cd) >= cdlen) {
+		return 0;
+	}
+
+	obj = po;
+	tag = asn1Tag(&po);
+	if (tag != ASN1_SEQUENCE) {
+		return -1;
+	}
+
+	len = asn1Length(&po);
+
+	rc = decodeCommonCertificateAttributes(po, len, p15);
+	if (rc < 0) {
+		return rc;
+	}
+
+	po += len;
+
+	return 0;
+}
+
+
+
+/**
+ * Decode a TLV encoded PKCS#15 certificate description into a structure
+ *
+ * The caller must use freeCertificateDescription() to free the allocated structure
+ *
+ * @param cd        The first byte of the encoded structure
+ * @param cdlen     The length of the encoded structure
+ * @param p15       Pointer to pointer updated with the newly allocated structure
+ * @return          0 if successful, -1 for structural errors
+ */
+int decodeCertificateDescription(unsigned char *cd, size_t cdlen, struct p15CertificateDescription **p15)
+{
+	int rc,tag,len;
+	unsigned char *po;
+
+	rc = asn1Validate(cd, cdlen);
+
+	if (rc != 0) {
+		return -1;
+	}
+
+	*p15 = calloc(1, sizeof(struct p15CertificateDescription));
+	if (*p15 == NULL) {
+		return -1;
+	}
+
+	po = cd;
+
+	tag = asn1Tag(&po);
+	len = asn1Length(&po);
+
+	if ((tag != ASN1_SEQUENCE) && (tag != 0xA0)) {
+		return -1;
+	}
+
+	(*p15)->certtype = (int)tag;
+	rc = decodeCertificateAttributes(po, len, *p15);
+
+	return rc;
+}
+
+
+
 static void freeCommonObjectAttributes(struct p15CommonObjectAttributes *coa)
 {
 	if (coa->label != NULL) {
@@ -281,6 +413,27 @@ static void freeCommonObjectAttributes(struct p15CommonObjectAttributes *coa)
  * @param p15       Pointer to pointer to structure. Pointer is cleared with NULL
  */
 void freePrivateKeyDescription(struct p15PrivateKeyDescription **p15)
+{
+	if (*p15 != NULL) {
+		freeCommonObjectAttributes(&(*p15)->coa);
+		if ((*p15)->id.val) {
+			free((*p15)->id.val);
+			(*p15)->id.val = NULL;
+			(*p15)->id.len = 0;
+		}
+		free(*p15);
+	}
+	*p15 = NULL;
+}
+
+
+
+/**
+ * Free structure allocated in decodeCertificateDescription()
+ *
+ * @param p15       Pointer to pointer to structure. Pointer is cleared with NULL
+ */
+void freeCertificatePrivateKeyDescription(struct p15CertificateDescription **p15)
 {
 	if (*p15 != NULL) {
 		freeCommonObjectAttributes(&(*p15)->coa);
