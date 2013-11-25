@@ -367,6 +367,7 @@ struct id2name_t p11CKAName[] = {
 { CKA_VALUE                              , "CKA_VALUE", CKT_BIN },
 { CKA_OBJECT_ID                          , "CKA_OBJECT_ID", 0 },
 { CKA_CERTIFICATE_TYPE                   , "CKA_CERTIFICATE_TYPE", CKT_ULONG },
+{ CKA_CERTIFICATE_CATEGORY               , "CKA_CERTIFICATE_CATEGORY", CKT_ULONG },
 { CKA_ISSUER                             , "CKA_ISSUER", CKT_BIN },
 { CKA_SERIAL_NUMBER                      , "CKA_SERIAL_NUMBER", CKT_BIN },
 { CKA_AC_ISSUER                          , "CKA_AC_ISSUER", 0 },

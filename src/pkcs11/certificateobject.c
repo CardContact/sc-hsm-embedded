@@ -46,8 +46,12 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 
 #endif
 
+extern CK_BBOOL ckFalse;
+
 static struct attributesForObject_t attributesCertificateObject[] = {
 		{{CKA_CERTIFICATE_TYPE, NULL, 0}, AC_MANDATORY},
+		{{CKA_TRUSTED, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
+		{{CKA_CERTIFICATE_CATEGORY, 0, sizeof(CK_ULONG)}, AC_DEFAULT},
 		{{CKA_ID, NULL, 0}, AC_OPTIONAL},
 		{{CKA_VALUE, NULL, 0}, AC_MANDATORY},
 		{{0, NULL, 0}, AC_DEFAULT }
@@ -464,9 +468,12 @@ int createCertificateObjectFromP15(struct p15CertificateDescription *p15, unsign
 	CK_CERTIFICATE_TYPE certType = CKC_X_509;
 	CK_BBOOL true = CK_TRUE;
 	CK_BBOOL false = CK_FALSE;
+	CK_ULONG category = 1;
 	CK_ATTRIBUTE template[] = {
 			{ CKA_CLASS, &class, sizeof(class) },
 			{ CKA_CERTIFICATE_TYPE, &certType, sizeof(certType) },
+			{ CKA_TRUSTED, &ckFalse, sizeof(false) },
+			{ CKA_CERTIFICATE_CATEGORY, &category, sizeof(category)},
 			{ CKA_TOKEN, &true, sizeof(true) },
 			{ CKA_PRIVATE, &false, sizeof(false) },
 			{ CKA_LABEL, NULL, 0 },
@@ -492,19 +499,24 @@ int createCertificateObjectFromP15(struct p15CertificateDescription *p15, unsign
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Certificate corrupted");
 	}
 
-	template[6].pValue = cert;
-	template[6].ulValueLen = po - cert;
+	template[8].pValue = cert;
+	template[8].ulValueLen = po - cert;
 
 	certType = (p15->certtype == P15_CT_X509) ? CKC_X_509 : CKC_X_509_ATTR_CERT;
 
 	if (p15->coa.label) {
-		template[4].pValue = p15->coa.label;
-		template[4].ulValueLen = strlen(template[4].pValue);
+		template[6].pValue = p15->coa.label;
+		template[6].ulValueLen = strlen(template[6].pValue);
 	}
 
 	if (p15->id.len) {
-		template[5].pValue = p15->id.val;
-		template[5].ulValueLen = p15->id.len;
+		template[7].pValue = p15->id.val;
+		template[7].ulValueLen = p15->id.len;
+	}
+
+	if (p15->isCA) {
+		template[2].pValue = &true;
+		category = 2;
 	}
 
 	p11o = calloc(sizeof(struct p11Object_t), 1);
@@ -513,7 +525,7 @@ int createCertificateObjectFromP15(struct p15CertificateDescription *p15, unsign
 		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
-	rc = createCertificateObject(template, 7, p11o);
+	rc = createCertificateObject(template, sizeof(template) / sizeof(CK_ATTRIBUTE), p11o);
 
 	if (rc != CKR_OK) {
 		free(p11o);

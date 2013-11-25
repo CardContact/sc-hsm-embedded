@@ -79,6 +79,13 @@ static struct p15CertificateDescription certd_eSign[] = {
 		{ "C.CA.DS" },
 		{ (unsigned char *)"\x11", 1 },
 		{ (unsigned char *)"\xC1\x04", 2 }
+	},
+	{
+		1,
+		P15_CT_X509,
+		{ "C.RCA.DS" },
+		{ (unsigned char *)"\x12", 1 },
+		{ (unsigned char *)"\xC1\x05", 2 }
 	}
 };
 
@@ -112,6 +119,13 @@ static struct p15CertificateDescription certd_eUserPKI[] = {
 		{ "C.CA.AUT" },
 		{ (unsigned char *)"\x11", 1 },
 		{ (unsigned char *)"\xC1\x01", 2 }
+	},
+	{
+		1,
+		P15_CT_X509,
+		{ "C.RCA.AUT" },
+		{ (unsigned char *)"\x12", 1 },
+		{ (unsigned char *)"\xC1\x02", 2 }
 	}
 };
 
@@ -743,6 +757,10 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Signature operation failed");
 	}
 
+
+	// The D-Trust token has a use counter of 1. It requires a new login after each crypto operation.
+	pObject->token->user = INT_CKU_NO_USER;
+
 	*pulSignatureLen = rc;
 
 	unlock(pObject->token);
@@ -839,6 +857,9 @@ static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech
 	if (SW1SW2 != 0x9000) {
 		FUNC_FAILS(CKR_ENCRYPTED_DATA_INVALID, "Decryption operation failed");
 	}
+
+	// The D-Trust token has a use counter of 1. It requires a new login after each crypto operation.
+	pObject->token->user = INT_CKU_NO_USER;
 
 	*pulDataLen = rc;
 	if (rc > *pulDataLen) {
@@ -1011,7 +1032,7 @@ static int createDTrustToken(struct p11Slot_t *slot, struct p11Token_t **token, 
 	ptoken->info.firmwareVersion.minor = 4;
 
 	ptoken->info.flags = CKF_WRITE_PROTECTED;
-	ptoken->user = 0xFF;
+	ptoken->user = INT_CKU_NO_USER;
 	ptoken->drv = drv;
 
 	sc = getPrivateData(ptoken);

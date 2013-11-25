@@ -611,6 +611,7 @@ static int addCACertificateObject(struct p11Token_t *token, unsigned char id)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate");
 	}
 
+	p15cert->isCA = 1;
 	rc = createCertificateObjectFromP15(p15cert, certValue, rc, &p11cert);
 
 	if (rc != CKR_OK) {
@@ -1027,7 +1028,7 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	if (slot->hasFeatureVerifyPINDirect)
 		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
 
-	ptoken->user = 0xFF;
+	ptoken->user = INT_CKU_NO_USER;
 	ptoken->drv = getSmartCardHSMTokenDriver();
 
 	updatePinStatus(ptoken, pinstatus);

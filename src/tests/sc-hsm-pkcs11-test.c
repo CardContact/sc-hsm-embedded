@@ -220,7 +220,7 @@ struct id2name_t p11CKRName[] = {
 #define CKT_LONG        4
 #define CKT_ULONG       5
 
-#define P11CKA			59
+#define P11CKA			60
 
 struct id2name_t p11CKAName[P11CKA + 1] = {
 		{ CKA_CLASS                              , "CKA_CLASS", CKT_LONG },
@@ -231,6 +231,7 @@ struct id2name_t p11CKAName[P11CKA + 1] = {
 		{ CKA_VALUE                              , "CKA_VALUE", CKT_BIN },
 		{ CKA_OBJECT_ID                          , "CKA_OBJECT_ID", 0 },
 		{ CKA_CERTIFICATE_TYPE                   , "CKA_CERTIFICATE_TYPE", CKT_ULONG },
+		{ CKA_CERTIFICATE_CATEGORY               , "CKA_CERTIFICATE_CATEGORY", CKT_ULONG },
 		{ CKA_ISSUER                             , "CKA_ISSUER", 0 },
 		{ CKA_SERIAL_NUMBER                      , "CKA_SERIAL_NUMBER", 0 },
 		{ CKA_AC_ISSUER                          , "CKA_AC_ISSUER", 0 },

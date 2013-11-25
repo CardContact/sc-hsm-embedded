@@ -79,6 +79,8 @@
 
 struct p11TokenDriver;
 
+#define INT_CKU_NO_USER 0xFF
+
 /**
  * Internal structure to store information about a token.
  *
