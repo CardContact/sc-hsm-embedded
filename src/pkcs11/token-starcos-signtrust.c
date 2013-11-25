@@ -101,6 +101,13 @@ static struct p15CertificateDescription certd_eSign1[] = {
 		{ (unsigned char *)"\x21", 1 },
 		{ (unsigned char *)"\xC1\x00", 2 }
 	},
+	{
+		0,
+		P15_CT_X509,
+		{ "C.RCA.DS" },
+		{ (unsigned char *)"\x31", 1 },
+		{ (unsigned char *)"\xC0\x0E", 2 }
+	}
 };
 
 
@@ -172,6 +179,13 @@ static struct p15CertificateDescription certd_eUserPKI[] = {
 		{ (unsigned char *)"\xC5\x08", 2 }
 	},
 	{
+		1,
+		P15_CT_X509,
+		{ "C.RCA.AUT" },
+		{ (unsigned char *)"\x31", 1 },
+		{ (unsigned char *)"\xC5\x0E", 2 }
+	},
+	{
 		0,                                          // isCA
 		P15_CT_X509,                                // Certificate type
 		{ "C.CH.ENC" },                             // Label
@@ -184,6 +198,13 @@ static struct p15CertificateDescription certd_eUserPKI[] = {
 		{ "C.CA.ENC" },
 		{ (unsigned char *)"\x12", 1 },
 		{ (unsigned char *)"\xC2\x08", 2 }
+	},
+	{
+		1,
+		P15_CT_X509,
+		{ "C.RCA.ENC" },
+		{ (unsigned char *)"\x32", 1 },
+		{ (unsigned char *)"\xC2\x0E", 2 }
 	}
 };
 
