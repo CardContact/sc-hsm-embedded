@@ -210,13 +210,13 @@ static struct p15CertificateDescription certd_eUserPKI[] = {
 
 
 
-static unsigned char aid_eSign[] = { 0xD2,0x76,0x00,0x00,0x66,0x01 };
+static unsigned char aid_QES[] = { 0xD2,0x76,0x00,0x00,0x66,0x01 };
 static unsigned char aid_eUserPKI[] = { 0xA0,0x00,0x00,0x01,0x67,0x45,0x53,0x49,0x47,0x4E };
 
 static struct starcosApplication starcosApplications[] = {
 		{
-				"STARCOS.eSign1",
-				{ aid_eSign, sizeof(aid_eSign) },
+				"STARCOS.QES1",
+				{ aid_QES, sizeof(aid_QES) },
 				1,
 				0x81,
 				3,
@@ -226,8 +226,8 @@ static struct starcosApplication starcosApplications[] = {
 				sizeof(certd_eSign1) / sizeof(struct p15CertificateDescription)
 		},
 		{
-				"STARCOS.eSign2",
-				{ aid_eSign, sizeof(aid_eSign) },
+				"STARCOS.QES2",
+				{ aid_QES, sizeof(aid_QES) },
 				1,
 				0x86,
 				6,
@@ -298,7 +298,7 @@ static int newSigntrustToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Virtual slot creation failed");
 
-	rc = createStarcosToken(vslot, &ptoken, drv, &starcosApplications[STARCOS_ESIGN1]);
+	rc = createStarcosToken(vslot, &ptoken, drv, &starcosApplications[STARCOS_QES1]);
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Token creation failed");
 
@@ -314,7 +314,7 @@ static int newSigntrustToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Virtual slot creation failed");
 
-	rc = createStarcosToken(vslot, &ptoken, drv, &starcosApplications[STARCOS_ESIGN2]);
+	rc = createStarcosToken(vslot, &ptoken, drv, &starcosApplications[STARCOS_QES2]);
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Token creation failed");
 

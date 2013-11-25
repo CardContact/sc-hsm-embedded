@@ -38,8 +38,8 @@
 #include <pkcs11/p11generic.h>
 #include <pkcs11/bytestring.h>
 
-#define STARCOS_ESIGN1          0
-#define STARCOS_ESIGN2          1
+#define STARCOS_QES1            0
+#define STARCOS_QES2            1
 #define STARCOS_EUSERPKI        2
 #define STARCOS_DEFAULT         STARCOS_EUSERPKI
 

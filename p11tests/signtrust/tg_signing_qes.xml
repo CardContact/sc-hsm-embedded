@@ -57,7 +57,7 @@
 		<Script><![CDATA[
 var p = new PKCS11Provider(this.parameter.provider);
 try	{
-	var slot = getSlot(p, "STARCOS.eSign1");
+	var slot = getSlot(p, "STARCOS.QES1");
 
 	if (slot < 0) {
 		throw new Error("No token found");
@@ -130,7 +130,7 @@ try	{
 		<Script><![CDATA[
 var p = new PKCS11Provider(this.parameter.provider);
 try	{
-	var slot = getSlot(p, "STARCOS.eSign1");
+	var slot = getSlot(p, "STARCOS.QES1");
 
 	if (slot < 0) {
 		throw new Error("No token found");
@@ -197,7 +197,7 @@ try	{
 		<Script><![CDATA[
 var p = new PKCS11Provider(this.parameter.provider);
 try	{
-	var slot = getSlot(p, "STARCOS.eSign1");
+	var slot = getSlot(p, "STARCOS.QES1");
 
 	if (slot < 0) {
 		throw new Error("No token found");
@@ -264,7 +264,7 @@ try	{
 		<Script><![CDATA[
 var p = new PKCS11Provider(this.parameter.provider);
 try	{
-	var slot = getSlot(p, "STARCOS.eSign1");
+	var slot = getSlot(p, "STARCOS.QES1");
 
 	if (slot < 0) {
 		throw new Error("No token found");
@@ -331,7 +331,7 @@ try	{
 		<Script><![CDATA[
 var p = new PKCS11Provider(this.parameter.provider);
 try	{
-	var slot = getSlot(p, "STARCOS.eSign1");
+	var slot = getSlot(p, "STARCOS.QES1");
 
 	if (slot < 0) {
 		throw new Error("No token found");
@@ -398,7 +398,7 @@ try	{
 		<Script><![CDATA[
 var p = new PKCS11Provider(this.parameter.provider);
 try	{
-	var slot = getSlot(p, "STARCOS.eSign1");
+	var slot = getSlot(p, "STARCOS.QES1");
 
 	if (slot < 0) {
 		throw new Error("No token found");
@@ -465,7 +465,7 @@ try	{
 		<Script><![CDATA[
 var p = new PKCS11Provider(this.parameter.provider);
 try	{
-	var slot = getSlot(p, "STARCOS.eSign1");
+	var slot = getSlot(p, "STARCOS.QES1");
 
 	if (slot < 0) {
 		throw new Error("No token found");
@@ -532,7 +532,7 @@ try	{
 		<Script><![CDATA[
 var p = new PKCS11Provider(this.parameter.provider);
 try	{
-	var slot = getSlot(p, "STARCOS.eSign1");
+	var slot = getSlot(p, "STARCOS.QES1");
 
 	if (slot < 0) {
 		throw new Error("No token found");
@@ -599,7 +599,7 @@ try	{
 		<Script><![CDATA[
 var p = new PKCS11Provider(this.parameter.provider);
 try	{
-	var slot = getSlot(p, "STARCOS.eSign1");
+	var slot = getSlot(p, "STARCOS.QES1");
 
 	if (slot < 0) {
 		throw new Error("No token found");
@@ -666,7 +666,7 @@ try	{
 		<Script><![CDATA[
 var p = new PKCS11Provider(this.parameter.provider);
 try	{
-	var slot = getSlot(p, "STARCOS.eSign1");
+	var slot = getSlot(p, "STARCOS.QES1");
 
 	if (slot < 0) {
 		throw new Error("No token found");
@@ -733,7 +733,7 @@ try	{
 		<Script><![CDATA[
 var p = new PKCS11Provider(this.parameter.provider);
 try	{
-	var slot = getSlot(p, "STARCOS.eSign1");
+	var slot = getSlot(p, "STARCOS.QES1");
 
 	if (slot < 0) {
 		throw new Error("No token found");
@@ -800,7 +800,7 @@ try	{
 		<Script><![CDATA[
 var p = new PKCS11Provider(this.parameter.provider);
 try	{
-	var slot = getSlot(p, "STARCOS.eSign1");
+	var slot = getSlot(p, "STARCOS.QES1");
 
 	if (slot < 0) {
 		throw new Error("No token found");
