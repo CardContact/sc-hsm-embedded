@@ -192,7 +192,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetTokenInfo)(
 		FUNC_RETURNS(rv);
 	}
 
-	memcpy(pInfo, &(slot->token->info), sizeof(CK_TOKEN_INFO));
+	memcpy(pInfo, &token->info, sizeof(CK_TOKEN_INFO));
 
 	FUNC_RETURNS(CKR_OK);
 }

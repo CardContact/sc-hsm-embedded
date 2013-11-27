@@ -383,7 +383,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Logout)(
 		FUNC_RETURNS(rv);
 	}
 
-	slot->token->user = INT_CKU_NO_USER;
+	token->user = INT_CKU_NO_USER;
 
 	p11LockMutex(context->mutex);
 

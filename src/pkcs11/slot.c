@@ -473,8 +473,10 @@ int getValidatedToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 	p11UnlockMutex(context->mutex);
 
-	*token = slot->token;
-	return rc;
+	if (rc != CKR_OK)
+		return rc;
+
+	return getToken(slot, token);
 }
 
 
