@@ -60,6 +60,7 @@ static unsigned char algo_SHA224[] =           { 0x89, 0x02, 0x14, 0x60 };
 static unsigned char algo_SHA256[] =           { 0x89, 0x02, 0x14, 0x30 };
 static unsigned char algo_SHA384[] =           { 0x89, 0x02, 0x14, 0x40 };
 static unsigned char algo_SHA512[] =           { 0x89, 0x02, 0x14, 0x50 };
+static unsigned char algo_PKCS15_DECRYPT34[] = { 0x89, 0x02, 0x11, 0x30 };
 static unsigned char algo_PKCS15_DECRYPT[] =   { 0x89, 0x02, 0x11, 0x31 };
 static unsigned char algo_OAEP_DECRYPT[] =     { 0x89, 0x02, 0x11, 0x32 };
 
@@ -81,29 +82,20 @@ static const CK_MECHANISM_TYPE p11MechanismList[] = {
 
 
 
-static struct starcosPrivateData *getPrivateData(struct p11Token_t *token)
+struct starcosPrivateData *starcosGetPrivateData(struct p11Token_t *token)
 {
 	return (struct starcosPrivateData *)(token + 1);
 }
 
 
 
-static struct p11Token_t *getBaseToken(struct p11Token_t *token)
-{
-	if (!token->slot->primarySlot)
-		return token;
-	return token->slot->primarySlot->token;
-}
-
-
-
-static void lock(struct p11Token_t *token)
+void starcosLock(struct p11Token_t *token)
 {
 	struct starcosPrivateData *sc;
 
 	FUNC_CALLED();
 
-	sc = getPrivateData(getBaseToken(token));
+	sc = starcosGetPrivateData(getBaseToken(token));
 	p11LockMutex(sc->mutex);
 
 #ifdef DEBUG
@@ -113,19 +105,19 @@ static void lock(struct p11Token_t *token)
 
 
 
-static void unlock(struct p11Token_t *token)
+void starcosUnlock(struct p11Token_t *token)
 {
 	struct starcosPrivateData *sc;
 
 	FUNC_CALLED();
 
-	sc = getPrivateData(getBaseToken(token));
+	sc = starcosGetPrivateData(getBaseToken(token));
 	p11UnlockMutex(sc->mutex);
 }
 
 
 
-static int selectApplication(struct p11Token_t *token)
+int starcosSwitchApplication(struct p11Token_t *token, struct starcosApplication *application)
 {
 	int rc, *sa;
 	unsigned short SW1SW2;
@@ -133,20 +125,20 @@ static int selectApplication(struct p11Token_t *token)
 
 	FUNC_CALLED();
 
-	sc = getPrivateData(token);
+	sc = starcosGetPrivateData(token);
 
 	if (token->slot->primarySlot) {
-		sa = &(getPrivateData(getBaseToken(token))->selectedApplication);
+		sa = &(starcosGetPrivateData(getBaseToken(token))->selectedApplication);
 	} else {
 		sa = &sc->selectedApplication;
 	}
 
-	if (sc->application->aidId == *sa) {
+	if (application->aidId == *sa) {
 		return 0;
 	}
 
 	rc = transmitAPDU(token->slot, 0x00, 0xA4, 0x04, 0x0C,
-			sc->application->aid.len, sc->application->aid.val,
+			application->aid.len, application->aid.val,
 			0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {
@@ -157,14 +149,26 @@ static int selectApplication(struct p11Token_t *token)
 		FUNC_FAILS(-1, "Selecting application failed");
 	}
 
-	*sa = sc->application->aidId;
+	*sa = application->aidId;
 
 	FUNC_RETURNS(0);
 }
 
 
 
-static int readCertEF(struct p11Slot_t *slot, bytestring fid, unsigned char *content, size_t len)
+int starcosSelectApplication(struct p11Token_t *token)
+{
+	struct starcosPrivateData *sc;
+
+	FUNC_CALLED();
+
+	sc = starcosGetPrivateData(token);
+	FUNC_RETURNS(starcosSwitchApplication(token, sc->application));
+}
+
+
+
+int starcosReadTLVEF(struct p11Token_t *token, bytestring fid, unsigned char *content, size_t len)
 {
 	int rc, le, ne, ofs, maxapdu;
 	unsigned short SW1SW2;
@@ -173,7 +177,7 @@ static int readCertEF(struct p11Slot_t *slot, bytestring fid, unsigned char *con
 	FUNC_CALLED();
 
 	// Select EF
-	rc = transmitAPDU(slot, 0x00, 0xA4, 0x02, 0x0C,
+	rc = transmitAPDU(token->slot, 0x00, 0xA4, 0x02, 0x0C,
 			fid->len, fid->val,
 			0, NULL, 0, &SW1SW2);
 
@@ -185,11 +189,10 @@ static int readCertEF(struct p11Slot_t *slot, bytestring fid, unsigned char *con
 		FUNC_FAILS(-1, "File not found");
 	}
 
-	// Read first 5 bytes to determine tag and length
-	ofs = 0;
-	rc = transmitAPDU(slot, 0x00, 0xB0, ofs >> 8, ofs & 0xFF,
+	// Read first block to determine tag and length
+	rc = transmitAPDU(token->slot, 0x00, 0xB0, 0x00, 0x00,
 			0, NULL,
-			5, content + ofs, len - ofs, &SW1SW2);
+			0, content, len, &SW1SW2);
 
 	if (rc < 0) {
 		FUNC_FAILS(rc, "transmitAPDU failed");
@@ -199,13 +202,13 @@ static int readCertEF(struct p11Slot_t *slot, bytestring fid, unsigned char *con
 		FUNC_FAILS(-1, "Read EF failed");
 	}
 
-	ofs += rc;
+	ofs = rc;
 
 	// Restrict the number of bytes in Le to either the maximum APDU size of STARCOS or
 	// the maximum APDU size of the reader, if any.
-	maxapdu = 1920;
-	if (slot->maxRAPDU && (slot->maxRAPDU < maxapdu))
-		maxapdu = slot->maxRAPDU;
+	maxapdu = token->drv->maxRAPDU;
+	if (token->slot->maxRAPDU && (token->slot->maxRAPDU < maxapdu))
+		maxapdu = token->slot->maxRAPDU;
 	maxapdu -= 2;		// Accommodate SW1/SW2
 
 	le = 65536;			// Read all if no certificate found
@@ -220,10 +223,10 @@ static int readCertEF(struct p11Slot_t *slot, bytestring fid, unsigned char *con
 	do	{
 		ne = le;
 		// Restrict Ne to the maximum APDU length allowed
-		if (((le != 65536) || slot->noExtLengthReadAll) && (le > maxapdu))
+		if (((le != 65536) || token->slot->noExtLengthReadAll) && (le > maxapdu))
 			ne = maxapdu;
 
-		rc = transmitAPDU(slot, 0x00, 0xB0, ofs >> 8, ofs & 0xFF,
+		rc = transmitAPDU(token->slot, 0x00, 0xB0, ofs >> 8, ofs & 0xFF,
 				0, NULL,
 				ne, content + ofs, len - ofs, &SW1SW2);
 
@@ -244,16 +247,95 @@ static int readCertEF(struct p11Slot_t *slot, bytestring fid, unsigned char *con
 
 
 
-static int determinePinUseCounter(struct p11Slot_t *slot, unsigned char recref, int *useCounter, int *lifeCycle)
+int starcosCheckPINStatus(struct p11Slot_t *slot, unsigned char pinref)
 {
 	int rc;
 	unsigned short SW1SW2;
-	unsigned char rec[256], *p;
 	FUNC_CALLED();
 
+	rc = transmitAPDU(slot, 0x00, 0x20, 0x00, pinref,
+			0, NULL,
+			0, NULL, 0, &SW1SW2);
+
+	if (rc < 0) {
+		FUNC_FAILS(rc, "transmitAPDU failed");
+	}
+
+	FUNC_RETURNS(SW1SW2);
+}
+
+
+
+/**
+ * Update internal PIN status based on SW1/SW2 received from token
+ */
+int starcosUpdatePinStatus(struct p11Token_t *token, int pinstatus)
+{
+	int rc = CKR_OK;
+
+	token->info.flags &= ~(CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED | CKF_USER_PIN_FINAL_TRY | CKF_USER_PIN_LOCKED | CKF_USER_PIN_COUNT_LOW | CKF_USER_PIN_TO_BE_CHANGED );
+
+	if (pinstatus != 0x6984) {
+		token->info.flags |= CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED;
+	}
+
+	if (token->pinChangeRequired) {
+		token->info.flags |= CKF_USER_PIN_TO_BE_CHANGED;
+	}
+
+	switch(pinstatus) {
+	case 0x9000:
+		rc = CKR_OK;
+		break;
+	case 0x6985:
+		token->info.flags |= CKF_USER_PIN_TO_BE_CHANGED;
+		rc = CKR_USER_PIN_NOT_INITIALIZED;
+		break;
+	case 0x6984:
+		rc = CKR_USER_PIN_NOT_INITIALIZED;
+		break;
+	case 0x6983:
+	case 0x63C0:
+		token->info.flags |= CKF_USER_PIN_LOCKED;
+		rc = CKR_PIN_LOCKED;
+		break;
+	case 0x63C1:
+		token->info.flags |= CKF_USER_PIN_FINAL_TRY|CKF_USER_PIN_COUNT_LOW;
+		rc = CKR_PIN_INCORRECT;
+		break;
+	case 0x63C2:
+		token->info.flags |= CKF_USER_PIN_COUNT_LOW;
+		rc = CKR_PIN_INCORRECT;
+		break;
+	default:
+		rc = CKR_PIN_INCORRECT;
+		break;
+	}
+	return rc;
+}
+
+
+
+int starcosDeterminePinUseCounter(struct p11Token_t *token, unsigned char recref, int *useCounter, int *lifeCycle)
+{
+	int rc,ucpathlen;
+	unsigned short SW1SW2;
+	unsigned char rec[256], *p,*fid,*ucpath;
+	FUNC_CALLED();
+
+	if (token->info.firmwareVersion.minor >= 5) {
+		fid = (unsigned char *)"\x00\x13";		// EF.KEYD
+		ucpath = (unsigned char *)"\x30\x7B\xA4\x9F\x22";
+		ucpathlen = 4;		// 4 Tags (not bytes)
+	} else {
+		fid = (unsigned char *)"\x00\x15";		// EF.PWDD
+		ucpath = (unsigned char *)"\x30\x7B\x9F\x22";
+		ucpathlen = 3;		// 3 Tags (not bytes)
+	}
+
 	// Select EF
-	rc = transmitAPDU(slot, 0x00, 0xA4, 0x02, 0x0C,
-			2, (unsigned char *)"\x00\x13",
+	rc = transmitAPDU(token->slot, 0x00, 0xA4, 0x02, 0x0C,
+			2, fid,
 			0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {
@@ -265,7 +347,7 @@ static int determinePinUseCounter(struct p11Slot_t *slot, unsigned char recref, 
 	}
 
 	// Read record, but leave 3 bytes to add encapsulating 30 81 FF later
-	rc = transmitAPDU(slot, 0x00, 0xB2, recref, 0x04,
+	rc = transmitAPDU(token->slot, 0x00, 0xB2, recref, 0x04,
 			0, NULL,
 			0, rec, sizeof(rec) - 3, &SW1SW2);
 
@@ -274,7 +356,7 @@ static int determinePinUseCounter(struct p11Slot_t *slot, unsigned char recref, 
 	}
 
 	if (SW1SW2 != 0x9000) {
-		FUNC_FAILS(-1, "File not found");
+		FUNC_FAILS(-1, "Record not found");
 	}
 
 	rc = asn1Encap(0x30, rec, rc);
@@ -285,7 +367,7 @@ static int determinePinUseCounter(struct p11Slot_t *slot, unsigned char recref, 
 	}
 
 	*useCounter = 0;
-	p = asn1Find(rec, (unsigned char *)"\x30\x7B\xA4\x9F\x22", 4);
+	p = asn1Find(rec, ucpath, ucpathlen);
 
 	if (p) {
 		asn1Tag(&p);
@@ -304,25 +386,6 @@ static int determinePinUseCounter(struct p11Slot_t *slot, unsigned char recref, 
 	}
 
 	FUNC_RETURNS(CKR_OK);
-}
-
-
-
-static int checkPINStatus(struct p11Slot_t *slot, unsigned char pinref)
-{
-	int rc;
-	unsigned short SW1SW2;
-	FUNC_CALLED();
-
-	rc = transmitAPDU(slot, 0x00, 0x20, 0x00, pinref,
-			0, NULL,
-			0, NULL, 0, &SW1SW2);
-
-	if (rc < 0) {
-		FUNC_FAILS(rc, "transmitAPDU failed");
-	}
-
-	FUNC_RETURNS(SW1SW2);
 }
 
 
@@ -346,6 +409,7 @@ static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 		return -1;
 	}
 }
+
 
 
 static int getAlgorithmIdForSigning(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned char **algotlv)
@@ -415,70 +479,34 @@ static int getAlgorithmIdForDigest(struct p11Token_t *token, CK_MECHANISM_TYPE m
 
 
 
-static int getAlgorithmIdForDecryption(CK_MECHANISM_TYPE mech, unsigned char **algotlv)
+static int getAlgorithmIdForDecryption(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned char **algotlv)
 {
-	switch(mech) {
-	case CKM_RSA_PKCS:
-		*algotlv = algo_PKCS15_DECRYPT;
-		break;
-	case CKM_RSA_PKCS_OAEP:
-		*algotlv = algo_OAEP_DECRYPT;
-		break;
-	default:
-		return CKR_MECHANISM_INVALID;
+	if (token->info.firmwareVersion.minor >= 5) {
+		switch(mech) {
+		case CKM_RSA_PKCS:
+			*algotlv = algo_PKCS15_DECRYPT;
+			break;
+		case CKM_RSA_PKCS_OAEP:
+			*algotlv = algo_OAEP_DECRYPT;
+			break;
+		default:
+			return CKR_MECHANISM_INVALID;
+		}
+	} else {
+		switch(mech) {
+		case CKM_RSA_PKCS:
+			*algotlv = algo_PKCS15_DECRYPT34;
+			break;
+		default:
+			return CKR_MECHANISM_INVALID;
+		}
 	}
 	return CKR_OK;
 }
 
 
 
-/**
- * Update internal PIN status based on SW1/SW2 received from token
- */
-static int updatePinStatus(struct p11Token_t *token, int pinstatus)
-{
-	int rc = CKR_OK;
-
-	token->info.flags &= ~(CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED | CKF_USER_PIN_FINAL_TRY | CKF_USER_PIN_LOCKED | CKF_USER_PIN_COUNT_LOW | CKF_USER_PIN_TO_BE_CHANGED );
-
-	if (pinstatus != 0x6984) {
-		token->info.flags |= CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED;
-	}
-
-	if (token->pinChangeRequired) {
-		token->info.flags |= CKF_USER_PIN_TO_BE_CHANGED;
-	}
-
-	switch(pinstatus) {
-	case 0x9000:
-		rc = CKR_OK;
-		break;
-	case 0x6984:
-		rc = CKR_USER_PIN_NOT_INITIALIZED;
-		break;
-	case 0x6983:
-	case 0x63C0:
-		token->info.flags |= CKF_USER_PIN_LOCKED;
-		rc = CKR_PIN_LOCKED;
-		break;
-	case 0x63C1:
-		token->info.flags |= CKF_USER_PIN_FINAL_TRY|CKF_USER_PIN_COUNT_LOW;
-		rc = CKR_PIN_INCORRECT;
-		break;
-	case 0x63C2:
-		token->info.flags |= CKF_USER_PIN_COUNT_LOW;
-		rc = CKR_PIN_INCORRECT;
-		break;
-	default:
-		rc = CKR_PIN_INCORRECT;
-		break;
-	}
-	return rc;
-}
-
-
-
-static int digest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned char *data, size_t len)
+int starcosDigest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned char *data, size_t len)
 {
 	int rc,chunk;
 	unsigned short SW1SW2;
@@ -542,9 +570,7 @@ static int digest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned cha
 		}
 
 		while (len > 0) {
-			// Chunk must be aligned to the hash block size
-			// As we support SHA-2 up to 512 we choose 7 * 128 as chunk size
-			chunk = (len > 896 ? 896 : len);
+			chunk = (len > token->drv->maxHashBlock ? token->drv->maxHashBlock : len);
 
 			memcpy(scr, data, chunk);
 			rc = asn1Encap(0x80, scr, chunk);
@@ -608,21 +634,21 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 	}
 
 	slot = pObject->token->slot;
-	lock(pObject->token);
+	starcosLock(pObject->token);
 	if (!slot->token) {
 		FUNC_RETURNS(CKR_DEVICE_REMOVED);
 	}
 
-	rc = selectApplication(pObject->token);
+	rc = starcosSelectApplication(pObject->token);
 	if (rc < 0) {
-		unlock(pObject->token);
+		starcosUnlock(pObject->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "selecting application failed");
 	}
 
 	if (mech != CKM_RSA_PKCS) {
-		rc = digest(pObject->token, mech, pData, ulDataLen);
+		rc = starcosDigest(pObject->token, mech, pData, ulDataLen);
 		if (rc != CKR_OK) {
-			unlock(pObject->token);
+			starcosUnlock(pObject->token);
 			FUNC_FAILS(rc, "digesting failed");
 		}
 		pData = NULL;
@@ -631,7 +657,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 
 	rc = getAlgorithmIdForSigning(pObject->token, mech, &s);
 	if (rc != CKR_OK) {
-		unlock(pObject->token);
+		starcosUnlock(pObject->token);
 		FUNC_FAILS(rc, "getAlgorithmIdForSigning() failed");
 	}
 
@@ -651,12 +677,12 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 		0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {
-		unlock(pObject->token);
+		starcosUnlock(pObject->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
 	if (SW1SW2 != 0x9000) {
-		unlock(pObject->token);
+		starcosUnlock(pObject->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "MANAGE SE failed");
 	}
 
@@ -665,23 +691,27 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 			0, pSignature, *pulSignatureLen, &SW1SW2);
 
 	if (rc < 0) {
-		unlock(pObject->token);
+		starcosUnlock(pObject->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
 	if (SW1SW2 == 0x6982) {
-		unlock(pObject->token);
+		starcosUnlock(pObject->token);
 		FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "User not logged in");
 	}
 
 	if (SW1SW2 != 0x9000) {
-		unlock(pObject->token);
+		starcosUnlock(pObject->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Signature operation failed");
 	}
 
 	*pulSignatureLen = rc;
 
-	unlock(pObject->token);
+	if ((pObject->token->user == CKU_USER) && (pObject->token->pinUseCounter == 1)) {
+		pObject->token->user = INT_CKU_NO_USER;
+	}
+
+	starcosUnlock(pObject->token);
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -693,7 +723,7 @@ static int starcos_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR m
 
 	FUNC_CALLED();
 
-	FUNC_RETURNS(getAlgorithmIdForDecryption(mech->mechanism, &algotlv));
+	FUNC_RETURNS(getAlgorithmIdForDecryption(pObject->token, mech->mechanism, &algotlv));
 }
 
 
@@ -717,20 +747,20 @@ static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech
 	}
 
 	slot = pObject->token->slot;
-	lock(pObject->token);
+	starcosLock(pObject->token);
 	if (!slot->token) {
 		FUNC_RETURNS(CKR_DEVICE_REMOVED);
 	}
 
-	rc = selectApplication(pObject->token);
+	rc = starcosSelectApplication(pObject->token);
 	if (rc < 0) {
-		unlock(pObject->token);
+		starcosUnlock(pObject->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "selecting application failed");
 	}
 
-	rc = getAlgorithmIdForDecryption(mech, &s);
+	rc = getAlgorithmIdForDecryption(pObject->token, mech, &s);
 	if (rc != CKR_OK) {
-		unlock(pObject->token);
+		starcosUnlock(pObject->token);
 		FUNC_FAILS(rc, "getAlgorithmIdForDecryption() failed");
 	}
 
@@ -750,12 +780,12 @@ static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech
 		0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {
-		unlock(pObject->token);
+		starcosUnlock(pObject->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
 	if (SW1SW2 != 0x9000) {
-		unlock(pObject->token);
+		starcosUnlock(pObject->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "MANAGE SE failed");
 	}
 
@@ -766,29 +796,37 @@ static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech
 			257, scr,
 			0, scr, sizeof(scr), &SW1SW2);
 
-	unlock(pObject->token);
+	starcosUnlock(pObject->token);
 
 	if (rc < 0) {
+		starcosUnlock(pObject->token);
 		FUNC_FAILS(rc, "transmitAPDU failed");
 	}
 
 	if (SW1SW2 != 0x9000) {
+		starcosUnlock(pObject->token);
 		FUNC_FAILS(CKR_ENCRYPTED_DATA_INVALID, "Decryption operation failed");
 	}
 
 	*pulDataLen = rc;
 	if (rc > *pulDataLen) {
+		starcosUnlock(pObject->token);
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "supplied buffer too small");
+	}
+
+	if ((pObject->token->user == CKU_USER) && (pObject->token->pinUseCounter == 1)) {
+		pObject->token->user = INT_CKU_NO_USER;
 	}
 
 	memcpy(pData, scr, rc);
 
+	starcosUnlock(pObject->token);
 	FUNC_RETURNS(CKR_OK);
 }
 
 
 
-static int addCertificateObject(struct p11Token_t *token, struct p15CertificateDescription *p15)
+int starcosAddCertificateObject(struct p11Token_t *token, struct p15CertificateDescription *p15)
 {
 	unsigned char certValue[MAX_CERTIFICATE_SIZE];
 	struct p11Object_t *pObject;
@@ -796,7 +834,7 @@ static int addCertificateObject(struct p11Token_t *token, struct p15CertificateD
 
 	FUNC_CALLED();
 
-	rc = readCertEF(token->slot, &p15->efidOrPath, certValue, sizeof(certValue));
+	rc = starcosReadTLVEF(token, &p15->efidOrPath, certValue, sizeof(certValue));
 
 	if (rc < 0) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate");
@@ -815,7 +853,7 @@ static int addCertificateObject(struct p11Token_t *token, struct p15CertificateD
 
 
 
-static int addPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDescription *p15)
+int starcosAddPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDescription *p15)
 {
 	CK_OBJECT_CLASS class = CKO_CERTIFICATE;
 	CK_ATTRIBUTE template[] = {
@@ -844,10 +882,10 @@ static int addPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDes
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create private key object");
 	}
 
-	p11prikey->C_SignInit = starcos_C_SignInit;
-	p11prikey->C_Sign = starcos_C_Sign;
-	p11prikey->C_DecryptInit = starcos_C_DecryptInit;
-	p11prikey->C_Decrypt = starcos_C_Decrypt;
+	p11prikey->C_SignInit = token->drv->C_SignInit;
+	p11prikey->C_Sign = token->drv->C_Sign;
+	p11prikey->C_DecryptInit = token->drv->C_DecryptInit;
+	p11prikey->C_Decrypt = token->drv->C_Decrypt;
 
 	p11prikey->tokenid = p15->keyReference;
 	p11prikey->keysize = p15->keysize;
@@ -873,12 +911,12 @@ static int loadObjects(struct p11Token_t *token)
 
 	FUNC_CALLED();
 
-	sc = getPrivateData(token);
+	sc = starcosGetPrivateData(token);
 
 	for (i = 0; i < sc->application->certsLen; i++) {
 		struct p15CertificateDescription *p15 = &sc->application->certs[i];
 
-		rc = addCertificateObject(token, p15);
+		rc = starcosAddCertificateObject(token, p15);
 		if (rc != CKR_OK) {
 #ifdef DEBUG
 			debug("addCertificateObject failed with rc=%d\n", rc);
@@ -889,7 +927,7 @@ static int loadObjects(struct p11Token_t *token)
 	for (i = 0; i < sc->application->privateKeysLen; i++) {
 		struct p15PrivateKeyDescription *p15 = &sc->application->privateKeys[i];
 
-		rc = addPrivateKeyObject(token, p15);
+		rc = starcosAddPrivateKeyObject(token, p15);
 		if (rc != CKR_OK) {
 #ifdef DEBUG
 			debug("addPrivateKeyObject failed with rc=%d\n", rc);
@@ -952,24 +990,24 @@ static int login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 
 	FUNC_CALLED();
 
-	lock(slot->token);
+	starcosLock(slot->token);
 	if (!slot->token) {
 		FUNC_RETURNS(CKR_DEVICE_REMOVED);
 	}
 
-	rc = selectApplication(slot->token);
+	rc = starcosSelectApplication(slot->token);
 	if (rc < 0) {
-		unlock(slot->token);
+		starcosUnlock(slot->token);
 		FUNC_FAILS(rc, "selecting application failed");
 	}
 
-	sc = getPrivateData(slot->token);
+	sc = starcosGetPrivateData(slot->token);
 
 	if (userType == CKU_SO) {
 		rc = encodeF2B(pin, pinlen, sc->sopin);
 
 		if (rc != CKR_OK) {
-			unlock(slot->token);
+			starcosUnlock(slot->token);
 			FUNC_FAILS(rc, "Could not encode PIN");
 		}
 	} else {
@@ -996,7 +1034,7 @@ static int login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 			rc = encodeF2B(pin, pinlen, f2b);
 
 			if (rc != CKR_OK) {
-				unlock(slot->token);
+				starcosUnlock(slot->token);
 				FUNC_FAILS(rc, "Could not encode PIN");
 			}
 
@@ -1007,19 +1045,19 @@ static int login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
 
 
 		if (rc < 0) {
-			unlock(slot->token);
+			starcosUnlock(slot->token);
 			FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 		}
 
-		rc = updatePinStatus(slot->token, SW1SW2);
+		rc = starcosUpdatePinStatus(slot->token, SW1SW2);
 
 		if (rc != CKR_OK) {
-			unlock(slot->token);
+			starcosUnlock(slot->token);
 			FUNC_FAILS(rc, "login failed");
 		}
 	}
 
-	unlock(slot->token);
+	starcosUnlock(slot->token);
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -1050,18 +1088,18 @@ static int initpin(struct p11Slot_t *slot, unsigned char *pin, int pinlen)
 		}
 	}
 
-	lock(slot->token);
+	starcosLock(slot->token);
 	if (!slot->token) {
 		FUNC_RETURNS(CKR_DEVICE_REMOVED);
 	}
 
-	rc = selectApplication(slot->token);
+	rc = starcosSelectApplication(slot->token);
 	if (rc < 0) {
-		unlock(slot->token);
+		starcosUnlock(slot->token);
 		FUNC_FAILS(rc, "selecting application failed");
 	}
 
-	sc = getPrivateData(slot->token);
+	sc = starcosGetPrivateData(slot->token);
 	memcpy(data, sc->sopin, sizeof(sc->sopin));
 	pinref = sc->application->pinref;
 
@@ -1078,30 +1116,30 @@ static int initpin(struct p11Slot_t *slot, unsigned char *pin, int pinlen)
 				0, NULL, 0, &SW1SW2);
 	}
 	if (rc < 0) {
-		unlock(slot->token);
+		starcosUnlock(slot->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
 	if (SW1SW2 == 0x6982) {
-		unlock(slot->token);
+		starcosUnlock(slot->token);
 		FUNC_FAILS(CKR_KEY_FUNCTION_NOT_PERMITTED, "Function not allowed");
 	}
 
 	if (SW1SW2 != 0x9000) {
-		unlock(slot->token);
+		starcosUnlock(slot->token);
 		FUNC_FAILS(CKR_PIN_INCORRECT, "Invalid SO-PIN");
 	}
 
-	rc = checkPINStatus(slot, pinref);
+	rc = starcosCheckPINStatus(slot, pinref);
 
 	if (rc < 0) {
-		unlock(slot->token);
+		starcosUnlock(slot->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
-	updatePinStatus(slot->token, rc);
+	starcosUpdatePinStatus(slot->token, rc);
 
-	unlock(slot->token);
+	starcosUnlock(slot->token);
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -1142,18 +1180,18 @@ static int setpin(struct p11Slot_t *slot, unsigned char *oldpin, int oldpinlen, 
 		FUNC_FAILS(rc, "Could not encode NewPIN");
 	}
 
-	lock(slot->token);
+	starcosLock(slot->token);
 	if (!slot->token) {
 		FUNC_RETURNS(CKR_DEVICE_REMOVED);
 	}
 
-	rc = selectApplication(slot->token);
+	rc = starcosSelectApplication(slot->token);
 	if (rc < 0) {
-		unlock(slot->token);
+		starcosUnlock(slot->token);
 		FUNC_FAILS(rc, "selecting application failed");
 	}
 
-	sc = getPrivateData(slot->token);
+	sc = starcosGetPrivateData(slot->token);
 
 #ifdef DEBUG
 	debug("Set PIN using provided PIN value\n");
@@ -1163,21 +1201,21 @@ static int setpin(struct p11Slot_t *slot, unsigned char *oldpin, int oldpinlen, 
 		0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {
-		unlock(slot->token);
+		starcosUnlock(slot->token);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
 	if (slot->token->user == CKU_SO) {
 		if (SW1SW2 != 0x9000) {
-			unlock(slot->token);
+			starcosUnlock(slot->token);
 			FUNC_FAILS(CKR_PIN_INCORRECT, "Incorrect old SO-PIN");
 		}
 	} else {
 		slot->token->pinChangeRequired = FALSE;
-		rc = updatePinStatus(slot->token, SW1SW2);
+		rc = starcosUpdatePinStatus(slot->token, SW1SW2);
 	}
 
-	unlock(slot->token);
+	starcosUnlock(slot->token);
 	FUNC_RETURNS(rc);
 }
 
@@ -1195,7 +1233,7 @@ static int logout(struct p11Slot_t *slot)
 
 	FUNC_CALLED();
 
-	sc = getPrivateData(slot->token);
+	sc = starcosGetPrivateData(slot->token);
 	memset(sc->sopin, 0, sizeof(sc->sopin));
 
 	FUNC_RETURNS(CKR_OK);
@@ -1207,7 +1245,7 @@ static void freeStarcosToken(struct p11Token_t *token)
 {
 	struct starcosPrivateData *sc;
 
-	sc = getPrivateData(token);
+	sc = starcosGetPrivateData(token);
 	p11DestroyMutex(sc->mutex);
 }
 
@@ -1248,13 +1286,13 @@ int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct
 	ptoken->info.ulMaxRwSessionCount = CK_EFFECTIVELY_INFINITE;
 	ptoken->info.ulSessionCount = CK_UNAVAILABLE_INFORMATION;
 	ptoken->info.firmwareVersion.major = 3;
-	ptoken->info.firmwareVersion.minor = 5;
+	ptoken->info.firmwareVersion.minor = drv->version;
 
 	ptoken->info.flags = CKF_WRITE_PROTECTED;
 	ptoken->user = INT_CKU_NO_USER;
 	ptoken->drv = drv;
 
-	sc = getPrivateData(ptoken);
+	sc = starcosGetPrivateData(ptoken);
 	sc->selectedApplication = 0;
 	sc->application = application;
 
@@ -1262,19 +1300,19 @@ int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct
 
 	strbpcpy(ptoken->info.label, sc->application->name, sizeof(ptoken->info.label));
 
-	rc = selectApplication(ptoken);
+	rc = starcosSelectApplication(ptoken);
 
 	if (rc < 0) {
-		freeStarcosToken(ptoken);
+		drv->freeToken(ptoken);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Application not found on token");
 	}
 
 	if (sc->application->qESKeyDRec) {
 		lc = 0;
-		rc = determinePinUseCounter(slot, sc->application->qESKeyDRec, &ptoken->pinUseCounter, &lc);
+		rc = starcosDeterminePinUseCounter(ptoken, sc->application->qESKeyDRec, &ptoken->pinUseCounter, &lc);
 
 		if (rc < 0) {
-			freeStarcosToken(ptoken);
+			drv->freeToken(ptoken);
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Error querying PIN key use counter");
 		}
 
@@ -1289,18 +1327,21 @@ int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct
 	rc = loadObjects(ptoken);
 
 	if (rc < 0) {
-		freeStarcosToken(ptoken);
+		drv->freeToken(ptoken);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error loading objects from token");
 	}
 
-	rc = checkPINStatus(slot, sc->application->pinref);
+	rc = starcosCheckPINStatus(slot, sc->application->pinref);
 
 	if (rc < 0) {
-		freeStarcosToken(ptoken);
+		drv->freeToken(ptoken);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error querying PIN status");
 	}
 
-	updatePinStatus(ptoken, rc);
+	starcosUpdatePinStatus(ptoken, rc);
+
+	if (slot->hasFeatureVerifyPINDirect)
+		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
 
 	*token = ptoken;
 
@@ -1376,6 +1417,12 @@ struct p11TokenDriver *getStarcosTokenDriver()
 {
 	static struct p11TokenDriver starcos_token = {
 		"STARCOS",
+		5,
+		1920,
+		1920,
+		// Chunk must be aligned to the hash block size
+		// As we support SHA-2 up to 512 we choose 7 * 128 as chunk size
+		896,
 		NULL,
 		NULL,
 		freeStarcosToken,
@@ -1384,7 +1431,17 @@ struct p11TokenDriver *getStarcosTokenDriver()
 		login,
 		logout,
 		initpin,
-		setpin
+		setpin,
+
+		starcos_C_DecryptInit,	// int (*C_DecryptInit)  (struct p11Object_t *, CK_MECHANISM_PTR);
+		starcos_C_Decrypt,		// int (*C_Decrypt)      (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+		NULL,					// int (*C_DecryptUpdate)(struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+		NULL,					// int (*C_DecryptFinal) (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
+
+		starcos_C_SignInit,		// int (*C_SignInit)     (struct p11Object_t *, CK_MECHANISM_PTR);
+		starcos_C_Sign,			// int (*C_Sign)         (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+		NULL,					// int (*C_SignUpdate)   (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
+		NULL					// int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
 	};
 
 	return &starcos_token;

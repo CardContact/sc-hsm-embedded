@@ -54,7 +54,8 @@ extern struct p11Context_t *context;
 extern struct p11TokenDriver *getSmartCardHSMTokenDriver();
 extern struct p11TokenDriver *getBNotKTokenDriver();
 extern struct p11TokenDriver *getDTrustTokenDriver();
-extern struct p11TokenDriver *getSigntrustTokenDriver();
+extern struct p11TokenDriver *getSigntrust32TokenDriver();
+extern struct p11TokenDriver *getSigntrust35TokenDriver();
 
 typedef struct p11TokenDriver *(*tokenDriver_t)();
 
@@ -62,7 +63,8 @@ static tokenDriver_t tokenDriver[] = {
 		getSmartCardHSMTokenDriver,
 		getBNotKTokenDriver,
 		getDTrustTokenDriver,
-		getSigntrustTokenDriver,
+		getSigntrust32TokenDriver,
+		getSigntrust35TokenDriver,
 		NULL
 };
 
@@ -440,4 +442,19 @@ void freeToken(struct p11Token_t *token)
 		removePublicObjects(token);
 		free(token);
 	}
+}
+
+
+
+/**
+ * Return the base token if this token is in a virtual slot
+ *
+ * @param token     Pointer to token
+ * @return          The same or related base token
+ */
+struct p11Token_t *getBaseToken(struct p11Token_t *token)
+{
+	if (!token->slot->primarySlot)
+		return token;
+	return token->slot->primarySlot->token;
 }

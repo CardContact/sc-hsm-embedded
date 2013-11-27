@@ -248,9 +248,6 @@ static int newBNotKToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Base token creation failed");
 
-	if (slot->hasFeatureVerifyPINDirect)
-		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
-
 	rc = addToken(slot, ptoken);
 	if (rc != CKR_OK) {
 		FUNC_FAILS(rc, "addToken() failed");
@@ -266,9 +263,6 @@ static int newBNotKToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Token creation failed");
 
-	if (vslot->hasFeatureVerifyPINDirect)
-		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
-
 	rc = addToken(vslot, ptoken);
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "addToken() failed");
@@ -281,9 +275,6 @@ static int newBNotKToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	rc = createStarcosToken(vslot, &ptoken, drv, &starcosApplications[STARCOS_QES2]);
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Token creation failed");
-
-	if (vslot->hasFeatureVerifyPINDirect)
-		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
 
 	rc = addToken(vslot, ptoken);
 	if (rc != CKR_OK)

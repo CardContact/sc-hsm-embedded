@@ -1113,6 +1113,10 @@ struct p11TokenDriver *getSmartCardHSMTokenDriver()
 {
 	static struct p11TokenDriver sc_hsm_token = {
 		"SmartCard-HSM",
+		1,
+		MAX_EXT_APDU_LENGTH,
+		MAX_EXT_APDU_LENGTH,
+		0,
 		isCandidate,
 		newSmartCardHSMToken,
 		NULL,
@@ -1121,7 +1125,17 @@ struct p11TokenDriver *getSmartCardHSMTokenDriver()
 		sc_hsm_login,
 		sc_hsm_logout,
 		sc_hsm_initpin,
-		sc_hsm_setpin
+		sc_hsm_setpin,
+
+		sc_hsm_C_DecryptInit,	// int (*C_DecryptInit)  (struct p11Object_t *, CK_MECHANISM_PTR);
+		sc_hsm_C_Decrypt,		// int (*C_Decrypt)      (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+		NULL,					// int (*C_DecryptUpdate)(struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+		NULL,					// int (*C_DecryptFinal) (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
+
+		sc_hsm_C_SignInit,		// int (*C_SignInit)     (struct p11Object_t *, CK_MECHANISM_PTR);
+		sc_hsm_C_Sign,			// int (*C_Sign)         (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+		NULL,					// int (*C_SignUpdate)   (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
+		NULL					// int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
 	};
 
 	return &sc_hsm_token;

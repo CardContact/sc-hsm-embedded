@@ -261,7 +261,7 @@ static int isCandidate(unsigned char *atr, size_t atrLen)
 
 
 
-struct p11TokenDriver *getSigntrustTokenDriver();
+struct p11TokenDriver *getSigntrust35TokenDriver();
 
 /**
  * Create a new STARCOS token if token detection and initialization is successful
@@ -270,7 +270,7 @@ struct p11TokenDriver *getSigntrustTokenDriver();
  * @param token     Pointer to pointer updated with newly created token structure
  * @return          CKR_OK or any other Cryptoki error code
  */
-static int newSigntrustToken(struct p11Slot_t *slot, struct p11Token_t **token)
+static int newSigntrust35Token(struct p11Slot_t *slot, struct p11Token_t **token)
 {
 	struct p11Token_t *ptoken;
 	struct p11TokenDriver *drv;
@@ -279,18 +279,16 @@ static int newSigntrustToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 	FUNC_CALLED();
 
-	drv = getSigntrustTokenDriver();
+	drv = getSigntrust35TokenDriver();
 	rc = createStarcosToken(slot, &ptoken, drv, &starcosApplications[STARCOS_EUSERPKI]);
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Base token creation failed");
-
-	if (slot->hasFeatureVerifyPINDirect)
-		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
 
 	rc = addToken(slot, ptoken);
 	if (rc != CKR_OK) {
 		FUNC_FAILS(rc, "addToken() failed");
 	}
+
 
 	*token = ptoken;
 
@@ -301,9 +299,6 @@ static int newSigntrustToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	rc = createStarcosToken(vslot, &ptoken, drv, &starcosApplications[STARCOS_QES1]);
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Token creation failed");
-
-	if (vslot->hasFeatureVerifyPINDirect)
-		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
 
 	rc = addToken(vslot, ptoken);
 	if (rc != CKR_OK)
@@ -318,9 +313,6 @@ static int newSigntrustToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Token creation failed");
 
-	if (vslot->hasFeatureVerifyPINDirect)
-		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
-
 	rc = addToken(vslot, ptoken);
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "addToken() failed");
@@ -332,7 +324,7 @@ static int newSigntrustToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 struct p11TokenDriver *getStarcosTokenDriver();
 
-struct p11TokenDriver *getSigntrustTokenDriver()
+struct p11TokenDriver *getSigntrust35TokenDriver()
 {
 	static struct p11TokenDriver starcos_token;
 
@@ -340,7 +332,7 @@ struct p11TokenDriver *getSigntrustTokenDriver()
 
 	starcos_token.name = "3.5 ID ECC C1 ST";
 	starcos_token.isCandidate = isCandidate;
-	starcos_token.newToken = newSigntrustToken;
+	starcos_token.newToken = newSigntrust35Token;
 
 	return &starcos_token;
 }

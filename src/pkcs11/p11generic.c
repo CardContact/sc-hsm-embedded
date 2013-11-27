@@ -367,7 +367,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetInfo)
 			sizeof(pInfo->libraryDescription));
 #endif
 	pInfo->libraryVersion.major = 2;
-	pInfo->libraryVersion.minor = 1;
+	pInfo->libraryVersion.minor = 2;
 
 	FUNC_RETURNS(CKR_OK);
 }

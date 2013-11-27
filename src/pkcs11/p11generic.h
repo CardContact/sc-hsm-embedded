@@ -161,6 +161,10 @@ struct p11SessionPool_t {
 
 struct p11TokenDriver {
 	const char *name;                   /**< Name of driver                                 */
+	int version;                        /**< Differentiate among card family members        */
+	int maxCAPDU;                       /**< Maximum length of command APDU                 */
+	int maxRAPDU;                       /**< Maximum length of response APDU                */
+	int maxHashBlock;                   /**< Maximum number of byte in a hash block         */
 	/**< Allow driver to check if card is a candidate based on the ATR                      */
 	int (*isCandidate)(unsigned char *atr, size_t atrLen);
 	int (*newToken)(struct p11Slot_t *slot, struct p11Token_t **token);
@@ -171,6 +175,15 @@ struct p11TokenDriver {
 	int (*logout)(struct p11Slot_t *slot);
 	int (*initpin)(struct p11Slot_t *slot, unsigned char *pin, int pinlen);
 	int (*setpin)(struct p11Slot_t *slot, unsigned char *oldpin, int oldpinlen, unsigned char *newpin, int newpinlen);
+
+	int (*C_DecryptInit)  (struct p11Object_t *, CK_MECHANISM_PTR);
+	int (*C_Decrypt)      (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+	int (*C_DecryptUpdate)(struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+	int (*C_DecryptFinal) (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
+	int (*C_SignInit)     (struct p11Object_t *, CK_MECHANISM_PTR);
+	int (*C_Sign)         (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+	int (*C_SignUpdate)   (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
+	int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
 };
 
 

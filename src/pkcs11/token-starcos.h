@@ -63,7 +63,20 @@ struct starcosPrivateData {
 	unsigned char               sopin[8];
 };
 
+struct starcosPrivateData *starcosGetPrivateData(struct p11Token_t *token);
+void starcosLock(struct p11Token_t *token);
+void starcosUnlock(struct p11Token_t *token);
+int starcosSwitchApplication(struct p11Token_t *token, struct starcosApplication *application);
+int starcosSelectApplication(struct p11Token_t *token);
+int starcosReadTLVEF(struct p11Token_t *token, bytestring fid, unsigned char *content, size_t len);
+int starcosCheckPINStatus(struct p11Slot_t *slot, unsigned char pinref);
+int starcosUpdatePinStatus(struct p11Token_t *token, int pinstatus);
+int starcosAddCertificateObject(struct p11Token_t *token, struct p15CertificateDescription *p15);
+int starcosAddPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDescription *p15);
+int starcosDigest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned char *data, size_t len);
+int starcosDeterminePinUseCounter(struct p11Token_t *token, unsigned char recref, int *useCounter, int *lifeCycle);
 int encodeF2B(unsigned char *pin, int pinlen, unsigned char *f2b);
+
 int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct p11TokenDriver *drv, struct starcosApplication *application);
 
 #endif /* ___TOKEN_STARCOS_H_INC___ */
