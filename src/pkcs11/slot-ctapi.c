@@ -365,8 +365,8 @@ int updateCTAPISlots(struct p11SlotPool_t *pool)
 		slot->info.hardwareVersion.minor = 0;
 		slot->info.hardwareVersion.major = 0;
 
-		slot->info.firmwareVersion.minor = 0;
-		slot->info.firmwareVersion.major = 0;
+		slot->info.firmwareVersion.minor = VERSION_MAJOR;
+		slot->info.firmwareVersion.major = VERSION_MINOR;
 
 		slot->info.flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
 		addSlot(context->slotPool, slot);

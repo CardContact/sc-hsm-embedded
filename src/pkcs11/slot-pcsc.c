@@ -658,13 +658,13 @@ int matchFilter(char *value, char *filter)
 
 int updatePCSCSlots(struct p11SlotPool_t *pool)
 {
-	struct p11Slot_t *slot;
+	struct p11Slot_t *slot,*vslot;
 	LPTSTR readers = NULL;
-	char *filter;
+	char *filter, *prealloc;
 	DWORD cch = SCARD_AUTOALLOCATE;
 	LPTSTR p;
 	LONG rc;
-	int match;
+	int match,vslotcnt,i;
 
 	FUNC_CALLED();
 
@@ -769,8 +769,8 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		slot->info.hardwareVersion.minor = 0;
 		slot->info.hardwareVersion.major = 0;
 
-		slot->info.firmwareVersion.minor = 0;
-		slot->info.firmwareVersion.major = 0;
+		slot->info.firmwareVersion.minor = VERSION_MAJOR;
+		slot->info.firmwareVersion.major = VERSION_MINOR;
 
 		slot->info.flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
 
@@ -796,6 +796,25 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 #ifdef DEBUG
 		debug("Added slot (%lu, %s) - slot counter is %i\n", slot->id, slot->readername, slotCounter);
 #endif
+
+		// The PREALLOCATE option creates two additional virtual slots per card reader.
+		// This is required for Firefox/NSS which sets the friendly flag only for slots that are
+		// already present during the first C_GetSlotList
+		prealloc = getenv("PKCS11_PREALLOCATE_VIRTUAL_SLOTS");
+		if (prealloc) {
+#ifdef DEBUG
+			int vslotcnt = *prealloc;
+			if ((vslotcnt == '1') || (vslotcnt == '2')) {
+				vslotcnt -= '0';
+			} else {
+				vslotcnt = 2;
+			}
+			debug("Pre-allocate virtual slots '' %d\n", prealloc, vslotcnt);
+			for (i = 0; i < vslotcnt; i++) {
+				getVirtualSlot(slot, i, &vslot);
+			}
+#endif
+		}
 
 		checkForNewPCSCToken(slot);
 

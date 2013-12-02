@@ -366,8 +366,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetInfo)
 			"SmartCard-HSM R/O with PC/SC",
 			sizeof(pInfo->libraryDescription));
 #endif
-	pInfo->libraryVersion.major = 2;
-	pInfo->libraryVersion.minor = 2;
+	pInfo->libraryVersion.major = VERSION_MAJOR;
+	pInfo->libraryVersion.minor = VERSION_MINOR;
 
 	FUNC_RETURNS(CKR_OK);
 }
