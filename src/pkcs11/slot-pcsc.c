@@ -802,7 +802,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		// already present during the first C_GetSlotList
 		prealloc = getenv("PKCS11_PREALLOCATE_VIRTUAL_SLOTS");
 		if (prealloc) {
-			int vslotcnt = *prealloc;
+			vslotcnt = *prealloc;
 			if ((vslotcnt == '1') || (vslotcnt == '2')) {
 				vslotcnt -= '0';
 			} else {
