@@ -318,6 +318,7 @@ static int newSigntrust32Token(struct p11Slot_t *slot, struct p11Token_t **token
 		FUNC_FAILS(rc, "addToken() failed");
 
 
+#if 0
 	getVirtualSlot(slot, 1, &vslot);
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Virtual slot creation failed");
@@ -329,6 +330,7 @@ static int newSigntrust32Token(struct p11Slot_t *slot, struct p11Token_t **token
 	rc = addToken(vslot, ptoken);
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "addToken() failed");
+#endif
 
 	FUNC_RETURNS(CKR_OK);
 }
