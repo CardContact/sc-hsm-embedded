@@ -802,18 +802,18 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		// already present during the first C_GetSlotList
 		prealloc = getenv("PKCS11_PREALLOCATE_VIRTUAL_SLOTS");
 		if (prealloc) {
-#ifdef DEBUG
 			int vslotcnt = *prealloc;
 			if ((vslotcnt == '1') || (vslotcnt == '2')) {
 				vslotcnt -= '0';
 			} else {
 				vslotcnt = 2;
 			}
+#ifdef DEBUG
 			debug("Pre-allocate virtual slots '' %d\n", prealloc, vslotcnt);
+#endif
 			for (i = 0; i < vslotcnt; i++) {
 				getVirtualSlot(slot, i, &vslot);
 			}
-#endif
 		}
 
 		checkForNewPCSCToken(slot);
