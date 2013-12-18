@@ -410,16 +410,6 @@ int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p
 		}
 	}
 
-	for (t = tokenDriver; *t != NULL; t++) {
-		drv = (*t)();
-		rc = drv->newToken(slot, token);
-		if (rc == CKR_OK)
-			FUNC_RETURNS(rc);
-
-		if (rc != CKR_TOKEN_NOT_RECOGNIZED)
-			FUNC_FAILS(rc, "Token detection failed for probed token");
-	}
-
 	FUNC_RETURNS(CKR_TOKEN_NOT_RECOGNIZED);
 }
 
