@@ -554,10 +554,10 @@ static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char
 	}
 
 	p11cert->tokenid = (int)id;
-	p11cert->keysize = p15key->keysize;
 
 	addObject(token, p11cert, TRUE);
 
+	// As a side effect p11cert->keysize is updated with the key size determined from the public key
 	rc = createPublicKeyObjectFromCertificate(p15key, p11cert, &p11pubkey);
 
 	if (rc != CKR_OK) {
@@ -578,7 +578,7 @@ static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char
 	p11prikey->C_Decrypt = sc_hsm_C_Decrypt;
 
 	p11prikey->tokenid = (int)id;
-	p11prikey->keysize = p15key->keysize;
+	p11prikey->keysize = p11cert->keysize;
 
 	addObject(token, p11prikey, FALSE);
 

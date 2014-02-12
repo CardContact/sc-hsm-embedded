@@ -148,13 +148,16 @@ int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, s
 	case P15_KEYTYPE_RSA:
 		keyType = CKK_RSA;
 		decodeModulusExponentFromSPKI(spki, &template[attributes], &template[attributes + 1]);
+		cert->keysize = template[attributes].ulValueLen << 3;
 		attributes += 2;
 		break;
 	case P15_KEYTYPE_ECC:
 		keyType = CKK_ECDSA;
 		decodeECParamsFromSPKI(spki, &template[attributes]);
-		decodeECPointFromSPKI(spki, &template[attributes + 1]);
-		attributes += 2;
+		attributes++;
+		decodeECPointFromSPKI(spki, &template[attributes]);
+		cert->keysize = (template[attributes].ulValueLen - 3) << 2;
+		attributes++;
 		break;
 	default:
 		free(p11o);
