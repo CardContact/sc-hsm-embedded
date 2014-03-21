@@ -138,17 +138,6 @@ static unsigned char aid_certs[] = { 0xA0,0x00,0x00,0x02,0x44,0x46,0x5F,0x43,0x6
 
 static struct starcosApplication starcosApplications[] = {
 		{
-				"STARCOS.QES",
-				{ aid_QES, sizeof(aid_QES) },
-				1,
-				0x81,
-				1,
-				prkd_eSign,
-				sizeof(prkd_eSign) / sizeof(struct p15PrivateKeyDescription),
-				certd_eSign,
-				sizeof(certd_eSign) / sizeof(struct p15CertificateDescription)
-		},
-		{
 				"STARCOS.eUserPKI",
 				{ aid_eUserPKI, sizeof(aid_eUserPKI) },
 				2,
@@ -158,6 +147,17 @@ static struct starcosApplication starcosApplications[] = {
 				sizeof(prkd_eUserPKI) / sizeof(struct p15PrivateKeyDescription),
 				certd_eUserPKI,
 				sizeof(certd_eUserPKI) / sizeof(struct p15CertificateDescription)
+		},
+		{
+				"STARCOS.QES",
+				{ aid_QES, sizeof(aid_QES) },
+				1,
+				0x81,
+				1,
+				prkd_eSign,
+				sizeof(prkd_eSign) / sizeof(struct p15PrivateKeyDescription),
+				certd_eSign,
+				sizeof(certd_eSign) / sizeof(struct p15CertificateDescription)
 		},
 		{		// Virtual application containing certificates
 				"",
@@ -179,6 +179,8 @@ static const CK_MECHANISM_TYPE p11MechanismList[] = {
 		CKM_SHA256_RSA_PKCS_PSS
 };
 
+
+extern struct p11Context_t *context;
 
 
 static int isCandidate(unsigned char *atr, size_t atrLen)
@@ -363,6 +365,10 @@ static int newDTrustToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	}
 
 	*token = ptoken;
+
+	if (context->caller == CALLER_FIREFOX) {
+		FUNC_RETURNS(CKR_OK);
+	}
 
 	rc = getVirtualSlot(slot, 0, &vslot);
 	if (rc != CKR_OK)

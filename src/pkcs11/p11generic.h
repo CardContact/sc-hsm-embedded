@@ -52,6 +52,7 @@
 #include <winscard.h>
 #define  MAX_READERNAME   128
 #else
+#include <unistd.h>
 #include <pcsclite.h>
 #include <winscard.h>
 #endif /* _WIN32 */
@@ -190,6 +191,8 @@ struct p11TokenDriver {
 };
 
 
+#define CALLER_UNKNOWN			0
+#define CALLER_FIREFOX			1
 
 /**
  * Internal context structure of the cryptoki.
@@ -199,6 +202,8 @@ struct p11Context_t {
 	CK_VERSION version;                     /**< Information about cryptoki version       */
 	CK_INFO info;                           /**< General information about cryptoki       */
 	CK_HW_FEATURE_TYPE hw_feature;          /**< Hardware feature type of device          */
+
+	int caller;                             /**< Calling application                      */
 
 	FILE *debugFileHandle;
 

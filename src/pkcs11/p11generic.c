@@ -139,6 +139,46 @@ static CK_RV osUnlockMutex(CK_VOID_PTR pMutex)
 
 
 
+/**
+ * Determine programm calling PKCS#11 module
+ */
+int determineCaller()
+{
+	char path[1024],*p;
+#ifdef _WIN32
+#else
+	int r;
+
+	r = readlink("/proc/self/exe", path, sizeof(path) - 1);
+	if (r < 0) {
+#ifdef DEBUG
+		debug("[determineCaller] Error calling readlink(\"/proc/self/exe\")\n");
+#endif
+		return CALLER_UNKNOWN;
+	}
+	path[r] = '\0';
+
+#ifdef DEBUG
+	debug("[determineCaller] Caller=%s\n", path);
+#endif
+
+	p = strrchr(path, '/');
+	if (p == NULL) {
+		p = path;
+	} else {
+		p++;
+	}
+
+	if (!strncmp("firefox", p, 7) || !strncmp("iceweasel", p, 9)) {
+		return CALLER_FIREFOX;
+	}
+
+#endif
+	return CALLER_UNKNOWN;
+}
+
+
+
 /*
  * Initialize the PKCS#11 function list.
  *
@@ -264,6 +304,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 	initDebug(context);
 	FUNC_CALLED();
 #endif
+
+	context->caller = determineCaller();
 
 	initSessionPool(&context->sessionPool);
 
