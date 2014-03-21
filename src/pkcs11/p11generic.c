@@ -145,7 +145,9 @@ static CK_RV osUnlockMutex(CK_VOID_PTR pMutex)
 int determineCaller()
 {
 	char path[1024],*p;
+
 #ifdef _WIN32
+	GetModuleFileName(NULL, path, sizeof(path) - 1);
 #else
 	int r;
 
@@ -157,23 +159,22 @@ int determineCaller()
 		return CALLER_UNKNOWN;
 	}
 	path[r] = '\0';
+#endif
 
 #ifdef DEBUG
 	debug("[determineCaller] Caller=%s\n", path);
 #endif
 
-	p = strrchr(path, '/');
-	if (p == NULL) {
-		p = path;
-	} else {
+	if ((p = strrchr(path, '/')) || (p = strrchr(path, '\\'))) {
 		p++;
+	} else {
+		p = path;
 	}
 
 	if (!strncmp("firefox", p, 7) || !strncmp("iceweasel", p, 9)) {
 		return CALLER_FIREFOX;
 	}
 
-#endif
 	return CALLER_UNKNOWN;
 }
 
