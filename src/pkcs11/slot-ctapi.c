@@ -369,7 +369,7 @@ int updateCTAPISlots(struct p11SlotPool_t *pool)
 		slot->info.firmwareVersion.major = VERSION_MINOR;
 
 		slot->info.flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
-		addSlot(context->slotPool, slot);
+		addSlot(&context->slotPool, slot);
 		numberOfReaders++;
 
 		checkForNewCTAPIToken(slot);
