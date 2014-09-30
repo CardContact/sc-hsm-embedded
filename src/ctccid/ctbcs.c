@@ -41,6 +41,7 @@
 #include "ctccid_debug.h"
 
 extern int ccidT1Init (struct scr *ctx);
+extern int ccidAPDUInit (struct scr *ctx);
 
 
 /**
@@ -123,7 +124,10 @@ int ResetCard(struct scr *ctx, unsigned int lc, unsigned char *cmd,
 		return OK;
 	}
 
-	ccidT1Init(ctx);
+	if (RDR_APDUTransferMode(ctx))
+		ccidAPDUInit(ctx);
+	else
+		ccidT1Init(ctx);
 
 	if ((response = setResponse(ctx, cmd, lr, rsp)) < 0) {
 		return response;

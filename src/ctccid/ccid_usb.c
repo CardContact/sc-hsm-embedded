@@ -278,6 +278,21 @@ int DecodeATRValues(scr_t *ctx)
 
 
 
+int RDR_APDUTransferMode(scr_t *ctx)
+{
+	unsigned char const *desc;
+	int length, apdu_transfer = 0;
+
+	USB_GetCCIDDescriptor(ctx->device, &desc, &length);
+
+	if (length == 54)
+		apdu_transfer = desc[42] & 0x04;
+
+	return apdu_transfer;
+}
+
+
+
 /**
  * Set communication protocol parameters (guard time, FI, DI, IFSC)
  *
@@ -432,9 +447,10 @@ int PC_to_RDR_IccPowerOff(scr_t *ctx)
  * @param ctx Reader context
  * @param outlen Length of outgoing data
  * @param outbuf Outgoing data buffer
+ * @param level of exchanged APDU (0000-first and only block, 0001-first chained command block, 0002-last command block, 0003-intermediate command block, 0010-empty block)
  * @return 0 on success, negative value otherwise
  */
-int PC_to_RDR_XfrBlock(scr_t *ctx, unsigned int outlen, unsigned char *outbuf)
+int PC_to_RDR_XfrBlock(scr_t *ctx, unsigned int outlen, unsigned char *outbuf, unsigned char level)
 {
 
         int rc;
@@ -453,7 +469,8 @@ int PC_to_RDR_XfrBlock(scr_t *ctx, unsigned int outlen, unsigned char *outbuf)
         msg[2] = (outlen >> 8) & 0xFF;
         msg[3] = (outlen >> 16) & 0xFF;
         msg[4] = (outlen >> 24) & 0xFF;
-
+        msg[8] = level & 0xFF,
+        msg[9] = (level >> 8) & 0xFF;
         memcpy(msg + 10, outbuf, outlen);
 
 #ifdef DEBUG
@@ -478,12 +495,12 @@ int PC_to_RDR_XfrBlock(scr_t *ctx, unsigned int outlen, unsigned char *outbuf)
  * @param inbuf Incoming data buffer
  * @return 0 on success, negative value otherwise
  */
-int RDR_to_PC_DataBlock(scr_t *ctx, unsigned int *inlen, unsigned char *inbuf)
+int RDR_to_PC_DataBlock(scr_t *ctx, unsigned int *inlen, unsigned char *inbuf, unsigned char *status, unsigned char *error, unsigned char *chain)
 {
 
-        int rc;
-        unsigned int l = 10 + *inlen;
+        unsigned int l;
         unsigned char msg[10 + BUFFMAX];
+        int rc;
 
         if (*inlen > BUFFMAX) {
 #ifdef DEBUG
@@ -492,25 +509,39 @@ int RDR_to_PC_DataBlock(scr_t *ctx, unsigned int *inlen, unsigned char *inbuf)
                 return -1;
         }
 
-        rc = USB_Read(ctx->device, &l, msg);
+        while (1) {
+                l = sizeof(msg);
+                rc = USB_Read(ctx->device, &l, msg);
 
-        if (rc < 0) {
-                *inlen = 0;
-                return rc;
-        }
+                if (rc < 0) {
+                        *inlen = 0;
+                        return rc;
+                }
 
 #ifdef DEBUG
-        CCIDDump(msg, l);
+                CCIDDump(msg, l);
 #endif
 
-        /* check length, message type, slot and sequence number */
-        if (l < 10 || msg[0] != MSG_TYPE_RDR_to_PC_DataBlock || msg[5] != 0x00 || msg[6] != 0x00) {
-                *inlen = 0;
-                return -1;
+                /* check length, message type, slot and sequence number */
+                if (l < 10 || msg[0] != MSG_TYPE_RDR_to_PC_DataBlock || msg[5] != 0x00 || msg[6] != 0x00) {
+                        *inlen = 0;
+                        return -1;
+                }
+
+                if (msg[7] & 0x80) {			// Card requests waiting time extension
+                        continue;
+                }
+                break;
         }
 
+        if (status)
+                *status = msg[7];
+        if (error)
+                *error = msg[8];
+        if (chain)
+                *chain = msg[9];
 #ifdef DEBUG
-        memset(inbuf, 0x00, 261);
+        memset(inbuf, 0x00, BUFFMAX);
 #endif
 
         *inlen = (l - 10);

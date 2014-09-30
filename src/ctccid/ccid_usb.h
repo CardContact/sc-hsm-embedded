@@ -37,6 +37,11 @@
 
 #include "scr.h"
 
+/**
+ * Maximum size of receive buffer
+ */
+#define BUFFMAX    261
+
 #define ERR_ICC_MUTE				0xFE
 #define ERR_XFR_OVERRUN				0xFC
 #define ERR_HW_ERROR				0xFB
@@ -61,9 +66,11 @@ int PC_to_RDR_IccPowerOn(scr_t *ctx);
 
 int PC_to_RDR_IccPowerOff(scr_t *ctx);
 
-int PC_to_RDR_XfrBlock(scr_t *ctx, unsigned int outlen, unsigned char *outbuf);
+int RDR_APDUTransferMode(scr_t *ctx);
 
-int RDR_to_PC_DataBlock(scr_t *ctx, unsigned int *inlen, unsigned char *inbuf);
+int PC_to_RDR_XfrBlock(scr_t *ctx, unsigned int outlen, unsigned char *outbuf, unsigned char level);
+
+int RDR_to_PC_DataBlock(scr_t *ctx, unsigned int *inlen, unsigned char *inbuf, unsigned char *status, unsigned char *error, unsigned char *chain);
 
 int PC_to_RDR_GetSlotStatus(scr_t *ctx);
 

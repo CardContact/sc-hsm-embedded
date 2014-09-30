@@ -148,7 +148,7 @@ int ccidT1ReceiveBlock(scr_t *ctx)
 	ctx->t1->InBuffLength = -1;
 
 	len = BUFFMAX;
-	rc = RDR_to_PC_DataBlock(ctx, &len, buf);
+	rc = RDR_to_PC_DataBlock(ctx, &len, buf, NULL, NULL, NULL);
 
 	if (rc < 0) {
 		return -1;
@@ -223,7 +223,7 @@ int ccidT1SendBlock(scr_t *ctx,
 
 	*ptr = lrc;
 
-	rc = PC_to_RDR_XfrBlock(ctx, BuffLen + 4, sndbuf);
+	rc = PC_to_RDR_XfrBlock(ctx, BuffLen + 4, sndbuf, 0);
 
 	if (rc < 0) {
 		return -1;

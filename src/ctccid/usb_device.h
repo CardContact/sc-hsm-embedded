@@ -35,7 +35,6 @@
 #define _USB_DEVICE_H_
 
 #include <stdint.h>
-#include "ccidT1.h"
 
 /**
  * Vendor ID for SCM Microsystems
@@ -45,7 +44,8 @@
 /**
  * Device ID for SCR 355
  */
-#define SCM_SCR_35XX_DEVICE_ID 0x5410
+#define SCM_SCR_35XX_DEVICE_ID_1 0x5410
+#define SCM_SCR_35XX_DEVICE_ID_2 0x5817
 
 /**
  * Device ID for SCR 3310
@@ -96,6 +96,7 @@ typedef struct usb_device {
 
 int USB_Open(unsigned short pn, usb_device_t **device);
 int USB_Close(usb_device_t **device);
+void USB_GetCCIDDescriptor(usb_device_t *device, unsigned char const **desc, int *length);
 int USB_Write(usb_device_t *device, unsigned int length, unsigned char *buffer);
 int USB_Read(usb_device_t *device, unsigned int *length, unsigned char *buffer);
 

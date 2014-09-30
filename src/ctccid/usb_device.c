@@ -171,7 +171,7 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 
 #ifdef DEBUG
 
-			if (desc.idProduct == SCM_SCR_35XX_DEVICE_ID) {
+			if ((desc.idProduct == SCM_SCR_35XX_DEVICE_ID_1) || (desc.idProduct == SCM_SCR_35XX_DEVICE_ID_2)) {
 				ctccid_debug("Found reader SCR_35XX (%04X:%04X)\n", desc.idVendor,
 					   desc.idProduct);
 			}
@@ -303,6 +303,22 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 	}
 
 	return rc;
+}
+
+
+
+/**
+ * Return the 54 byte CCID Descriptor
+ *
+ * @param device Structure with device specific data
+ * @return Status code \ref USB_OK, \ref ERR_USB
+ */
+void USB_GetCCIDDescriptor(usb_device_t *device, unsigned char const **desc, int *length)
+{
+	if (length)
+		*length = device->configuration_descriptor->interface->altsetting->extra_length;
+	if (desc)
+		*desc = device->configuration_descriptor->interface->altsetting->extra;
 }
 
 
