@@ -56,6 +56,7 @@ extern struct p11TokenDriver *getBNotKTokenDriver();
 extern struct p11TokenDriver *getDTrustTokenDriver();
 extern struct p11TokenDriver *getSigntrust32TokenDriver();
 extern struct p11TokenDriver *getSigntrust35TokenDriver();
+extern struct p11TokenDriver *getDGNTokenDriver();
 
 typedef struct p11TokenDriver *(*tokenDriver_t)();
 
@@ -65,6 +66,7 @@ static tokenDriver_t tokenDriver[] = {
 		getDTrustTokenDriver,
 		getSigntrust32TokenDriver,
 		getSigntrust35TokenDriver,
+		getDGNTokenDriver,
 		NULL
 };
 

@@ -1,0 +1,855 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="doctg.xsl" ?>
+<testgroup 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="http://www.openscdp.org/schema/testframework-1.0.xsd"
+	id="tg_signing_qes" arrayElement="testcase,function" arrayIndex="id,Name">
+	<name>QES Signing</name>
+	<description>
+		<p>Signing data with PKCS#11 using keys on the card.</p>
+	</description>
+	<reference>
+		<p></p>
+	</reference>
+
+<!-- Initializing the test group environment -->
+
+
+	<constructor Param="name, parameter">
+		<Script><![CDATA[		
+		//Call constructor of super class TestGroup and define name of test group
+		TestGroup.call(this, name, parameter);
+		]]></Script>
+	</constructor>
+
+
+
+<!-- Setup method called before each test case is executed -->
+	<setup>
+		<Script><![CDATA[
+			
+		]]></Script>
+	</setup>
+
+
+
+<!-- Teardown method called after each test case is executed -->
+	<teardown>
+		<Script><![CDATA[
+		
+	
+		]]></Script>
+	</teardown>
+
+
+
+	<testcase id="101_CKM_RSA_PKCS_2048">
+		<name>RSA Signature with external digest info and PKCS#1 V1.5 padding</name>
+		<description>
+			<p>Perform a RSA signature using a externally provided DigestInfo</p>
+		</description>
+		<requirement>
+			<p>Use Case Signing</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p, "STARCOS.QES");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.DS");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.DS");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+		
+	var msg = new ByteString("Hello World", ASCII);
+	
+	var crypto = new Crypto();
+
+	var digest = crypto.digest(Crypto.SHA_1, msg);
+	
+	var di = new ByteString("3021300906052B0E03021A05000414", HEX).concat(digest);
+	print(new ASN1(di));
+	
+	// Test with single step C_Sign
+	s.signInit(PKCS11Session.CKM_RSA_PKCS, privateKey);
+	
+	var signature = s.sign(di);
+	print("Signature : " + signature);
+	
+	var ok = crypto.decrypt(publicKey, Crypto.RSA, signature);
+	print("Decrypted signature block:");
+	print(ok);
+	
+	var ok = crypto.verify(publicKey, Crypto.RSA_SHA1, msg, signature);
+	print("Verification " + (ok ? "OK" : "Failed !"));
+	
+	this.assertTrue(ok, "Signature verification failed !");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="102_CKM_SHA1_RSA_PKCS_2048">
+		<name>RSA Signature with SHA-1 and PKCS#1 V1.5</name>
+		<description>
+			<p>Perform a SHA-1 hash and RSA PKCS#1 V1.5 signature</p>
+		</description>
+		<requirement>
+			<p>Use Case Signing</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p, "STARCOS.QES");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.DS");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.DS");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+		
+	var msg = new ByteString("Hello World", ASCII);
+		
+	// Test with single step C_Sign
+	s.signInit(PKCS11Session.CKM_SHA1_RSA_PKCS, privateKey);
+	
+	var signature = s.sign(msg);
+	print("Signature : " + signature);
+	
+	var crypto = new Crypto();
+	var ok = crypto.decrypt(publicKey, Crypto.RSA, signature);
+	print("Decrypted signature block:");
+	print(ok);
+	
+	var ok = crypto.verify(publicKey, Crypto.RSA_SHA1, msg, signature);
+	print("Verification " + (ok ? "OK" : "Failed !"));
+	
+	this.assertTrue(ok, "Signature verification failed !");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="103_CKM_SHA224_RSA_PKCS_2048">
+		<name>RSA Signature with SHA-224 and PKCS#1 V1.5</name>
+		<description>
+			<p>Perform a SHA-224 hash and RSA PKCS#1 V1.5 signature</p>
+		</description>
+		<requirement>
+			<p>Use Case Signing</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p, "STARCOS.QES");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.DS");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.DS");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+		
+	var msg = new ByteString("Hello World", ASCII);
+		
+	// Test with single step C_Sign
+	s.signInit(0x00000046, privateKey);
+	
+	var signature = s.sign(msg);
+	print("Signature : " + signature);
+	
+	var crypto = new Crypto();
+	var ok = crypto.decrypt(publicKey, Crypto.RSA, signature);
+	print("Decrypted signature block:");
+	print(ok);
+	
+	var ok = crypto.verify(publicKey, Crypto.RSA_SHA224, msg, signature);
+	print("Verification " + (ok ? "OK" : "Failed !"));
+	
+	this.assertTrue(ok, "Signature verification failed !");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="104_CKM_SHA256_RSA_PKCS_2048">
+		<name>RSA Signature with SHA-256 and PKCS#1 V1.5</name>
+		<description>
+			<p>Perform a SHA-256 hash and RSA PKCS#1 V1.5 signature</p>
+		</description>
+		<requirement>
+			<p>Use Case Signing</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p, "STARCOS.QES");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.DS");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.DS");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+		
+	var msg = new ByteString("Hello World", ASCII);
+		
+	// Test with single step C_Sign
+	s.signInit(PKCS11Session.CKM_SHA256_RSA_PKCS, privateKey);
+	
+	var signature = s.sign(msg);
+	print("Signature : " + signature);
+	
+	var crypto = new Crypto();
+	var ok = crypto.decrypt(publicKey, Crypto.RSA, signature);
+	print("Decrypted signature block:");
+	print(ok);
+	
+	var ok = crypto.verify(publicKey, Crypto.RSA_SHA256, msg, signature);
+	print("Verification " + (ok ? "OK" : "Failed !"));
+	
+	this.assertTrue(ok, "Signature verification failed !");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="105_CKM_SHA384_RSA_PKCS_2048">
+		<name>RSA Signature with SHA-384 and PKCS#1 V1.5</name>
+		<description>
+			<p>Perform a SHA-384 hash and RSA PKCS#1 V1.5 signature</p>
+		</description>
+		<requirement>
+			<p>Use Case Signing</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p, "STARCOS.QES");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.DS");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.DS");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+		
+	var msg = new ByteString("Hello World", ASCII);
+		
+	// Test with single step C_Sign
+	s.signInit(PKCS11Session.CKM_SHA384_RSA_PKCS, privateKey);
+	
+	var signature = s.sign(msg);
+	print("Signature : " + signature);
+	
+	var crypto = new Crypto();
+	var ok = crypto.decrypt(publicKey, Crypto.RSA, signature);
+	print("Decrypted signature block:");
+	print(ok);
+	
+	var ok = crypto.verify(publicKey, Crypto.RSA_SHA384, msg, signature);
+	print("Verification " + (ok ? "OK" : "Failed !"));
+	
+	this.assertTrue(ok, "Signature verification failed !");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="106_CKM_SHA512_RSA_PKCS_2048">
+		<name>RSA Signature with SHA-512 and PKCS#1 V1.5</name>
+		<description>
+			<p>Perform a SHA-512 hash and RSA PKCS#1 V1.5 signature</p>
+		</description>
+		<requirement>
+			<p>Use Case Signing</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p, "STARCOS.QES");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.DS");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.DS");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+		
+	var msg = new ByteString("Hello World", ASCII);
+		
+	// Test with single step C_Sign
+	s.signInit(PKCS11Session.CKM_SHA512_RSA_PKCS, privateKey);
+	
+	var signature = s.sign(msg);
+	print("Signature : " + signature);
+	
+	var crypto = new Crypto();
+	var ok = crypto.decrypt(publicKey, Crypto.RSA, signature);
+	print("Decrypted signature block:");
+	print(ok);
+	
+	var ok = crypto.verify(publicKey, Crypto.RSA_SHA512, msg, signature);
+	print("Verification " + (ok ? "OK" : "Failed !"));
+	
+	this.assertTrue(ok, "Signature verification failed !");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="110_CKM_SHA1_RSA_PKCS_PSS_2048">
+		<name>RSA Signature with SHA-1 and PKCS#1 PSS</name>
+		<description>
+			<p>Perform a SHA-1 hash and RSA PKCS#1 PSS signature</p>
+		</description>
+		<requirement>
+			<p>Use Case Signing</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p, "STARCOS.QES");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.DS");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.DS");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+		
+	var msg = new ByteString("Hello World", ASCII);
+		
+	// Test with single step C_Sign
+	s.signInit(PKCS11Session.CKM_SHA1_RSA_PKCS_PSS, privateKey);
+	
+	var signature = s.sign(msg);
+	print("Signature : " + signature);
+	
+	var crypto = new Crypto();
+	var ok = crypto.decrypt(publicKey, Crypto.RSA, signature);
+	print("Decrypted signature block:");
+	print(ok);
+	
+	var ok = crypto.verify(publicKey, Crypto.RSA_PSS_SHA1, msg, signature);
+	print("Verification " + (ok ? "OK" : "Failed !"));
+	
+	this.assertTrue(ok, "Signature verification failed !");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="111_CKM_SHA224_RSA_PKCS_PSS_2048">
+		<name>RSA Signature with SHA-224 and PKCS#1 PSS</name>
+		<description>
+			<p>Perform a SHA-224 hash and RSA PKCS#1 PSS signature</p>
+		</description>
+		<requirement>
+			<p>Use Case Signing</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p, "STARCOS.QES");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.DS");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.DS");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+		
+	var msg = new ByteString("Hello World", ASCII);
+		
+	// Test with single step C_Sign
+	s.signInit(0x00000047, privateKey);
+	
+	var signature = s.sign(msg);
+	print("Signature : " + signature);
+	
+	var crypto = new Crypto();
+	var ok = crypto.decrypt(publicKey, Crypto.RSA, signature);
+	print("Decrypted signature block:");
+	print(ok);
+	
+	var ok = crypto.verify(publicKey, Crypto.RSA_PSS_SHA224, msg, signature);
+	print("Verification " + (ok ? "OK" : "Failed !"));
+	
+	this.assertTrue(ok, "Signature verification failed !");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="112_CKM_SHA256_RSA_PKCS_PSS_2048">
+		<name>RSA Signature with SHA-256 and PKCS#1 PSS</name>
+		<description>
+			<p>Perform a SHA-256 hash and RSA PKCS#1 PSS signature</p>
+		</description>
+		<requirement>
+			<p>Use Case Signing</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p, "STARCOS.QES");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.DS");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.DS");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+		
+	var msg = new ByteString("Hello World", ASCII);
+		
+	// Test with single step C_Sign
+	s.signInit(PKCS11Session.CKM_SHA256_RSA_PKCS_PSS, privateKey);
+	
+	var signature = s.sign(msg);
+	print("Signature : " + signature);
+	
+	var crypto = new Crypto();
+	var ok = crypto.decrypt(publicKey, Crypto.RSA, signature);
+	print("Decrypted signature block:");
+	print(ok);
+	
+	var ok = crypto.verify(publicKey, Crypto.RSA_PSS_SHA256, msg, signature);
+	print("Verification " + (ok ? "OK" : "Failed !"));
+	
+	this.assertTrue(ok, "Signature verification failed !");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="113_CKM_SHA384_RSA_PKCS_PSS_2048">
+		<name>RSA Signature with SHA-384 and PKCS#1 PSS</name>
+		<description>
+			<p>Perform a SHA-384 hash and RSA PKCS#1 PSS signature</p>
+		</description>
+		<requirement>
+			<p>Use Case Signing</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p, "STARCOS.QES");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.DS");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.DS");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+		
+	var msg = new ByteString("Hello World", ASCII);
+		
+	// Test with single step C_Sign
+	s.signInit(PKCS11Session.CKM_SHA384_RSA_PKCS_PSS, privateKey);
+	
+	var signature = s.sign(msg);
+	print("Signature : " + signature);
+	
+	var crypto = new Crypto();
+	var ok = crypto.decrypt(publicKey, Crypto.RSA, signature);
+	print("Decrypted signature block:");
+	print(ok);
+	
+	var ok = crypto.verify(publicKey, Crypto.RSA_PSS_SHA384, msg, signature);
+	print("Verification " + (ok ? "OK" : "Failed !"));
+	
+	this.assertTrue(ok, "Signature verification failed !");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="114_CKM_SHA512_RSA_PKCS_PSS_2048">
+		<name>RSA Signature with SHA-512 and PKCS#1 PSS</name>
+		<description>
+			<p>Perform a SHA-512 hash and RSA PKCS#1 PSS signature</p>
+		</description>
+		<requirement>
+			<p>Use Case Signing</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p, "STARCOS.QES");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.DS");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.DS");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+		
+	var msg = new ByteString("Hello World", ASCII);
+		
+	// Test with single step C_Sign
+	s.signInit(PKCS11Session.CKM_SHA512_RSA_PKCS_PSS, privateKey);
+	
+	var signature = s.sign(msg);
+	print("Signature : " + signature);
+	
+	var crypto = new Crypto();
+	var ok = crypto.decrypt(publicKey, Crypto.RSA, signature);
+	print("Decrypted signature block:");
+	print(ok);
+	
+	var ok = crypto.verify(publicKey, Crypto.RSA_PSS_SHA512, msg, signature);
+	print("Verification " + (ok ? "OK" : "Failed !"));
+	
+	this.assertTrue(ok, "Signature verification failed !");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="120_CKM_SHA256_RSA_PKCS_PSS_2048_HASHSIZE_10000">
+		<name>Try 10000 byte input for RSA Signature with SHA-256 and PKCS#1 PSS</name>
+		<description>
+			<p>Perform a SHA-256 hash and RSA PKCS#1 PSS signature</p>
+		</description>
+		<requirement>
+			<p>Use Case Signing</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p, "STARCOS.QES");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.DS");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.DS");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+
+	var crypto = new Crypto();
+
+	var len = 10000;
+	msg = crypto.generateRandom(len);
+		
+	// Test with single step C_Sign
+	s.signInit(PKCS11Session.CKM_SHA256_RSA_PKCS_PSS, privateKey);
+	
+	var signature = s.sign(msg);
+	print("Signature : " + signature);
+	
+	var ok = crypto.decrypt(publicKey, Crypto.RSA, signature);
+	print("Decrypted signature block:");
+	print(ok);
+	
+	var ok = crypto.verify(publicKey, Crypto.RSA_PSS_SHA256, msg, signature);
+	print("Verification " + (ok ? "OK" : "Failed !"));
+	
+	this.assertTrue(ok, "Signature verification failed !");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+</testgroup>

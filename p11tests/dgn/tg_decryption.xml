@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="doctg.xsl" ?>
+<testgroup 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="http://www.openscdp.org/schema/testframework-1.0.xsd"
+	id="tg_decryption" arrayElement="testcase,function" arrayIndex="id,Name">
+	<name>Signing</name>
+	<description>
+		<p>Decryption with PKCS#11 using keys on the card.</p>
+	</description>
+	<reference>
+		<p>FR_Smart_Card_HSM</p>
+	</reference>
+
+<!-- Initializing the test group environment -->
+
+
+	<constructor Param="name, parameter">
+		<Script><![CDATA[		
+		//Call constructor of super class TestGroup and define name of test group
+		TestGroup.call(this, name, parameter);
+		]]></Script>
+	</constructor>
+
+
+
+<!-- Setup method called before each test case is executed -->
+	<setup>
+		<Script><![CDATA[
+			
+		]]></Script>
+	</setup>
+
+
+
+<!-- Teardown method called after each test case is executed -->
+	<teardown>
+		<Script><![CDATA[
+		
+	
+		]]></Script>
+	</teardown>
+
+
+
+	<testcase id="200_CKM_RSA_PKCS1">
+		<name>PKCS#1 V1.5 RSA Block Decryption</name>
+		<description>
+			<p>Perform a RSA decrypt operation with a 256 byte input block and a 2048 bit key and unpad PKCS#1 V1.5 encoding</p>
+		</description>
+		<requirement>
+			<p>Use Case Decryption</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p, "STARCOS.eUserPKI");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.ENC");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.ENC");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+
+	var msg = new ByteString("Hello World", ASCII);
+	
+	var crypto = new Crypto();
+	var cryptogram = crypto.encrypt(publicKey, Crypto.RSA_PKCS1, msg);
+	
+	// Test with single step C_Decrypt
+	s.decryptInit(PKCS11Session.CKM_RSA_PKCS, privateKey);
+	var plain = s.decrypt(cryptogram);
+	
+	print("Plain : " + plain);
+	this.assertTrue(plain.equals(msg), "Did not recover message");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="201_CKM_RSA_PKCS_OAEP">
+		<name>PKCS#1 OAEP Block Decryption</name>
+		<description>
+			<p>Perform a OAEP RSA decryption operation with a 256 byte input block and a 2048 bit key</p>
+		</description>
+		<requirement>
+			<p>Use Case Decryption</p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p, "STARCOS.eUserPKI");
+
+	if (slot < 0) {
+		throw new Error("No token found");
+	}
+
+	print("Using slot: " + slot);
+	
+	// Open R/O session
+	var s = new PKCS11Session(p, slot, false);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "C.CH.ENC");
+	this.assertTrue(privateKey != null, "PKCS#11 provider does not enumerates private key object");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "C.CH.ENC");
+	this.assertTrue(certificate != null, "Could not find a matching certificate for the private key");
+	
+	var certbin = certificate.getAttribute(PKCS11Object.CKA_VALUE);
+	var cert = new X509(certbin);
+	print(cert);
+	var publicKey = cert.getPublicKey();
+
+	var msg = new ByteString("Hello World", ASCII);
+	
+	var crypto = new Crypto();
+	var cryptogram = crypto.encrypt(publicKey, Crypto.RSA_OAEP_SHA256, msg);
+	
+	// Test with single step C_Decrypt
+	s.decryptInit(PKCS11Session.CKM_RSA_PKCS_OAEP, privateKey);
+	var plain = s.decrypt(cryptogram);
+	
+	print("Plain : " + plain);
+	this.assertTrue(plain.equals(msg), "Did not recover message");
+	
+	s.close();
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+</testgroup>
