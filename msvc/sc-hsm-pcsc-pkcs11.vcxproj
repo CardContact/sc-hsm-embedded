@@ -44,6 +44,7 @@
     <ClCompile Include="..\src\pkcs11\token-starcos-35-signtrust.c" />
     <ClCompile Include="..\src\pkcs11\token-starcos-bnotk.c" />
     <ClCompile Include="..\src\pkcs11\token-starcos-dtrust.c" />
+    <ClCompile Include="..\src\pkcs11\token-starcos-dgn.c" />
     <ClCompile Include="..\src\pkcs11\token-starcos.c" />
     <ClCompile Include="..\src\pkcs11\token.c" />
   </ItemGroup>
