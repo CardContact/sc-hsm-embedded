@@ -695,13 +695,16 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
-	if (SW1SW2 == 0x6982) {
-		starcosUnlock(pObject->token);
-		FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "User not logged in");
-	}
-
 	if (SW1SW2 != 0x9000) {
 		starcosUnlock(pObject->token);
+		switch(SW1SW2) {
+		case 0x6A81:
+			FUNC_FAILS(CKR_KEY_FUNCTION_NOT_PERMITTED, "Signature operation not allowed for key");
+			break;
+		case 0x6982:
+			FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "User not logged in");
+			break;
+		}
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Signature operation failed");
 	}
 
@@ -805,7 +808,15 @@ static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech
 
 	if (SW1SW2 != 0x9000) {
 		starcosUnlock(pObject->token);
-		FUNC_FAILS(CKR_ENCRYPTED_DATA_INVALID, "Decryption operation failed");
+		switch(SW1SW2) {
+		case 0x6A81:
+			FUNC_FAILS(CKR_KEY_FUNCTION_NOT_PERMITTED, "Decryption operation not allowed for key");
+			break;
+		case 0x6982:
+			FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "User not logged in");
+			break;
+		}
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Decryption operation failed");
 	}
 
 	*pulDataLen = rc;
