@@ -132,7 +132,7 @@ static struct starcosApplication starcosApplications[] = {
 				{ aid_QES, sizeof(aid_QES) },
 				1,
 				0x81,
-				1,
+				3,
 				prkd_eSign,
 				sizeof(prkd_eSign) / sizeof(struct p15PrivateKeyDescription),
 				certd_eSign,
