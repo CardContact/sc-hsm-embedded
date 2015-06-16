@@ -62,6 +62,15 @@ static struct p15PrivateKeyDescription prkd_eSign[] = {
 			P15_SIGN|P15_NONREPUDIATION,
 			2048,
 			0x84
+		},
+		{
+			P15_KT_EC,
+			{ "C.CH.DS" },
+			1,
+			{ (unsigned char *)"\x01", 1 },
+			P15_SIGN|P15_NONREPUDIATION,
+			256,
+			0x85
 		}
 };
 

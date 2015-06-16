@@ -63,6 +63,7 @@ static unsigned char algo_SHA512[] =           { 0x89, 0x02, 0x14, 0x50 };
 static unsigned char algo_PKCS15_DECRYPT34[] = { 0x89, 0x02, 0x11, 0x30 };
 static unsigned char algo_PKCS15_DECRYPT[] =   { 0x89, 0x02, 0x11, 0x31 };
 static unsigned char algo_OAEP_DECRYPT[] =     { 0x89, 0x02, 0x11, 0x32 };
+static unsigned char algo_ECDSA[] =            { 0x89, 0x02, 0x13, 0x35 };
 
 
 static const CK_MECHANISM_TYPE p11MechanismList[] = {
@@ -77,7 +78,8 @@ static const CK_MECHANISM_TYPE p11MechanismList[] = {
 		CKM_SHA224_RSA_PKCS_PSS,
 		CKM_SHA256_RSA_PKCS_PSS,
 		CKM_SHA384_RSA_PKCS_PSS,
-		CKM_SHA512_RSA_PKCS_PSS
+		CKM_SHA512_RSA_PKCS_PSS,
+		CKM_ECDSA
 };
 
 
@@ -405,6 +407,9 @@ static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 	case CKM_SHA384_RSA_PKCS_PSS:
 	case CKM_SHA512_RSA_PKCS_PSS:
 		return pObject->keysize >> 3;
+	case CKM_ECDSA_SHA1:
+	case CKM_ECDSA:
+		return pObject->keysize >> 2;
 	default:
 		return -1;
 	}
@@ -437,6 +442,10 @@ static int getAlgorithmIdForSigning(struct p11Token_t *token, CK_MECHANISM_TYPE 
 		break;
 	case CKM_SHA512_RSA_PKCS_PSS:
 		*algotlv = algo_PSS_SHA512;
+		break;
+	case CKM_ECDSA_SHA1:
+	case CKM_ECDSA:
+		*algotlv = algo_ECDSA;
 		break;
 	default:
 		return CKR_MECHANISM_INVALID;
@@ -645,7 +654,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 		FUNC_FAILS(CKR_DEVICE_ERROR, "selecting application failed");
 	}
 
-	if (mech != CKM_RSA_PKCS) {
+	if ((mech != CKM_RSA_PKCS) && (mech != CKM_ECDSA) && (mech != CKM_ECDSA_SHA1)) {
 		rc = starcosDigest(pObject->token, mech, pData, ulDataLen);
 		if (rc != CKR_OK) {
 			starcosUnlock(pObject->token);
@@ -900,14 +909,15 @@ int starcosAddPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDes
 
 	p11prikey->tokenid = p15->keyReference;
 	p11prikey->keysize = p15->keysize;
-	addObject(token, p11prikey, useAA ? TRUE : FALSE);
 
 	rc = createPublicKeyObjectFromCertificate(p15, p11cert, &p11pubkey);
 
 	if (rc != CKR_OK) {
+		freeObject(p11prikey);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create public key object");
 	}
 
+	addObject(token, p11prikey, useAA ? TRUE : FALSE);
 	addObject(token, p11pubkey, TRUE);
 
 	FUNC_RETURNS(CKR_OK);
@@ -1409,6 +1419,7 @@ static int getMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
 	case CKM_SHA256_RSA_PKCS_PSS:
 	case CKM_SHA384_RSA_PKCS_PSS:
 	case CKM_SHA512_RSA_PKCS_PSS:
+	case CKM_ECDSA:
 		pInfo->flags = CKF_SIGN;
 		break;
 
@@ -1417,8 +1428,13 @@ static int getMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
 		break;
 	}
 
-	pInfo->ulMinKeySize = 2048;
-	pInfo->ulMaxKeySize = 2048;
+	if (type == CKM_ECDSA) {
+		pInfo->ulMinKeySize = 256;
+		pInfo->ulMaxKeySize = 256;
+	} else {
+		pInfo->ulMinKeySize = 2048;
+		pInfo->ulMaxKeySize = 2048;
+	}
 	FUNC_RETURNS(rv);
 }
 

@@ -707,6 +707,21 @@ void addObjectToList(struct p11Object_t **list, struct p11Object_t *object)
 
 
 /**
+ * Free unlinked PKCS11 object
+ *
+ * @param list address of the pointer to the first entry in the list
+ * @param handle the handle of the object to be removed
+ * @return CKR_OK or CKR_OBJECT_HANDLE_INVALID
+ */
+void freeObject(struct p11Object_t *object)
+{
+	removeAllAttributes(object);
+	free(object);
+}
+
+
+
+/**
  * Remove a PKCS11 object from a linked list of objects
  * The object is removed and allocated memory freed
  *
@@ -728,8 +743,7 @@ int removeObjectFromList(struct p11Object_t **list, CK_OBJECT_HANDLE handle)
 	object = *list;
 	*list = (*list)->next;
 
-	removeAllAttributes(object);
-	free(object);
+	freeObject(object);
 
 	return CKR_OK;
 }

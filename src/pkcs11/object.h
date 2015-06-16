@@ -121,6 +121,7 @@ int findAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTemplate
 int findAttributeInTemplate(CK_ATTRIBUTE_TYPE attributeType, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
 int removeAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTemplate);
 int removeAllAttributes(struct p11Object_t *object);
+void freeObject(struct p11Object_t *object);
 void addObjectToList(struct p11Object_t **ppObject, struct p11Object_t *object);
 int removeObjectFromList(struct p11Object_t **ppObject, CK_OBJECT_HANDLE handle);
 void removeAllObjectsFromList(struct p11Object_t **ppObject);

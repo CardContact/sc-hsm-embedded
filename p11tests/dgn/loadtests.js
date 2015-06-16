@@ -146,7 +146,8 @@ function getObjectByLabel(s, clazz, label) {
 var testRunner = new TestRunner("STARCOS PKCS#11 Tests");
 testRunner.addTestGroupFromXML("tg_enumerate.xml", param);
 testRunner.addTestGroupFromXML("tg_signing.xml", param);
-testRunner.addTestGroupFromXML("tg_signing_qes.xml", param);
+//testRunner.addTestGroupFromXML("tg_signing_qes.xml", param);
+testRunner.addTestGroupFromXML("tg_signing_qes_ecc.xml", param);
 testRunner.addTestGroupFromXML("tg_decryption.xml", param);
 
 

@@ -147,15 +147,24 @@ int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, s
 	switch(p15->keytype) {
 	case P15_KEYTYPE_RSA:
 		keyType = CKK_RSA;
-		decodeModulusExponentFromSPKI(spki, &template[attributes], &template[attributes + 1]);
+		if (decodeModulusExponentFromSPKI(spki, &template[attributes], &template[attributes + 1])) {
+			free(p11o);
+			FUNC_FAILS(CKR_KEY_TYPE_INCONSISTENT, "Can't decode modulus - Private key type does not match public key type in certificate");
+		}
 		cert->keysize = template[attributes].ulValueLen << 3;
 		attributes += 2;
 		break;
 	case P15_KEYTYPE_ECC:
 		keyType = CKK_ECDSA;
-		decodeECParamsFromSPKI(spki, &template[attributes]);
+		if (decodeECParamsFromSPKI(spki, &template[attributes])) {
+			free(p11o);
+			FUNC_FAILS(CKR_KEY_TYPE_INCONSISTENT, "Can't decode EC parameter - Private key type does not match public key type in certificate");
+		}
 		attributes++;
-		decodeECPointFromSPKI(spki, &template[attributes]);
+		if (decodeECPointFromSPKI(spki, &template[attributes])) {
+			free(p11o);
+			FUNC_FAILS(CKR_KEY_TYPE_INCONSISTENT, "Private key type does not match public key type in certificate");
+		}
 		cert->keysize = (template[attributes].ulValueLen - 3) << 2;
 		attributes++;
 		break;
