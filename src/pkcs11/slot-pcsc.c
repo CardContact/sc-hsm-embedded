@@ -46,6 +46,7 @@
 #include <pkcs11/slotpool.h>
 #include <pkcs11/slot-pcsc.h>
 #include <pkcs11/strbpcpy.h>
+#include <pkcs11/crc32.h>
 
 #ifdef DEBUG
 #include <pkcs11/debug.h>
@@ -741,6 +742,16 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 			SCardFreeMemory(globalContext, readers );
 			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 		}
+
+		/* If a reader filter is defined, then slot ids for that reader are
+		 * derived from the reader name using a CRC32 value. If the token
+		 * in the reader allocated virtual slots, then these have incremented
+		 * slot ids.
+		 *
+		 * This is not enabled by default to prevent slot id collisions
+		 */
+		if (filter)
+			slot->id = crc32(0, p, strlen(p));
 
 		rc = SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &(slot->context));
 

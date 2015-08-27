@@ -423,6 +423,11 @@ int getVirtualSlot(struct p11Slot_t *slot, int index, struct p11Slot_t **vslot)
 	newslot->token = NULL;
 	newslot->next = NULL;
 	newslot->primarySlot = slot;
+
+	/* If we already have a pre-allocated slot id, then assign the next id value */
+	if (slot->id != 0)
+		newslot->id = slot->id + index + 1;
+
 	slot->virtualSlots[index] = newslot;
 
 	postfix[0] = '.';
