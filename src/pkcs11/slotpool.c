@@ -159,8 +159,10 @@ int addSlot(struct p11SlotPool_t *pool, struct p11Slot_t *slot)
 	pool->numberOfSlots++;
 
 	/* Slot id might have been set during slot creation */
-	if (slot->id == 0)
-		slot->id = pool->nextSlotID++;
+	if (slot->id == 0) {
+		slot->id = pool->nextSlotID;
+		pool->nextSlotID += 4;
+	}
 
 	FUNC_RETURNS(CKR_OK);
 }
