@@ -89,7 +89,7 @@ int initSlotPool(struct p11SlotPool_t *pool)
 
 	pool->list = NULL;
 	pool->numberOfSlots = 0;
-	pool->nextSlotID = 0;
+	pool->nextSlotID = 1;
 
 	FUNC_RETURNS(CKR_OK);
 }
