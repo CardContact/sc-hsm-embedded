@@ -38,6 +38,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <common/memset_s.h>
+
 #include "ctapi.h"
 #include "ccid_usb.h"
 #include "ctccid_debug.h"
@@ -82,16 +84,20 @@ static int ccidAPDUProcess (struct scr *ctx,
 		}
 
 		rc = PC_to_RDR_XfrBlock(ctx, len, po, level);
-		if (rc < 0)
+		if (rc < 0) {
+			memset_s(buf, 0, sizeof(buf));
 			return -1;
+		}
 
 		lc -= len;
 		po += len;
 
 		len = BUFFMAX;
 		rc = RDR_to_PC_DataBlock(ctx, &len, buf, &status, &error, &chain);
-		if (rc < 0)
+		if (rc < 0) {
+			memset_s(buf, 0, sizeof(buf));
 			return -1;
+		}
 	}
 
 	r = 0;
@@ -108,17 +114,22 @@ static int ccidAPDUProcess (struct scr *ctx,
 
 		if ((chain == 1) || (chain == 3)) {
 			rc = PC_to_RDR_XfrBlock(ctx, 0, NULL, 0x10);
-			if (rc < 0)
+			if (rc < 0) {
+				memset_s(buf, 0, sizeof(buf));
 				return -1;
+			}
 			len = BUFFMAX;
 			rc = RDR_to_PC_DataBlock(ctx, &len, buf, &status, &error, &chain);
-			if (rc < 0)
+			if (rc < 0) {
+				memset_s(buf, 0, sizeof(buf));
 				return -1;
+			}
 			continue;
 		}
 		break;
 	}
 
+	memset_s(buf, 0, sizeof(buf));
 	return r;
 }
 

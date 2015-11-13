@@ -33,6 +33,8 @@
 
 #include <string.h>
 
+#include <common/memset_s.h>
+
 #include <pkcs11/p11generic.h>
 #include <pkcs11/slot.h>
 #include <pkcs11/token.h>
@@ -48,6 +50,8 @@
 #else
 #include "slot-pcsc.h"
 #endif
+
+
 
 extern struct p11Context_t *context;
 
@@ -254,14 +258,19 @@ int transmitAPDU(struct p11Slot_t *slot,
 	sprintf(scr, "C-APDU: %02X %02X %02X %02X ", CLA, INS, P1, P2);
 	po = strchr(scr, '\0');
 
-	if (INS != 0x20 && OutLen && OutData) {
+	if (OutLen && OutData) {
 		sprintf(po, "Lc=%02X(%d) ", OutLen, OutLen);
 		po = strchr(scr, '\0');
-		if (OutLen > 2048) {
-			decodeBCDString(OutData, 2048, po);
-			strcat(po, "..");
+
+		if (INS != 0x20 && INS != 0x24 && INS != 0x2C) {
+			if (OutLen > 2048) {
+				decodeBCDString(OutData, 2048, po);
+				strcat(po, "..");
+			} else {
+				decodeBCDString(OutData, OutLen, po);
+			}
 		} else {
-			decodeBCDString(OutData, OutLen, po);
+			strcat(po, "***Sensitive***");
 		}
 		po = strchr(scr, '\0');
 		strcpy(po, " ");
@@ -272,14 +281,17 @@ int transmitAPDU(struct p11Slot_t *slot,
 		sprintf(po, "Le=%02X(%d)", InLen, InLen);
 
 	debug("%s\n", scr);
+	memset_s(scr, 0, sizeof(scr));
 #endif
 
 	rc = encodeCommandAPDU(CLA, INS, P1, P2,
 			OutLen, OutData, InData ? InLen : -1,
 			apdu, sizeof(apdu));
 
-	if (rc < 0)
+	if (rc < 0) {
+		memset_s(apdu, 0, sizeof(apdu));
 		FUNC_FAILS(rc, "Encoding APDU failed");
+	}
 
 #ifdef CTAPI
 	rc = transmitAPDUviaCTAPI(slot, 0,
@@ -323,6 +335,7 @@ int transmitAPDU(struct p11Slot_t *slot,
 
 	debug("%s\n", scr);
 #endif
+	memset_s(apdu, 0, sizeof(apdu));
 	return rc;
 }
 

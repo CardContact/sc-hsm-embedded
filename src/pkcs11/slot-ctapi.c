@@ -40,6 +40,8 @@
 #include <sys/stat.h>
 #include <errno.h>
 
+#include <common/memset_s.h>
+
 #include <pkcs11/slot.h>
 #include <pkcs11/token.h>
 #include <pkcs11/slotpool.h>
@@ -90,8 +92,10 @@ int transmitAPDUwithCTAPI(struct p11Slot_t *slot, int todad,
 			OutLen, OutData, InData ? InLen : -1,
 			apdu, sizeof(apdu));
 
-	if (rc < 0)
+	if (rc < 0) {
+		memset_s(apdu, 0, sizeof(apdu));
 		FUNC_FAILS(rc, "Encoding APDU failed");
+	}
 
 	rc = transmitAPDUviaCTAPI(slot, todad,
 			apdu, rc,
@@ -111,6 +115,7 @@ int transmitAPDUwithCTAPI(struct p11Slot_t *slot, int todad,
 		rc = -1;
 	}
 
+	memset_s(apdu, 0, sizeof(apdu));
 	FUNC_RETURNS(rc);
 }
 
