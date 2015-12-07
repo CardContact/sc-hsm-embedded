@@ -23,6 +23,7 @@
     <ClCompile Include="..\src\pkcs11\asn1.c" />
     <ClCompile Include="..\src\pkcs11\bytestring.c" />
     <ClCompile Include="..\src\pkcs11\certificateobject.c" />
+    <ClCompile Include="..\src\pkcs11\crc32.c" />
     <ClCompile Include="..\src\pkcs11\dataobject.c" />
     <ClCompile Include="..\src\pkcs11\debug.c" />
     <ClCompile Include="..\src\pkcs11\object.c" />

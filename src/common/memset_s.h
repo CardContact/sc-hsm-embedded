@@ -13,7 +13,11 @@
  * @ingroup FEPKCS11
  */
 
+#ifdef _WIN32
+static _inline void *memset_s(void *v, int c, size_t n)
+#else
 static inline void *memset_s(void *v, int c, size_t n)
+#endif
 {
 	volatile unsigned char *p = v;
 	while (n--)
