@@ -41,7 +41,7 @@
 #include <pkcs11/object.h>
 
 #define VERSION_MAJOR     2
-#define VERSION_MINOR     7
+#define VERSION_MINOR     8
 
 #ifndef _MAX_PATH
 #define _MAX_PATH FILENAME_MAX
