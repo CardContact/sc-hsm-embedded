@@ -1,13 +1,15 @@
-sc-hsm-embedded
-===============
+sc-hsm-embedded PKCS#11 Module
+==============================
 
-Light-weight CT-API and PKCS#11 library for using the SmartCard-HSM in embedded systems
+Light-weight, read-only PKCS#11 library for using the SmartCard-HSM in embedded systems.
+
+The module also supports various signature cards commonly used in Germany.
 
 Purpose
 -------
-This module has been developed for facilitate the integration of a SmartCard-HSM in
+This module has been developed to support the integration of a SmartCard-HSM in
 embedded systems with a little footprint. Rather than using a PC/SC daemon to manage
-attached card readers and token, the smaller Card Terminal API (CT-API) is used.
+attached card readers and token, the smaller Card Terminal API (CT-API) can be used.
 
 Supported Hardware
 ------------------
@@ -21,3 +23,109 @@ the SCR 3310 and the USB-stick.
 Further documentation is available at
 
 https://github.com/CardContact/sc-hsm-embedded/wiki
+
+Installation (Linux)
+--------------------
+Download source and run configure, make, make install.
+
+Installation (Windows)
+----------------------
+Install the provided .msi file or unpack the archive and copy the
+sc-hsm-pkcs11.dll into the windows\systems32 directory or any
+other directory that is included in the PATH.
+
+Firefox
+-------
+Open Firefox and the Add-ons-Manager.
+Select "Install Add-ons From File"
+Select the file "sc-hsm-pkcs11.xpi"
+
+Thunderbird
+-----------
+Open Thunderbird and the Security Devices Manager
+Select Load and enter "SmartCard-HSM" as Module Name
+Select "sc-hsm-pkcs.dll" or "/usr/local/lib/sc-hsm-pkcs11.so" as module filename.
+
+Uninstall
+---------
+Open Firefox and the Add-ons-Manager.
+Uninstall the "SmartCard-HSM PKCS#11 Installer"
+Open the "Security Devices Manager"
+Unload the entry under "SmartCard-HSM"
+
+Windows64
+---------
+The win64 directory contains 64-bit versions of the PKCS#11 module and the
+test program. Please remember that Firefox on Windows is generally a 32-bit
+program.
+
+Running the test program
+------------------------
+Open a console and change into the sc-hsm-pkcs11 directory.
+Insert a SmartCard-HSM and enter
+
+sc-hsm-pkcs11-test --module lib\sc-hsm-pkcs11.dll
+
+For a STARCOS card you will need to define the token that shall be used for tests:
+
+sc-hsm-pkcs11-test --module lib\sc-hsm-pkcs11.dll --token STARCOS.eUserPKI
+
+The test program uses the default PINs (648219 for SmartCard-HSM or 123456 for STARCOS card).
+
+Please use --pin <pin> if you need to define a different PIN.
+
+Debugging
+---------
+A debugging version of the PKCS#11 module is provided to aid debugging of
+card and card reader problems.
+
+Please copy the sc-hsm-pkcs11-debug.dll onto the sc-hsm-pkcs11.dll and create
+a directory c:\var\tmp\sc-hsm-embedded. Log files will be placed in that directory.
+
+On Linux you will need to use configure with --enable-debug
+
+Release 2.8
+-----------
+Added support for ECC keys on DGN card
+Added support for static slot ids
+Fixed issue with leaked PIN value due to non-cleared buffers
+Added multi-threading tests for ECC
+
+Release 2.7
+-----------
+Added support for DGN HBA on Starcos 3.5
+
+Release 2.6
+-----------
+Disabled QES token when running under Firefox.
+
+Release 2.5
+-----------
+Added ATR for contactless SmartCard-HSMs.
+
+Release 2.4
+-----------
+Removed probing of applications on unrecognized cards.
+
+Release 2.3
+-----------
+Disabled QES2 on Signtrust 3.2 card as this is never used.
+Added environment variable PKCS11_PREALLOCATE_VIRTUAL_SLOTS=<n> to create <n> virtual slots when the
+primary slot is allocated for the first time. Without the flag a virtual slot is dynamically created if a
+token with more than one PIN is detect. In that case the PKCS#11 module creates an additional virtual slot for
+each additional PIN (usually the QES PINs). However, this dynamic behaviour collides with the way Firefox handles
+the Friendly flag, which is only set for slots that are present at modul loading.
+
+Release 2.2
+-----------
+Added support for Signtrust Starcos 3.2 card
+
+Release 2.1
+-----------
+Added support for D-Trust Starcos 3.4 card
+Added support for Signtrust Starcos 3.5 card
+
+Release 2.0
+-----------
+Added support for Bundesnotarkammer Starcos 3.5 card
+Added support for PC/SC card reader
