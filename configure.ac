@@ -19,6 +19,7 @@ AC_ARG_ENABLE(ctapi,
 		[CPPFLAGS="$CPPFLAGS -DCTAPI"], [enable_pcsc="yes"])
 
 PKG_CHECK_MODULES(LIBUSB, libusb-1.0)
+PKG_CHECK_MODULES(LIBCURL, libcurl)
 
 if test "${enable_pcsc}" = "yes"; then
 	PKG_CHECK_MODULES(PCSC, libpcsclite)
@@ -35,6 +36,7 @@ AC_CONFIG_FILES([
     src/pkcs11/Makefile
     src/tests/Makefile
     src/ultralite/Makefile
+    src/ramoverhttp/Makefile
 ])
 
 AC_OUTPUT
