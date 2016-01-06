@@ -44,20 +44,22 @@ extern "C" {
 
 // Return codes
 
-#define RAME_OK				0
-#define RAME_GENERAL_ERROR	-1
-#define RAME_OUT_OF_MEMORY	-2
-#define RAME_INVALID_TLV	-3
-#define RAME_INVALID_REQ	-4
-#define RAME_CURL_ERROR		-5
-#define RAME_CARD_ERROR		-6
-#define RAME_NO_CONNECT		-7
-#define RAME_HOST_NOT_FOUND	-8
-#define RAME_INVALID_URL	-9
-#define RAME_CONNECT_FAILED	-10
+#define RAME_OK				0			/** OK */
+#define RAME_GENERAL_ERROR	-1			/** General error */
+#define RAME_OUT_OF_MEMORY	-2			/** Out of heap memory */
+#define RAME_INVALID_TLV	-3			/** TLV encoding corrupt */
+#define RAME_INVALID_REQ	-4			/** POST response does not contain request object */
+#define RAME_CURL_ERROR		-5			/** General error reported by libcurl */
+#define RAME_CARD_ERROR		-6			/** Error in card communication */
+#define RAME_NO_CONNECT		-7			/** Server did not send request in time */
+#define RAME_HOST_NOT_FOUND	-8			/** Host name was not found */
+#define RAME_INVALID_URL	-9			/** URL is malformed */
+#define RAME_CONNECT_FAILED	-10			/** Connection to server failed */
 
+/* TLV tags */
 #define RAM_INT				0x02
 #define RAM_UTF8			0x0C
+#define RAM_NUM_APDU		0x80
 #define RAM_REQ_TEMPL		0xAA
 #define RAM_RES_TEMPL		0xAB
 #define RAM_INIT_TEMPL		0xE8

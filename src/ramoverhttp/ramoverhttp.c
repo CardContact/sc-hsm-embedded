@@ -42,6 +42,13 @@
 
 
 
+/**
+ * Initialize byte buffer and allocate initial memory block
+ *
+ * @param bb The byte buffer structure
+ * @param size The initial byte buffer size
+ * @return 0 or error code
+ */
 static int initByteBuffer(struct ramByteBuffer *bb, size_t size) {
 	bb->size = size;
 	bb->buffer = malloc(size);
@@ -53,6 +60,13 @@ static int initByteBuffer(struct ramByteBuffer *bb, size_t size) {
 
 
 
+/**
+ * Adjust the size of the buffer to accommodate the incremented size
+ *
+ * @param bb The byte buffer structure
+ * @param increment The additional memory required
+ * @return 0 or error code
+ */
 static int adjustByteBuffer(struct ramByteBuffer *bb, size_t increment) {
 	if (bb->len + increment > bb->size) {
 		do {
@@ -68,6 +82,14 @@ static int adjustByteBuffer(struct ramByteBuffer *bb, size_t increment) {
 
 
 
+/**
+ * Add bytes to the byte buffer
+ *
+ * @param bb The byte buffer structure
+ * @param data The data to add
+ * @param len The length of the data to add
+ * @return 0 or error code
+ */
 static int addByteBuffer(struct ramByteBuffer *bb, unsigned char *data, size_t len) {
 	int rc;
 
@@ -82,6 +104,14 @@ static int addByteBuffer(struct ramByteBuffer *bb, unsigned char *data, size_t l
 
 
 
+/**
+ * Insert bytes at the beginning of the byte buffer
+ *
+ * @param bb The byte buffer structure
+ * @param data The data to insert
+ * @param len The length of the data to insert
+ * @return 0 or error code
+ */
 static int insertByteBuffer(struct ramByteBuffer *bb, unsigned char *data, size_t len) {
 	int rc;
 
@@ -97,6 +127,12 @@ static int insertByteBuffer(struct ramByteBuffer *bb, unsigned char *data, size_
 
 
 
+/**
+ * Clear the byte buffer
+ *
+ * @param bb The byte buffer structure
+ * @return 0 or error code
+ */
 static void clearByteBuffer(struct ramByteBuffer *bb) {
 	memset_s(bb->buffer, 0, bb->size);
 	bb->len = 0;
@@ -104,6 +140,12 @@ static void clearByteBuffer(struct ramByteBuffer *bb) {
 
 
 
+/**
+ * Free and release memory allocated for the byte buffer
+ *
+ * @param bb The byte buffer structure
+ * @return 0 or error code
+ */
 static void freeByteBuffer(struct ramByteBuffer *bb) {
 	if (bb->buffer) {
 		memset_s(bb->buffer, 0, bb->size);
@@ -116,6 +158,12 @@ static void freeByteBuffer(struct ramByteBuffer *bb) {
 
 
 
+/**
+ * Decode 1,2 or 3 byte length field
+ *
+ * @param Ref The pointer to a pointer which is updated during the parse
+ * @return The decoded length field
+ */
 static int tlvLength(unsigned char **Ref) {
 	int l,c;
 
@@ -137,6 +185,13 @@ static int tlvLength(unsigned char **Ref) {
 
 
 
+/**
+ * Encode length field for TLV object on
+ *
+ * @param ref At least 3 byte buffer to receive the encoded length
+ * @param length The length to be encoded
+ * @return the length of the length field in bytes
+ */
 static size_t tlvEncodeLength(unsigned char *ref, int length)
 {
 	if (length >= 256) {
@@ -192,6 +247,15 @@ static int tlvNext(unsigned char **ref, size_t *reflen, int *tag, size_t *length
 
 
 
+/**
+ * Encode a response object with the given tag and data value
+ *
+ * @param ctx The initialized context
+ * @param tag The tag value
+ * @param data The data for the value field
+ * @param len The length of the data field
+ * @return 0 or error code
+ */
 static int encodeResponse(struct ramContext *ctx, unsigned char tag, unsigned char *data, size_t len) {
 	unsigned char tmp[4];
 	int rc;
@@ -213,6 +277,9 @@ static int encodeResponse(struct ramContext *ctx, unsigned char tag, unsigned ch
  *
  * 8E len
  *     C0 len <atr>
+ *
+ * @param ctx The initialized context
+ * @return 0 or error code
  */
 static int makeInitiationRequest(struct ramContext *ctx) {
 	unsigned char tmp[4];
@@ -232,8 +299,16 @@ static int makeInitiationRequest(struct ramContext *ctx) {
 
 
 
+/**
+ * Process a sendApdu command via the call-back set with ramSetSendApduHandler()
+ *
+ * @param ctx The initialized context
+ * @param capdu The command APDU
+ * @param clen The length of the command APDU
+ * @return 0 or error code
+ */
 static int processSendApdu(struct ramContext *ctx, unsigned char *capdu, size_t clen) {
-	int rc;
+	int rc = 0;
 	size_t rlen;
 	unsigned char rapdu[4096];
 
@@ -242,6 +317,7 @@ static int processSendApdu(struct ramContext *ctx, unsigned char *capdu, size_t 
 		rc = ctx->sendApdu(ctx, capdu, clen, rapdu, &rlen);
 		if (rc == 0) {
 			rc = encodeResponse(ctx, RAM_RAPDU, rapdu, rlen);
+			memset_s(rapdu, 0, sizeof(rapdu));
 		}
 	}
 	return rc;
@@ -249,8 +325,14 @@ static int processSendApdu(struct ramContext *ctx, unsigned char *capdu, size_t 
 
 
 
+/**
+ * Process a reset object via the call-back set with ramSetResetHandler()
+ *
+ * @param ctx The initialized context
+ * @return 0 or error code
+ */
 static int processReset(struct ramContext *ctx) {
-	int rc;
+	int rc = 0;
 	size_t alen;
 	unsigned char atr[36];
 
@@ -266,6 +348,14 @@ static int processReset(struct ramContext *ctx) {
 
 
 
+/**
+ * Process a notify object via the call-back set with ramSetNotifyHandler()
+ *
+ * @param ctx The initialized context
+ * @param tl The value field of the notify TLV object
+ * @param tlen The length of the value field
+ * @return 0 or error code
+ */
 static int processNotify(struct ramContext *ctx, unsigned char *tl, size_t tlen) {
 	unsigned char *v;
 	int tag,msgid,rc;
@@ -275,7 +365,6 @@ static int processNotify(struct ramContext *ctx, unsigned char *tl, size_t tlen)
 	if (!ctx->notify)
 		return 0;
 
-	rc = 0;
 	msgid = 0;
 	while ((rc = tlvNext(&tl, &tlen, &tag, &taglen, &v)) > 0) {
 		switch(tag) {
@@ -305,11 +394,45 @@ static int processNotify(struct ramContext *ctx, unsigned char *tl, size_t tlen)
 
 
 
+/**
+ * Encode integer value in minimal number of bytes using MSB format
+ *
+ * @param p the buffer for a maximum of 4 bytes
+ * @param v the value
+ * @return the number of encoded bytes
+ */
+static int encodeInteger(unsigned char *p, int v) {
+	int c,l = 0;
+
+	if ((v <= 0x7F) && (v >= -0x80))
+		l = 1;
+	else if ((v <= 0x7FFF) && (v >= -0x8000))
+		l = 2;
+	else if ((v <= 0x7FFFFF) && (v >= -0x800000))
+		l = 3;
+	else
+		l = 4;
+
+	for (c = l - 1; c >= 0; c--) {
+		*(p + c) = v & 0xFF;
+		v >>= 8;
+	}
+	return l;
+}
+
+
+
+/**
+ * Process requests received from the server
+ *
+ * @param ctx The initialized context
+ * @return 0 or error code
+ */
 static int processRequests(struct ramContext *ctx) {
 	unsigned char *p,*v;
 	unsigned char tmp[4];
 	size_t len,tl;
-	int tag,rc;
+	int tag,rc,apducnt;
 
 	p = ctx->readbuffer.buffer;
 
@@ -322,10 +445,13 @@ static int processRequests(struct ramContext *ctx) {
 		return RAME_INVALID_REQ;
 
 	rc = 0;
+	apducnt = 0;
 	while (!rc && ((rc = tlvNext(&p, &len, &tag, &tl, &v)) > 0)) {
 		switch(tag) {
 		case RAM_CAPDU:
 			rc = processSendApdu(ctx, v, tl);
+			if (rc == 0)
+				apducnt++;
 			break;
 		case RAM_RESET:
 			rc = processReset(ctx);
@@ -338,6 +464,12 @@ static int processRequests(struct ramContext *ctx) {
 
 	// Even if processing is aborted, we encode a response template to notify the server
 
+	// Number of processed APDUs
+	tl = encodeInteger(tmp, apducnt);
+	rc = encodeResponse(ctx, RAM_NUM_APDU, tmp, tl);
+	if (rc < 0)
+		return rc;
+
 	tmp[0] = RAM_RES_TEMPL;
 	len = tlvEncodeLength(tmp + 1, ctx->writebuffer.len);
 	insertByteBuffer(&ctx->writebuffer, tmp, len + 1);
@@ -347,6 +479,15 @@ static int processRequests(struct ramContext *ctx) {
 
 
 
+/**
+ * CURL call-back to process data send by the server
+ *
+ * @param buffer The data received
+ * @param size The size of a single elements
+ * @param nmemb The number of elements
+ * @param userp The pointer to the user object, which must be the context
+ * @return The length of processed bytes
+ */
 static size_t write_data(void *buffer, size_t size, size_t nmemb, void *userp) {
 	struct ramContext *c = (struct ramContext *)userp;
 	size_t len = size * nmemb;
@@ -359,11 +500,36 @@ static size_t write_data(void *buffer, size_t size, size_t nmemb, void *userp) {
 
 
 
+/**
+ * Establish a connection to the RAM server at the given URL and process
+ * requests until the server closed the connection
+ *
+ * Before calling ramConnect(), the context must be created with
+ * ramNewContext(),  * the card's ATR must be set using ramSetATR() and the
+ * server must be set using ramSetURL().
+ *
+ * The function uses the call-back functions set with ramSetSendApduHandler(),
+ * ramSetResetHandler() and ramSetNotifyHandler() to perform the request card
+ *  operations or notification.
+ *
+ * In order to obtain caller specific data in the call-back, you can register
+ * a user object using ramSetUserObject(). In the call-back the user object
+ * can be received with ramGetUserObject().
+ *
+ * @param ctx The initialized context
+ * @return 0 or error code
+ */
 int ramConnect(struct ramContext *ctx) {
 	struct curl_slist *headers=NULL;
 	CURLcode res;
 	long httpcode;
 	int rc;
+
+	if (!ctx->URL)
+		return RAME_INVALID_URL;
+
+	if (!ctx->atr || !ctx->atrlen)
+		return RAME_GENERAL_ERROR;
 
 	CURL *curl = curl_easy_init();
 	curl_easy_setopt(curl, CURLOPT_URL, ctx->URL);
@@ -378,6 +544,7 @@ int ramConnect(struct ramContext *ctx) {
 	curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
 	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);
 
+	clearByteBuffer(&ctx->writebuffer);
 	makeInitiationRequest(ctx);
 
 	rc = 0;
@@ -427,6 +594,17 @@ int ramConnect(struct ramContext *ctx) {
 
 
 
+/**
+ * Force closing a connection if an unrecoverable local error occurred (e.g. card removed)
+ *
+ * This causes a notification to be send to the server in order to perform a
+ * clean shutdown of the connection. The method shall be called from within
+ * the call-back.
+ *
+ * @param ctx The initialized context
+ * @param msg The message for the server log
+ * @return 0 or error code
+ */
 void ramForceClose(struct ramContext *ctx, char *msg) {
 	unsigned char h1[4];
 	unsigned char h2[4];
@@ -447,6 +625,14 @@ void ramForceClose(struct ramContext *ctx, char *msg) {
 
 
 
+/**
+ * Allocate and initialize a new context.
+ *
+ * The context can be used multiple times. It must be released with ramFreeContext().
+ *
+ * @param ctx A pointer to the context pointer.
+ * @return 0 or error code
+ */
 int ramNewContext(struct ramContext **ctx) {
 	int rc;
 	struct ramContext *c;
@@ -473,6 +659,12 @@ int ramNewContext(struct ramContext **ctx) {
 
 
 
+/**
+ * Release context.
+ *
+ * @param ctx A pointer to the context pointer.
+ * @return 0 or error code
+ */
 void ramFreeContext(struct ramContext **ctx) {
 	freeByteBuffer(&(*ctx)->readbuffer);
 	freeByteBuffer(&(*ctx)->writebuffer);
@@ -483,24 +675,54 @@ void ramFreeContext(struct ramContext **ctx) {
 
 
 
+/**
+ * Set user object for call-back functions
+ *
+ * @param ctx The initialized context
+ * @param obj The user object to set
+ */
 void ramSetUserObject(struct ramContext *ctx, void *obj) {
 	ctx->userObject = obj;
 }
 
 
 
+/**
+ * Get user object for call-back functions
+ *
+ * @param ctx The initialized context
+ * @return 0 or error code
+ */
 void *ramGetUserObject(struct ramContext *ctx) {
 	return ctx->userObject;
 }
 
 
 
+/**
+ * Set URL of Remote Application Management Server
+ *
+ * The code does not copy the URL.
+ *
+ * @param ctx The initialized context
+ * @param url The URL
+ */
 void ramSetURL(struct ramContext *ctx, char *url) {
 	ctx->URL = url;
 }
 
 
 
+/**
+ * Set ATR of the card.
+ *
+ * The ATR is send in the initiation request and is used at the server to identify the card type.
+ * The code does not copy the ATR.
+ *
+ * @param ctx The initialized context
+ * @param atr The cards ATR
+ * @param atrlen The length of the ATR
+ */
 void ramSetATR(struct ramContext *ctx, unsigned char *atr, size_t atrlen) {
 	ctx->atr = atr;
 	ctx->atrlen = atrlen;
@@ -508,18 +730,76 @@ void ramSetATR(struct ramContext *ctx, unsigned char *atr, size_t atrlen) {
 
 
 
+/**
+ * Set call-back to handle APDU exchange with the card
+ *
+ * The handler must be declared as
+ *
+ * int sendApdu(struct ramContext *ctx, unsigned char *capdu, size_t clen, unsigned char *rapdu, size_t *rlen)
+ *
+ * It must send the APDU contained in capdu with the length given in clen to the card and place
+ * the response APDU (data + SW1/SW2) in rapdu. rlen is a pointer to the length. It is initialized with the
+ * length of the buffer and must be set to the length of the response by the call-back.
+ *
+ * The call-back must return 0 if no error occurred or a value < 0 to indicates an error. An error
+ * other than RAME_CARD_ERROR will immediately terminate processing of the server request.
+ *
+ * If an error occurs, then the call-back shall call ramForceClose() to notify the server of the problem
+ * and to initiate a clean shut-down.
+ *
+ * @param ctx The initialized context
+ * @param sendApduHandler The call-back
+ */
 void ramSetSendApduHandler(struct ramContext *ctx, ramSendApdu_t sendApduHandler) {
 	ctx->sendApdu = sendApduHandler;
 }
 
 
 
+/**
+ * Set call-back to handle a card reset
+ *
+ * The handler must be declared as
+ *
+ * int reset(struct ramContext *ctx, unsigned char *atr, size_t *alen)
+ *
+ * It must reset the card and fill the buffer pointed to by atr with the ATR, not exceeding the
+ * length of the buffer indicated in alen. The length variable alen must be updated to reflect
+ * the actual length of the ATR.
+ *
+ * The call-back must return 0 if no error occurred or a value < 0 to indicates an error. An error
+ * other than RAME_CARD_ERROR will immediately terminate processing of the server request.
+ *
+ * If an error occurs, then the call-back shall call ramForceClose() to notify the server of the problem
+ * and to initiate a clean shut-down.
+ *
+ * @param ctx The initialized context
+ * @param sendApduHandler The call-back
+ */
 void ramSetResetHandler(struct ramContext *ctx, ramReset_t resetHandler) {
 	ctx->reset = resetHandler;
 }
 
 
 
+/**
+ * Set call-back to handle notification from the server
+ *
+ * The handler must be declared as
+ *
+ * int notify(struct ramContext *ctx, int msgid, char *msg)
+ *
+ * The server sends notification messages and ids. Usually messages shall be presented to the user.
+ *
+ * The call-back must return 0 if no error occurred or a value < 0 to indicates an error. An error
+ * other than RAME_CARD_ERROR will immediately terminate processing of the server request.
+ *
+ * If an error occurs, then the call-back shall call ramForceClose() to notify the server of the problem
+ * and to initiate a clean shut-down.
+ *
+ * @param ctx The initialized context
+ * @param sendApduHandler The call-back
+ */
 void ramSetNotifyHandler(struct ramContext *ctx, ramNotify_t notifyHandler) {
 	ctx->notify = notifyHandler;
 }
