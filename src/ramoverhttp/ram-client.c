@@ -335,6 +335,7 @@ int main(int argc, char **argv)
 		ramFreeContext(&ctx);
 	} else {
 		printf("No URL defined\n");
+		rc = 0;
 	}
 
 	SCardDisconnect(lctx.card, SCARD_UNPOWER_CARD);

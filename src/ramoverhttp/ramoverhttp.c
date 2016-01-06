@@ -36,7 +36,7 @@
 #include <stdlib.h>
 
 #include <common/memset_s.h>
-#include <ramoverhttp.h>
+#include "ramoverhttp.h"
 
 #include <curl/curl.h>
 
@@ -524,6 +524,7 @@ int ramConnect(struct ramContext *ctx) {
 	CURLcode res;
 	long httpcode;
 	int rc;
+	CURL *curl;
 
 	if (!ctx->URL)
 		return RAME_INVALID_URL;
@@ -531,7 +532,7 @@ int ramConnect(struct ramContext *ctx) {
 	if (!ctx->atr || !ctx->atrlen)
 		return RAME_GENERAL_ERROR;
 
-	CURL *curl = curl_easy_init();
+	curl = curl_easy_init();
 	curl_easy_setopt(curl, CURLOPT_URL, ctx->URL);
 
 	headers = curl_slist_append(headers, "Content-Type: application/org.openscdp-content-mgt-response;version=1.0");
