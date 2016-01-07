@@ -43,6 +43,8 @@
 static int optListReaders = 0;
 static char *optReader = NULL;
 static char *optURL = NULL;
+static int optVerbose = 0;
+
 
 struct localContext {
 	LPSTR reader;
@@ -180,8 +182,9 @@ char *pcsc_error_to_string(const LONG error) {
 void usage()
 {
 	puts("ram-client [option] <URL>\n");
-	printf("  -r, --reader         Select reader name\n");
-	printf("  -l, --list-readers   List available card readers\n");
+	puts("  -r, --reader         Select reader name");
+	puts("  -l, --list-readers   List available card readers");
+	puts("  -v, --verbose        Tell us what you do");
 }
 
 
@@ -202,6 +205,8 @@ void decodeArgs(int argc, char **argv)
 			argc--;
 		} else if (!strcmp(*argv, "--list-readers") || !strcmp(*argv, "-l")) {
 			optListReaders = 1;
+		} else if (!strcmp(*argv, "--verbose") || !strcmp(*argv, "-v")) {
+			optVerbose = 1;
 		} else if (**argv == '-') {
 			printf("Unknown argument %s\n", *argv);
 			usage();
@@ -215,18 +220,79 @@ void decodeArgs(int argc, char **argv)
 
 
 
+#define bcddigit(x) ((x) >= 10 ? 'A' - 10 + (x) : '0' + (x))
+
+
+
+static void decodeBCDString(unsigned char *Inbuff, int len, char *Outbuff) {
+	while (len--) {
+		*Outbuff++ = bcddigit(*Inbuff >> 4);
+		*Outbuff++ = bcddigit(*Inbuff & 15);
+		Inbuff++;
+	}
+	*Outbuff++ = '\0';
+}
+
+
+
+static void dumpCAPDU(unsigned char *capdu, size_t len) {
+	char *msg = alloca(len * 2 + 10);
+
+	if (msg == NULL)
+		return;
+
+	strcpy(msg, "C: ");
+	decodeBCDString(capdu, len, msg + strlen(msg));
+	puts(msg);
+}
+
+
+
+static void dumpRAPDU(unsigned char *rapdu, size_t len) {
+	char *msg = alloca(len * 2 + 10);
+
+	if (msg == NULL)
+		return;
+
+	strcpy(msg, "R: ");
+	decodeBCDString(rapdu, len, msg + strlen(msg));
+	puts(msg);
+}
+
+
+
+static void dumpATR(unsigned char *atr, size_t len) {
+	char *msg = alloca(len * 2 + 10);
+
+	if (msg == NULL)
+		return;
+
+	strcpy(msg, "ATR: ");
+	decodeBCDString(atr, len, msg + strlen(msg));
+	puts(msg);
+}
+
+
+
 static int sendApdu(struct ramContext *ctx, unsigned char *capdu, size_t clen, unsigned char *rapdu, size_t *rlen) {
 	struct localContext *lctx = (struct localContext *)ramGetUserObject(ctx);
 	LONG scrc;
 	DWORD lenr;
+
+	if (optVerbose)
+		dumpCAPDU(capdu, clen);
 
 	lenr = *rlen;
 
 	scrc = SCardTransmit(lctx->card, SCARD_PCI_T1, capdu, clen, NULL, rapdu, &lenr);
 
 	if (scrc != SCARD_S_SUCCESS) {
+		printf("Error during card communication (%s)\n", pcsc_error_to_string(scrc));
 		ramForceClose(ctx, pcsc_error_to_string(scrc));
 		return RAME_CARD_ERROR;
+	} else {
+		if (optVerbose)
+			dumpRAPDU(rapdu, lenr);
 	}
 
 	*rlen = lenr;
@@ -259,6 +325,9 @@ static int reset(struct ramContext *ctx, unsigned char *atr, size_t *alen) {
 	atrlen = *alen;
 	SCardStatus(lctx->card, NULL, &readernamelen, &state, &protocol, atr, &atrlen);
 	*alen = atrlen;
+
+	if (optVerbose)
+		dumpATR(atr, atrlen);
 
 	return 0;
 }

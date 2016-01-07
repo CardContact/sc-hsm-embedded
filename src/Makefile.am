@@ -1,2 +1,7 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
-SUBDIRS = common ctccid ramoverhttp ultralite pkcs11 tests
+
+SUBDIRS = common ctccid ultralite pkcs11 tests
+
+if ENABLE_RAM
+SUBDIRS += ramoverhttp
+endif
