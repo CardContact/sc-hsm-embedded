@@ -39,6 +39,9 @@
 
 #include <ramoverhttp/ramoverhttp.h>
 
+#ifdef WIN32
+#define alloca _alloca
+#endif
 
 static int optListReaders = 0;
 static char *optReader = NULL;
