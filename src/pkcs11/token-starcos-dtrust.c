@@ -326,8 +326,15 @@ static int createDTrustToken(struct p11Slot_t *slot, struct p11Token_t **token, 
 
 	starcosUpdatePinStatus(ptoken, rc);
 
-	if (slot->hasFeatureVerifyPINDirect)
-		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
+	if (slot->primarySlot) {
+		if (slot->primarySlot->hasFeatureVerifyPINDirect) {
+			ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
+			slot->hasFeatureVerifyPINDirect = slot->primarySlot->hasFeatureVerifyPINDirect;
+		}
+	} else {
+		if (slot->hasFeatureVerifyPINDirect)
+			ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
+	}
 
 	*token = ptoken;
 

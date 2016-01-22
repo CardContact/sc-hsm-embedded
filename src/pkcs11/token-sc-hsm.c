@@ -773,7 +773,7 @@ static int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin
 		}
 	} else {
 
-		if (slot->hasFeatureVerifyPINDirect && !pinlen && !pin) {
+		if ((slot->token->info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !pinlen && !pin) {
 #ifdef DEBUG
 			debug("Verify PIN using CKF_PROTECTED_AUTHENTICATION_PATH\n");
 #endif
