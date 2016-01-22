@@ -52,9 +52,12 @@ extern "C" {
 #define RAME_CURL_ERROR		-5			/** General error reported by libcurl */
 #define RAME_CARD_ERROR		-6			/** Error in card communication */
 #define RAME_NO_CONNECT		-7			/** Server did not send request in time */
-#define RAME_HOST_NOT_FOUND	-8			/** Host name was not found */
-#define RAME_INVALID_URL	-9			/** URL is malformed */
-#define RAME_CONNECT_FAILED	-10			/** Connection to server failed */
+#define RAME_SERVER_ABORT	-8			/** Server did not send request in time */
+#define RAME_HOST_NOT_FOUND	-9			/** Host name was not found */
+#define RAME_INVALID_URL	-10			/** URL is malformed or not found on server */
+#define RAME_CONNECT_FAILED	-11			/** Connection to server failed */
+#define RAME_HTTP_CODE		-12			/** Unexpected HTTP code */
+
 
 /* TLV tags */
 #define RAM_INT				0x02

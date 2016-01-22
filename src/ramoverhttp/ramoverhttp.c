@@ -371,6 +371,10 @@ static int processNotify(struct ramContext *ctx, unsigned char *tl, size_t tlen)
 		case RAM_INT:
 			if (taglen > 4)
 				return RAME_INVALID_TLV;
+
+			if (*v & 0x80)
+				msgid = -1;
+
 			while(taglen--) {
 				msgid <<= 8;
 				msgid |= *v++;
@@ -389,7 +393,10 @@ static int processNotify(struct ramContext *ctx, unsigned char *tl, size_t tlen)
 		return rc;
 
 	rc = ctx->notify(ctx, msgid, msg);
-	return rc;
+	if (rc != 0)
+		return rc;
+
+	return msgid < 0 ? msgid : 0;
 }
 
 
@@ -432,7 +439,7 @@ static int processRequests(struct ramContext *ctx) {
 	unsigned char *p,*v;
 	unsigned char tmp[4];
 	size_t len,tl;
-	int tag,rc,apducnt;
+	int tag,rc,rrc,apducnt;
 
 	p = ctx->readbuffer.buffer;
 
@@ -466,9 +473,9 @@ static int processRequests(struct ramContext *ctx) {
 
 	// Number of processed APDUs
 	tl = encodeInteger(tmp, apducnt);
-	rc = encodeResponse(ctx, RAM_NUM_APDU, tmp, tl);
-	if (rc < 0)
-		return rc;
+	rrc = encodeResponse(ctx, RAM_NUM_APDU, tmp, tl);
+	if (rrc < 0)
+		return rrc;
 
 	tmp[0] = RAM_RES_TEMPL;
 	len = tlvEncodeLength(tmp + 1, ctx->writebuffer.len);
@@ -523,7 +530,7 @@ int ramConnect(struct ramContext *ctx) {
 	struct curl_slist *headers=NULL;
 	CURLcode res;
 	long httpcode;
-	int rc;
+	int rc,excnt;
 	CURL *curl;
 
 	if (!ctx->URL)
@@ -549,8 +556,9 @@ int ramConnect(struct ramContext *ctx) {
 	makeInitiationRequest(ctx);
 
 	rc = 0;
+	excnt = 0;		// Counter number of received requests
 	do {
-		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, ctx->writebuffer.buffer);
+		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)ctx->writebuffer.buffer);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)ctx->writebuffer.len);
 
 		res = curl_easy_perform(curl);
@@ -580,13 +588,26 @@ int ramConnect(struct ramContext *ctx) {
 			clearByteBuffer(&ctx->readbuffer);
 			if ((rc != 0) && (rc != RAME_CARD_ERROR))
 				break;
+			excnt++;
 		}
 	} while (httpcode == 200);
 
 	switch(httpcode) {
-	case 504:
-		rc = RAME_NO_CONNECT;
+	case 504:			// Gateway timeout
+		if (excnt)
+			rc = RAME_SERVER_ABORT;
+		else
+			rc = RAME_NO_CONNECT;
 		break;
+	case 200:			// New request, but aborted
+	case 204:			// Completed
+		break;
+	case 404:
+		rc = RAME_INVALID_URL;
+		break;
+	default:
+		printf("Server HTTP code %ld\n", httpcode);
+		rc = RAME_HTTP_CODE;
 	}
 
 	curl_easy_cleanup(curl);

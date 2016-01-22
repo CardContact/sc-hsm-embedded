@@ -433,7 +433,7 @@ int main(int argc, char **argv)
 		printf("Host not found\n");
 		break;
 	case RAME_INVALID_URL:
-		printf("URL is invalid\n");
+		printf("URL is invalid or not found on server\n");
 		break;
 	case RAME_CONNECT_FAILED:
 		printf("Connection to host failed\n");
@@ -443,6 +443,12 @@ int main(int argc, char **argv)
 		break;
 	case RAME_NO_CONNECT:
 		printf("Server did not initiate connection to card. See server log for details\n");
+		break;
+	case RAME_SERVER_ABORT:
+		printf("Server aborted connection to card. See server log for details\n");
+		break;
+	case RAME_HTTP_CODE:
+		printf("Server send unexpected HTTP code\n");
 		break;
 	default:
 		printf("Error %d\n", rc);
