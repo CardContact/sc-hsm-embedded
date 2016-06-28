@@ -84,6 +84,10 @@ a directory c:\var\tmp\sc-hsm-embedded. Log files will be placed in that directo
 
 On Linux you will need to use configure with --enable-debug
 
+Release 2.9
+-----------
+Added ATRs for BNotK cards
+
 Release 2.8
 -----------
 Added support for ECC keys on DGN card
