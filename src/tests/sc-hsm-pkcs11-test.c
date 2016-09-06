@@ -602,11 +602,11 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 	CK_SESSION_HANDLE session;
 	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
 	CK_KEY_TYPE keyType = CKK_RSA;
-	CK_BBOOL true = CK_TRUE;
+	CK_BBOOL _true = CK_TRUE;
 	CK_ATTRIBUTE template[] = {
 			{ CKA_CLASS, &class, sizeof(class) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
-			{ CKA_SIGN, &true, sizeof(true) }
+			{ CKA_SIGN, &_true, sizeof(_true) }
 	};
 	CK_OBJECT_HANDLE hnd;
 	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };

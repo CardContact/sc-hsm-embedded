@@ -134,7 +134,7 @@ static int insertByteBuffer(struct ramByteBuffer *bb, unsigned char *data, size_
  * @return 0 or error code
  */
 static void clearByteBuffer(struct ramByteBuffer *bb) {
-	memset_s(bb->buffer, 0, bb->size);
+	memset_s(bb->buffer, bb->size, 0, bb->size);
 	bb->len = 0;
 }
 
@@ -148,7 +148,7 @@ static void clearByteBuffer(struct ramByteBuffer *bb) {
  */
 static void freeByteBuffer(struct ramByteBuffer *bb) {
 	if (bb->buffer) {
-		memset_s(bb->buffer, 0, bb->size);
+		memset_s(bb->buffer, bb->size, 0, bb->size);
 		free(bb->buffer);
 	}
 	bb->buffer = NULL;
@@ -317,7 +317,7 @@ static int processSendApdu(struct ramContext *ctx, unsigned char *capdu, size_t 
 		rc = ctx->sendApdu(ctx, capdu, clen, rapdu, &rlen);
 		if (rc == 0) {
 			rc = encodeResponse(ctx, RAM_RAPDU, rapdu, rlen);
-			memset_s(rapdu, 0, sizeof(rapdu));
+			memset_s(rapdu, sizeof(rapdu), 0, sizeof(rapdu));
 		}
 	}
 	return rc;

@@ -13,15 +13,19 @@
  * @ingroup FEPKCS11
  */
 
+#ifndef __APPLE__
+
 #ifdef _WIN32
-static _inline void *memset_s(void *v, int c, size_t n)
+static _inline void *memset_s(void *v, size_t vmax, int c, size_t n)
 #else
-static inline void *memset_s(void *v, int c, size_t n)
+static inline void *memset_s(void *v, size_t vmax, int c, size_t n)
 #endif
 {
 	volatile unsigned char *p = v;
-	while (n--)
+	while (n-- && vmax--)
 		*p++ = c;
 
 	return v;
 }
+
+#endif

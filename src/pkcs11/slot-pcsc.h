@@ -51,8 +51,14 @@
 #ifdef _WIN32
 #include <winscard.h>
 #else
+#ifdef __APPLE__
+#include <PCSC/wintypes.h>
+#include <PCSC/pcsclite.h>
+#include <PCSC/winscard.h>
+#else
 #include <pcsclite.h>
 #include <winscard.h>
+#endif /* __APPLE__ */
 #endif
 
 #ifndef SCARD_CTL_CODE

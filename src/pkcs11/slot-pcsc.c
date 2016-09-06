@@ -52,11 +52,19 @@
 #include <pkcs11/debug.h>
 #endif
 
-#ifndef _WIN32
-#include <pcsclite.h>
-#endif
-
+#ifdef _WIN32
 #include <winscard.h>
+#define  MAX_READERNAME   128
+#else
+#include <unistd.h>
+#ifdef __APPLE__
+#include <PCSC/pcsclite.h>
+#include <PCSC/winscard.h>
+#else
+#include <pcsclite.h>
+#include <winscard.h>
+#endif /* __APPLE__ */
+#endif /* _WIN32 */
 
 extern struct p11Context_t *context;
 
@@ -662,7 +670,8 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 	struct p11Slot_t *slot,*vslot;
 	LPTSTR readers = NULL;
 	char *filter, *prealloc;
-	DWORD cch = SCARD_AUTOALLOCATE;
+	DWORD cch = 0;
+//	DWORD cch = SCARD_AUTOALLOCATE;
 	LPTSTR p;
 	LONG rc;
 	int match,vslotcnt,i;
@@ -685,7 +694,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		}
 	}
 
-	rc = SCardListReaders(globalContext, NULL, (LPTSTR)&readers, &cch);
+	rc = SCardListReaders(globalContext, NULL, NULL, &cch);
 
 #ifdef DEBUG
 	debug("SCardListReaders: %s\n", pcsc_error_to_string(rc));
@@ -699,6 +708,22 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error listing PC/SC card terminals");
 	}
 
+	readers = calloc(cch, 1);
+
+	rc = SCardListReaders(globalContext, NULL, readers, &cch);
+
+#ifdef DEBUG
+	debug("SCardListReaders: %s\n", pcsc_error_to_string(rc));
+#endif
+
+	if (rc == SCARD_E_NO_READERS_AVAILABLE) {
+		FUNC_RETURNS(CKR_OK);
+	}
+
+	if (rc != SCARD_S_SUCCESS) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error listing PC/SC card terminals");
+	}
+	
 	filter = getenv("PKCS11_READER_FILTER");
 #ifdef DEBUG
 	if (filter) {
@@ -739,7 +764,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		slot = (struct p11Slot_t *) calloc(1, sizeof(struct p11Slot_t));
 
 		if (slot == NULL) {
-			SCardFreeMemory(globalContext, readers );
+			free(readers);
 			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 		}
 
@@ -761,7 +786,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 
 		if (rc != SCARD_S_SUCCESS) {
 			free(slot);
-			SCardFreeMemory(globalContext, readers );
+			free(readers);
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Could not establish context to PC/SC manager");
 		}
 
@@ -832,15 +857,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		p += strlen(p) + 1;
 	}
 
-	rc = SCardFreeMemory(globalContext, readers );
-
-#ifdef DEBUG
-	debug("SCardFreeMemory: %s\n", pcsc_error_to_string(rc));
-#endif
-
-	if (rc != SCARD_S_SUCCESS) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Error freeing memory");
-	}
+	free(readers);
 
 	FUNC_RETURNS(CKR_OK);
 }

@@ -53,8 +53,13 @@
 #define  MAX_READERNAME   128
 #else
 #include <unistd.h>
+#ifdef __APPLE__
+#include <PCSC/pcsclite.h>
+#include <PCSC/winscard.h>
+#else
 #include <pcsclite.h>
 #include <winscard.h>
+#endif /* __APPLE__ */
 #endif /* _WIN32 */
 #endif /* CTAPI */
 

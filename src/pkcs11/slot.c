@@ -281,7 +281,7 @@ int transmitAPDU(struct p11Slot_t *slot,
 		sprintf(po, "Le=%02X(%d)", InLen, InLen);
 
 	debug("%s\n", scr);
-	memset_s(scr, 0, sizeof(scr));
+	memset_s(scr, sizeof(scr), 0, sizeof(scr));
 #endif
 
 	rc = encodeCommandAPDU(CLA, INS, P1, P2,
@@ -289,7 +289,7 @@ int transmitAPDU(struct p11Slot_t *slot,
 			apdu, sizeof(apdu));
 
 	if (rc < 0) {
-		memset_s(apdu, 0, sizeof(apdu));
+		memset_s(apdu, sizeof(apdu), 0, sizeof(apdu));
 		FUNC_FAILS(rc, "Encoding APDU failed");
 	}
 
@@ -335,7 +335,7 @@ int transmitAPDU(struct p11Slot_t *slot,
 
 	debug("%s\n", scr);
 #endif
-	memset_s(apdu, 0, sizeof(apdu));
+	memset_s(apdu, sizeof(apdu), 0, sizeof(apdu));
 	return rc;
 }
 
