@@ -994,7 +994,7 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 		FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "checkPINStatus failed");
 	}
 
-	if ((rc != 0x9000) && ((rc && 0xFF00) != 0x6300) && ((rc && 0xFF00) != 0x6900) ) {
+	if (rc != 0x9000) {
 		rc = selectApplet(slot);
 		if (rc < 0) {
 			FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "applet selection failed");

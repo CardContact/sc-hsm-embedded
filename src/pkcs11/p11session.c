@@ -166,10 +166,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseAllSessions)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	if (&context->sessionPool == NULL) {
-		FUNC_FAILS(CKR_SESSION_HANDLE_INVALID,"Session pool not initialized");
-	}
-
 	p11LockMutex(context->mutex);
 
 	closeSessionsForSlot(&context->sessionPool, slotID);
