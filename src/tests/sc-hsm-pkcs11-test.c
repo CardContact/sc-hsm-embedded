@@ -1373,7 +1373,9 @@ void testInsertRemove(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 	for (loop = 0; loop < 2; loop++) {
 		printf("Please remove card from slot %lu and press <ENTER>\n", slotid);
 		inp = NULL;
-		getline(&inp, &inplen, stdin);
+		if (getline(&inp, &inplen, stdin) < 0) {
+			return;
+		}
 		free(inp);
 
 		printf("Calling C_GetSlotInfo for slot %lu ", slotid);
@@ -1390,7 +1392,9 @@ void testInsertRemove(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 
 		printf("Please insert card in slot %lu and press <ENTER>\n", slotid);
 		inp = NULL;
-		getline(&inp, &inplen, stdin);
+		if (getline(&inp, &inplen, stdin) < 0) {
+			return;
+		}
 		free(inp);
 
 		printf("Calling C_GetSlotInfo for slot %lu ", slotid);
