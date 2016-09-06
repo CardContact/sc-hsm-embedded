@@ -35,7 +35,12 @@
 #include <string.h>
 #include <stdlib.h>
 
+#ifdef __APPLE__
+#include <PCSC/wintypes.h>
+#include <PCSC/winscard.h>
+#else
 #include <winscard.h>
+#endif
 
 #include <ramoverhttp/ramoverhttp.h>
 
@@ -341,7 +346,7 @@ int main(int argc, char **argv)
 {
 	struct ramContext *ctx;
 	struct localContext lctx;
-	DWORD cch = SCARD_AUTOALLOCATE;
+	DWORD cch = 0;
 	DWORD dwActiveProtocol;
 	LPTSTR readers = NULL;
 	LPTSTR p;
@@ -359,7 +364,16 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	scrc = SCardListReaders(lctx.scardContext, NULL, (LPTSTR)&readers, &cch);
+	scrc = SCardListReaders(lctx.scardContext, NULL, NULL, &cch);
+
+	if (scrc != SCARD_S_SUCCESS) {
+		printf("Could not list readers (%s)\n", pcsc_error_to_string(scrc));
+		exit(1);
+	}
+
+	readers = calloc(cch, 1);
+
+	scrc = SCardListReaders(lctx.scardContext, NULL, readers, &cch);
 
 	if (scrc != SCARD_S_SUCCESS) {
 		printf("Could not list readers (%s)\n", pcsc_error_to_string(scrc));

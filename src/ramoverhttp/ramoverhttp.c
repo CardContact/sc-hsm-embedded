@@ -226,6 +226,7 @@ static size_t tlvEncodeLength(unsigned char *ref, int length)
  */
 static int tlvNext(unsigned char **ref, size_t *reflen, int *tag, size_t *length, unsigned char **value)
 {
+	int rc;
 	unsigned char *base;
 
 	if (*reflen == 0) {
@@ -233,9 +234,15 @@ static int tlvNext(unsigned char **ref, size_t *reflen, int *tag, size_t *length
 	}
 	base = *ref;
 	*tag = *(*ref)++;
-	*length = tlvLength(ref);
 
-	if ((*length < 0) || (*ref - base + *length > *reflen))
+	rc = tlvLength(ref);
+
+	if (rc < 0)
+		return RAME_INVALID_TLV;
+
+	*length = rc;
+
+	if (*ref - base + *length > *reflen)
 		return RAME_INVALID_TLV;
 
 	*value = *ref;
