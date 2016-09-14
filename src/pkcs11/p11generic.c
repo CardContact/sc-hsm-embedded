@@ -44,6 +44,9 @@
 #include <pkcs11/debug.h>
 #endif
 
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
 
 /*
  * Set up the global context structure.
@@ -145,9 +148,16 @@ static CK_RV osUnlockMutex(CK_VOID_PTR pMutex)
 int determineCaller()
 {
 	char path[1024],*p;
+#ifdef __APPLE__
+	uint32_t bufsize;
+#endif
 
 #ifdef _WIN32
 	GetModuleFileName(NULL, path, sizeof(path) - 1);
+#else
+#ifdef __APPLE__
+	bufsize = sizeof(path);
+	_NSGetExecutablePath(path, &bufsize);
 #else
 	int r;
 
@@ -159,6 +169,7 @@ int determineCaller()
 		return CALLER_UNKNOWN;
 	}
 	path[r] = '\0';
+#endif
 #endif
 
 #ifdef DEBUG

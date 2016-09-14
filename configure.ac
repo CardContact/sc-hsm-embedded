@@ -3,7 +3,10 @@
 # Support for em SmartCard-HSM
 # (c) 2016 CardContact Systems GmbH (www.cardcontact.de)
 
-AC_INIT(sc-hsm-embedded, 1.0)
+define([PACKAGE_VERSION_MAJOR],[2])
+define([PACKAGE_VERSION_MINOR],[9])
+
+AC_INIT(sc-hsm-embedded, [PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR])
 AC_CONFIG_MACRO_DIRS([m4])
 AM_INIT_AUTOMAKE
 LT_INIT
@@ -50,6 +53,9 @@ AM_CONDITIONAL([ENABLE_PCSC], [test "${enable_pcsc}" = "yes"])
 AM_CONDITIONAL([ENABLE_CTAPI], [test "${enable_pcsc}" != "yes"])
 AM_CONDITIONAL([ENABLE_RAM], [test "${enable_ram}" = "yes"])
 AM_CONDITIONAL([ENABLE_ULTRALITE], [test "${enable_ultralite}" = "yes"])
+
+AC_DEFINE([VERSION_MAJOR], [PACKAGE_VERSION_MAJOR] )
+AC_DEFINE([VERSION_MINOR], [PACKAGE_VERSION_MINOR] )
 
 AC_CONFIG_FILES([
     Makefile

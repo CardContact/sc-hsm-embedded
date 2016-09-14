@@ -40,8 +40,10 @@
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/object.h>
 
+#ifndef VERSION_MAJOR
 #define VERSION_MAJOR     2
-#define VERSION_MINOR     8
+#define VERSION_MINOR     9
+#endif
 
 #ifndef _MAX_PATH
 #define _MAX_PATH FILENAME_MAX
