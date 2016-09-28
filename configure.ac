@@ -7,7 +7,7 @@ define([PACKAGE_VERSION_MAJOR],[2])
 define([PACKAGE_VERSION_MINOR],[9])
 
 AC_INIT(sc-hsm-embedded, [PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR])
-AC_CONFIG_MACRO_DIRS([m4])
+AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE
 LT_INIT
 PKG_PROG_PKG_CONFIG
@@ -44,7 +44,7 @@ if test "${enable_pcsc}" = "yes"; then
 		# Make sure we link to the PCSC framework in OS X
 		PCSC_LIBS="-framework PCSC"
 	fi
-else 
+else
 	PKG_CHECK_MODULES(LIBUSB, libusb-1.0)
 fi
 
