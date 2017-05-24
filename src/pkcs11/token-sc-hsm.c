@@ -45,6 +45,7 @@
 #include <pkcs11/strbpcpy.h>
 #include <pkcs11/asn1.h>
 #include <pkcs11/pkcs15.h>
+#include <pkcs11/cvc.h>
 #include <pkcs11/debug.h>
 
 
@@ -54,6 +55,11 @@ static unsigned char aid[] = { 0xE8,0x2B,0x06,0x01,0x04,0x01,0x81,0xC3,0x1F,0x02
 static unsigned char atrJCOP41[] = { 0x3B,0xF8,0x13,0x00,0x00,0x81,0x31,0xFE,0x45,0x4A,0x43,0x4F,0x50,0x76,0x32,0x34,0x31,0xB7 };
 static unsigned char atrHSM[]    = { 0x3B,0xFE,0x18,0x00,0x00,0x81,0x31,0xFE,0x45,0x80,0x31,0x81,0x54,0x48,0x53,0x4D,0x31,0x73,0x80,0x21,0x40,0x81,0x07,0xFA };
 static unsigned char atrHSMCL[]  = { 0x3B,0x8E,0x80,0x01,0x80,0x31,0x81,0x54,0x48,0x53,0x4D,0x31,0x73,0x80,0x21,0x40,0x81,0x07,0x18 };
+
+static struct bytestring_s defaultAlgorithmRSA = { (unsigned char *)"\x04\x00\x7F\x00\x07\x02\x02\x02\x01\x02", 10 };
+static struct bytestring_s defaultAlgorithmEC = { (unsigned char *)"\x04\x00\x7F\x00\x07\x02\x02\x02\x02\x03", 10 };
+static struct bytestring_s defaultCHR = { (unsigned char *)"UTDUMMY00000", 12 };
+static struct bytestring_s defaultPublicExponent = { (unsigned char *)"\x01\x00\x01", 3 };
 
 
 
@@ -174,6 +180,52 @@ static int readEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *con
 
 	if (SW1SW2 != 0x9000) {
 		FUNC_FAILS(-1, "Read EF failed");
+	}
+
+	FUNC_RETURNS(rc);
+}
+
+
+
+static int writeEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *content, size_t len)
+{
+	int rc,maxblk, blen, ofs;
+	unsigned short SW1SW2;
+	unsigned char buff[MAX_CAPDU],*p;
+
+	FUNC_CALLED();
+
+	maxblk = slot->maxCAPDU - 15;			// Maximum block size
+	ofs = 0;
+
+	while (len > 0) {
+		blen = len > maxblk ? maxblk : len;
+
+		p = buff;
+
+		*p++ = 0x54;
+		*p++ = 0x02;
+		*p++ = ofs >> 8;
+		*p++ = ofs & 0xFF;
+		*p++ = 0x53;
+		asn1StoreLength(&p, blen);
+
+		memcpy(p, content, blen);
+		content += blen;
+		len -= blen;
+		blen += p - buff;
+
+		rc = transmitAPDU(slot, 0x00, 0xD7, fid >> 8, fid & 0xFF,
+				blen, buff,
+				0, NULL, 0, &SW1SW2);
+
+		if (rc < 0) {
+			FUNC_FAILS(rc, "transmitAPDU failed");
+		}
+
+		if (SW1SW2 != 0x9000) {
+			FUNC_FAILS(-1, "Write EF failed");
+		}
 	}
 
 	FUNC_RETURNS(rc);
@@ -511,6 +563,265 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 
 
 
+static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pPublicKeyTemplate, CK_ULONG ulPublicKeyAttributeCount, int *keysize)
+{
+	int rc;
+	CK_ULONG keybits;
+	struct bytestring_s publicKeyAlgorithm;
+	struct bytestring_s oid;
+	struct bytestring_s publicExponent;
+	struct ec_curve *curve;
+	unsigned char scr[2];
+
+	FUNC_CALLED();
+
+	bbClear(bb);
+	asn1AppendBytes(bb, 0x5F29, (unsigned char *)"\x00", 1);
+
+	rc = findAttributeInTemplate(CKA_INNER_CAR, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	if (rc >= 0) {
+		asn1AppendBytes(bb, 0x42, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
+	}
+
+	int ofs = bbGetLength(bb);
+
+	rc = findAttributeInTemplate(CKA_PUBLIC_KEY_ALGORITHM, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	if (rc >= 0) {
+		publicKeyAlgorithm.val = pPublicKeyTemplate[rc].pValue;
+		publicKeyAlgorithm.len = pPublicKeyTemplate[rc].ulValueLen;
+	} else {
+		if (pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN) {
+			publicKeyAlgorithm = defaultAlgorithmEC;
+		} else {
+			publicKeyAlgorithm = defaultAlgorithmRSA;
+		}
+	}
+	asn1Append(bb, 0x06, &publicKeyAlgorithm);
+
+	if (pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN) {
+		rc = findAttributeInTemplate(CKA_EC_PARAMS, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+		if (rc < 0) {
+			FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "Missing CKA_EC_PARAMS in public key template");
+		}
+
+		if ((pPublicKeyTemplate[rc].ulValueLen < 2) || asn1Validate(pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen)) {
+			FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_EC_PARAMS not valid ASN");
+		}
+
+		if (*(unsigned char *)pPublicKeyTemplate[rc].pValue != 0x06) {
+			FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_EC_PARAMS not an object identifier");
+		}
+
+		oid.val = pPublicKeyTemplate[rc].pValue + 2;
+		oid.len = pPublicKeyTemplate[rc].ulValueLen - 2;
+
+		curve = cvcGetCurveForOID(&oid);
+
+		if (curve == NULL) {
+			FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_EC_PARAMS contains unknown curve OID");
+		}
+
+		asn1Append(bb, 0x81, &curve->prime);
+		asn1Append(bb, 0x82, &curve->coefficientA);
+		asn1Append(bb, 0x83, &curve->coefficientB);
+		asn1Append(bb, 0x84, &curve->basePointG);
+		asn1Append(bb, 0x85, &curve->order);
+		asn1Append(bb, 0x87, &curve->coFactor);
+
+		keybits = curve->prime.len << 3;
+	} else {
+		rc = findAttributeInTemplate(CKA_MODULUS_BITS, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+		if (rc < 0) {
+			FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "Missing CKA_MODULUS_BITS in public key template");
+		}
+		if (pPublicKeyTemplate[rc].ulValueLen != sizeof(CK_ULONG)) {
+			FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_MODULUS_BITS not an CK_ULONG");
+		}
+		keybits = *(CK_ULONG *)pPublicKeyTemplate[rc].pValue;
+
+		rc = findAttributeInTemplate(CKA_PUBLIC_EXPONENT, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+		if (rc < 0) {
+			publicExponent = defaultPublicExponent;
+		} else {
+			publicExponent.val = pPublicKeyTemplate[rc].pValue;
+			publicExponent.len = pPublicKeyTemplate[rc].ulValueLen;
+		}
+
+		asn1Append(bb, 0x82, &publicExponent);
+		scr[0] = keybits >> 8;
+		scr[1] = keybits & 0xFF;
+		asn1AppendBytes(bb, 0x02, scr, 2);
+	}
+
+	asn1EncapBuffer(0x7F49, bb, ofs);
+
+	rc = findAttributeInTemplate(CKA_CHR, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	if (rc >= 0) {
+		asn1AppendBytes(bb, 0x5F20, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
+	} else {
+		asn1Append(bb, 0x5F20, &defaultCHR);
+	}
+
+	rc = findAttributeInTemplate(CKA_OUTER_CAR, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	if (rc >= 0) {
+		asn1AppendBytes(bb, 0x45, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
+	}
+
+	rc = findAttributeInTemplate(CKA_KEY_USE_COUNTER, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	if (rc >= 0) {
+		asn1AppendBytes(bb, 0x90, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
+	}
+
+	rc = findAttributeInTemplate(CKA_ALGORITHM_LIST, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	if (rc >= 0) {
+		asn1AppendBytes(bb, 0x91, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
+	}
+
+	if (bbHasFailed(bb)) {
+		FUNC_FAILS(CKR_DEVICE_MEMORY, "Buffer to encode GAKP buffer too small");
+	}
+
+	*keysize = (int)keybits;
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+/**
+ * Determine a free key identifier by enumerating all files and locating a free id in the range CC01-CCFF
+ */
+static int determineFreeKeyId(struct p11Slot_t *slot) {
+	unsigned char filelist[MAX_FILES * 2];
+	int listlen,i,id;
+
+	FUNC_CALLED();
+
+	listlen = enumerateObjects(slot, filelist, sizeof(filelist));
+	if (listlen < 0) {
+		FUNC_FAILS(listlen, "enumerateObjects failed");
+	}
+
+	for (id = 1; id <= 255; id++) {
+		for (i = 0; i < listlen; i += 2) {
+			if ((filelist[i] == KEY_PREFIX) && (filelist[i + 1] == id)) {
+				break;
+			}
+		}
+		if (i >= listlen) {
+			break;
+		}
+	}
+
+	FUNC_RETURNS(id <= 255 ? id : -1);
+}
+
+
+
+/**
+ * Generate EC or RSA key pair
+ */
+static int sc_hsm_C_GenerateKeyPair(
+		struct p11Slot_t *slot,
+		CK_MECHANISM_PTR pMechanism,
+		CK_ATTRIBUTE_PTR pPublicKeyTemplate,
+		CK_ULONG ulPublicKeyAttributeCount,
+		CK_ATTRIBUTE_PTR pPrivateKeyTemplate,
+		CK_ULONG ulPrivateKeyAttributeCount,
+		CK_OBJECT_HANDLE_PTR phPublicKey,
+		CK_OBJECT_HANDLE_PTR phPrivateKey)
+{
+	unsigned char buff[512];
+	struct bytebuffer_s bb = { buff, 0, sizeof(buff) };
+	struct p15PrivateKeyDescription *p15key = NULL;
+	unsigned short SW1SW2;
+	int rc,id,keysize;
+
+	FUNC_CALLED();
+
+	if ((pMechanism->mechanism != CKM_EC_KEY_PAIR_GEN) && (pMechanism->mechanism != CKM_RSA_PKCS_KEY_PAIR_GEN)) {
+		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism is neither CKM_EC_KEY_PAIR_GEN nor CKM_RSA_PKCS_KEY_PAIR_GEN");
+	}
+
+	rc = encodeGAKP(&bb, pMechanism, pPublicKeyTemplate, ulPublicKeyAttributeCount, &keysize);
+
+	id = determineFreeKeyId(slot);
+
+	rc = transmitAPDU(slot, 0x00, 0x46, id, 0x00,
+			bbGetLength(&bb), buff,
+			0, NULL, 0, &SW1SW2);
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+	}
+
+	if (SW1SW2 != 0x9000) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Signature operation failed");
+	}
+
+	p15key = calloc(1, sizeof(struct p15PrivateKeyDescription));
+	if (p15key == NULL) {
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+	}
+
+	p15key->keytype = pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN ? P15_KEYTYPE_ECC : P15_KEYTYPE_RSA;
+	p15key->keyReference = id;
+	p15key->keysize = keysize;
+
+	rc = findAttributeInTemplate(CKA_SIGN, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	if ((rc >= 0) && *(unsigned char *)pPrivateKeyTemplate[rc].pValue) {
+		p15key->usage |= P15_SIGN;
+	}
+
+	rc = findAttributeInTemplate(CKA_SIGN_RECOVER, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	if ((rc >= 0) && *(unsigned char *)pPrivateKeyTemplate[rc].pValue) {
+		p15key->usage |= P15_SIGNRECOVER;
+	}
+
+	rc = findAttributeInTemplate(CKA_DECRYPT, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	if ((rc >= 0) && *(unsigned char *)pPrivateKeyTemplate[rc].pValue) {
+		p15key->usage |= P15_DECIPHER;
+	}
+
+	rc = findAttributeInTemplate(CKA_DERIVE, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	if ((rc >= 0) && *(unsigned char *)pPrivateKeyTemplate[rc].pValue) {
+		p15key->usage |= P15_DERIVE;
+	}
+
+	rc = findAttributeInTemplate(CKA_LABEL, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	if (rc >= 0) {
+		p15key->coa.label = calloc(1, pPrivateKeyTemplate[rc].ulValueLen + 1);
+		if (p15key->coa.label == NULL) {
+			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+		}
+		memcpy(p15key->coa.label, pPrivateKeyTemplate[rc].pValue, pPrivateKeyTemplate[rc].ulValueLen);
+	}
+
+	rc = findAttributeInTemplate(CKA_ID, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	if (rc >= 0) {
+		p15key->id.val = calloc(1, pPrivateKeyTemplate[rc].ulValueLen);
+		if (p15key->id.val == NULL) {
+			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+		}
+		memcpy(p15key->id.val, pPrivateKeyTemplate[rc].pValue, pPrivateKeyTemplate[rc].ulValueLen);
+	}
+
+	rc = encodePrivateKeyDescription(&bb, p15key);
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Encoding PRKD failed");
+	}
+
+	rc = writeEF(slot, (PRKD_PREFIX << 8) | id, bb.val, bb.len);
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Writing PRKD failed");
+	}
+
+	FUNC_RETURNS(rc);
+}
+
+
+
 static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char id)
 {
 	unsigned char certValue[MAX_CERTIFICATE_SIZE];
@@ -627,6 +938,7 @@ static int addCACertificateObject(struct p11Token_t *token, unsigned char id)
 
 	addObject(token, p11cert, TRUE);
 
+	freeCertificateDescription(&p15cert);
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -1140,7 +1452,9 @@ struct p11TokenDriver *getSmartCardHSMTokenDriver()
 		sc_hsm_C_SignInit,		// int (*C_SignInit)     (struct p11Object_t *, CK_MECHANISM_PTR);
 		sc_hsm_C_Sign,			// int (*C_Sign)         (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
 		NULL,					// int (*C_SignUpdate)   (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
-		NULL					// int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
+		NULL,					// int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
+
+		sc_hsm_C_GenerateKeyPair
 	};
 
 	return &sc_hsm_token;

@@ -1047,6 +1047,84 @@ void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 
 
+void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
+{
+	int rc;
+	CK_CHAR label[] = "TestKey";
+	CK_BBOOL _true = TRUE;
+	CK_OBJECT_CLASS publicKeyClass = CKO_PUBLIC_KEY;
+	CK_ATTRIBUTE publicKeyTemplate[20] = {
+			{ CKA_CLASS, &publicKeyClass, sizeof(publicKeyClass) },
+			{ CKA_TOKEN, &_true, sizeof(_true)},
+			{ CKA_LABEL, &label, strlen((char *)label) }
+	};
+	int publicKeyAttributes = 3;
+	CK_OBJECT_CLASS privateKeyClass = CKO_PRIVATE_KEY;
+	CK_ATTRIBUTE privateKeyTemplate[20] = {
+			{ CKA_CLASS, &privateKeyClass, sizeof(privateKeyClass) },
+			{ CKA_TOKEN, &_true, sizeof(_true)},
+			{ CKA_PRIVATE, &_true, sizeof(_true)},
+			{ CKA_SENSITIVE, &_true, sizeof(_true)},
+			{ CKA_LABEL, &label, strlen((char *)label) }
+	};
+	int privateKeyAttributes = 5;
+	CK_OBJECT_HANDLE hndPrivateKey, hndPublicKey;
+	CK_MECHANISM mech_genecc = { CKM_EC_KEY_PAIR_GEN, 0, 0 };
+	CK_MECHANISM mech_genrsa = { CKM_RSA_PKCS_KEY_PAIR_GEN, 0, 0 };
+	CK_BYTE publicExponent[] = { 0x01, 0x00, 0x01 };
+	CK_ULONG keysize = 1024;
+
+	publicKeyTemplate[publicKeyAttributes].type = CKA_EC_PARAMS;
+	publicKeyTemplate[publicKeyAttributes].pValue = "\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07";
+	publicKeyTemplate[publicKeyAttributes].ulValueLen = 10;
+	publicKeyTemplate[publicKeyAttributes].type = CKA_EC_PARAMS;
+	publicKeyAttributes++;
+
+	privateKeyTemplate[privateKeyAttributes].type = CKA_SIGN;
+	privateKeyTemplate[privateKeyAttributes].pValue = &_true;
+	privateKeyTemplate[privateKeyAttributes].ulValueLen = sizeof(_true);
+	privateKeyAttributes++;
+
+	privateKeyTemplate[privateKeyAttributes].type = CKA_DERIVE;
+	privateKeyTemplate[privateKeyAttributes].pValue = &_true;
+	privateKeyTemplate[privateKeyAttributes].ulValueLen = sizeof(_true);
+	privateKeyAttributes++;
+
+	rc = p11->C_GenerateKeyPair(session, &mech_genecc,
+		publicKeyTemplate, publicKeyAttributes,
+		privateKeyTemplate, privateKeyAttributes,
+		&hndPublicKey, &hndPrivateKey);
+
+	publicKeyAttributes = 3;
+	publicKeyTemplate[publicKeyAttributes].type = CKA_MODULUS_BITS;
+	publicKeyTemplate[publicKeyAttributes].pValue = &keysize;
+	publicKeyTemplate[publicKeyAttributes].ulValueLen = sizeof(keysize);
+	publicKeyAttributes++;
+
+	publicKeyTemplate[publicKeyAttributes].type = CKA_PUBLIC_EXPONENT;
+	publicKeyTemplate[publicKeyAttributes].pValue = publicExponent;
+	publicKeyTemplate[publicKeyAttributes].ulValueLen = sizeof(publicExponent);
+	publicKeyAttributes++;
+
+	privateKeyAttributes = 5;
+	privateKeyTemplate[privateKeyAttributes].type = CKA_SIGN;
+	privateKeyTemplate[privateKeyAttributes].pValue = &_true;
+	privateKeyTemplate[privateKeyAttributes].ulValueLen = sizeof(_true);
+	privateKeyAttributes++;
+
+	privateKeyTemplate[privateKeyAttributes].type = CKA_DECRYPT;
+	privateKeyTemplate[privateKeyAttributes].pValue = &_true;
+	privateKeyTemplate[privateKeyAttributes].ulValueLen = sizeof(_true);
+	privateKeyAttributes++;
+
+	rc = p11->C_GenerateKeyPair(session, &mech_genrsa,
+		publicKeyTemplate, publicKeyAttributes,
+		privateKeyTemplate, privateKeyAttributes,
+		&hndPublicKey, &hndPrivateKey);
+}
+
+
+
 void testSessions(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 {
 	int rc;
@@ -1818,6 +1896,8 @@ int main(int argc, char *argv[])
 				// List all objects
 				memset(attr, 0, sizeof(attr));
 				listObjects(p11, session, attr, 0);
+
+				testKeyGeneration(p11, session);
 
 				testRSASigning(p11, slotid, 0);
 

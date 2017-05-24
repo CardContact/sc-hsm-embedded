@@ -66,6 +66,17 @@ static int decodeCommonObjectAttributes(unsigned char *coa, int coalen, struct p
 
 
 
+static int encodeCommonObjectAttributes(bytebuffer bb, struct p15CommonObjectAttributes *p15)
+{
+	if (p15->label != NULL) {
+		asn1AppendBytes(bb, ASN1_UTF8String, (unsigned char *)p15->label, strlen(p15->label));
+	}
+
+	return asn1EncapBuffer(ASN1_SEQUENCE, bb, 0);
+}
+
+
+
 static int decodeCommonKeyAttributes(unsigned char *cka, int ckalen, struct p15PrivateKeyDescription *p15)
 {
 	int tag,len;
@@ -110,6 +121,27 @@ static int decodeCommonKeyAttributes(unsigned char *cka, int ckalen, struct p15P
 
 
 
+static int encodeCommonKeyAttributes(bytebuffer bb, struct p15PrivateKeyDescription *p15)
+{
+	int ofs = bbGetLength(bb);
+	unsigned char scr[sizeof(int) + 1];
+
+	if (p15->id.val != NULL) {
+		asn1Append(bb, ASN1_OCTET_STRING, &p15->id);
+	} else {
+		scr[0] = p15->keyReference;
+		asn1AppendBytes(bb, ASN1_OCTET_STRING, scr, 1);
+	}
+
+	scr[0] = 0x06;
+	asn1EncodeFlags(p15->usage, scr + 1, 2);
+	asn1AppendBytes(bb, ASN1_BIT_STRING, scr, 3);
+
+	return asn1EncapBuffer(ASN1_SEQUENCE, bb, ofs);
+}
+
+
+
 static int decodeKeyAttributes(unsigned char *ka, int kalen, struct p15PrivateKeyDescription *p15)
 {
 	int tag,len;
@@ -144,6 +176,24 @@ static int decodeKeyAttributes(unsigned char *ka, int kalen, struct p15PrivateKe
 		p15->keysize = 2048;		// Save default for key size
 	}
 	return 0;
+}
+
+
+
+static int encodeKeyAttributes(bytebuffer bb, struct p15PrivateKeyDescription *p15)
+{
+	int ofs = bbGetLength(bb);
+	int rc;
+	unsigned char scr[sizeof(int) + 1];
+
+	asn1AppendBytes(bb, ASN1_OCTET_STRING, scr, 0);
+	asn1EncapBuffer(ASN1_SEQUENCE, bb, ofs);
+
+	rc = asn1EncodeInteger(p15->keysize, scr, sizeof(scr));
+	asn1AppendBytes(bb, ASN1_INTEGER, scr, rc);
+
+	asn1EncapBuffer(ASN1_SEQUENCE, bb, ofs);
+	return asn1EncapBuffer(0xA1, bb, ofs);
 }
 
 
@@ -270,6 +320,24 @@ int decodePrivateKeyDescription(unsigned char *prkd, size_t prkdlen, struct p15P
 	rc = decodePrivateKeyAttributes(po, len, *p15);
 
 	return rc;
+}
+
+
+
+/**
+ * Encode private key description into a PKCS#15 structure
+ *
+ * @param bb        The bytebuffer receiving the resulting PKCS#15 structure
+ * @param p15       The private key description
+ * @return          0 if successful, -1 for error
+ */
+int encodePrivateKeyDescription(bytebuffer bb, struct p15PrivateKeyDescription *p15)
+{
+	bbClear(bb);
+	encodeCommonObjectAttributes(bb, &p15->coa);
+	encodeCommonKeyAttributes(bb, p15);
+	encodeKeyAttributes(bb, p15);
+	return asn1EncapBuffer(p15->keytype, bb, 0);
 }
 
 
@@ -433,7 +501,7 @@ void freePrivateKeyDescription(struct p15PrivateKeyDescription **p15)
  *
  * @param p15       Pointer to pointer to structure. Pointer is cleared with NULL
  */
-void freeCertificatePrivateKeyDescription(struct p15CertificateDescription **p15)
+void freeCertificateDescription(struct p15CertificateDescription **p15)
 {
 	if (*p15 != NULL) {
 		freeCommonObjectAttributes(&(*p15)->coa);

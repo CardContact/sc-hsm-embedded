@@ -26,15 +26,16 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @file    asn1.h
+ * @file    cvc.h
  * @author  Andreas Schwier
- * @brief   Encoding and decoding for TLV structures
+ * @brief   Encoding and decoding of card verifiable certificates
  */
 
+#
 /* Prevent from including twice ------------------------------------------- */
 
-#ifndef __ASN1_H__
-#define __ASN1_H__
+#ifndef __CVC_H__
+#define __CVC_H__
 
 /* Support for C++ compiler ----------------------------------------------- */
 
@@ -42,35 +43,51 @@
 extern "C" {
 #endif
 
-#include "bytebuffer.h"
+#include <pkcs11/bytestring.h>
 
-#define ASN1_INTEGER            0x02
-#define ASN1_BIT_STRING         0x03
-#define ASN1_OCTET_STRING       0x04
-#define ASN1_OBJECT_IDENTIFIER  0x06
-#define ASN1_UTF8String         0x0C
-#define ASN1_SEQUENCE           0x30
+struct ec_curve {
+	struct bytestring_s oid;
+	struct bytestring_s prime;
+	struct bytestring_s coefficientA;
+	struct bytestring_s coefficientB;
+	struct bytestring_s basePointG;
+	struct bytestring_s order;
+	struct bytestring_s coFactor;
+};
 
-unsigned int    asn1Tag(unsigned char **Ref);
-int             asn1Length(unsigned char **Ref);
-void            asn1StoreTag(unsigned char **Ref, unsigned short Tag);
-void            asn1StoreLength(unsigned char **Ref, int Length);
-int             asn1Encap(unsigned short Tag, unsigned char *Msg, int MsgLen);
-int             asn1Append(bytebuffer buf, unsigned short tag, const bytestring val);
-int             asn1AppendBytes(bytebuffer buf, unsigned short tag, unsigned char *val, size_t len);
-int             asn1EncapBuffer(unsigned short tag, bytebuffer buf, size_t offset);
-unsigned char  *asn1Find(unsigned char *data, unsigned char *path, int level);
-int             asn1Validate(unsigned char *data, size_t length);
-int             asn1Next(unsigned char **ref, int *reflen, int *tag, int *length, unsigned char **value);
-void            asn1DecodeFlags(unsigned char *data, size_t length, unsigned long *flags);
-void            asn1EncodeFlags(unsigned long flags, unsigned char *data, size_t length);
-int             asn1DecodeInteger(unsigned char *data, size_t length, int *value);
-int             asn1EncodeInteger(int value, unsigned char *data, size_t length);
 
-/* Support for C++ compiler ----------------------------------------------- */
+/**
+ * The cvc structure provides for a mapping into the field of an encoded CVC certificate.
+ */
+struct cvc {
+	int cpi;								// Certificate profile indicator (0)
+	struct bytestring_s car;				// Certification authority reference
 
-#ifdef __cplusplus
-}
-#endif
-#endif
+	struct bytestring_s pukoid;				// Public key algorithm object identifier
+	struct bytestring_s primeOrModulus;		// Prime for ECC or modulus for RSA
+	struct bytestring_s coefficientAorExponent;			// Coefficient A for ECC or public exponent for RSA
+	struct bytestring_s coefficientB;		// Coefficient B for ECC
+	struct bytestring_s basePointG;			// Base point for ECC
+	struct bytestring_s order;				// Order of the base point for ECC
+	struct bytestring_s publicPoint;		// Public point for ECC
+	struct bytestring_s cofactor;			// Cofactor for ECC
 
+	int modulusSize;						// Size of RSA modulus in bits
+
+	struct bytestring_s chr;				// Certificate holder reference
+
+	struct bytestring_s signature;			// Certificate signature or request self-signed signature
+
+	struct bytestring_s outer_car;			// Instance signing the request
+	struct bytestring_s outerSignature;		// Request authenticating signature
+};
+typedef struct cvc cvc_t;
+
+struct ec_curve *cvcGetCurveForOID(bytestring oid);
+
+ /* Support for C++ compiler ----------------------------------------------- */
+
+ #ifdef __cplusplus
+ }
+ #endif
+ #endif

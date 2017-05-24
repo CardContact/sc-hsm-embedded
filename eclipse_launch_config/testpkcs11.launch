@@ -14,6 +14,7 @@
 <intAttribute key="org.eclipse.cdt.launch.ATTR_BUILD_BEFORE_LAUNCH_ATTR" value="2"/>
 <stringAttribute key="org.eclipse.cdt.launch.COREFILE_PATH" value=""/>
 <stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_ID" value="gdb"/>
+<stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_REGISTER_GROUPS" value=""/>
 <stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_START_MODE" value="run"/>
 <booleanAttribute key="org.eclipse.cdt.launch.DEBUGGER_STOP_AT_MAIN" value="true"/>
 <stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_STOP_AT_MAIN_SYMBOL" value="main"/>
@@ -32,5 +33,6 @@
 <mapEntry key="LD_PRELOAD" value="/lib/x86_64-linux-gnu/libpthread.so.0"/>
 <mapEntry key="PKCS11_PREALLOCATE_VIRTUAL_SLOTS" value="1"/>
 </mapAttribute>
-<stringAttribute key="org.eclipse.dsf.launch.MEMORY_BLOCKS" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&#10;&lt;memoryBlockExpressionList context=&quot;reserved-for-future-use&quot;&gt;&#10;&lt;gdbmemoryBlockExpression address=&quot;140737488346384&quot; label=&quot;&amp;amp;(pSlotList)&quot;/&gt;&#10;&lt;gdbmemoryBlockExpression address=&quot;140737488344400&quot; label=&quot;prkd&quot;/&gt;&#10;&lt;gdbmemoryBlockExpression address=&quot;140737488337232&quot; label=&quot;&amp;amp;(verify)&quot;/&gt;&#10;&lt;/memoryBlockExpressionList&gt;&#10;"/>
+<stringAttribute key="org.eclipse.dsf.launch.MEMORY_BLOCKS" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&#10;&lt;memoryBlockExpressionList context=&quot;reserved-for-future-use&quot;&gt;&#10;&lt;gdbmemoryBlockExpression address=&quot;140737488346384&quot; label=&quot;&amp;amp;(pSlotList)&quot;/&gt;&#10;&lt;gdbmemoryBlockExpression address=&quot;140737488344400&quot; label=&quot;prkd&quot;/&gt;&#10;&lt;gdbmemoryBlockExpression address=&quot;140737488337232&quot; label=&quot;&amp;amp;(verify)&quot;/&gt;&#10;&lt;gdbmemoryBlockExpression address=&quot;140737488344016&quot; label=&quot;buff&quot;/&gt;&#10;&lt;gdbmemoryBlockExpression address=&quot;140737488344000&quot; label=&quot;buff&quot;/&gt;&#10;&lt;gdbmemoryBlockExpression address=&quot;140737488343952&quot; label=&quot;buff&quot;/&gt;&#10;&lt;/memoryBlockExpressionList&gt;&#10;"/>
+<stringAttribute key="process_factory_id" value="org.eclipse.cdt.dsf.gdb.GdbProcessFactory"/>
 </launchConfiguration>

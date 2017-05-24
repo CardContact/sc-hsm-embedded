@@ -810,6 +810,9 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 
 		slot->info.flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
 
+		slot->maxRAPDU = MAX_RAPDU;
+		slot->maxCAPDU = MAX_CAPDU;
+
 		// The REINER SCT readers have an APDU buffer limitation of 1014 bytes
 		if (!strncmp((char *)p, "REINER SCT", 10)) {
 #ifdef DEBUG

@@ -38,6 +38,7 @@
 #include <stdlib.h>
 
 #include <pkcs11/cryptoki.h>
+#include <pkcs11/sc-hsm-pkcs11.h>
 #include <pkcs11/object.h>
 
 #ifndef VERSION_MAJOR
@@ -195,7 +196,10 @@ struct p11TokenDriver {
 	int (*C_Sign)         (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
 	int (*C_SignUpdate)   (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
 	int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
+
+	int (*C_GenerateKeyPair)  (struct p11Slot_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG, CK_OBJECT_HANDLE_PTR, CK_OBJECT_HANDLE_PTR);
 };
+
 
 
 #define CALLER_UNKNOWN			0

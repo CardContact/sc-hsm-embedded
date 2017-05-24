@@ -245,9 +245,9 @@ int transmitAPDU(struct p11Slot_t *slot,
 		int InLen, unsigned char *InData, int InSize, unsigned short *SW1SW2)
 {
 	int rc;
-	unsigned char apdu[4098];
+	unsigned char apdu[MAX_CAPDU];
 #ifdef DEBUG
-	char scr[4196];
+	char scr[MAX_CAPDU + 128];
 	char *po;
 #endif
 
@@ -348,9 +348,9 @@ int transmitVerifyPinAPDU(struct p11Slot_t *slot,
 		unsigned char pinblockstring, unsigned char pinlengthformat)
 {
 	int rc;
-	unsigned char apdu[4098];
+	unsigned char apdu[MAX_CAPDU];
 #ifdef DEBUG
-	char scr[4196];
+	char scr[MAX_CAPDU + 128];
 #endif
 
 	if (slot->primarySlot)

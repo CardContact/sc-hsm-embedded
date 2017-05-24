@@ -71,6 +71,8 @@
 #define PIN_POSITION_15		(0x0F << 3)
 
 #define MAX_CERTIFICATE_SIZE	4096
+#define MAX_CAPDU				4096
+#define MAX_RAPDU				4096
 
 int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p11Token_t **token);
 void freeToken(struct p11Token_t *token);

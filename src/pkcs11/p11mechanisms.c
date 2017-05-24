@@ -1232,12 +1232,43 @@ CK_DECLARE_FUNCTION(CK_RV, C_GenerateKeyPair)(
 		CK_OBJECT_HANDLE_PTR phPrivateKey
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	struct p11Slot_t *slot;
+	struct p11Session_t *pSession;
+	struct p11Token_t *token;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	rv = findSlot(&context->slotPool, pSession->slotID, &slot);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	rv = getValidatedToken(slot, &token);
+
+	if (rv != CKR_OK) {
+		return rv;
+	}
+
+	if (token->drv->C_GenerateKeyPair != NULL) {
+		rv = token->drv->C_GenerateKeyPair(slot, pMechanism, pPublicKeyTemplate, ulPublicKeyAttributeCount, pPrivateKeyTemplate, ulPrivateKeyAttributeCount, phPublicKey, phPrivateKey);
+		if (rv == CKR_DEVICE_ERROR) {
+			rv = handleDeviceError(hSession);
+			FUNC_FAILS(rv, "Device error reported");
+		}
+	} else {
+		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
 
 	FUNC_RETURNS(rv);

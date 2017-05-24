@@ -35,6 +35,7 @@
 #include <assert.h>
 
 #include <pkcs11/asn1.h>
+#include "bytebuffer.h"
 
 
 
@@ -204,6 +205,81 @@ int asn1Encap(unsigned short Tag, unsigned char *Msg, int MsgLen)
 	memmove(Msg, tmpbuf, len);
 
 	return MsgLen + len;
+}
+
+
+
+/**
+ * Append the provided byte string with the given tag
+ *
+ * @param buf       The byte buffer to which the new TLV object will be appended
+ * @param tag       The tag that shall be given to the message
+ * @param val       The byte string that becomes the value of the new object
+ * @return          The function will return the total number of bytes in the message
+ *                  buffer of -1 in case of an overflow.
+ */
+int asn1Append(bytebuffer buf, unsigned short tag, const bytestring val)
+{
+	unsigned char tmpbuf[6], *po;
+	struct bytestring_s bs = { tmpbuf, 0 };
+
+	po = tmpbuf;
+	asn1StoreTag(&po, tag);
+	asn1StoreLength(&po, val->len);
+	bs.len = po - tmpbuf;
+	bbAppend(buf, &bs);
+	return bbAppend(buf, val);
+}
+
+
+
+/**
+ * Append the provided byte string with the given tag
+ *
+ * @param buf       The byte buffer to which the new TLV object will be appended
+ * @param tag       The tag that shall be given to the message
+ * @param val       The byte string that becomes the value of the new object
+ * @return          The function will return the total number of bytes in the message
+ *                  buffer of -1 in case of an overflow.
+ */
+int asn1AppendBytes(bytebuffer buf, unsigned short tag, unsigned char *val, size_t len)
+{
+	unsigned char tmpbuf[6], *po;
+	struct bytestring_s bs = { tmpbuf, 0 };
+
+	po = tmpbuf;
+	asn1StoreTag(&po, tag);
+	asn1StoreLength(&po, len);
+	bs.len = po - tmpbuf;
+	bbAppend(buf, &bs);
+	bs.val = val;
+	bs.len = len;
+	return bbAppend(buf, &bs);
+}
+
+
+
+/**
+ * Encapsulate content in the buffer starting at offset with a tag and length
+ *
+ * @param tag       The tag that shall be given to the message
+ * @param buf       The byte buffer containing the prepared message that becomes the
+ *                  value of the newly created object
+ * @param offset    The offset in the buffer at which to start the wrapping
+ * @return          The function will return the total number of bytes in the message
+ *                  buffer of -1 in case of an overflow.
+ */
+int asn1EncapBuffer(unsigned short tag, bytebuffer buf, size_t offset)
+{
+	unsigned char tmpbuf[6], *po;
+	struct bytestring_s bs = { tmpbuf, 0 };
+
+	po = tmpbuf;
+	asn1StoreTag(&po, tag);
+	asn1StoreLength(&po, buf->len - offset);
+	bs.len = po - tmpbuf;
+
+	return bbInsert(buf, offset, &bs);
 }
 
 
@@ -420,6 +496,28 @@ void asn1DecodeFlags(unsigned char *data, size_t length, unsigned long *flags)
 
 
 /**
+ * Encode a field of up to 32 bit flags
+ *
+ * Flags are stored left aligned, that is the MSB of flags is the first bit stored
+ *
+ * @param flags the flags
+ * @param data the value field
+ * @param length the length of the value field
+ */
+void asn1EncodeFlags(unsigned long flags, unsigned char *data, size_t length)
+{
+	int c = 4;
+
+	while ((c-- > 0) && (length > 0)) {
+		*data = (flags >> (c << 3)) & 0xFF;
+		data++;
+		length--;
+	}
+}
+
+
+
+/**
  * Decode integer from value field encoded MSB first
  *
  * @param data the value field
@@ -440,6 +538,43 @@ int asn1DecodeInteger(unsigned char *data, size_t length, int *value)
 		return -1;
 	}
 	return 0;
+}
+
+
+
+int asn1EncodeInteger(int value, unsigned char *data, size_t length)
+{
+	int c, i;
+	unsigned char p;
+
+	// Determine number of bytes required to store signed integer
+	for (c = sizeof(int); c > 0; c--) {
+		p = (value >> ((c - 1) << 3)) & 0xFF;
+		if ((p != 0) && (p != 0xFF)) {
+			break;
+		}
+	}
+
+	// Need at least one byte
+	if (c == 0) {
+		c++;
+	}
+
+	// Need additional byte if first bit is set on positive integer
+	if ((value > 0) && (p & 0x80)) {
+		c++;
+	}
+
+	if (c > length) {
+		c = length;
+	}
+
+	i = c;
+	while (i-- > 0) {
+		*data++ = (value >> (i << 3)) & 0xFF;
+	}
+
+	return c;
 }
 
 

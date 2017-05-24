@@ -26,15 +26,15 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * @file    asn1.h
+ * @file    bytebuffer.h
  * @author  Andreas Schwier
- * @brief   Encoding and decoding for TLV structures
+ * @brief   Functions to handle mutuable strings of bytes safely
  */
 
 /* Prevent from including twice ------------------------------------------- */
 
-#ifndef __ASN1_H__
-#define __ASN1_H__
+#ifndef __BYTEBUFFER_H__
+#define __BYTEBUFFER_H__
 
 /* Support for C++ compiler ----------------------------------------------- */
 
@@ -42,30 +42,29 @@
 extern "C" {
 #endif
 
-#include "bytebuffer.h"
+#include <stddef.h>
+#include <string.h>
 
-#define ASN1_INTEGER            0x02
-#define ASN1_BIT_STRING         0x03
-#define ASN1_OCTET_STRING       0x04
-#define ASN1_OBJECT_IDENTIFIER  0x06
-#define ASN1_UTF8String         0x0C
-#define ASN1_SEQUENCE           0x30
+#include "bytestring.h"
 
-unsigned int    asn1Tag(unsigned char **Ref);
-int             asn1Length(unsigned char **Ref);
-void            asn1StoreTag(unsigned char **Ref, unsigned short Tag);
-void            asn1StoreLength(unsigned char **Ref, int Length);
-int             asn1Encap(unsigned short Tag, unsigned char *Msg, int MsgLen);
-int             asn1Append(bytebuffer buf, unsigned short tag, const bytestring val);
-int             asn1AppendBytes(bytebuffer buf, unsigned short tag, unsigned char *val, size_t len);
-int             asn1EncapBuffer(unsigned short tag, bytebuffer buf, size_t offset);
-unsigned char  *asn1Find(unsigned char *data, unsigned char *path, int level);
-int             asn1Validate(unsigned char *data, size_t length);
-int             asn1Next(unsigned char **ref, int *reflen, int *tag, int *length, unsigned char **value);
-void            asn1DecodeFlags(unsigned char *data, size_t length, unsigned long *flags);
-void            asn1EncodeFlags(unsigned long flags, unsigned char *data, size_t length);
-int             asn1DecodeInteger(unsigned char *data, size_t length, int *value);
-int             asn1EncodeInteger(int value, unsigned char *data, size_t length);
+/**
+ * A string of bytes with determined length
+ */
+struct bytebuffer_s {
+	unsigned char *val;
+	size_t len;
+	// Order is important, so that a bytebuffer can be safely casted to a bytestring
+	size_t capacity;
+};
+
+typedef struct bytebuffer_s *bytebuffer;
+
+int bbCompare(bytebuffer s1, bytebuffer s2);
+void bbClear(bytebuffer s);
+int bbAppend(bytebuffer s1, bytestring s2);
+int bbInsert(bytebuffer s1, size_t offset, bytestring s2);
+int bbHasFailed(bytebuffer s1);
+size_t bbGetLength(bytebuffer s1);
 
 /* Support for C++ compiler ----------------------------------------------- */
 
@@ -73,4 +72,3 @@ int             asn1EncodeInteger(int value, unsigned char *data, size_t length)
 }
 #endif
 #endif
-
