@@ -75,6 +75,10 @@ struct cvc {
 	int modulusSize;						// Size of RSA modulus in bits
 
 	struct bytestring_s chr;				// Certificate holder reference
+	struct bytestring_s chat;				// Certificate holder authorization template
+	struct bytestring_s ced;				// Certificate effective date
+	struct bytestring_s cxd;				// Certificate expiration date
+	struct bytestring_s extensions;			// Certificate extensions
 
 	struct bytestring_s signature;			// Certificate signature or request self-signed signature
 
@@ -84,6 +88,8 @@ struct cvc {
 typedef struct cvc cvc_t;
 
 struct ec_curve *cvcGetCurveForOID(bytestring oid);
+int cvcDetermineCurveOID(struct cvc *cvc, bytestring *oid);
+int cvcDecode(unsigned char *cert, size_t certlen, struct cvc *cvc);
 
  /* Support for C++ compiler ----------------------------------------------- */
 

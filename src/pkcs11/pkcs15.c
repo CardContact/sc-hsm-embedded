@@ -89,7 +89,7 @@ static int decodeCommonKeyAttributes(unsigned char *cka, int ckalen, struct p15P
 	tag = asn1Tag(&po);
 	len = asn1Length(&po);
 
-	if ((tag != ASN1_OCTET_STRING) || (len <= 0)) {
+	if ((tag != ASN1_OCTET_STRING) || (len < 0)) {
 		return -1;
 	}
 

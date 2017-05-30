@@ -43,5 +43,6 @@
 
 int createPrivateKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);
 int createPrivateKeyObjectFromP15(struct p15PrivateKeyDescription *p15, struct p11Object_t *cert, int useAA, struct p11Object_t **pObject);
+int createPrivateKeyObjectFromP15AndPublicKey(struct p15PrivateKeyDescription *p15, struct p11Object_t *puk, int useAA, struct p11Object_t **pObject);
 
 #endif /* ___PRIVATEKEYOBJECT_H_INC___ */

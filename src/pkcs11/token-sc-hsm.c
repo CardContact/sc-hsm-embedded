@@ -578,14 +578,14 @@ static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_P
 	bbClear(bb);
 	asn1AppendBytes(bb, 0x5F29, (unsigned char *)"\x00", 1);
 
-	rc = findAttributeInTemplate(CKA_INNER_CAR, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	rc = findAttributeInTemplate(CKA_CVC_INNER_CAR, pPublicKeyTemplate, ulPublicKeyAttributeCount);
 	if (rc >= 0) {
 		asn1AppendBytes(bb, 0x42, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
 	}
 
 	int ofs = bbGetLength(bb);
 
-	rc = findAttributeInTemplate(CKA_PUBLIC_KEY_ALGORITHM, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	rc = findAttributeInTemplate(CKA_SC_HSM_PUBLIC_KEY_ALGORITHM, pPublicKeyTemplate, ulPublicKeyAttributeCount);
 	if (rc >= 0) {
 		publicKeyAlgorithm.val = pPublicKeyTemplate[rc].pValue;
 		publicKeyAlgorithm.len = pPublicKeyTemplate[rc].ulValueLen;
@@ -655,24 +655,24 @@ static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_P
 
 	asn1EncapBuffer(0x7F49, bb, ofs);
 
-	rc = findAttributeInTemplate(CKA_CHR, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	rc = findAttributeInTemplate(CKA_CVC_CHR, pPublicKeyTemplate, ulPublicKeyAttributeCount);
 	if (rc >= 0) {
 		asn1AppendBytes(bb, 0x5F20, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
 	} else {
 		asn1Append(bb, 0x5F20, &defaultCHR);
 	}
 
-	rc = findAttributeInTemplate(CKA_OUTER_CAR, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	rc = findAttributeInTemplate(CKA_CVC_OUTER_CAR, pPublicKeyTemplate, ulPublicKeyAttributeCount);
 	if (rc >= 0) {
 		asn1AppendBytes(bb, 0x45, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
 	}
 
-	rc = findAttributeInTemplate(CKA_KEY_USE_COUNTER, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	rc = findAttributeInTemplate(CKA_SC_HSM_KEY_USE_COUNTER, pPublicKeyTemplate, ulPublicKeyAttributeCount);
 	if (rc >= 0) {
 		asn1AppendBytes(bb, 0x90, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
 	}
 
-	rc = findAttributeInTemplate(CKA_ALGORITHM_LIST, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	rc = findAttributeInTemplate(CKA_SC_HSM_ALGORITHM_LIST, pPublicKeyTemplate, ulPublicKeyAttributeCount);
 	if (rc >= 0) {
 		asn1AppendBytes(bb, 0x91, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
 	}
@@ -682,6 +682,186 @@ static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_P
 	}
 
 	*keysize = (int)keybits;
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char id, struct p11Object_t **priKey, struct p11Object_t **pubKey, struct p11Object_t **cert)
+{
+	unsigned char certValue[MAX_CERTIFICATE_SIZE];
+	struct p11Object_t *p11cert = NULL, *p11pubkey, *p11prikey;
+	struct p15PrivateKeyDescription *p15key = NULL;
+	struct p15CertificateDescription p15cert;
+	unsigned char prkd[MAX_P15_SIZE];
+	int rc;
+
+	FUNC_CALLED();
+
+	rc = readEF(token->slot, (PRKD_PREFIX << 8) | id, prkd, sizeof(prkd));
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading private key description");
+	}
+
+	rc = decodePrivateKeyDescription(prkd, rc, &p15key);
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error decoding private key description");
+	}
+
+	rc = readEF(token->slot, (EE_CERTIFICATE_PREFIX << 8) | id, certValue, sizeof(certValue));
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate");
+	}
+
+	if (certValue[0] == 0x30) {		// X.509 certificate
+		// A SmartCard-HSM does not store a separate P15 certificate description. Copy from key description
+		memset(&p15cert, 0, sizeof(p15cert));
+		p15cert.certtype = P15_CT_X509;
+		p15cert.coa = p15key->coa;
+		p15cert.id = p15key->id;
+		p15cert.isCA = 0;
+
+		rc = createCertificateObjectFromP15(&p15cert, certValue, rc, &p11cert);
+
+		if (rc != CKR_OK) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create P11 certificate object");
+		}
+
+		p11cert->tokenid = (int)id;
+
+		addObject(token, p11cert, TRUE);
+
+		// As a side effect p11cert->keysize is updated with the key size determined from the public key
+		rc = createPublicKeyObjectFromCertificate(p15key, p11cert, &p11pubkey);
+
+		if (rc != CKR_OK) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create public key object");
+		}
+
+		addObject(token, p11pubkey, TRUE);
+
+		rc = createPrivateKeyObjectFromP15(p15key, p11cert, FALSE, &p11prikey);
+
+		if (rc != CKR_OK) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create private key object");
+		}
+	} else if (certValue[0] == 0x7F) {		// CVC
+		memset(&p15cert, 0, sizeof(p15cert));
+		p15cert.certtype = P15_CT_CVC;
+		p15cert.coa = p15key->coa;
+		p15cert.id = p15key->id;
+		p15cert.isCA = 0;
+
+		rc = createCertificateObjectFromP15(&p15cert, certValue, rc, &p11cert);
+
+		if (rc != CKR_OK) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create P11 certificate object");
+		}
+
+		p11cert->tokenid = (int)id;
+
+		addObject(token, p11cert, TRUE);
+
+		// As a side effect p11cert->keysize is updated with the key size determined from the public key
+		rc = createPublicKeyObjectFromCertificate(p15key, p11cert, &p11pubkey);
+
+		if (rc != CKR_OK) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create public key object");
+		}
+
+		addObject(token, p11pubkey, TRUE);
+
+		rc = createPrivateKeyObjectFromP15(p15key, p11cert, FALSE, &p11prikey);
+
+		if (rc != CKR_OK) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create private key object");
+		}
+	} else if (certValue[0] == 0x67) {		// CVC Request
+		rc = createPublicKeyObjectFromCVCRequest(p15key, certValue, rc, &p11pubkey);
+
+		if (rc != CKR_OK) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create public key object");
+		}
+
+		addObject(token, p11pubkey, TRUE);
+
+		rc = createPrivateKeyObjectFromP15AndPublicKey(p15key, p11pubkey, FALSE, &p11prikey);
+
+		if (rc != CKR_OK) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create private key object");
+		}
+	} else {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Unknown certificate type");
+	}
+
+	p11prikey->C_SignInit = sc_hsm_C_SignInit;
+	p11prikey->C_Sign = sc_hsm_C_Sign;
+	p11prikey->C_DecryptInit = sc_hsm_C_DecryptInit;
+	p11prikey->C_Decrypt = sc_hsm_C_Decrypt;
+
+	p11prikey->tokenid = (int)id;
+
+	addObject(token, p11prikey, FALSE);
+
+	freePrivateKeyDescription(&p15key);
+
+	if (priKey != NULL)
+		*priKey = p11prikey;
+
+	if (pubKey != NULL)
+		*pubKey = p11pubkey;
+
+	if ((p11cert != NULL) && (cert != NULL))
+		*cert = p11cert;
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+static int addCACertificateObject(struct p11Token_t *token, unsigned char id)
+{
+	unsigned char certValue[MAX_CERTIFICATE_SIZE];
+	struct p11Object_t *p11cert;
+	struct p15CertificateDescription *p15cert;
+	unsigned char cd[MAX_P15_SIZE];
+	int rc;
+
+	FUNC_CALLED();
+
+	rc = readEF(token->slot, (CD_PREFIX << 8) | id, cd, sizeof(cd));
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate description");
+	}
+
+	rc = decodeCertificateDescription(cd, rc, &p15cert);
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error decoding certificate description");
+	}
+
+	rc = readEF(token->slot, (CA_CERTIFICATE_PREFIX << 8) | id, certValue, sizeof(certValue));
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate");
+	}
+
+	p15cert->isCA = 1;
+	rc = createCertificateObjectFromP15(p15cert, certValue, rc, &p11cert);
+
+	if (rc != CKR_OK) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create P11 certificate object");
+	}
+
+	p11cert->tokenid = (int)id;
+
+	addObject(token, p11cert, TRUE);
+
+	freeCertificateDescription(&p15cert);
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -733,6 +913,7 @@ static int sc_hsm_C_GenerateKeyPair(
 	unsigned char buff[512];
 	struct bytebuffer_s bb = { buff, 0, sizeof(buff) };
 	struct p15PrivateKeyDescription *p15key = NULL;
+	struct p11Object_t *priKey, *pubKey;
 	unsigned short SW1SW2;
 	int rc,id,keysize;
 
@@ -791,6 +972,7 @@ static int sc_hsm_C_GenerateKeyPair(
 	if (rc >= 0) {
 		p15key->coa.label = calloc(1, pPrivateKeyTemplate[rc].ulValueLen + 1);
 		if (p15key->coa.label == NULL) {
+			freePrivateKeyDescription(&p15key);
 			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 		}
 		memcpy(p15key->coa.label, pPrivateKeyTemplate[rc].pValue, pPrivateKeyTemplate[rc].ulValueLen);
@@ -798,14 +980,18 @@ static int sc_hsm_C_GenerateKeyPair(
 
 	rc = findAttributeInTemplate(CKA_ID, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
 	if (rc >= 0) {
+		// ToDo: Check that CKA_ID is not a duplicate
 		p15key->id.val = calloc(1, pPrivateKeyTemplate[rc].ulValueLen);
 		if (p15key->id.val == NULL) {
+			freePrivateKeyDescription(&p15key);
 			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 		}
 		memcpy(p15key->id.val, pPrivateKeyTemplate[rc].pValue, pPrivateKeyTemplate[rc].ulValueLen);
 	}
 
 	rc = encodePrivateKeyDescription(&bb, p15key);
+
+	freePrivateKeyDescription(&p15key);
 
 	if (rc < 0) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Encoding PRKD failed");
@@ -817,129 +1003,12 @@ static int sc_hsm_C_GenerateKeyPair(
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Writing PRKD failed");
 	}
 
+	rc = addEECertificateAndKeyObjects(slot->token, id, &priKey, &pubKey, NULL);
+
+	*phPublicKey = pubKey->handle;
+	*phPrivateKey = priKey->handle;
+
 	FUNC_RETURNS(rc);
-}
-
-
-
-static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char id)
-{
-	unsigned char certValue[MAX_CERTIFICATE_SIZE];
-	struct p11Object_t *p11cert, *p11pubkey, *p11prikey;
-	struct p15PrivateKeyDescription *p15key = NULL;
-	struct p15CertificateDescription p15cert;
-	unsigned char prkd[MAX_P15_SIZE];
-	int rc;
-
-	FUNC_CALLED();
-
-	rc = readEF(token->slot, (PRKD_PREFIX << 8) | id, prkd, sizeof(prkd));
-
-	if (rc < 0) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading private key description");
-	}
-
-	rc = decodePrivateKeyDescription(prkd, rc, &p15key);
-
-	if (rc < 0) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Error decoding private key description");
-	}
-
-	rc = readEF(token->slot, (EE_CERTIFICATE_PREFIX << 8) | id, certValue, sizeof(certValue));
-
-	if (rc < 0) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate");
-	}
-
-	// A SmartCard-HSM does not store a separate P15 certificate description. Copy from key description
-	memset(&p15cert, 0, sizeof(p15cert));
-	p15cert.certtype = P15_CT_X509;
-	p15cert.coa = p15key->coa;
-	p15cert.id = p15key->id;
-	p15cert.isCA = 0;
-
-	rc = createCertificateObjectFromP15(&p15cert, certValue, rc, &p11cert);
-
-	if (rc != CKR_OK) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create P11 certificate object");
-	}
-
-	p11cert->tokenid = (int)id;
-
-	addObject(token, p11cert, TRUE);
-
-	// As a side effect p11cert->keysize is updated with the key size determined from the public key
-	rc = createPublicKeyObjectFromCertificate(p15key, p11cert, &p11pubkey);
-
-	if (rc != CKR_OK) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create public key object");
-	}
-
-	addObject(token, p11pubkey, TRUE);
-
-	rc = createPrivateKeyObjectFromP15(p15key, p11cert, FALSE, &p11prikey);
-
-	if (rc != CKR_OK) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create private key object");
-	}
-
-	p11prikey->C_SignInit = sc_hsm_C_SignInit;
-	p11prikey->C_Sign = sc_hsm_C_Sign;
-	p11prikey->C_DecryptInit = sc_hsm_C_DecryptInit;
-	p11prikey->C_Decrypt = sc_hsm_C_Decrypt;
-
-	p11prikey->tokenid = (int)id;
-	p11prikey->keysize = p11cert->keysize;
-
-	addObject(token, p11prikey, FALSE);
-
-	freePrivateKeyDescription(&p15key);
-	FUNC_RETURNS(CKR_OK);
-}
-
-
-
-static int addCACertificateObject(struct p11Token_t *token, unsigned char id)
-{
-	unsigned char certValue[MAX_CERTIFICATE_SIZE];
-	struct p11Object_t *p11cert;
-	struct p15CertificateDescription *p15cert;
-	unsigned char cd[MAX_P15_SIZE];
-	int rc;
-
-	FUNC_CALLED();
-
-	rc = readEF(token->slot, (CD_PREFIX << 8) | id, cd, sizeof(cd));
-
-	if (rc < 0) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate description");
-	}
-
-	rc = decodeCertificateDescription(cd, rc, &p15cert);
-
-	if (rc < 0) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Error decoding certificate description");
-	}
-
-	rc = readEF(token->slot, (CA_CERTIFICATE_PREFIX << 8) | id, certValue, sizeof(certValue));
-
-	if (rc < 0) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate");
-	}
-
-	p15cert->isCA = 1;
-	rc = createCertificateObjectFromP15(p15cert, certValue, rc, &p11cert);
-
-	if (rc != CKR_OK) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create P11 certificate object");
-	}
-
-	p11cert->tokenid = (int)id;
-
-	addObject(token, p11cert, TRUE);
-
-	freeCertificateDescription(&p15cert);
-	FUNC_RETURNS(CKR_OK);
 }
 
 
@@ -965,7 +1034,7 @@ static int sc_hsm_loadObjects(struct p11Token_t *token)
 		switch(prefix) {
 		case KEY_PREFIX:
 			if (id != 0) {				// Skip Device Authentication Key
-				rc = addEECertificateAndKeyObjects(token, id);
+				rc = addEECertificateAndKeyObjects(token, id, NULL, NULL, NULL);
 				if (rc != CKR_OK) {
 #ifdef DEBUG
 					debug("addEECertificateAndKeyObjects failed with rc=%d\n", rc);

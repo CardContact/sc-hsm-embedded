@@ -118,6 +118,7 @@ void usleep(unsigned int usec)
 
 
 #include <pkcs11/cryptoki.h>
+#include <sc-hsm/sc-hsm-pkcs11.h>
 
 struct id2name_t {
 	unsigned long       id;
@@ -220,7 +221,7 @@ struct id2name_t p11CKRName[] = {
 #define CKT_LONG        4
 #define CKT_ULONG       5
 
-#define P11CKA			60
+#define P11CKA			67
 
 struct id2name_t p11CKAName[P11CKA + 1] = {
 		{ CKA_CLASS                              , "CKA_CLASS", CKT_LONG },
@@ -283,6 +284,15 @@ struct id2name_t p11CKAName[P11CKA + 1] = {
 		{ CKA_RESET_ON_INIT                      , "CKA_RESET_ON_INIT", 0 },
 		{ CKA_HAS_RESET                          , "CKA_HAS_RESET", 0 },
 		{ CKA_ALWAYS_AUTHENTICATE                , "CKA_ALWAYS_AUTHENTICATE", CKT_BBOOL },
+
+		{ CKA_CVC_INNER_CAR                      , "CKA_CVC_INNER_CAR", CKT_BIN },
+		{ CKA_CVC_OUTER_CAR                      , "CKA_CVC_OUTER_CAR", CKT_BIN },
+		{ CKA_CVC_CHR                            , "CKA_CVC_CHR", CKT_BIN },
+		{ CKA_SC_HSM_PUBLIC_KEY_ALGORITHM        , "CKA_SC_HSM_PUBLIC_KEY_ALGORITHM", CKT_BIN },
+		{ CKA_SC_HSM_KEY_USE_COUNTER             , "CKA_SC_HSM_KEY_USE_COUNTER", CKT_BIN },
+		{ CKA_SC_HSM_ALGORITHM_LIST              , "CKA_SC_HSM_ALGORITHM_LIST", CKT_BIN },
+		{ CKA_CVC_REQUEST                        , "CKA_CVC_REQUEST", CKT_BIN },
+
 		{ 0, NULL }
 };
 
@@ -373,20 +383,16 @@ static char *id2name(struct id2name_t *p, unsigned long id, unsigned long *attr,
 	if (attr)
 		*attr = 0;
 
-	if (id & 0x80000000) {
-		sprintf(scr, "Vendor defined 0x%lx", id);
-	} else {
-		while (p->name && (p->id != id)) {
-			p++;
-		}
+	while (p->name && (p->id != id)) {
+		p++;
+	}
 
-		if (p->name) {
-			strcpy(scr, p->name);
-			if (attr)
-				*attr = p->attr;
-		} else {
-			sprintf(scr, "*** Undefined 0x%lx ***", id);
-		}
+	if (p->name) {
+		strcpy(scr, p->name);
+		if (attr)
+			*attr = p->attr;
+	} else {
+		sprintf(scr, "*** Undefined 0x%lx ***", id);
 	}
 	return scr;
 }
@@ -1090,10 +1096,20 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	privateKeyTemplate[privateKeyAttributes].ulValueLen = sizeof(_true);
 	privateKeyAttributes++;
 
+	printf("Calling C_GenerateKeyPair(EC, prime256v1) ");
 	rc = p11->C_GenerateKeyPair(session, &mech_genecc,
 		publicKeyTemplate, publicKeyAttributes,
 		privateKeyTemplate, privateKeyAttributes,
 		&hndPublicKey, &hndPrivateKey);
+
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc == CKR_OK) {
+		printf("Private Key:\n");
+		dumpObject(p11, session, hndPrivateKey);
+		printf("Public Key:\n");
+		dumpObject(p11, session, hndPublicKey);
+	}
 
 	publicKeyAttributes = 3;
 	publicKeyTemplate[publicKeyAttributes].type = CKA_MODULUS_BITS;
@@ -1117,10 +1133,20 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	privateKeyTemplate[privateKeyAttributes].ulValueLen = sizeof(_true);
 	privateKeyAttributes++;
 
+	printf("Calling C_GenerateKeyPair(RSA, 1024) ");
 	rc = p11->C_GenerateKeyPair(session, &mech_genrsa,
 		publicKeyTemplate, publicKeyAttributes,
 		privateKeyTemplate, privateKeyAttributes,
 		&hndPublicKey, &hndPrivateKey);
+
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc == CKR_OK) {
+		printf("Private Key:\n");
+		dumpObject(p11, session, hndPrivateKey);
+		printf("Public Key:\n");
+		dumpObject(p11, session, hndPublicKey);
+	}
 }
 
 

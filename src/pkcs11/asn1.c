@@ -59,9 +59,7 @@ unsigned int asn1Tag(unsigned char **Ref)
 	rc = *(*Ref)++;
 
 	if ((rc & 0x01F) == 0x1F) {
-		do	{
-			rc = (rc << 8) + *(*Ref)++;
-		} while (rc & 0x80);
+		rc = (rc << 8) + *(*Ref)++;
 	}
 
 	return rc;

@@ -43,5 +43,6 @@
 
 int createPublicKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);
 int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, struct p11Object_t *cert, struct p11Object_t **pObject);
+int createPublicKeyObjectFromCVCRequest(struct p15PrivateKeyDescription *p15, unsigned char *cert, size_t certlen, struct p11Object_t **pObject);
 
 #endif /* ___PUBLICKEYOBJECT_H_INC___ */

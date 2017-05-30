@@ -32,6 +32,7 @@
  */
 
 #include <pkcs11/cvc.h>
+#include <pkcs11/asn1.h>
 
 
 static struct ec_curve curves[] = {
@@ -135,3 +136,175 @@ struct ec_curve *cvcGetCurveForOID(bytestring oid)
 	return c;
 }
 
+
+
+int cvcDetermineCurveOID(struct cvc *cvc, bytestring *oid)
+{
+	struct ec_curve *c;
+
+	c = curves;
+	while ((c->oid.val != NULL) && bsCompare((bytestring)&c->prime, &cvc->primeOrModulus)) {
+		c++;
+	}
+	if (c->oid.val == NULL) {
+		return -1;
+	}
+
+	*oid = &c->oid;
+	return 0;
+
+}
+
+
+
+int cvcDecode(unsigned char *cert, size_t certlen, struct cvc *cvc)
+{
+	int rc, rlen, tag, outertag, length, childrenlen;
+	unsigned char *po, *ppo, *val, *children;
+
+	memset(cvc, 0, sizeof(struct cvc));
+
+	rc = asn1Validate(cert, certlen);
+
+	if (rc != 0) {
+		return -1;
+	}
+
+	po = cert;
+	if (!asn1Next(&cert, (int *)&certlen, &outertag, &childrenlen, &children)) {
+		return -1;
+	}
+
+	certlen = cert - po;
+
+	if (outertag == 0x67) {			// CVC Request
+		po = children;
+		rlen = childrenlen;
+
+		if (!asn1Next(&po, &rlen, &outertag, &childrenlen, &children)) {	// Decode later
+			return -1;
+		}
+
+		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->outer_car.len, &cvc->outer_car.val) || (tag != 0x42)) {
+			return -1;
+		}
+
+		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->outerSignature.len, &cvc->outerSignature.val) || (tag != 0x5F37)) {
+			return -1;
+		}
+
+		if (rlen > 0) {
+			return -1;
+		}
+	}
+
+	if (outertag != 0x7F21) {
+		return -1;
+	}
+
+	po = children;
+	rlen = childrenlen;
+
+	if (!asn1Next(&po, &rlen, &tag, &childrenlen, &children) || (tag != 0x7F4E)) {		// Decode later
+		return -1;
+	}
+
+	if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->signature.len, &cvc->signature.val) || (tag != 0x5F37)) {
+		return -1;
+	}
+
+	if (rlen > 0) {
+		return -1;
+	}
+
+	po = children;
+	rlen = childrenlen;
+
+	if (!asn1Next(&po, &rlen, &tag, &length, &val) || (tag != 0x5F29) || (*val != 0)) {
+		return -1;
+	}
+
+	ppo = po;
+	if (asn1Tag(&ppo) == 0x42) {
+		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->car.len, &cvc->car.val)) {
+			return -1;
+		}
+	}
+
+	if (!asn1Next(&po, &rlen, &tag, &childrenlen, &children) || (tag != 0x7F49)) {
+		return -1;
+	}
+
+	if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->chr.len, &cvc->chr.val) || (tag != 0x5F20)) {
+		return -1;
+	}
+
+	ppo = po;
+	if ((rlen > 0) && (asn1Tag(&ppo) == 0x7F4C)) {
+		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->chat.len, &cvc->chat.val)) {
+			return -1;
+		}
+	}
+
+	ppo = po;
+	if ((rlen > 0) && (asn1Tag(&ppo) == 0x5F25)) {
+		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->ced.len, &cvc->ced.val)) {
+			return -1;
+		}
+	}
+
+	ppo = po;
+	if ((rlen > 0) && (asn1Tag(&ppo) == 0x5F24)) {
+		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->cxd.len, &cvc->cxd.val)) {
+			return -1;
+		}
+	}
+
+	if (rlen > 0) {
+		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->extensions.len, &cvc->extensions.val) || (tag != 0x65)) {
+			return -1;
+		}
+		if (rlen > 0) {
+			return -1;
+		}
+	}
+
+	po = children;
+	rlen = childrenlen;
+
+	if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->pukoid.len, &cvc->pukoid.val) || (tag != 0x06)) {
+		return -1;
+	}
+
+	if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->primeOrModulus.len, &cvc->primeOrModulus.val) || (tag != 0x81)) {
+		return -1;
+	}
+
+	if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->coefficientAorExponent.len, &cvc->coefficientAorExponent.val) || (tag != 0x82)) {
+		return -1;
+	}
+
+	if (rlen > 0) {
+		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->coefficientB.len, &cvc->coefficientB.val) || (tag != 0x83)) {
+			return -1;
+		}
+
+		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->basePointG.len, &cvc->basePointG.val) || (tag != 0x84)) {
+			return -1;
+		}
+
+		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->order.len, &cvc->order.val) || (tag != 0x85)) {
+			return -1;
+		}
+
+		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->publicPoint.len, &cvc->publicPoint.val) || (tag != 0x86)) {
+			return -1;
+		}
+
+		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->cofactor.len, &cvc->cofactor.val) || (tag != 0x87)) {
+			return -1;
+		}
+	}
+
+	return certlen;
+}

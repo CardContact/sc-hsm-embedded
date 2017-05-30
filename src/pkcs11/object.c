@@ -373,7 +373,7 @@ struct id2name_t p11CKAName[] = {
 { CKA_AC_ISSUER                          , "CKA_AC_ISSUER", 0 },
 { CKA_OWNER                              , "CKA_OWNER", 0 },
 { CKA_ATTR_TYPES                         , "CKA_ATTR_TYPES", 0 },
-{ CKA_TRUSTED                            , "CKA_TRUSTED", 0 },
+{ CKA_TRUSTED                            , "CKA_TRUSTED", CKT_BBOOL },
 { CKA_KEY_TYPE                           , "CKA_KEY_TYPE", 0 },
 { CKA_SUBJECT                            , "CKA_SUBJECT", CKT_BIN },
 { CKA_ID                                 , "CKA_ID", CKT_BIN },
@@ -421,6 +421,14 @@ struct id2name_t p11CKAName[] = {
 { CKA_HW_FEATURE_TYPE                    , "CKA_HW_FEATURE_TYPE", 0 },
 { CKA_RESET_ON_INIT                      , "CKA_RESET_ON_INIT", 0 },
 { CKA_HAS_RESET                          , "CKA_HAS_RESET", 0 },
+
+{ CKA_CVC_INNER_CAR                      , "CKA_CVC_INNER_CAR", CKT_BIN },
+{ CKA_CVC_OUTER_CAR                      , "CKA_CVC_OUTER_CAR", CKT_BIN },
+{ CKA_CVC_CHR                            , "CKA_CVC_CHR", CKT_BIN },
+{ CKA_SC_HSM_PUBLIC_KEY_ALGORITHM        , "CKA_SC_HSM_PUBLIC_KEY_ALGORITHM", CKT_BIN },
+{ CKA_SC_HSM_KEY_USE_COUNTER             , "CKA_SC_HSM_KEY_USE_COUNTER", CKT_BIN },
+{ CKA_SC_HSM_ALGORITHM_LIST              , "CKA_SC_HSM_ALGORITHM_LIST", CKT_BIN },
+{ CKA_CVC_REQUEST                        , "CKA_CVC_REQUEST", CKT_BIN },
 { 0, NULL }
 };
 
@@ -460,19 +468,15 @@ char *id2name(struct id2name_t *p, unsigned long id, unsigned long *attr)
 	if (attr)
 		*attr = 0;
 
-	if (id & 0x80000000) {
-		sprintf(scr, "Vendor defined 0x%lx", id);
-	} else {
-		while (p->name && (p->id != id))
-			p++;
+	while (p->name && (p->id != id))
+		p++;
 
-		if (p->name) {
-			strcpy(scr, p->name);
-			if (attr)
-				*attr = p->attr;
-		} else {
-			sprintf(scr, "*** Undefined 0x%lx ***", id);
-		}
+	if (p->name) {
+		strcpy(scr, p->name);
+		if (attr)
+			*attr = p->attr;
+	} else {
+		sprintf(scr, "*** Undefined 0x%lx ***", id);
 	}
 	return scr;
 }
@@ -531,16 +535,16 @@ void dumpAttribute(CK_ATTRIBUTE_PTR attr)
 	switch(attr->type) {
 
 	case CKA_KEY_TYPE:
-		debug("\n  %s = %s\n", attribute, id2name(p11CKKName, *(CK_KEY_TYPE *)attr->pValue, NULL));
+		debug("%s = %s\n", attribute, id2name(p11CKKName, *(CK_KEY_TYPE *)attr->pValue, NULL));
 		break;
 
 	default:
 		switch(atype) {
 		case CKT_BBOOL:
 			if (attr->pValue) {
-				debug("\n  %s = %s [%d]\n", attribute, *(CK_BBOOL *)attr->pValue ? "TRUE" : "FALSE", *(CK_BBOOL *)attr->pValue);
+				debug("%s = %s [%d]\n", attribute, *(CK_BBOOL *)attr->pValue ? "TRUE" : "FALSE", *(CK_BBOOL *)attr->pValue);
 			} else {
-				debug("\n  %s\n", attribute);
+				debug("%s\n", attribute);
 			}
 			break;
 		case CKT_DATE:
@@ -548,18 +552,18 @@ void dumpAttribute(CK_ATTRIBUTE_PTR attr)
 			// if (pdate != NULL) {
 			//     sprintf(res, "  %s = %4s-%2s-%2s", attribute, pdate->year, pdate->month, pdate->day);
 			// }
-			debug("\n  %s\n", attribute);
+			debug("%s\n", attribute);
 			break;
 		case CKT_LONG:
-			debug("\n  %s = %d [0x%X]\n", attribute, *(CK_LONG *)attr->pValue, *(CK_LONG *)attr->pValue);
+			debug("%s = %d [0x%X]\n", attribute, *(CK_LONG *)attr->pValue, *(CK_LONG *)attr->pValue);
 			break;
 		case CKT_ULONG:
-			debug("\n  %s = %u [0x%X]\n", attribute, *(CK_ULONG *)attr->pValue, *(CK_ULONG *)attr->pValue);
+			debug("%s = %u [0x%X]\n", attribute, *(CK_ULONG *)attr->pValue, *(CK_ULONG *)attr->pValue);
 			break;
 		case CKT_BIN:
 		default:
 			bin2str(scr, sizeof(scr), attr->pValue, attr->ulValueLen);
-			debug("\n  %s = %s\n", attribute, scr);
+			debug("%s = %s\n", attribute, scr);
 			break;
 		}
 	}
@@ -772,7 +776,7 @@ int dumpAttributeList(struct p11Object_t *pObject)
 	CK_ATTRIBUTE_PTR attr;
 	struct p11Attribute_t *p11Attr;
 
-	debug("\n******** attribute list for object ********\n");
+	debug("******** attribute list for object ********\n");
 
 	p11Attr = pObject->attrList;
 
@@ -782,7 +786,7 @@ int dumpAttributeList(struct p11Object_t *pObject)
 		p11Attr = p11Attr->next;
 	}
 
-	debug("\n******** end attribute list ********\n");
+	debug("******** end attribute list ********\n");
 
 	return 0;
 }
