@@ -28,10 +28,9 @@
  *
  * @file    cvc.h
  * @author  Andreas Schwier
- * @brief   Encoding and decoding of card verifiable certificates
+ * @brief   Decoding of card verifiable certificates
  */
 
-#
 /* Prevent from including twice ------------------------------------------- */
 
 #ifndef __CVC_H__
@@ -45,6 +44,9 @@ extern "C" {
 
 #include <pkcs11/bytestring.h>
 
+/**
+ * Structure to store EC domain parameter
+ */
 struct ec_curve {
 	struct bytestring_s oid;
 	struct bytestring_s prime;
@@ -57,27 +59,25 @@ struct ec_curve {
 
 
 /**
- * The cvc structure provides for a mapping into the field of an encoded CVC certificate.
+ * The cvc structure provides for a mapping into the field of an encoded CVC certificate
  */
 struct cvc {
-	int cpi;								// Certificate profile indicator (0)
-	struct bytestring_s car;				// Certification authority reference
+	int cpi;					// Certificate profile indicator (0)
+	struct bytestring_s car;			// Certification authority reference
 
-	struct bytestring_s pukoid;				// Public key algorithm object identifier
+	struct bytestring_s pukoid;			// Public key algorithm object identifier
 	struct bytestring_s primeOrModulus;		// Prime for ECC or modulus for RSA
-	struct bytestring_s coefficientAorExponent;			// Coefficient A for ECC or public exponent for RSA
+	struct bytestring_s coefficientAorExponent;	// Coefficient A for ECC or public exponent for RSA
 	struct bytestring_s coefficientB;		// Coefficient B for ECC
 	struct bytestring_s basePointG;			// Base point for ECC
-	struct bytestring_s order;				// Order of the base point for ECC
+	struct bytestring_s order;			// Order of the base point for ECC
 	struct bytestring_s publicPoint;		// Public point for ECC
 	struct bytestring_s cofactor;			// Cofactor for ECC
 
-	int modulusSize;						// Size of RSA modulus in bits
-
-	struct bytestring_s chr;				// Certificate holder reference
-	struct bytestring_s chat;				// Certificate holder authorization template
-	struct bytestring_s ced;				// Certificate effective date
-	struct bytestring_s cxd;				// Certificate expiration date
+	struct bytestring_s chr;			// Certificate holder reference
+	struct bytestring_s chat;			// Certificate holder authorization template
+	struct bytestring_s ced;			// Certificate effective date
+	struct bytestring_s cxd;			// Certificate expiration date
 	struct bytestring_s extensions;			// Certificate extensions
 
 	struct bytestring_s signature;			// Certificate signature or request self-signed signature
