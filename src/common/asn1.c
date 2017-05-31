@@ -34,8 +34,8 @@
 #include <string.h>
 #include <assert.h>
 
-#include <pkcs11/asn1.h>
 #include "bytebuffer.h"
+#include "asn1.h"
 
 
 

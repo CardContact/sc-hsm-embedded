@@ -47,58 +47,6 @@ extern struct p11Context_t *context;
 
 
 
-/**
- * If a crypto operation returns CKR_DEVICE_ERROR, then check if the token
- * is still present.
- *
- */
-int handleDeviceError(CK_SESSION_HANDLE hSession) {
-	int rv;
-	struct p11Session_t *session;
-	struct p11Slot_t *slot;
-	struct p11Token_t *token;
-
-	FUNC_CALLED();
-
-	if (context == NULL) {
-		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
-	}
-
-	// Even if SCardTransmit report a communication error with the card, the card present
-	// switch and the card present status in the resource manager will still report a present card
-	//
-	// Wait 100ms to make sure the card status detection reports accurate results
-#ifndef _WIN32
-	usleep(100000);
-#endif
-
-	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
-
-	if (rv == CKR_SESSION_HANDLE_INVALID) {
-		FUNC_RETURNS(CKR_DEVICE_REMOVED);
-	}
-
-	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
-	}
-
-	rv = findSlot(&context->slotPool, session->slotID, &slot);
-
-	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
-	}
-
-	rv = getValidatedToken(slot, &token);
-
-	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
-	}
-
-	FUNC_RETURNS(CKR_DEVICE_ERROR);
-}
-
-
-
 /*  C_EncryptInit initializes an encryption operation. */
 CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 		CK_SESSION_HANDLE hSession,
@@ -1233,14 +1181,36 @@ CK_DECLARE_FUNCTION(CK_RV, C_GenerateKeyPair)(
 )
 {
 	CK_RV rv;
+	int pos;
 	struct p11Slot_t *slot;
 	struct p11Session_t *pSession;
 	struct p11Token_t *token;
+	struct p11Object_t *p11PriKey, *p11PubKey;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	if (!isValidPtr(pMechanism)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pPublicKeyTemplate)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pPrivateKeyTemplate)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(phPublicKey)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(phPrivateKey)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
@@ -1255,21 +1225,42 @@ CK_DECLARE_FUNCTION(CK_RV, C_GenerateKeyPair)(
 		FUNC_RETURNS(rv);
 	}
 
+	pos = findAttributeInTemplate(CKA_TOKEN, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	if (pos < 0) {
+		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_TOKEN not found in private key template");
+	}
+
+	rv = validateAttribute(&pPrivateKeyTemplate[pos], sizeof(CK_BBOOL));
+	if (rv != CKR_OK)
+		FUNC_FAILS(rv, "CKA_TOKEN has invalid value");
+
+	if (*(CK_BBOOL *)pPrivateKeyTemplate[pos].pValue == 0) {
+		FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "Generating session key pairs not supported");
+	}
+
 	rv = getValidatedToken(slot, &token);
 
 	if (rv != CKR_OK) {
 		return rv;
 	}
 
-	if (token->drv->C_GenerateKeyPair != NULL) {
-		rv = token->drv->C_GenerateKeyPair(slot, pMechanism, pPublicKeyTemplate, ulPublicKeyAttributeCount, pPrivateKeyTemplate, ulPrivateKeyAttributeCount, phPublicKey, phPrivateKey);
-		if (rv == CKR_DEVICE_ERROR) {
-			rv = handleDeviceError(hSession);
-			FUNC_FAILS(rv, "Device error reported");
-		}
-	} else {
-		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
+	if (getSessionState(pSession, token) != CKS_RW_USER_FUNCTIONS) {
+		FUNC_FAILS(CKR_SESSION_READ_ONLY, "Session is read/only");
 	}
+
+	rv = generateTokenKeypair(slot, pMechanism, pPublicKeyTemplate, ulPublicKeyAttributeCount, pPrivateKeyTemplate, ulPrivateKeyAttributeCount, &p11PubKey, &p11PriKey);
+
+	if (rv == CKR_DEVICE_ERROR) {
+		rv = handleDeviceError(hSession);
+		FUNC_FAILS(rv, "Device error reported");
+	}
+
+	if (rv != CKR_OK) {
+		FUNC_FAILS(rv, "Generating key pair on token failed");
+	}
+
+	*phPublicKey = p11PubKey->handle;
+	*phPrivateKey = p11PriKey->handle;
 
 	FUNC_RETURNS(rv);
 }

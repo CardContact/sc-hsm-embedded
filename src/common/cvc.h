@@ -42,7 +42,7 @@
 extern "C" {
 #endif
 
-#include <pkcs11/bytestring.h>
+#include <common/bytestring.h>
 
 /**
  * Structure to store EC domain parameter

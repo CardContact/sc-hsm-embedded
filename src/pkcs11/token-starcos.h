@@ -36,7 +36,8 @@
 
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/p11generic.h>
-#include <pkcs11/bytestring.h>
+
+#include <common/bytestring.h>
 
 #define STARCOS_QES1            0
 #define STARCOS_QES2            1

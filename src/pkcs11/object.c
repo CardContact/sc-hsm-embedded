@@ -425,6 +425,9 @@ struct id2name_t p11CKAName[] = {
 { CKA_CVC_INNER_CAR                      , "CKA_CVC_INNER_CAR", CKT_BIN },
 { CKA_CVC_OUTER_CAR                      , "CKA_CVC_OUTER_CAR", CKT_BIN },
 { CKA_CVC_CHR                            , "CKA_CVC_CHR", CKT_BIN },
+{ CKA_CVC_CED                            , "CKA_CVC_CED", CKT_BIN },
+{ CKA_CVC_CXD                            , "CKA_CVC_CXD", CKT_BIN },
+{ CKA_CVC_CHAT                           , "CKA_CVC_CHAT", CKT_BIN },
 { CKA_SC_HSM_PUBLIC_KEY_ALGORITHM        , "CKA_SC_HSM_PUBLIC_KEY_ALGORITHM", CKT_BIN },
 { CKA_SC_HSM_KEY_USE_COUNTER             , "CKA_SC_HSM_KEY_USE_COUNTER", CKT_BIN },
 { CKA_SC_HSM_ALGORITHM_LIST              , "CKA_SC_HSM_ALGORITHM_LIST", CKT_BIN },
@@ -586,17 +589,30 @@ int isValidPtr(void *ptr)
 
 
 
+int validateAttribute(CK_ATTRIBUTE_PTR pTemplate, size_t size)
+{
+	if (size && (pTemplate->ulValueLen != size))
+		return CKR_ATTRIBUTE_TYPE_INVALID;
+
+	if (pTemplate->ulValueLen && !isValidPtr(pTemplate->pValue))
+		return CKR_ATTRIBUTE_VALUE_INVALID;
+
+	return CKR_OK;
+}
+
+
+
 int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate)
 {
 	struct p11Attribute_t *pAttribute, **ppAttribute;
 
 	if (pTemplate->ulValueLen && (pTemplate->pValue == NULL))
-		return -1;
+		return CKR_TEMPLATE_INCONSISTENT;
 
 	pAttribute = (struct p11Attribute_t *) calloc (1, sizeof(struct p11Attribute_t));
 
 	if (pAttribute == NULL) {
-		return -1;
+		return CKR_HOST_MEMORY;
 	}
 
 	pAttribute->attrData = *pTemplate;
@@ -605,7 +621,7 @@ int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate)
 
 	if (pAttribute->attrData.pValue == NULL) {
 		free(pAttribute);
-		return -1;
+		return CKR_TEMPLATE_INCONSISTENT;
 	}
 
 	if (pTemplate->pValue)

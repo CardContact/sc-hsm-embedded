@@ -31,8 +31,8 @@
  * @brief   Encoding and decoding of card verifiable certificates
  */
 
-#include <pkcs11/cvc.h>
-#include <pkcs11/asn1.h>
+#include "cvc.h"
+#include "asn1.h"
 
 
 static struct ec_curve curves[] = {

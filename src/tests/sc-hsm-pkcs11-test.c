@@ -38,6 +38,7 @@
 #include <time.h>
 
 #include <common/mutex.h>
+#include <common/asn1.h>
 
 /* Number of threads used for multi-threading test */
 #define NUM_THREADS		30
@@ -221,7 +222,7 @@ struct id2name_t p11CKRName[] = {
 #define CKT_LONG        4
 #define CKT_ULONG       5
 
-#define P11CKA			67
+#define P11CKA			70
 
 struct id2name_t p11CKAName[P11CKA + 1] = {
 		{ CKA_CLASS                              , "CKA_CLASS", CKT_LONG },
@@ -288,6 +289,9 @@ struct id2name_t p11CKAName[P11CKA + 1] = {
 		{ CKA_CVC_INNER_CAR                      , "CKA_CVC_INNER_CAR", CKT_BIN },
 		{ CKA_CVC_OUTER_CAR                      , "CKA_CVC_OUTER_CAR", CKT_BIN },
 		{ CKA_CVC_CHR                            , "CKA_CVC_CHR", CKT_BIN },
+		{ CKA_CVC_CED                            , "CKA_CVC_CED", CKT_BIN },
+		{ CKA_CVC_CXD                            , "CKA_CVC_CXD", CKT_BIN },
+		{ CKA_CVC_CHAT                           , "CKA_CVC_CHAT", CKT_BIN },
 		{ CKA_SC_HSM_PUBLIC_KEY_ALGORITHM        , "CKA_SC_HSM_PUBLIC_KEY_ALGORITHM", CKT_BIN },
 		{ CKA_SC_HSM_KEY_USE_COUNTER             , "CKA_SC_HSM_KEY_USE_COUNTER", CKT_BIN },
 		{ CKA_SC_HSM_ALGORITHM_LIST              , "CKA_SC_HSM_ALGORITHM_LIST", CKT_BIN },
@@ -1074,11 +1078,28 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 			{ CKA_LABEL, &label, strlen((char *)label) }
 	};
 	int privateKeyAttributes = 5;
-	CK_OBJECT_HANDLE hndPrivateKey, hndPublicKey;
+	unsigned char cvcreq[512];
+	CK_ATTRIBUTE template[] = {
+			{ CKA_CVC_REQUEST, &cvcreq, sizeof(cvcreq)},
+	};
+	CK_OBJECT_CLASS certClass = CKO_CERTIFICATE;
+	CK_CERTIFICATE_TYPE certType = CKC_CVC_TR3110;
+	CK_BYTE id[100];
+	CK_ATTRIBUTE certTemplate[20] = {
+			{ CKA_CLASS, &certClass, sizeof(certClass) },
+			{ CKA_TOKEN, &_true, sizeof(_true)},
+			{ CKA_CERTIFICATE_TYPE, &certType, sizeof(certType) },
+			{ CKA_ID, id, sizeof(id) },
+			{ CKA_VALUE, NULL, 0 }
+	};
+	int certAttributes = 5;
+	CK_OBJECT_HANDLE hndPrivateKey, hndPublicKey, hndCert;
 	CK_MECHANISM mech_genecc = { CKM_EC_KEY_PAIR_GEN, 0, 0 };
 	CK_MECHANISM mech_genrsa = { CKM_RSA_PKCS_KEY_PAIR_GEN, 0, 0 };
 	CK_BYTE publicExponent[] = { 0x01, 0x00, 0x01 };
 	CK_ULONG keysize = 1024;
+	unsigned char *po, *val;
+	int tag, len, vlen;
 
 	publicKeyTemplate[publicKeyAttributes].type = CKA_EC_PARAMS;
 	publicKeyTemplate[publicKeyAttributes].pValue = "\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07";
@@ -1109,6 +1130,39 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		dumpObject(p11, session, hndPrivateKey);
 		printf("Public Key:\n");
 		dumpObject(p11, session, hndPublicKey);
+	}
+
+	printf("Calling C_GetAttributeValue ");
+	rc = p11->C_GetAttributeValue(session, hndPublicKey, (CK_ATTRIBUTE_PTR)&template, 1);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	po = template[0].pValue;
+	len = template[0].ulValueLen;
+	asn1Next(&po, &len, &tag, &vlen, &val);
+
+	certTemplate[certAttributes - 1].pValue = val;
+	certTemplate[certAttributes - 1].ulValueLen = vlen;
+
+	printf("Calling C_GetAttributeValue ");
+	rc = p11->C_GetAttributeValue(session, hndPublicKey, (CK_ATTRIBUTE_PTR)&certTemplate[certAttributes - 2], 1);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_CreateObject ");
+	rc = p11->C_CreateObject(session, certTemplate, certAttributes, &hndCert);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc == CKR_OK) {
+		printf("Certificate [%d]:\n", (int)hndCert);
+		dumpObject(p11, session, hndCert);
+	}
+
+	printf("Calling C_CreateObject as second time to overwrite ");
+	rc = p11->C_CreateObject(session, certTemplate, certAttributes, &hndCert);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc == CKR_OK) {
+		printf("Certificate [%d]:\n", (int)hndCert);
+		dumpObject(p11, session, hndCert);
 	}
 
 	publicKeyAttributes = 3;

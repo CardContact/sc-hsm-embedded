@@ -197,7 +197,8 @@ struct p11TokenDriver {
 	int (*C_SignUpdate)   (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
 	int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
 
-	int (*C_GenerateKeyPair)  (struct p11Slot_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG, CK_OBJECT_HANDLE_PTR, CK_OBJECT_HANDLE_PTR);
+	int (*C_GenerateKeyPair)  (struct p11Slot_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG, struct p11Object_t **, struct p11Object_t **);
+	int (*C_CreateObject)     (struct p11Slot_t *, CK_ATTRIBUTE_PTR, CK_ULONG ulCount, struct p11Object_t **);
 };
 
 

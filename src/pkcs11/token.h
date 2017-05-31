@@ -83,10 +83,14 @@ int setPIN(struct p11Slot_t *slot, CK_UTF8CHAR_PTR pOldPin, CK_ULONG ulOldPinLen
 int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicObject);
 int findObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject);
 int findMatchingTokenObject(struct p11Token_t *token, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t **pObject);
+int findMatchingTokenObjectById(struct p11Token_t *token, CK_OBJECT_CLASS class, unsigned char *id, int sizelen, struct p11Object_t **pObject);
 int removeTokenObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject);
 int removeObjectLeavingAttributes(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject);
 int saveObjects(struct p11Slot_t *slot, struct p11Token_t *token, int publicObject);
 int destroyObject(struct p11Slot_t *slot, struct p11Token_t *token, struct p11Object_t *object);
+int generateTokenKeypair(struct p11Slot_t *slot, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pPublicKeyTemplate, CK_ULONG ulPublicKeyAttributeCount,
+		CK_ATTRIBUTE_PTR pPrivateKeyTemplate, CK_ULONG ulPrivateKeyAttributeCount, struct p11Object_t **p11PublicKey, struct p11Object_t **p11PrivateKey);
+int createTokenObject(struct p11Slot_t *slot, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t **phObject);
 int synchronizeToken(struct p11Slot_t *slot, struct p11Token_t *token);
 struct p11Token_t *getBaseToken(struct p11Token_t *token);
 

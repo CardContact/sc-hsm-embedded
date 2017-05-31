@@ -116,6 +116,7 @@ char *id2name(struct id2name_t *p, unsigned long id, unsigned long *attr);
 #endif
 
 int isValidPtr(void *ptr);
+int validateAttribute(CK_ATTRIBUTE_PTR pTemplate, size_t size);
 int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate);
 int findAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTemplate, struct p11Attribute_t **attribute);
 int findAttributeInTemplate(CK_ATTRIBUTE_TYPE attributeType, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);

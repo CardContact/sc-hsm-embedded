@@ -33,7 +33,8 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <pkcs11/asn1.h>
+
+#include <common/asn1.h>
 
 #include "pkcs15.h"
 

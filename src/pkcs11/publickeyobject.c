@@ -38,8 +38,9 @@
 #include <pkcs11/publickeyobject.h>
 #include <pkcs11/certificateobject.h>
 #include <pkcs11/pkcs15.h>
-#include <pkcs11/cvc.h>
-#include <pkcs11/asn1.h>
+
+#include <common/cvc.h>
+#include <common/asn1.h>
 
 #ifdef DEBUG
 #include <pkcs11/debug.h>
@@ -190,7 +191,7 @@ int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, s
 
 
 
-int createPublicKeyObjectFromCVCRequest(struct p15PrivateKeyDescription *p15, unsigned char *cert, size_t certlen, struct p11Object_t **pObject)
+int createPublicKeyObjectFromCVC(struct p15PrivateKeyDescription *p15, unsigned char *cert, size_t certlen, struct p11Object_t **pObject)
 {
 	CK_OBJECT_CLASS class = CKO_PUBLIC_KEY;
 	CK_KEY_TYPE keyType = CKK_RSA;

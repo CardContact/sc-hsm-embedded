@@ -107,7 +107,7 @@ int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicOb
 /**
  * Find public or private object in list of token objects
  *
- * @param token     The token whose object shall be removed
+ * @param token     The token whose object shall be searched
  * @param handle    The objects handle
  */
 int findObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject)
@@ -137,6 +137,14 @@ int findObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, struct p11Obje
 
 
 
+/**
+ * Find token object that matches the given search criteria
+ *
+ * @param token     The token whose object shall be searched
+ * @param pTemplate The search template
+ * @param ulCount   The number of attributes in the search template
+ * @param pObject   Variable receiving the object reference
+ */
 int findMatchingTokenObject(struct p11Token_t *token, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t **pObject)
 {
 	struct p11Object_t *p;
@@ -166,6 +174,16 @@ int findMatchingTokenObject(struct p11Token_t *token, CK_ATTRIBUTE_PTR pTemplate
 	return CKR_ARGUMENTS_BAD;
 }
 
+
+
+int findMatchingTokenObjectById(struct p11Token_t *token, CK_OBJECT_CLASS class, unsigned char *id, int sizelen, struct p11Object_t **pObject)
+{
+	CK_ATTRIBUTE template[] = {
+		{ CKA_CLASS, &class, sizeof(class) },
+		{ CKA_ID, id, sizelen }
+	};
+	return findMatchingTokenObject(token, template, 2, pObject);
+}
 
 
 /**
@@ -284,6 +302,57 @@ int removeObjectLeavingAttributes(struct p11Token_t *token, CK_OBJECT_HANDLE han
 int destroyObject(struct p11Slot_t *slot, struct p11Token_t *token, struct p11Object_t *object)
 {
 	return CKR_OK;
+}
+
+
+
+/**
+ * Create a token object
+ *
+ * @param slot      The slot in which the token is inserted
+ * @param pTemplate The PKCS11 attribute to be used for key creation
+ * @param ulCount   The number of attributes in the template
+ * @param phObject  The variable receiving the newly created PKCS11 object
+ *
+ * @return          CKR_OK or any other Cryptoki error code
+ */
+int createTokenObject(struct p11Slot_t *slot, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t **phObject)
+{
+	if (slot->token->drv->C_CreateObject == NULL) {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+	return slot->token->drv->C_CreateObject(slot, pTemplate, ulCount, phObject);
+}
+
+
+
+/**
+ * Create a new key pair on the token object
+ *
+ * @param slot                          The slot in which the token is inserted
+ * @param pMechanism                    The key generation mechanism
+ * @param pPublicKeyTemplate            The template for the public key
+ * @param ulPublicKeyAttributeCount     The length of the template for the public key
+ * @param pPrivateKeyTemplate           The template for the private key
+ * @param ulPrivateKeyAttributeCount    The length of the template for the private key
+ * @param p11PublicKey                  The variable receiving the newly created PKCS11 public key object
+ * @param p11PrivateKey                 The variable receiving the newly created PKCS11 private key object
+ *
+ * @return          CKR_OK or any other Cryptoki error code
+ */
+int generateTokenKeypair(struct p11Slot_t *slot,
+		CK_MECHANISM_PTR pMechanism,
+		CK_ATTRIBUTE_PTR pPublicKeyTemplate,
+		CK_ULONG ulPublicKeyAttributeCount,
+		CK_ATTRIBUTE_PTR pPrivateKeyTemplate,
+		CK_ULONG ulPrivateKeyAttributeCount,
+		struct p11Object_t **p11PublicKey,
+		struct p11Object_t **p11PrivateKey)
+{
+	if (slot->token->drv->C_GenerateKeyPair == NULL) {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+	return slot->token->drv->C_GenerateKeyPair(slot, pMechanism, pPublicKeyTemplate, ulPublicKeyAttributeCount, pPrivateKeyTemplate, ulPrivateKeyAttributeCount, p11PublicKey, p11PrivateKey);
 }
 
 

@@ -55,6 +55,7 @@ int transmitVerifyPinAPDU(struct p11Slot_t *slot,
 		unsigned char pinblockstring, unsigned char pinlengthformat);
 int getToken(struct p11Slot_t *slot, struct p11Token_t **token);
 int getValidatedToken(struct p11Slot_t *slot, struct p11Token_t **token);
+int handleDeviceError(CK_SESSION_HANDLE hSession);
 int findSlotObject(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject);
 int findSlotKey(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Object_t **object);
 int lockSlot(struct p11Slot_t *slot);

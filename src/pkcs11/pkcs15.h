@@ -42,7 +42,7 @@
 extern "C" {
 #endif
 
-#include "bytebuffer.h"
+#include <common/bytebuffer.h>
 
 #define P15_KEYTYPE_RSA     0x30
 #define P15_KEYTYPE_ECC     0xA0

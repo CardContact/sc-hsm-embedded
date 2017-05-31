@@ -35,9 +35,11 @@
 #include <string.h>
 
 #include <pkcs11/p11generic.h>
+#include <pkcs11/slot.h>
 #include <pkcs11/slotpool.h>
 #include <pkcs11/token.h>
 #include <pkcs11/dataobject.h>
+#include <pkcs11/certificateobject.h>
 
 #ifdef DEBUG
 #include <pkcs11/debug.h>
@@ -59,6 +61,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 	struct p11Object_t *pObject;
 	struct p11Session_t *session;
 	struct p11Slot_t *slot;
+	struct p11Token_t *token;
 	int pos;
 
 	FUNC_CALLED();
@@ -81,64 +84,52 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 		FUNC_RETURNS(rv);
 	}
 
-	pObject = (struct p11Object_t *)calloc(1, sizeof(struct p11Object_t));
-
-	if (pObject == NULL) {
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
-	}
-
-	pos = findAttributeInTemplate(CKA_CLASS, pTemplate, ulCount);
-
-	if (pos == -1) {
-		free(pObject);
-		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_CLASS not found in template");
-	}
-
-	if (!isValidPtr(pTemplate[pos].pValue) || (pTemplate[pos].ulValueLen != sizeof(CK_LONG))) {
-		FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_CLASS has invalid value");
-	}
-
-	switch (*(CK_LONG *)pTemplate[pos].pValue) {
-	case CKO_DATA:
-		rv = createDataObject(pTemplate, ulCount, pObject);
-		break;
-
-	default:
-		rv = CKR_FUNCTION_FAILED;
-		break;
-	}
-
-	if (rv != CKR_OK) {
-		free(pObject);
-		return rv;
-	}
-
 	rv = findSlot(&context->slotPool, session->slotID, &slot);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
 
-	/* Check if this is a session or a token object */
+	pos = findAttributeInTemplate(CKA_CLASS, pTemplate, ulCount);
+	if (pos == -1)
+		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_CLASS not found in template");
 
-	/* Token object */
-	if ((getSessionState(session, slot->token) == CKS_RW_USER_FUNCTIONS) && pObject->tokenObj) {
-		addObject(slot->token, pObject, pObject->publicObj);
+	rv = validateAttribute(&pTemplate[pos], sizeof(CK_LONG));
+	if (rv != CKR_OK)
+		FUNC_FAILS(rv, "CKA_CLASS has invalid value");
 
-		rv = synchronizeToken(slot, slot->token);
+	pos = findAttributeInTemplate(CKA_TOKEN, pTemplate, ulCount);
+	if (pos < 0)
+		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_TOKEN not found in private key template");
+
+	rv = validateAttribute(&pTemplate[pos], sizeof(CK_BBOOL));
+	if (rv != CKR_OK)
+		FUNC_FAILS(rv, "CKA_TOKEN has invalid value");
+
+	if (*(CK_BBOOL *)pTemplate[pos].pValue != 0) {
+		rv = getValidatedToken(slot, &token);
 
 		if (rv != CKR_OK) {
-			removeTokenObject(slot->token, pObject->handle, pObject->publicObj);
-			FUNC_RETURNS(rv);
-		}
-	} else {
-		if (pObject->tokenObj) {
-			removeAllAttributes(pObject);
-			free(pObject);
-			FUNC_FAILS(CKR_SESSION_READ_ONLY, "Can not create token objects in read only session");
+			return rv;
 		}
 
-		addSessionObject(session, pObject);
+		if (getSessionState(session, token) != CKS_RW_USER_FUNCTIONS) {
+			FUNC_FAILS(CKR_SESSION_READ_ONLY, "Session is read/only");
+		}
+
+		rv = createTokenObject(slot, pTemplate, ulCount, &pObject);
+
+		if (rv == CKR_DEVICE_ERROR) {
+			rv = handleDeviceError(hSession);
+			FUNC_FAILS(rv, "Device error reported");
+		}
+
+		if (rv != CKR_OK) {
+			FUNC_FAILS(rv, "Creating object on token failed");
+		}
+	} else {
+		// Session objects
+		FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "Creating session objects not supported");
 	}
 
 	*phObject = pObject->handle;

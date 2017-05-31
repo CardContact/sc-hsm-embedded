@@ -34,7 +34,8 @@
 #include <string.h>
 #include "token-starcos.h"
 
-#include "bytestring.h"
+#include <common/bytestring.h>
+#include <common/asn1.h>
 
 #include <pkcs11/slot.h>
 #include <pkcs11/object.h>
@@ -43,7 +44,6 @@
 #include <pkcs11/privatekeyobject.h>
 #include <pkcs11/publickeyobject.h>
 #include <pkcs11/strbpcpy.h>
-#include <pkcs11/asn1.h>
 #include <pkcs11/pkcs15.h>
 #include <pkcs11/debug.h>
 
@@ -1466,16 +1466,21 @@ struct p11TokenDriver *getStarcosTokenDriver()
 		initpin,
 		setpin,
 
-		starcos_C_DecryptInit,	// int (*C_DecryptInit)  (struct p11Object_t *, CK_MECHANISM_PTR);
+		starcos_C_DecryptInit,		// int (*C_DecryptInit)  (struct p11Object_t *, CK_MECHANISM_PTR);
 		starcos_C_Decrypt,		// int (*C_Decrypt)      (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
-		NULL,					// int (*C_DecryptUpdate)(struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
-		NULL,					// int (*C_DecryptFinal) (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
+		NULL,				// int (*C_DecryptUpdate)(struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+		NULL,				// int (*C_DecryptFinal) (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
 
 		starcos_C_SignInit,		// int (*C_SignInit)     (struct p11Object_t *, CK_MECHANISM_PTR);
 		starcos_C_Sign,			// int (*C_Sign)         (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
-		NULL,					// int (*C_SignUpdate)   (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
-		NULL					// int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
+		NULL,				// int (*C_SignUpdate)   (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
+		NULL,				// int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
+
+		NULL,				// int (*C_GenerateKeyPair)  (struct p11Slot_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG, struct p11Object_t **, struct p11Object_t **);
+		NULL				// int (*C_CreateObject)     (struct p11Slot_t *, CK_ATTRIBUTE_PTR, CK_ULONG ulCount, struct p11Object_t **);
 	};
+
+
 
 	return &starcos_token;
 }

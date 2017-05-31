@@ -36,7 +36,9 @@
 #include <string.h>
 #include <pkcs11/object.h>
 #include <pkcs11/certificateobject.h>
-#include <pkcs11/asn1.h>
+
+#include <common/asn1.h>
+#include <common/cvc.h>
 
 
 #ifdef DEBUG
@@ -47,11 +49,12 @@ extern int dumpAttributeList(struct p11Object_t *pObject);
 #endif
 
 extern CK_BBOOL ckFalse;
+CK_ULONG certCategory = 0;
 
 static struct attributesForObject_t attributesCertificateObject[] = {
 		{{CKA_CERTIFICATE_TYPE, NULL, 0}, AC_MANDATORY},
 		{{CKA_TRUSTED, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
-		{{CKA_CERTIFICATE_CATEGORY, 0, sizeof(CK_ULONG)}, AC_DEFAULT},
+		{{CKA_CERTIFICATE_CATEGORY, &certCategory, sizeof(CK_ULONG)}, AC_DEFAULT},
 		{{CKA_ID, NULL, 0}, AC_OPTIONAL},
 		{{CKA_VALUE, NULL, 0}, AC_MANDATORY},
 		{{0, NULL, 0}, AC_DEFAULT }
@@ -180,6 +183,71 @@ int populateIssuerSubjectSerial(struct p11Object_t *pObject)
 	attr.ulValueLen = cursor - obj;
 
 	addAttribute(pObject, &attr);
+
+	return 0;
+}
+
+
+
+/**
+ * Populate the attribute CKA_CVC_INNER_CAR, CKA_CVC_OUTER_CAR, CKA_CVC_CHR, CKA_CVC_CED, CKA_CVC_CXD, CKA_CVC_CHAT from certificate
+ */
+int populateCVCAttributes(struct p11Object_t *pObject)
+{
+	CK_ATTRIBUTE attr = { CKA_VALUE, NULL, 0 };
+	struct p11Attribute_t *pattr;
+	struct cvc cvc;
+
+	attr.type = CKA_VALUE;
+	if (findAttribute(pObject, &attr, &pattr) < 0) {
+		return -1;
+	}
+
+	if (cvcDecode(pattr->attrData.pValue, pattr->attrData.ulValueLen, &cvc) < 0) {
+		return -1;
+	}
+
+	if (cvc.car.val) {
+		attr.type = CKA_CVC_INNER_CAR;
+		attr.pValue = cvc.car.val;
+		attr.ulValueLen = cvc.car.len;
+		addAttribute(pObject, &attr);
+	}
+
+	if (cvc.outer_car.val) {
+		attr.type = CKA_CVC_OUTER_CAR;
+		attr.pValue = cvc.outer_car.val;
+		attr.ulValueLen = cvc.outer_car.len;
+		addAttribute(pObject, &attr);
+	}
+
+	if (cvc.chr.val) {
+		attr.type = CKA_CVC_CHR;
+		attr.pValue = cvc.chr.val;
+		attr.ulValueLen = cvc.chr.len;
+		addAttribute(pObject, &attr);
+	}
+
+	if (cvc.ced.val) {
+		attr.type = CKA_CVC_CED;
+		attr.pValue = cvc.ced.val;
+		attr.ulValueLen = cvc.ced.len;
+		addAttribute(pObject, &attr);
+	}
+
+	if (cvc.cxd.val) {
+		attr.type = CKA_CVC_CXD;
+		attr.pValue = cvc.cxd.val;
+		attr.ulValueLen = cvc.cxd.len;
+		addAttribute(pObject, &attr);
+	}
+
+	if (cvc.chat.val) {
+		attr.type = CKA_CVC_CHAT;
+		attr.pValue = cvc.chat.val;
+		attr.ulValueLen = cvc.chat.len;
+		addAttribute(pObject, &attr);
+	}
 
 	return 0;
 }
@@ -486,7 +554,7 @@ int createCertificateObjectFromP15(struct p15CertificateDescription *p15, unsign
 
 	FUNC_CALLED();
 
-	if ((*cert != ASN1_SEQUENCE) || (certlen < 5)) {
+	if (((*cert != ASN1_SEQUENCE) && (*cert != 0x7F)) || (certlen < 5)) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error not a certificate");
 	}
 
@@ -502,7 +570,14 @@ int createCertificateObjectFromP15(struct p15CertificateDescription *p15, unsign
 	template[8].pValue = cert;
 	template[8].ulValueLen = po - cert;
 
-	certType = (p15->certtype == P15_CT_X509) ? CKC_X_509 : CKC_X_509_ATTR_CERT;
+	switch(p15->certtype) {
+		case P15_CT_X509:
+			certType = CKC_X_509; break;
+		case P15_CT_X509_ATTRIBUTE:
+			certType = CKC_X_509_ATTR_CERT; break;
+		case P15_CT_CVC:
+			certType = CKC_CVC_TR3110; break;
+	}
 
 	if (p15->coa.label) {
 		template[6].pValue = p15->coa.label;
@@ -529,14 +604,18 @@ int createCertificateObjectFromP15(struct p15CertificateDescription *p15, unsign
 
 	if (rc != CKR_OK) {
 		free(p11o);
-		FUNC_FAILS(rc, "Could not create certificate key object");
+		FUNC_FAILS(rc, "Could not create certificate object");
 	}
 
-	rc = populateIssuerSubjectSerial(p11o);
+	if (p15->certtype == P15_CT_CVC) {
+		rc = populateCVCAttributes(p11o);
+	} else {
+		rc = populateIssuerSubjectSerial(p11o);
+	}
 
-	if (rc != CKR_OK) {
+	if (rc < 0) {
 #ifdef DEBUG
-		debug("populateIssuerSubjectSerial() failed\n");
+		debug("Populating additional attributes failed\n");
 #endif
 	}
 

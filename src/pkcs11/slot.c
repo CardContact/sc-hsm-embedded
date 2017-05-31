@@ -500,6 +500,59 @@ int getValidatedToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 
 /**
+ * If a token operation returns CKR_DEVICE_ERROR, then check if the token
+ * is still present.
+ *
+ */
+int handleDeviceError(CK_SESSION_HANDLE hSession)
+{
+	int rv;
+	struct p11Session_t *session;
+	struct p11Slot_t *slot;
+	struct p11Token_t *token;
+
+	FUNC_CALLED();
+
+	if (context == NULL) {
+		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	// Even if SCardTransmit report a communication error with the card, the card present
+	// switch and the card present status in the resource manager will still report a present card
+	//
+	// Wait 100ms to make sure the card status detection reports accurate results
+#ifndef _WIN32
+	usleep(100000);
+#endif
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
+
+	if (rv == CKR_SESSION_HANDLE_INVALID) {
+		FUNC_RETURNS(CKR_DEVICE_REMOVED);
+	}
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	rv = findSlot(&context->slotPool, session->slotID, &slot);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	rv = getValidatedToken(slot, &token);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	FUNC_RETURNS(CKR_DEVICE_ERROR);
+}
+
+
+
+/**
  * Gain exclusive access to the token in the slot, preventing other processes to access the token
  */
 int lockSlot(struct p11Slot_t *slot)

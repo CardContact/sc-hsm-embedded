@@ -37,37 +37,37 @@
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/p11generic.h>
 
-#define MAX_ATR					40
-#define MAX_EXT_APDU_LENGTH		1014
-#define MAX_FILES				128
-#define MAX_P15_SIZE			1024
+#define MAX_ATR			40
+#define MAX_EXT_APDU_LENGTH	1014
+#define MAX_FILES		128
+#define MAX_P15_SIZE		1024
 
-#define PRKD_PREFIX				0xC4		/* Hi byte in file identifier for PKCS#15 PRKD objects */
-#define CD_PREFIX				0xC8		/* Hi byte in file identifier for PKCS#15 CD objects */
-#define DCOD_PREFIX				0xC9		/* Hi byte in file identifier for PKCS#15 DCOD objects */
+#define PRKD_PREFIX		0xC4		/* Hi byte in file identifier for PKCS#15 PRKD objects */
+#define CD_PREFIX		0xC8		/* Hi byte in file identifier for PKCS#15 CD objects */
+#define DCOD_PREFIX		0xC9		/* Hi byte in file identifier for PKCS#15 DCOD objects */
 #define CA_CERTIFICATE_PREFIX	0xCA		/* Hi byte in file identifier for CA certificates */
-#define KEY_PREFIX				0xCC		/* Hi byte in file identifier for key objects */
-#define PROT_DATA_PREFIX		0xCD		/* Hi byte in file identifier for PIN protected data objects */
+#define KEY_PREFIX		0xCC		/* Hi byte in file identifier for key objects */
+#define PROT_DATA_PREFIX	0xCD		/* Hi byte in file identifier for PIN protected data objects */
 #define EE_CERTIFICATE_PREFIX	0xCE		/* Hi byte in file identifier for EE certificates */
-#define DATA_PREFIX				0xCF		/* Hi byte in file identifier for readable data objects */
+#define DATA_PREFIX		0xCF		/* Hi byte in file identifier for readable data objects */
 
-#define ALGO_RSA_RAW			0x20		/* RSA signature with external padding */
-#define ALGO_RSA_DECRYPT		0x21		/* RSA decrypt */
-#define ALGO_RSA_PKCS1			0x30		/* RSA signature with DigestInfo input and PKCS#1 V1.5 padding */
-#define ALGO_RSA_PKCS1_SHA1		0x31		/* RSA signature with SHA-1 hash and PKCS#1 V1.5 padding */
+#define ALGO_RSA_RAW		0x20		/* RSA signature with external padding */
+#define ALGO_RSA_DECRYPT	0x21		/* RSA decrypt */
+#define ALGO_RSA_PKCS1		0x30		/* RSA signature with DigestInfo input and PKCS#1 V1.5 padding */
+#define ALGO_RSA_PKCS1_SHA1	0x31		/* RSA signature with SHA-1 hash and PKCS#1 V1.5 padding */
 #define ALGO_RSA_PKCS1_SHA256	0x33		/* RSA signature with SHA-256 hash and PKCS#1 V1.5 padding */
 
-#define ALGO_RSA_PSS_SHA1		0x41		/* RSA signature with SHA-1 hash and PKCS#1 PSS padding */
-#define ALGO_RSA_PSS_SHA256		0x43		/* RSA signature with SHA-256 hash and PKCS#1 PSS padding */
+#define ALGO_RSA_PSS_SHA1	0x41		/* RSA signature with SHA-1 hash and PKCS#1 PSS padding */
+#define ALGO_RSA_PSS_SHA256	0x43		/* RSA signature with SHA-256 hash and PKCS#1 PSS padding */
 
-#define ALGO_EC_RAW				0x70		/* ECDSA signature with hash input */
-#define ALGO_EC_SHA1			0x71		/* ECDSA signature with SHA-1 hash */
-#define ALGO_EC_SHA224			0x72		/* ECDSA signature with SHA-224 hash */
-#define ALGO_EC_SHA256			0x73		/* ECDSA signature with SHA-256 hash */
-#define ALGO_EC_DH				0x80		/* ECDH key derivation */
+#define ALGO_EC_RAW		0x70		/* ECDSA signature with hash input */
+#define ALGO_EC_SHA1		0x71		/* ECDSA signature with SHA-1 hash */
+#define ALGO_EC_SHA224		0x72		/* ECDSA signature with SHA-224 hash */
+#define ALGO_EC_SHA256		0x73		/* ECDSA signature with SHA-256 hash */
+#define ALGO_EC_DH		0x80		/* ECDH key derivation */
 
-#define ID_USER_PIN				0x81		/* User PIN identifier */
-#define ID_SO_PIN				0x88		/* Security officer PIN identifier */
+#define ID_USER_PIN		0x81		/* User PIN identifier */
+#define ID_SO_PIN		0x88		/* Security officer PIN identifier */
 
 struct token_sc_hsm {
 	unsigned char sopin[8];
