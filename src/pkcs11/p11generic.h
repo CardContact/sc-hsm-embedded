@@ -113,6 +113,7 @@ struct p11Token_t {
 	CK_ULONG numberOfPrivateTokenObjects; /**< The number of private objects in this token  */
 	struct p11Object_t *tokenPrivObjList; /**< Pointer to the first object in pool          */
 
+	void *mutex;                        /**< Mutex used to synchronize internal updates     */
 	struct p11TokenDriver *drv;         /**< Driver for this token                          */
 };
 

@@ -85,6 +85,8 @@ int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicOb
 {
 	object->token = token;
 
+	p11LockMutex(token->mutex);
+
 	if (!object->handle) {
 		object->handle = token->freeObjectNumber++;
 	}
@@ -96,6 +98,8 @@ int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicOb
 		addObjectToList(&token->tokenPrivObjList, object);
 		token->numberOfPrivateTokenObjects++;
 	}
+
+	p11UnlockMutex(token->mutex);
 
 	object->dirtyFlag = 1;
 
@@ -176,11 +180,20 @@ int findMatchingTokenObject(struct p11Token_t *token, CK_ATTRIBUTE_PTR pTemplate
 
 
 
-int findMatchingTokenObjectById(struct p11Token_t *token, CK_OBJECT_CLASS class, unsigned char *id, int sizelen, struct p11Object_t **pObject)
+/**
+ * Find token object of given class matching the CKA_ID passed as argument
+ *
+ * @param token     The token whose object shall be searched
+ * @param class     The value of the CKA_CLASS attribute
+ * @param id        The id value
+ * @param idlen     The length of the id
+ * @param pObject   The variable receiving the found object
+ */
+int findMatchingTokenObjectById(struct p11Token_t *token, CK_OBJECT_CLASS class, unsigned char *id, int idlen, struct p11Object_t **pObject)
 {
 	CK_ATTRIBUTE template[] = {
 		{ CKA_CLASS, &class, sizeof(class) },
-		{ CKA_ID, id, sizelen }
+		{ CKA_ID, id, idlen }
 	};
 	return findMatchingTokenObject(token, template, 2, pObject);
 }
@@ -199,18 +212,25 @@ int removeTokenObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int pub
 {
 	int rc;
 
+	p11LockMutex(token->mutex);
+
 	if (publicObject) {
 		rc = removeObjectFromList(&token->tokenObjList, handle);
-		if (rc != CKR_OK)
+		if (rc != CKR_OK) {
+			p11UnlockMutex(token->mutex);
 			return rc;
+		}
 		token->numberOfTokenObjects--;
 	} else {
 		rc = removeObjectFromList(&token->tokenPrivObjList, handle);
-		if (rc != CKR_OK)
+		if (rc != CKR_OK) {
+			p11UnlockMutex(token->mutex);
 			return rc;
+		}
 		token->numberOfPrivateTokenObjects--;
 	}
 
+	p11UnlockMutex(token->mutex);
 	return CKR_OK;
 }
 
@@ -225,8 +245,10 @@ int removeTokenObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int pub
  */
 static void removePrivateObjects(struct p11Token_t *token)
 {
+	p11LockMutex(token->mutex);
 	removeAllObjectsFromList(&token->tokenPrivObjList);
 	token->numberOfPrivateTokenObjects = 0;
+	p11UnlockMutex(token->mutex);
 }
 
 
@@ -240,8 +262,10 @@ static void removePrivateObjects(struct p11Token_t *token)
  */
 static void removePublicObjects(struct p11Token_t *token)
 {
+	p11LockMutex(token->mutex);
 	removeAllObjectsFromList(&token->tokenObjList);
 	token->numberOfTokenObjects = 0;
+	p11UnlockMutex(token->mutex);
 }
 
 
@@ -455,6 +479,32 @@ int setPIN(struct p11Slot_t *slot, CK_UTF8CHAR_PTR pOldPin, CK_ULONG ulOldPinLen
 
 
 /**
+ * Allocate and initialize token structure
+ *
+ * @param token     Pointer to pointer updated with newly created token structure
+ * @param extraMem  The extra amount of memory allocated for private token data
+ */
+int allocateToken(struct p11Token_t **token, int extraMem)
+{
+	struct p11Token_t *ptoken;
+
+	FUNC_CALLED();
+
+	ptoken = (struct p11Token_t *)calloc(sizeof(struct p11Token_t) + extraMem, 1);
+
+	if (ptoken == NULL) {
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+	}
+
+	p11CreateMutex(&ptoken->mutex);
+
+	*token = ptoken;
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+/**
  * Detect a newly inserted token in the designated slot
  *
  * @param slot      The slot in which a token was detected
@@ -501,6 +551,7 @@ void freeToken(struct p11Token_t *token)
 
 		removePrivateObjects(token);
 		removePublicObjects(token);
+		p11DestroyMutex(token->mutex);
 		free(token);
 	}
 }

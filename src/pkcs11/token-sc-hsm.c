@@ -1527,11 +1527,9 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	}
 	pinstatus = rc;
 
-	ptoken = (struct p11Token_t *)calloc(sizeof(struct p11Token_t) + sizeof(struct token_sc_hsm), 1);
-
-	if (ptoken == NULL) {
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
-	}
+	rc = allocateToken(&ptoken, sizeof(struct token_sc_hsm));
+	if (rc != CKR_OK)
+		return rc;
 
 	ptoken->slot = slot;
 	ptoken->freeObjectNumber = 1;
@@ -1558,10 +1556,16 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 	updatePinStatus(ptoken, pinstatus);
 
-	sc_hsm_loadObjects(ptoken);
+	rc = sc_hsm_loadObjects(ptoken);
+	if (rc != CKR_OK) {
+		freeToken(ptoken);
+		FUNC_FAILS(rc, "addToken() failed");
+	}
+
 
 	rc = addToken(slot, ptoken);
 	if (rc != CKR_OK) {
+		freeToken(ptoken);
 		FUNC_FAILS(rc, "addToken() failed");
 	}
 

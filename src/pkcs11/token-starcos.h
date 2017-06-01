@@ -60,7 +60,6 @@ struct starcosApplication {
 struct starcosPrivateData {
 	struct starcosApplication   *application;
 	int                         selectedApplication;
-	void                        *mutex;
 	unsigned char               sopin[8];
 };
 

@@ -282,14 +282,12 @@ static int createDTrustToken(struct p11Slot_t *slot, struct p11Token_t **token, 
 	sc->selectedApplication = 0;
 	sc->application = application;
 
-	p11CreateMutex(&sc->mutex);
-
 	strbpcpy(ptoken->info.label, sc->application->name, sizeof(ptoken->info.label));
 
 	rc = starcosSelectApplication(ptoken);
 
 	if (rc < 0) {
-		drv->freeToken(ptoken);
+		freeToken(ptoken);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Application not found on token");
 	}
 
@@ -298,7 +296,7 @@ static int createDTrustToken(struct p11Slot_t *slot, struct p11Token_t **token, 
 		rc = starcosDeterminePinUseCounter(ptoken, sc->application->qESKeyDRec, &ptoken->pinUseCounter, &lc);
 
 		if (rc < 0) {
-			drv->freeToken(ptoken);
+			freeToken(ptoken);
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Error querying PIN key use counter");
 		}
 
@@ -313,14 +311,14 @@ static int createDTrustToken(struct p11Slot_t *slot, struct p11Token_t **token, 
 	rc = loadObjects(ptoken);
 
 	if (rc < 0) {
-		drv->freeToken(ptoken);
+		freeToken(ptoken);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error loading objects from token");
 	}
 
 	rc = starcosCheckPINStatus(slot, sc->application->pinref);
 
 	if (rc < 0) {
-		drv->freeToken(ptoken);
+		freeToken(ptoken);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error querying PIN status");
 	}
 

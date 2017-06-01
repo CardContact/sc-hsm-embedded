@@ -93,28 +93,14 @@ struct starcosPrivateData *starcosGetPrivateData(struct p11Token_t *token)
 
 void starcosLock(struct p11Token_t *token)
 {
-	struct starcosPrivateData *sc;
-
-	FUNC_CALLED();
-
-	sc = starcosGetPrivateData(getBaseToken(token));
-	p11LockMutex(sc->mutex);
-
-#ifdef DEBUG
-	debug("Lock released\n");
-#endif
+	p11LockMutex(token->mutex);
 }
 
 
 
 void starcosUnlock(struct p11Token_t *token)
 {
-	struct starcosPrivateData *sc;
-
-	FUNC_CALLED();
-
-	sc = starcosGetPrivateData(getBaseToken(token));
-	p11UnlockMutex(sc->mutex);
+	p11UnlockMutex(token->mutex);
 }
 
 
@@ -1264,10 +1250,6 @@ static int logout(struct p11Slot_t *slot)
 
 static void freeStarcosToken(struct p11Token_t *token)
 {
-	struct starcosPrivateData *sc;
-
-	sc = starcosGetPrivateData(token);
-	p11DestroyMutex(sc->mutex);
 }
 
 
@@ -1287,11 +1269,9 @@ int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct
 
 	FUNC_CALLED();
 
-	ptoken = (struct p11Token_t *)calloc(sizeof(struct p11Token_t) + sizeof(struct starcosPrivateData), 1);
-
-	if (ptoken == NULL) {
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
-	}
+	rc = allocateToken(&ptoken, sizeof(struct starcosPrivateData));
+	if (rc != CKR_OK)
+		return rc;
 
 	ptoken->slot = slot;
 	ptoken->freeObjectNumber = 1;
@@ -1317,14 +1297,12 @@ int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct
 	sc->selectedApplication = 0;
 	sc->application = application;
 
-	p11CreateMutex(&sc->mutex);
-
 	strbpcpy(ptoken->info.label, sc->application->name, sizeof(ptoken->info.label));
 
 	rc = starcosSelectApplication(ptoken);
 
 	if (rc < 0) {
-		drv->freeToken(ptoken);
+		freeToken(ptoken);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Application not found on token");
 	}
 
@@ -1333,7 +1311,7 @@ int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct
 		rc = starcosDeterminePinUseCounter(ptoken, sc->application->qESKeyDRec, &ptoken->pinUseCounter, &lc);
 
 		if (rc < 0) {
-			drv->freeToken(ptoken);
+			freeToken(ptoken);
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Error querying PIN key use counter");
 		}
 
@@ -1348,14 +1326,14 @@ int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct
 	rc = loadObjects(ptoken);
 
 	if (rc < 0) {
-		drv->freeToken(ptoken);
+		freeToken(ptoken);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error loading objects from token");
 	}
 
 	rc = starcosCheckPINStatus(slot, sc->application->pinref);
 
 	if (rc < 0) {
-		drv->freeToken(ptoken);
+		freeToken(ptoken);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error querying PIN status");
 	}
 
