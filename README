@@ -26,7 +26,15 @@ https://github.com/CardContact/sc-hsm-embedded/wiki
 
 Installation (Linux)
 --------------------
-Download source and run configure, make, make install.
+Download source and run 
+libtoolize --force
+aclocal
+autoheader
+automake --force-missing --add-missing
+autoconf
+configure
+make
+make install or checkinstall
 
 Installation (Windows)
 ----------------------
