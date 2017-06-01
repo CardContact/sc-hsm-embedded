@@ -962,9 +962,11 @@ static int sc_hsm_C_CreateObject(
 		idlen = pTemplate[pos].ulValueLen;
 
 		rv = findMatchingTokenObjectById(slot->token, CKO_PRIVATE_KEY, id, idlen, &p11Key);
+#ifdef DEBUG
 		if (rv != CKR_OK) {
 			debug("No private key found with matching CKA_ID");
 		}
+#endif
 	}
 
 	if (p11Key == NULL)

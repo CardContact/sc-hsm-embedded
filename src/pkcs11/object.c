@@ -571,6 +571,16 @@ void dumpAttribute(CK_ATTRIBUTE_PTR attr)
 		}
 	}
 }
+
+
+
+void dumpAttributes(CK_ATTRIBUTE_PTR attr, CK_ULONG cnt)
+{
+	int i;
+
+	for (i = 0; i < cnt; i++)
+		dumpAttribute(&attr[i]);
+}
 #endif
 
 

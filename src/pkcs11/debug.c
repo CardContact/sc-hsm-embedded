@@ -42,6 +42,8 @@
 
 #ifdef WIN32
 #include <io.h>
+#else
+#include <pthread.h>
 #endif
 
 #include <pkcs11/debug.h>
@@ -102,6 +104,11 @@ void debug(char *format, ...)
 	struct tm *loctim;
 	time_t elapsed;
 	va_list argptr;
+#ifdef WIN32
+	int tid = 0;
+#else
+	pthread_t tid = pthread_self();
+#endif
 
 	if ((context == NULL) || (context->debugFileHandle == NULL)) {
 		return;
@@ -110,13 +117,16 @@ void debug(char *format, ...)
 	time(&elapsed);
 	loctim = localtime(&elapsed);
 
-	fprintf(context->debugFileHandle, "%02d.%02d.%04d %02d:%02d:%02d ",
+
+
+	fprintf(context->debugFileHandle, "%02d.%02d.%04d %02d:%02d:%02d [%ld] ",
 			loctim->tm_mday,
 			loctim->tm_mon,
 			loctim->tm_year+1900,
 			loctim->tm_hour,
 			loctim->tm_min,
-			loctim->tm_sec);
+			loctim->tm_sec,
+			tid);
 
 	va_start(argptr, format);
 	vfprintf(context->debugFileHandle, format, argptr);

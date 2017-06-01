@@ -90,6 +90,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 		FUNC_RETURNS(rv);
 	}
 
+#ifdef DEBUG
+	debug("Template\n");
+	dumpAttributes(pTemplate, ulCount);
+#endif
+
 	pos = findAttributeInTemplate(CKA_CLASS, pTemplate, ulCount);
 	if (pos == -1)
 		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_CLASS not found in template");

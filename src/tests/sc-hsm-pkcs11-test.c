@@ -1872,6 +1872,13 @@ int main(int argc, char *argv[])
 	} else {
 		printf("Calling C_GetSlotList ");
 
+		rc = p11->C_GetSlotList(TRUE, NULL, &slots);
+
+		if (rc != CKR_OK) {
+			printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+			exit(1);
+		}
+
 		rc = p11->C_GetSlotList(FALSE, NULL, &slots);
 
 		if (rc != CKR_OK) {

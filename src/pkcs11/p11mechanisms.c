@@ -1225,6 +1225,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_GenerateKeyPair)(
 		FUNC_RETURNS(rv);
 	}
 
+#ifdef DEBUG
+	debug("Private Key Template\n");
+	dumpAttributes(pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	debug("Public Key Template\n");
+	dumpAttributes(pPublicKeyTemplate, ulPublicKeyAttributeCount);
+#endif
+
 	pos = findAttributeInTemplate(CKA_TOKEN, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
 	if (pos < 0) {
 		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_TOKEN not found in private key template");

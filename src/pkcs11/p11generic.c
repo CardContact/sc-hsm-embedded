@@ -81,6 +81,9 @@ CK_RV p11DestroyMutex(CK_VOID_PTR pMutex)
 CK_RV p11LockMutex(CK_VOID_PTR pMutex)
 {
 	if (initArgs.LockMutex) {
+#ifdef DEBUG
+		debug("LockMutex (%p)\n", pMutex);
+#endif
 		return (*initArgs.LockMutex)(pMutex);
 	}
 	return CKR_OK;
@@ -91,6 +94,9 @@ CK_RV p11LockMutex(CK_VOID_PTR pMutex)
 CK_RV p11UnlockMutex(CK_VOID_PTR pMutex)
 {
 	if (initArgs.UnlockMutex) {
+#ifdef DEBUG
+		debug("UnlockMutex (%p)\n", pMutex);
+#endif
 		return (*initArgs.UnlockMutex)(pMutex);
 	}
 	return CKR_OK;

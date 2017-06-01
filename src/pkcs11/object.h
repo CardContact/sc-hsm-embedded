@@ -113,6 +113,8 @@ struct id2name_t {
 };
 
 char *id2name(struct id2name_t *p, unsigned long id, unsigned long *attr);
+void dumpAttribute(CK_ATTRIBUTE_PTR attr);
+void dumpAttributes(CK_ATTRIBUTE_PTR attr, CK_ULONG cnt);
 #endif
 
 int isValidPtr(void *ptr);
@@ -133,7 +135,5 @@ int copyObjectAttributes(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p1
 		struct attributesForObject_t *attr);
 int serializeObject(struct p11Object_t *pObject, unsigned char **pBuffer, unsigned int *bufLength);
 int isMatchingObject(struct p11Object_t *pObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
-
-void dumpAttribute(CK_ATTRIBUTE_PTR attr);
 
 #endif /* ___OBJECT_H_INC___ */
