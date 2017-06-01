@@ -374,6 +374,22 @@ static int decodeCommonCertificateAttributes(unsigned char *cca, int ccalen, str
 
 
 
+static int encodeCommonCertificateAttributes(bytebuffer bb, struct p15CertificateDescription *p15)
+{
+	int ofs = bbGetLength(bb);
+	unsigned char scr[1];
+
+	if (p15->id.val != NULL) {
+		asn1Append(bb, ASN1_OCTET_STRING, &p15->id);
+	} else {
+		asn1AppendBytes(bb, ASN1_OCTET_STRING, scr, 0);
+	}
+
+	return asn1EncapBuffer(ASN1_SEQUENCE, bb, ofs);
+}
+
+
+
 static int decodeCertificateAttributes(unsigned char *cd, int cdlen, struct p15CertificateDescription *p15)
 {
 	int rc,tag,len;
@@ -423,6 +439,18 @@ static int decodeCertificateAttributes(unsigned char *cd, int cdlen, struct p15C
 
 
 
+static int encodeCertificateAttributes(bytebuffer bb, struct p15CertificateDescription *p15)
+{
+	int ofs = bbGetLength(bb);
+
+	asn1AppendBytes(bb, ASN1_OCTET_STRING, p15->efidOrPath.val, p15->efidOrPath.len);
+	asn1EncapBuffer(ASN1_SEQUENCE, bb, ofs);
+	asn1EncapBuffer(ASN1_SEQUENCE, bb, ofs);
+	return asn1EncapBuffer(0xA1, bb, ofs);
+}
+
+
+
 /**
  * Decode a TLV encoded PKCS#15 certificate description into a structure
  *
@@ -454,7 +482,7 @@ int decodeCertificateDescription(unsigned char *cd, size_t cdlen, struct p15Cert
 	tag = asn1Tag(&po);
 	len = asn1Length(&po);
 
-	if ((tag != ASN1_SEQUENCE) && (tag != 0xA0)) {
+	if ((tag != ASN1_SEQUENCE) && (tag != 0xA0) && (tag != 0xA5) ) {
 		return -1;
 	}
 
@@ -462,6 +490,24 @@ int decodeCertificateDescription(unsigned char *cd, size_t cdlen, struct p15Cert
 	rc = decodeCertificateAttributes(po, len, *p15);
 
 	return rc;
+}
+
+
+
+/**
+ * Encode certificate description into a PKCS#15 structure
+ *
+ * @param bb        The bytebuffer receiving the resulting PKCS#15 structure
+ * @param p15       The certificate description
+ * @return          0 if successful, -1 for error
+ */
+int encodeCertificateDescription(bytebuffer bb, struct p15CertificateDescription *p15)
+{
+	bbClear(bb);
+	encodeCommonObjectAttributes(bb, &p15->coa);
+	encodeCommonCertificateAttributes(bb, p15);
+	encodeCertificateAttributes(bb, p15);
+	return asn1EncapBuffer(p15->certtype, bb, 0);
 }
 
 

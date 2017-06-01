@@ -1089,8 +1089,8 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 			{ CKA_CLASS, &certClass, sizeof(certClass) },
 			{ CKA_TOKEN, &_true, sizeof(_true)},
 			{ CKA_CERTIFICATE_TYPE, &certType, sizeof(certType) },
-			{ CKA_ID, id, sizeof(id) },
-			{ CKA_VALUE, NULL, 0 }
+			{ CKA_VALUE, NULL, 0 },
+			{ CKA_ID, id, sizeof(id) }
 	};
 	int certAttributes = 5;
 	CK_OBJECT_HANDLE hndPrivateKey, hndPublicKey, hndCert;
@@ -1140,11 +1140,11 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	len = template[0].ulValueLen;
 	asn1Next(&po, &len, &tag, &vlen, &val);
 
-	certTemplate[certAttributes - 1].pValue = val;
-	certTemplate[certAttributes - 1].ulValueLen = vlen;
+	certTemplate[certAttributes - 2].pValue = val;
+	certTemplate[certAttributes - 2].ulValueLen = vlen;
 
 	printf("Calling C_GetAttributeValue ");
-	rc = p11->C_GetAttributeValue(session, hndPublicKey, (CK_ATTRIBUTE_PTR)&certTemplate[certAttributes - 2], 1);
+	rc = p11->C_GetAttributeValue(session, hndPublicKey, (CK_ATTRIBUTE_PTR)&certTemplate[certAttributes - 1], 1);
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_CreateObject ");
@@ -1158,6 +1158,15 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	printf("Calling C_CreateObject as second time to overwrite ");
 	rc = p11->C_CreateObject(session, certTemplate, certAttributes, &hndCert);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc == CKR_OK) {
+		printf("Certificate [%d]:\n", (int)hndCert);
+		dumpObject(p11, session, hndCert);
+	}
+
+	printf("Calling C_CreateObject to create additional attribute ");
+	rc = p11->C_CreateObject(session, certTemplate, certAttributes - 1, &hndCert); 	// Ignore CKA_ID
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (rc == CKR_OK) {

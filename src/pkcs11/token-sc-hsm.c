@@ -869,7 +869,7 @@ static int addCACertificateObject(struct p11Token_t *token, unsigned char id)
 /**
  * Determine a free key identifier by enumerating all files and locating a free id in the range CC01-CCFF
  */
-static int determineFreeKeyId(struct p11Slot_t *slot) {
+static int determineFreeKeyId(struct p11Slot_t *slot, unsigned char prefix) {
 	unsigned char filelist[MAX_FILES * 2];
 	int listlen,i,id;
 
@@ -882,7 +882,7 @@ static int determineFreeKeyId(struct p11Slot_t *slot) {
 
 	for (id = 1; id <= 255; id++) {
 		for (i = 0; i < listlen; i += 2) {
-			if ((filelist[i] == KEY_PREFIX) && (filelist[i + 1] == id)) {
+			if ((filelist[i] == prefix) && (filelist[i + 1] == id)) {
 				break;
 			}
 		}
@@ -896,6 +896,56 @@ static int determineFreeKeyId(struct p11Slot_t *slot) {
 
 
 
+static int createCertDescription(struct p11Slot_t *slot,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulCount,
+		unsigned char *id,
+		size_t idlen,
+		struct p15CertificateDescription *p15cert)
+{
+	int rc, idf;
+
+	FUNC_CALLED();
+
+	rc = findAttributeInTemplate(CKA_LABEL, pTemplate, ulCount);
+	if (rc >= 0) {
+		p15cert->coa.label = calloc(1, pTemplate[rc].ulValueLen + 1);
+		if (p15cert->coa.label == NULL)
+			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+
+		memcpy(p15cert->coa.label, pTemplate[rc].pValue, pTemplate[rc].ulValueLen);
+	}
+
+	idf = determineFreeKeyId(slot, CD_PREFIX);
+
+	if (idf < 0)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Determine free id failed");
+
+	p15cert->efidOrPath.len = 2;
+	p15cert->efidOrPath.val = calloc(1, 2);
+	if (p15cert->efidOrPath.val == NULL)
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+
+	p15cert->efidOrPath.val[0] = CA_CERTIFICATE_PREFIX;
+	p15cert->efidOrPath.val[1] = idf;
+
+	if (id == NULL) {
+		id = p15cert->efidOrPath.val;
+		idlen = p15cert->efidOrPath.len;
+	}
+
+	p15cert->id.len = idlen;
+	p15cert->id.val = calloc(1, idlen);
+	if (p15cert->id.val == NULL)
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+
+	memcpy(p15cert->id.val, id, idlen);
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
 static int sc_hsm_C_CreateObject(
 		struct p11Slot_t *slot,
 		CK_ATTRIBUTE_PTR pTemplate,
@@ -903,9 +953,13 @@ static int sc_hsm_C_CreateObject(
 		struct p11Object_t **pp11o)
 {
 	int pos, rv, vallen, idlen;
+	unsigned short fid;
 	CK_CERTIFICATE_TYPE ct;
 	unsigned char *val, *po, *id;
 	struct p11Object_t *p11Key, *p11o;
+	struct p15CertificateDescription *p15cert;
+	unsigned char buff[512];
+	struct bytebuffer_s bb = { buff, 0, sizeof(buff) };
 
 	pos = findAttributeInTemplate(CKA_CLASS, pTemplate, ulCount);
 	if (pos == -1)
@@ -971,15 +1025,41 @@ static int sc_hsm_C_CreateObject(
 #endif
 	}
 
-	if (p11Key == NULL)
-		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "No matching private key found");
-
 	p11o = NULL;		// See if we already have a certificate object for that ID
 	findMatchingTokenObjectById(slot->token, CKO_CERTIFICATE, id, idlen, &p11o);
 
-	rv = writeEF(slot, (EE_CERTIFICATE_PREFIX << 8) | p11Key->tokenid, val, vallen);
-	if (rv < 0)
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Error writing certificate");
+	if (p11Key != NULL) {
+		rv = writeEF(slot, (EE_CERTIFICATE_PREFIX << 8) | p11Key->tokenid, val, vallen);
+		if (rv < 0)
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Error writing certificate");
+	} else {
+		p15cert = calloc(1, sizeof(struct p15CertificateDescription));
+		if (p15cert == NULL)
+			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+
+		p15cert->certtype = ct == CKC_X_509 ? P15_CT_X509 : P15_CT_CVC;
+
+		rv = createCertDescription(slot, pTemplate, ulCount, id, idlen, p15cert);
+		if (rv < 0)
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Error creating certificate description");
+
+		rv = encodeCertificateDescription(&bb, p15cert);
+		fid = p15cert->efidOrPath.val[0] << 8 | p15cert->efidOrPath.val[1];
+		freeCertificateDescription(&p15cert);
+
+		if (rv < 0) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Error encoding certificate description");
+		}
+
+		rv = writeEF(slot, fid, val, vallen);
+		if (rv < 0)
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Error writing certificate");
+
+		fid = (CD_PREFIX << 8) | (fid & 0xFF);
+		rv = writeEF(slot, fid , bb.val, bb.len);
+		if (rv < 0)
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Error writing certificate description");
+	}
 
 	if (p11o != NULL) {
 		removeTokenObject(slot->token, p11o->handle, TRUE);
@@ -1014,7 +1094,7 @@ static int sc_hsm_C_CreateObject(
 
 	*pp11o = p11o;
 
-	return CKR_OK;
+	FUNC_RETURNS(CKR_OK);
 }
 
 
@@ -1061,7 +1141,7 @@ static int sc_hsm_C_GenerateKeyPair(
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Encoding GAKP failed");
 
-	id = determineFreeKeyId(slot);
+	id = determineFreeKeyId(slot, KEY_PREFIX);
 
 	if (id < 0)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Determine free id failed");
