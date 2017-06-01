@@ -1395,6 +1395,7 @@ static int getMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR p
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Buffer provided by caller too small");
 	}
 
+	*pulCount = numberOfMechanisms;
 	memcpy(pMechanismList, p11MechanismList, sizeof(p11MechanismList));
 
 	FUNC_RETURNS(CKR_OK);

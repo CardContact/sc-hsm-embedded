@@ -72,7 +72,9 @@ static const CK_MECHANISM_TYPE p11MechanismList[] = {
 		CKM_SHA1_RSA_PKCS_PSS,
 		CKM_SHA256_RSA_PKCS_PSS,
 		CKM_ECDSA,
-		CKM_ECDSA_SHA1
+		CKM_ECDSA_SHA1,
+		CKM_EC_KEY_PAIR_GEN,
+		CKM_RSA_PKCS_KEY_PAIR_GEN
 };
 
 
@@ -1126,6 +1128,7 @@ static int sc_hsm_C_GenerateKeyPair(
 		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 	memcpy(p15key->id.val, po, len);
+	p15key->id.len = len;
 
 	rc = encodePrivateKeyDescription(&bb, p15key);
 
@@ -1545,7 +1548,7 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	ptoken->info.ulMaxRwSessionCount = CK_EFFECTIVELY_INFINITE;
 	ptoken->info.ulSessionCount = CK_UNAVAILABLE_INFORMATION;
 
-	ptoken->info.flags = CKF_WRITE_PROTECTED | CKF_LOGIN_REQUIRED;
+	ptoken->info.flags = CKF_LOGIN_REQUIRED;
 
 	if (slot->hasFeatureVerifyPINDirect)
 		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
@@ -1586,6 +1589,7 @@ static int getMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR p
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Buffer provided by caller too small");
 	}
 
+	*pulCount = numberOfMechanisms;
 	memcpy(pMechanismList, p11MechanismList, sizeof(p11MechanismList));
 
 	FUNC_RETURNS(CKR_OK);
@@ -1600,24 +1604,50 @@ static int getMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
 	FUNC_CALLED();
 
 	switch (type) {
+	case CKM_RSA_PKCS_KEY_PAIR_GEN:
 	case CKM_RSA_X_509:
 	case CKM_RSA_PKCS:
 	case CKM_SHA1_RSA_PKCS:
 	case CKM_SHA256_RSA_PKCS:
 	case CKM_SHA1_RSA_PKCS_PSS:
 	case CKM_SHA256_RSA_PKCS_PSS:
-		pInfo->flags = CKF_SIGN;
-		pInfo->flags |= CKF_HW|CKF_ENCRYPT|CKF_DECRYPT|CKF_GENERATE_KEY_PAIR;	// Quick fix for Peter Gutmann's cryptlib
 		pInfo->ulMinKeySize = 1024;
 		pInfo->ulMaxKeySize = 2048;
 		break;
 
+	case CKM_EC_KEY_PAIR_GEN:
 	case CKM_ECDSA:
 	case CKM_ECDSA_SHA1:
-		pInfo->flags = CKF_SIGN;
-		pInfo->flags |= CKF_HW|CKF_VERIFY|CKF_GENERATE_KEY_PAIR; // Quick fix for Peter Gutmann's cryptlib
 		pInfo->ulMinKeySize = 192;
 		pInfo->ulMaxKeySize = 320;
+		break;
+
+	default:
+		rv = CKR_MECHANISM_INVALID;
+		break;
+	}
+
+	switch (type) {
+	case CKM_RSA_PKCS_KEY_PAIR_GEN:
+		pInfo->flags = CKF_HW|CKF_GENERATE_KEY_PAIR;
+		break;
+	case CKM_RSA_X_509:
+	case CKM_RSA_PKCS:
+		pInfo->flags = CKF_HW|CKF_SIGN|CKF_DECRYPT;
+		break;
+	case CKM_SHA1_RSA_PKCS:
+	case CKM_SHA256_RSA_PKCS:
+	case CKM_SHA1_RSA_PKCS_PSS:
+	case CKM_SHA256_RSA_PKCS_PSS:
+		pInfo->flags = CKF_HW|CKF_SIGN;
+		break;
+
+	case CKM_EC_KEY_PAIR_GEN:
+		pInfo->flags = CKF_HW|CKF_GENERATE_KEY_PAIR;
+		break;
+	case CKM_ECDSA:
+	case CKM_ECDSA_SHA1:
+		pInfo->flags = CKF_HW|CKF_SIGN;
 		break;
 
 	default:
