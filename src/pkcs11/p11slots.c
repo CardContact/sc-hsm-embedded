@@ -76,8 +76,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotList)(
 
 	rv = updateSlots(&context->slotPool);
 
+	p11UnlockMutex(context->mutex);
+
 	if (rv != CKR_OK) {
-		p11UnlockMutex(context->mutex);
 		FUNC_RETURNS(rv);
 	}
 
@@ -105,8 +106,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotList)(
 #endif
 	}
 	*pulCount = i;
-
-	p11UnlockMutex(context->mutex);
 
 	FUNC_RETURNS(rv);
 }
