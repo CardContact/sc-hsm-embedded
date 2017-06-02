@@ -255,7 +255,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismList)(
 		FUNC_RETURNS(rv);
 	}
 
-	FUNC_RETURNS(token->drv->getMechanismList(pMechanismList, pulCount));
+	FUNC_RETURNS(getMechanismList(token, pMechanismList, pulCount));
 }
 
 
@@ -294,7 +294,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetMechanismInfo)(
 		FUNC_RETURNS(rv);
 	}
 
-	FUNC_RETURNS(token->drv->getMechanismInfo(type, pInfo));
+	FUNC_RETURNS(getMechanismInfo(token, type, pInfo));
 }
 
 

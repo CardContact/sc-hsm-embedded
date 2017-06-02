@@ -96,8 +96,7 @@ int populateIssuerSubjectSerial(struct p11Object_t *pObject)
 	int tag, length, buflen;
 	unsigned char *value, *cursor, *obj;
 
-	attr.type = CKA_VALUE;
-	if (findAttribute(pObject, &attr, &pattr) < 0) {
+	if (findAttribute(pObject, CKA_VALUE, &pattr) < 0) {
 		return -1;
 	}
 
@@ -198,8 +197,7 @@ int populateCVCAttributes(struct p11Object_t *pObject)
 	struct p11Attribute_t *pattr;
 	struct cvc cvc;
 
-	attr.type = CKA_VALUE;
-	if (findAttribute(pObject, &attr, &pattr) < 0) {
+	if (findAttribute(pObject, CKA_VALUE, &pattr) < 0) {
 		return -1;
 	}
 
@@ -256,13 +254,11 @@ int populateCVCAttributes(struct p11Object_t *pObject)
 
 int getSubjectPublicKeyInfo(struct p11Object_t *pObject, unsigned char **spki)
 {
-	CK_ATTRIBUTE attr = { CKA_VALUE, NULL, 0 };
 	struct p11Attribute_t *pattr;
 	int tag, length, buflen;
 	unsigned char *value, *cursor;
 
-	attr.type = CKA_VALUE;
-	if (findAttribute(pObject, &attr, &pattr) < 0) {
+	if (findAttribute(pObject, CKA_VALUE, &pattr) < 0) {
 		return -1;
 	}
 

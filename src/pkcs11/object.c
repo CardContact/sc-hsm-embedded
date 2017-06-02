@@ -648,7 +648,7 @@ int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate)
 
 
 
-int findAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTemplate, struct p11Attribute_t **attribute)
+int findAttribute(struct p11Object_t *object, CK_ATTRIBUTE_TYPE type, struct p11Attribute_t **attribute)
 {
 	struct p11Attribute_t *attr;
 	int pos = 0;            /* remember the current position in the list */
@@ -657,7 +657,7 @@ int findAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR attributeTemplate
 	*attribute = NULL;
 
 	while (attr != NULL) {
-		if (attr->attrData.type == attributeTemplate->type) {
+		if (attr->attrData.type == type) {
 			*attribute = attr;
 			return pos;
 		}
@@ -992,7 +992,7 @@ int isMatchingObject(struct p11Object_t *pObject, CK_ATTRIBUTE_PTR pTemplate, CK
 	int i, rv;
 
 	for (i = 0; i < ulCount; i++) {
-		rv = findAttribute(pObject, pTemplate + i, &pAttribute);
+		rv = findAttribute(pObject, pTemplate[i].type, &pAttribute);
 
 		if (rv < 0) {
 			return CK_FALSE;

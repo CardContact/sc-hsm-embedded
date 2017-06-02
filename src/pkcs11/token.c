@@ -73,6 +73,42 @@ static tokenDriver_t tokenDriver[] = {
 
 
 /**
+ * Return list of supported mechanisms for token
+ *
+ * @param token           The token for which the list should be obtained
+ * @param pMechanismList  The buffer receiving the list of mechanisms
+ * @param pulCount        The size of the buffer at call and return
+ *
+ */
+int getMechanismList(struct p11Token_t *token, CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount)
+{
+	if (token->drv->C_GetMechanismList == NULL) {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+	return token->drv->C_GetMechanismList(pMechanismList, pulCount);
+}
+
+
+
+/**
+ * Return details for a mechanism
+ *
+ * @param token           The token for which the info should be obtained
+ * @param type            The mechanism for which details should be obtained
+ * @param pInfo           The buffer to receive the info
+ *
+ */
+int getMechanismInfo(struct p11Token_t *token, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
+{
+	if (token->drv->C_GetMechanismInfo == NULL) {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+	return token->drv->C_GetMechanismInfo(type, pInfo);
+}
+
+
+
+/**
  * Add token object to list of public or private objects
  *
  * @param token     The token for which an object shell be added
@@ -319,13 +355,17 @@ int removeObjectLeavingAttributes(struct p11Token_t *token, CK_OBJECT_HANDLE han
  * Remove object from token
  *
  * @param slot      The slot in which the token is inserted
- * @param token     The token to update
+ * @param object    The object to destroy
  *
  * @return          CKR_OK or any other Cryptoki error code
  */
-int destroyObject(struct p11Slot_t *slot, struct p11Token_t *token, struct p11Object_t *object)
+int destroyObject(struct p11Slot_t *slot, struct p11Object_t *object)
 {
-	return CKR_OK;
+	if (slot->token->drv->destroyObject == NULL) {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+
+	return slot->token->drv->destroyObject(slot, object);
 }
 
 

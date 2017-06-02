@@ -193,7 +193,6 @@ int createPrivateKeyObjectFromP15AndPublicKey(struct p15PrivateKeyDescription *p
 	CK_MECHANISM_TYPE genMechType = CKM_RSA_PKCS_KEY_PAIR_GEN;
 	CK_BBOOL true = CK_TRUE;
 	CK_BBOOL false = CK_FALSE;
-	CK_ATTRIBUTE attr = { CKA_VALUE, NULL, 0 };
 	struct p11Attribute_t *pattr;
 	CK_ATTRIBUTE template[] = {
 			{ CKA_CLASS, &class, sizeof(class) },
@@ -248,15 +247,13 @@ int createPrivateKeyObjectFromP15AndPublicKey(struct p15PrivateKeyDescription *p
 	case P15_KEYTYPE_RSA:
 		keyType = CKK_RSA;
 
-		attr.type = CKA_MODULUS;
-		if (findAttribute(puk, &attr, &pattr) < 0) {
+		if (findAttribute(puk, CKA_MODULUS, &pattr) < 0) {
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Can't find CKA_MODULUS in public key object");
 		}
 
 		template[attributes++] = pattr->attrData;
 
-		attr.type = CKA_PUBLIC_EXPONENT;
-		if (findAttribute(puk, &attr, &pattr) < 0) {
+		if (findAttribute(puk, CKA_PUBLIC_EXPONENT, &pattr) < 0) {
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Can't find CKA_PUBLIC_EXPONENT in public key object");
 		}
 
@@ -265,8 +262,7 @@ int createPrivateKeyObjectFromP15AndPublicKey(struct p15PrivateKeyDescription *p
 	case P15_KEYTYPE_ECC:
 		keyType = CKK_ECDSA;
 
-		attr.type = CKA_EC_PARAMS;
-		if (findAttribute(puk, &attr, &pattr) < 0) {
+		if (findAttribute(puk, CKA_EC_PARAMS, &pattr) < 0) {
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Can't find CKA_EC_PARAMS in public key object");
 		}
 

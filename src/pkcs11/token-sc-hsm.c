@@ -236,6 +236,33 @@ static int writeEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *co
 
 
 
+static int deleteEF(struct p11Slot_t *slot, unsigned short fid)
+{
+	int rc;
+	unsigned char scr[2];
+	unsigned short SW1SW2;
+	FUNC_CALLED();
+
+	scr[0] = fid >> 8;
+	scr[1] = fid & 0xFF;
+
+	rc = transmitAPDU(slot, 0x00, 0xE4, 0x02, 0x00,
+			2, scr,
+			0, NULL, 0, &SW1SW2);
+
+	if (rc < 0) {
+		FUNC_FAILS(rc, "transmitAPDU failed");
+	}
+
+	if (SW1SW2 != 0x9000) {
+		FUNC_FAILS(-1, "Delete EF failed");
+	}
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
 static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 {
 	switch(mech) {
@@ -827,6 +854,7 @@ static int addCACertificateObject(struct p11Token_t *token, unsigned char id)
 	struct p11Object_t *p11cert;
 	struct p15CertificateDescription *p15cert;
 	unsigned char cd[MAX_P15_SIZE];
+	unsigned short fid;
 	int rc;
 
 	FUNC_CALLED();
@@ -843,7 +871,8 @@ static int addCACertificateObject(struct p11Token_t *token, unsigned char id)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error decoding certificate description");
 	}
 
-	rc = readEF(token->slot, (CA_CERTIFICATE_PREFIX << 8) | id, certValue, sizeof(certValue));
+	fid = (CA_CERTIFICATE_PREFIX << 8) | id;
+	rc = readEF(token->slot, fid, certValue, sizeof(certValue));
 
 	if (rc < 0) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate");
@@ -856,7 +885,7 @@ static int addCACertificateObject(struct p11Token_t *token, unsigned char id)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create P11 certificate object");
 	}
 
-	p11cert->tokenid = (int)id;
+	p11cert->tokenid = (int)fid;
 
 	addObject(token, p11cert, TRUE);
 
@@ -952,8 +981,8 @@ static int sc_hsm_C_CreateObject(
 		CK_ULONG ulCount,
 		struct p11Object_t **pp11o)
 {
-	int pos, rv, vallen, idlen;
-	unsigned short fid;
+	int pos, rc, vallen, idlen;
+	unsigned short fid, certfid;
 	CK_CERTIFICATE_TYPE ct;
 	unsigned char *val, *po, *id;
 	struct p11Object_t *p11Key, *p11o;
@@ -965,9 +994,9 @@ static int sc_hsm_C_CreateObject(
 	if (pos == -1)
 		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_CLASS not found in template");
 
-	rv = validateAttribute(&pTemplate[pos], sizeof(CK_OBJECT_CLASS));
-	if (rv != CKR_OK)
-		FUNC_FAILS(rv, "CKA_CLASS");
+	rc = validateAttribute(&pTemplate[pos], sizeof(CK_OBJECT_CLASS));
+	if (rc != CKR_OK)
+		FUNC_FAILS(rc, "CKA_CLASS");
 
 	if (*(CK_OBJECT_CLASS *)pTemplate[pos].pValue != CKO_CERTIFICATE)
 		FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "CKA_CLASS must be CKO_CERTIFICATE");
@@ -977,9 +1006,9 @@ static int sc_hsm_C_CreateObject(
 	if (pos == -1)
 		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_CERTIFICATE_TYPE not found in template");
 
-	rv = validateAttribute(&pTemplate[pos], sizeof(CK_CERTIFICATE_TYPE));
-	if (rv != CKR_OK)
-		FUNC_FAILS(rv, "CKA_CERTIFICATE_TYPE");
+	rc = validateAttribute(&pTemplate[pos], sizeof(CK_CERTIFICATE_TYPE));
+	if (rc != CKR_OK)
+		FUNC_FAILS(rc, "CKA_CERTIFICATE_TYPE");
 
 	ct = *(CK_CERTIFICATE_TYPE *)pTemplate[pos].pValue;
 	if ((ct != CKC_CVC_TR3110) && (ct != CKC_X_509))
@@ -990,9 +1019,9 @@ static int sc_hsm_C_CreateObject(
 	if (pos == -1)
 		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_VALUE not found in template");
 
-	rv = validateAttribute(&pTemplate[pos], 0);
-	if (rv != CKR_OK)
-		FUNC_FAILS(rv, "CKA_VALUE");
+	rc = validateAttribute(&pTemplate[pos], 0);
+	if (rc != CKR_OK)
+		FUNC_FAILS(rc, "CKA_VALUE");
 
 	val = (unsigned char *)pTemplate[pos].pValue;
 	vallen = pTemplate[pos].ulValueLen;
@@ -1002,11 +1031,11 @@ static int sc_hsm_C_CreateObject(
 	}
 
 	po = val;
-	rv = asn1Tag(&po);
-	if ((ct == CKC_CVC_TR3110) && (rv != 0x7F21))
+	rc = asn1Tag(&po);
+	if ((ct == CKC_CVC_TR3110) && (rc != 0x7F21))
 		FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_VALUE does not seem to contain a CVC");
 
-	if ((ct == CKC_X_509) && (rv != 0x30))
+	if ((ct == CKC_X_509) && (rc != 0x30))
 		FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_VALUE does not seem to be a X.509 certificate");
 
 	id = NULL;
@@ -1017,9 +1046,9 @@ static int sc_hsm_C_CreateObject(
 		id = (unsigned char *)pTemplate[pos].pValue;
 		idlen = pTemplate[pos].ulValueLen;
 
-		rv = findMatchingTokenObjectById(slot->token, CKO_PRIVATE_KEY, id, idlen, &p11Key);
+		rc = findMatchingTokenObjectById(slot->token, CKO_PRIVATE_KEY, id, idlen, &p11Key);
 #ifdef DEBUG
-		if (rv != CKR_OK) {
+		if (rc != CKR_OK) {
 			debug("No private key found with matching CKA_ID");
 		}
 #endif
@@ -1029,8 +1058,9 @@ static int sc_hsm_C_CreateObject(
 	findMatchingTokenObjectById(slot->token, CKO_CERTIFICATE, id, idlen, &p11o);
 
 	if (p11Key != NULL) {
-		rv = writeEF(slot, (EE_CERTIFICATE_PREFIX << 8) | p11Key->tokenid, val, vallen);
-		if (rv < 0)
+		certfid = p11Key->tokenid;
+		rc = writeEF(slot, (EE_CERTIFICATE_PREFIX << 8) | p11Key->tokenid, val, vallen);
+		if (rc < 0)
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Error writing certificate");
 	} else {
 		p15cert = calloc(1, sizeof(struct p15CertificateDescription));
@@ -1039,25 +1069,25 @@ static int sc_hsm_C_CreateObject(
 
 		p15cert->certtype = ct == CKC_X_509 ? P15_CT_X509 : P15_CT_CVC;
 
-		rv = createCertDescription(slot, pTemplate, ulCount, id, idlen, p15cert);
-		if (rv < 0)
+		rc = createCertDescription(slot, pTemplate, ulCount, id, idlen, p15cert);
+		if (rc < 0)
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Error creating certificate description");
 
-		rv = encodeCertificateDescription(&bb, p15cert);
-		fid = p15cert->efidOrPath.val[0] << 8 | p15cert->efidOrPath.val[1];
+		rc = encodeCertificateDescription(&bb, p15cert);
+		certfid = p15cert->efidOrPath.val[0] << 8 | p15cert->efidOrPath.val[1];
 		freeCertificateDescription(&p15cert);
 
-		if (rv < 0) {
+		if (rc < 0) {
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Error encoding certificate description");
 		}
 
-		rv = writeEF(slot, fid, val, vallen);
-		if (rv < 0)
+		rc = writeEF(slot, certfid, val, vallen);
+		if (rc < 0)
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Error writing certificate");
 
-		fid = (CD_PREFIX << 8) | (fid & 0xFF);
-		rv = writeEF(slot, fid , bb.val, bb.len);
-		if (rv < 0)
+		fid = (CD_PREFIX << 8) | (certfid & 0xFF);
+		rc = writeEF(slot, fid , bb.val, bb.len);
+		if (rc < 0)
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Error writing certificate description");
 	}
 
@@ -1071,20 +1101,22 @@ static int sc_hsm_C_CreateObject(
 		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
-	rv = createCertificateObject(pTemplate, ulCount, p11o);
+	rc = createCertificateObject(pTemplate, ulCount, p11o);
 
-	if (rv != CKR_OK) {
+	if (rc != CKR_OK) {
 		free(p11o);
-		FUNC_FAILS(rv, "Could not create certificate object");
+		FUNC_FAILS(rc, "Could not create certificate object");
 	}
+
+	p11o->tokenid = (int)certfid;
 
 	if (ct == CKC_X_509) {
-		rv = populateIssuerSubjectSerial(p11o);
+		rc = populateIssuerSubjectSerial(p11o);
 	} else {
-		rv = populateCVCAttributes(p11o);
+		rc = populateCVCAttributes(p11o);
 	}
 
-	if (rv != CKR_OK) {
+	if (rc != CKR_OK) {
 #ifdef DEBUG
 		debug("Populating additional attributes failed\n");
 #endif
@@ -1228,6 +1260,56 @@ static int sc_hsm_C_GenerateKeyPair(
 	*phPrivateKey = priKey;
 
 	FUNC_RETURNS(rc);
+}
+
+
+
+static int sc_hsm_destroyObject(struct p11Slot_t *slot, struct p11Object_t *pObject)
+{
+	struct p11Attribute_t *attribute;
+	unsigned short fid,fid2;
+	int rc;
+
+	FUNC_CALLED();
+
+	rc = findAttribute(pObject, CKA_CLASS, &attribute);
+	if (rc < 0)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Attribute CKA_CLASS not found. Data corrupted");
+
+
+	switch(*(CK_OBJECT_CLASS *)attribute->attrData.pValue) {
+	case CKO_PRIVATE_KEY:
+		fid = (KEY_PREFIX << 8) | pObject->tokenid;
+		rc = deleteEF(slot, fid);
+		if (rc < 0)
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Deleting key failed");
+
+		fid = (PRKD_PREFIX << 8) | pObject->tokenid;
+		deleteEF(slot, fid);
+		// May fail
+
+		fid = (EE_CERTIFICATE_PREFIX << 8) | pObject->tokenid;
+		deleteEF(slot, fid);
+		break;
+	case CKO_CERTIFICATE:
+		fid = pObject->tokenid;
+		if (fid > 0) {
+			if (fid < 0x100) {
+				fid |= EE_CERTIFICATE_PREFIX << 8;
+			} else {
+				fid2 = (CD_PREFIX << 8) | (fid & 0xFF);
+				rc = deleteEF(slot, fid2);
+				if (rc < 0)
+					FUNC_FAILS(CKR_DEVICE_ERROR, "Deleting certificate description failed");
+			}
+			rc = deleteEF(slot, fid);
+			if (rc < 0)
+				FUNC_FAILS(CKR_DEVICE_ERROR, "Deleting certificate failed");
+		}
+		break;
+	}
+
+	FUNC_RETURNS(CKR_OK);
 }
 
 
@@ -1655,7 +1737,7 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 
 
-static int getMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount)
+static int sc_hsm_C_GetMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount)
 {
 	int numberOfMechanisms;
 
@@ -1681,7 +1763,7 @@ static int getMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR p
 
 
 
-static int getMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
+static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
 {
 	CK_RV rv = CKR_OK;
 
@@ -1756,8 +1838,8 @@ struct p11TokenDriver *getSmartCardHSMTokenDriver()
 		isCandidate,
 		newSmartCardHSMToken,
 		NULL,
-		getMechanismList,
-		getMechanismInfo,
+		sc_hsm_C_GetMechanismList,
+		sc_hsm_C_GetMechanismInfo,
 		sc_hsm_login,
 		sc_hsm_logout,
 		sc_hsm_initpin,
@@ -1774,7 +1856,9 @@ struct p11TokenDriver *getSmartCardHSMTokenDriver()
 		NULL,				// int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
 
 		sc_hsm_C_GenerateKeyPair,	// int (*C_GenerateKeyPair)  (struct p11Slot_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG, struct p11Object_t **, struct p11Object_t **);
-		sc_hsm_C_CreateObject		// int (*C_CreateObject)     (struct p11Slot_t *, CK_ATTRIBUTE_PTR, CK_ULONG ulCount, struct p11Object_t **);
+		sc_hsm_C_CreateObject,		// int (*C_CreateObject)     (struct p11Slot_t *, CK_ATTRIBUTE_PTR, CK_ULONG ulCount, struct p11Object_t **);
+
+		sc_hsm_destroyObject		// int (*destroyObject)       (struct p11Slot_t *, struct p11Object_t *);
 	};
 
 	return &sc_hsm_token;

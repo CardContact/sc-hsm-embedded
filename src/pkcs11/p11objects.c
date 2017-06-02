@@ -205,23 +205,27 @@ CK_DECLARE_FUNCTION(CK_RV, C_DestroyObject)(
 				rv = findObject(slot->token, hObject, &pObject, FALSE);
 
 				if (rv < 0) {
-					return CKR_OBJECT_HANDLE_INVALID;
+					FUNC_FAILS(CKR_OBJECT_HANDLE_INVALID, "No object found for that handle");
 				}
 			} else {
-				return CKR_OBJECT_HANDLE_INVALID;
+				FUNC_FAILS(CKR_OBJECT_HANDLE_INVALID, "No object found for that handle");
 			}
 		}
 
-		/* remove the object from the storage media */
-		destroyObject(slot, slot->token, pObject);
+		/* remove the object from the token */
+		rv = destroyObject(slot, pObject);
+
+		if (rv != CKR_OK) {
+			FUNC_FAILS(rv, "Can't destroy object on token");
+		}
 
 		/* remove the object from the list */
 		removeTokenObject(slot->token, hObject, pObject->publicObj);
 
 		rv = synchronizeToken(slot, slot->token);
 
-		if (rv < 0) {
-			return CKR_FUNCTION_FAILED;
+		if (rv != CKR_OK) {
+			FUNC_FAILS(rv, "Token synchronization failed after update");
 		}
 	} else {
 		removeSessionObject(session, hObject);
@@ -490,7 +494,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 				tmp->dirtyFlag = 1;
 
 				/* remove the public object */
-				destroyObject(slot, slot->token, pObject);
+				destroyObject(slot, pObject);
 				removeObjectLeavingAttributes(slot->token, pObject->handle, TRUE);
 
 				/* insert new private object */

@@ -342,7 +342,7 @@ static int newSigntrust32Token(struct p11Slot_t *slot, struct p11Token_t **token
 
 
 
-static int getMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount)
+static int starcos_C_GetMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount)
 {
 	int numberOfMechanisms;
 
@@ -368,7 +368,7 @@ static int getMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR p
 
 
 
-static int getMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
+static int starcos_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
 {
 	CK_RV rv = CKR_OK;
 
@@ -415,8 +415,8 @@ struct p11TokenDriver *getSigntrust32TokenDriver()
 
 	starcos_token.isCandidate = isCandidate;
 	starcos_token.newToken = newSigntrust32Token;
-	starcos_token.getMechanismList = getMechanismList;
-	starcos_token.getMechanismInfo = getMechanismInfo;
+	starcos_token.C_GetMechanismList = starcos_C_GetMechanismList;
+	starcos_token.C_GetMechanismInfo = starcos_C_GetMechanismInfo;
 
 	return &starcos_token;
 }

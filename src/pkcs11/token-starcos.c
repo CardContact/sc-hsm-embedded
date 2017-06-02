@@ -1355,7 +1355,7 @@ int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct
 
 
 
-static int getMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount)
+static int starcos_C_GetMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount)
 {
 	int numberOfMechanisms;
 
@@ -1381,7 +1381,7 @@ static int getMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR p
 
 
 
-static int getMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
+static int starcos_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
 {
 	CK_RV rv = CKR_OK;
 
@@ -1438,8 +1438,8 @@ struct p11TokenDriver *getStarcosTokenDriver()
 		NULL,
 		NULL,
 		freeStarcosToken,
-		getMechanismList,
-		getMechanismInfo,
+		starcos_C_GetMechanismList,
+		starcos_C_GetMechanismInfo,
 		login,
 		logout,
 		initpin,
@@ -1456,7 +1456,8 @@ struct p11TokenDriver *getStarcosTokenDriver()
 		NULL,				// int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
 
 		NULL,				// int (*C_GenerateKeyPair)  (struct p11Slot_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG, struct p11Object_t **, struct p11Object_t **);
-		NULL				// int (*C_CreateObject)     (struct p11Slot_t *, CK_ATTRIBUTE_PTR, CK_ULONG ulCount, struct p11Object_t **);
+		NULL,				// int (*C_CreateObject)     (struct p11Slot_t *, CK_ATTRIBUTE_PTR, CK_ULONG ulCount, struct p11Object_t **);
+		NULL				// int (*deleteObject)       (struct p11Slot_t *, struct p11Object_t *);
 	};
 
 

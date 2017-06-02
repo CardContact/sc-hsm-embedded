@@ -1093,7 +1093,7 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 			{ CKA_ID, id, sizeof(id) }
 	};
 	int certAttributes = 5;
-	CK_OBJECT_HANDLE hndPrivateKey, hndPublicKey, hndCert;
+	CK_OBJECT_HANDLE hndPrivateKey, hndPublicKey, hndCert, hndCACert, hndRSAPrivateKey, hndRSAPublicKey;
 	CK_MECHANISM mech_genecc = { CKM_EC_KEY_PAIR_GEN, 0, 0 };
 	CK_MECHANISM mech_genrsa = { CKM_RSA_PKCS_KEY_PAIR_GEN, 0, 0 };
 	CK_BYTE publicExponent[] = { 0x01, 0x00, 0x01 };
@@ -1165,13 +1165,13 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		dumpObject(p11, session, hndCert);
 	}
 
-	printf("Calling C_CreateObject to create additional attribute ");
-	rc = p11->C_CreateObject(session, certTemplate, certAttributes - 1, &hndCert); 	// Ignore CKA_ID
+	printf("Calling C_CreateObject to create CA certificate ");
+	rc = p11->C_CreateObject(session, certTemplate, certAttributes - 1, &hndCACert); 	// Ignore CKA_ID
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (rc == CKR_OK) {
-		printf("Certificate [%d]:\n", (int)hndCert);
-		dumpObject(p11, session, hndCert);
+		printf("Certificate [%d]:\n", (int)hndCACert);
+		dumpObject(p11, session, hndCACert);
 	}
 
 	publicKeyAttributes = 3;
@@ -1200,16 +1200,41 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	rc = p11->C_GenerateKeyPair(session, &mech_genrsa,
 		publicKeyTemplate, publicKeyAttributes,
 		privateKeyTemplate, privateKeyAttributes,
-		&hndPublicKey, &hndPrivateKey);
+		&hndRSAPublicKey, &hndRSAPrivateKey);
 
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (rc == CKR_OK) {
 		printf("Private Key:\n");
-		dumpObject(p11, session, hndPrivateKey);
+		dumpObject(p11, session, hndRSAPrivateKey);
 		printf("Public Key:\n");
-		dumpObject(p11, session, hndPublicKey);
+		dumpObject(p11, session, hndRSAPublicKey);
 	}
+
+
+	printf("Calling C_DestroyObject(CACert) ");
+	rc = p11->C_DestroyObject(session, hndCACert);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DestroyObject(EECert) ");
+	rc = p11->C_DestroyObject(session, hndCert);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DestroyObject(RSAPublicKey) ");
+	rc = p11->C_DestroyObject(session, hndRSAPublicKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DestroyObject(RSAPrivateKey) ");
+	rc = p11->C_DestroyObject(session, hndRSAPrivateKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DestroyObject(ECPublicKey) ");
+	rc = p11->C_DestroyObject(session, hndPublicKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DestroyObject(ECPrivateKey) ");
+	rc = p11->C_DestroyObject(session, hndPrivateKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 }
 
 
