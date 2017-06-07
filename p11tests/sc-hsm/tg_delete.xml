@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="doctg.xsl" ?>
+<testgroup 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="http://www.openscdp.org/schema/testframework-1.0.xsd"
+	id="tg_delete" arrayElement="testcase,function" arrayIndex="id,Name">
+	<name>Delete certifcates and keys</name>
+	<description>
+		<p>Delete certificates and keys</p>
+	</description>
+	<reference>
+		<p></p>
+	</reference>
+
+<!-- Initializing the test group environment -->
+
+
+	<constructor Param="name, parameter">
+		<Script><![CDATA[		
+		//Call constructor of super class TestGroup and define name of test group
+		TestGroup.call(this, name, parameter);
+		]]></Script>
+	</constructor>
+
+
+
+<!-- Setup method called before each test case is executed -->
+	<setup>
+		<Script><![CDATA[
+			
+		]]></Script>
+	</setup>
+
+
+
+<!-- Teardown method called after each test case is executed -->
+	<teardown>
+		<Script><![CDATA[
+		
+	
+		]]></Script>
+	</teardown>
+
+
+
+	<testcase id="001_Delete_Keys_and_Certificates">
+		<name>Delete Keys and Certificates</name>
+		<description>
+			<p></p>
+		</description>
+		<requirement>
+			<p></p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p);
+
+	this.log("Using slot: " + slot);
+	
+	// Open R/W session
+	var s = new PKCS11Session(p, slot, true);
+	
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+	
+	this.log("Delete Joe Doe (RSA2048)");
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (RSA2048)");
+
+	var publicKey = getObjectByLabel(s, PKCS11Object.CKO_PUBLIC_KEY, "Joe Doe (RSA2048)");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (RSA2048)");
+
+	if (publicKey != null) {
+		publicKey.destroy();
+	}
+	if (certificate != null) {
+		certificate.destroy();
+	}
+	if (privateKey != null) {
+		privateKey.destroy();
+	}
+
+	this.log("Delete Joe Doe (RSA1536)");
+
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (RSA1536)");
+
+	var publicKey = getObjectByLabel(s, PKCS11Object.CKO_PUBLIC_KEY, "Joe Doe (RSA1536)");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (RSA1536)");
+
+	if (publicKey != null) {
+		publicKey.destroy();
+	}
+	if (certificate != null) {
+		certificate.destroy();
+	}
+	if (privateKey != null) {
+		privateKey.destroy();
+	}
+
+	this.log("Delete Joe Doe (RSA1024)");
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (RSA1024)");
+
+	var publicKey = getObjectByLabel(s, PKCS11Object.CKO_PUBLIC_KEY, "Joe Doe (RSA1024)");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (RSA1024)");
+
+	if (publicKey != null) {
+		publicKey.destroy();
+	}
+	if (certificate != null) {
+		certificate.destroy();
+	}
+	if (privateKey != null) {
+		privateKey.destroy();
+	}
+	
+	this.log("Delete Joe Doe (ECC-BP320)");
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (ECC-BP320)");
+
+	var publicKey = getObjectByLabel(s, PKCS11Object.CKO_PUBLIC_KEY, "Joe Doe (ECC-BP320)");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (ECC-BP320)");
+
+	if (publicKey != null) {
+		publicKey.destroy();
+	}
+	if (certificate != null) {
+		certificate.destroy();
+	}
+	if (privateKey != null) {
+		privateKey.destroy();
+	}
+	
+	this.log("Delete Joe Doe (ECC-BP224)");
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (ECC-BP224)");
+
+	var publicKey = getObjectByLabel(s, PKCS11Object.CKO_PUBLIC_KEY, "Joe Doe (ECC-BP224)");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (ECC-BP224)");
+
+	if (publicKey != null) {
+		publicKey.destroy();
+	}
+	if (certificate != null) {
+		certificate.destroy();
+	}
+	if (privateKey != null) {
+		privateKey.destroy();
+	}
+	
+	this.log("Delete Joe Doe (ECC-SECP256)");
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (ECC-SECP256)");
+
+	var publicKey = getObjectByLabel(s, PKCS11Object.CKO_PUBLIC_KEY, "Joe Doe (ECC-SECP256)");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (ECC-SECP256)");
+
+	if (publicKey != null) {
+		publicKey.destroy();
+	}
+	if (certificate != null) {
+		certificate.destroy();
+	}
+	if (privateKey != null) {
+		privateKey.destroy();
+	}
+	
+	this.log("Delete Joe Doe (ECC-SECP192)");
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (ECC-SECP192)");
+
+	var publicKey = getObjectByLabel(s, PKCS11Object.CKO_PUBLIC_KEY, "Joe Doe (ECC-SECP192)");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (ECC-SECP192)");
+
+	if (publicKey != null) {
+		publicKey.destroy();
+	}
+	if (certificate != null) {
+		certificate.destroy();
+	}
+	if (privateKey != null) {
+		privateKey.destroy();
+	}
+
+	this.log("Delete CA certificate");
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "OpenSCDP Demo CA");
+
+	if (certificate != null) {
+		certificate.destroy();
+	}
+
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+</testgroup>

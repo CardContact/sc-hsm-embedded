@@ -595,12 +595,12 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 
 static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pPublicKeyTemplate, CK_ULONG ulPublicKeyAttributeCount, int *keysize)
 {
-	int rc;
+	int rc,pos;
 	CK_ULONG keybits;
 	struct bytestring_s publicKeyAlgorithm;
 	struct bytestring_s oid;
 	struct bytestring_s publicExponent;
-	struct ec_curve *curve;
+	struct ec_curve *curve, crve;
 	unsigned char scr[2];
 
 	FUNC_CALLED();
@@ -629,26 +629,32 @@ static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_P
 	asn1Append(bb, 0x06, &publicKeyAlgorithm);
 
 	if (pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN) {
-		rc = findAttributeInTemplate(CKA_EC_PARAMS, pPublicKeyTemplate, ulPublicKeyAttributeCount);
-		if (rc < 0) {
+		pos = findAttributeInTemplate(CKA_EC_PARAMS, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+		if (pos < 0) {
 			FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "Missing CKA_EC_PARAMS in public key template");
 		}
 
-		if ((pPublicKeyTemplate[rc].ulValueLen < 2) || asn1Validate(pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen)) {
+		if ((pPublicKeyTemplate[pos].ulValueLen < 2) || asn1Validate(pPublicKeyTemplate[pos].pValue, pPublicKeyTemplate[pos].ulValueLen)) {
 			FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_EC_PARAMS not valid ASN");
 		}
 
-		if (*(unsigned char *)pPublicKeyTemplate[rc].pValue != 0x06) {
-			FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_EC_PARAMS not an object identifier");
-		}
+		if (*(unsigned char *)pPublicKeyTemplate[pos].pValue == 0x06) {
+			oid.val = pPublicKeyTemplate[pos].pValue + 2;
+			oid.len = pPublicKeyTemplate[pos].ulValueLen - 2;
 
-		oid.val = pPublicKeyTemplate[rc].pValue + 2;
-		oid.len = pPublicKeyTemplate[rc].ulValueLen - 2;
+			curve = cvcGetCurveForOID(&oid);
 
-		curve = cvcGetCurveForOID(&oid);
-
-		if (curve == NULL) {
-			FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_EC_PARAMS contains unknown curve OID");
+			if (curve == NULL) {
+				FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_EC_PARAMS contains unknown curve OID");
+			}
+		} else if (*(unsigned char *)pPublicKeyTemplate[pos].pValue == 0x30) {
+			rc = cvcDetermineCurveFromECParam((unsigned char *)pPublicKeyTemplate[pos].pValue, pPublicKeyTemplate[pos].ulValueLen, &crve);
+			if (rc < 0) {
+				FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "Explicit parameter in CKA_EC_PARAMS invalid");
+			}
+			curve = &crve;
+		} else {
+			FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_EC_PARAMS not a curve object identifier or explicit domain parameter");
 		}
 
 		asn1Append(bb, 0x81, &curve->prime);

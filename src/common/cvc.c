@@ -35,6 +35,12 @@
 #include "asn1.h"
 
 
+#ifdef DEBUG
+#include <stdio.h>
+#define debug(arg) printf(arg);
+#endif
+
+
 static struct ec_curve curves[] = {
 		{
 				{ (unsigned char *) "\x2A\x86\x48\xCE\x3D\x03\x01\x01", 8},	// secp192r1 aka prime192r1
@@ -153,6 +159,221 @@ int cvcDetermineCurveOID(struct cvc *cvc, bytestring *oid)
 	*oid = &c->oid;
 	return 0;
 
+}
+
+
+
+int cvcDetermineCurveFromECParam(unsigned char *ecparam, size_t ecparamlen, struct ec_curve *curve)
+{
+	int vallen, tag, length, childrenlen;
+	unsigned char *po, *val, *children;
+
+	memset(curve, 0, sizeof(struct ec_curve));
+
+	po = ecparam;
+	length = ecparamlen;
+
+	if (!asn1Next(&po, &length, &tag, &childrenlen, &children)) {
+#ifdef DEBUG
+		debug("Error decoding ecParameter");
+#endif
+		return -1;
+	}
+
+	if (tag != ASN1_SEQUENCE) {
+#ifdef DEBUG
+		debug("ecParameter not a SEQUENCE");
+#endif
+		return -1;
+	}
+
+	po = children;
+	length = childrenlen;
+
+	// version
+	if (!asn1Next(&po, &length, &tag, &vallen, &val)) {
+#ifdef DEBUG
+		debug("Error decoding version");
+#endif
+		return -1;
+	}
+
+	if ((tag != ASN1_INTEGER) || (vallen != 1) || (*val != 0x01)) {
+#ifdef DEBUG
+		debug("version not INTEGER, length = 1 or value = 1");
+#endif
+return -1;
+	}
+
+	// fieldID
+	if (!asn1Next(&po, &length, &tag, &childrenlen, &children)) {
+#ifdef DEBUG
+		debug("Error decoding fieldID");
+#endif
+		return -1;
+	}
+
+	if (tag != ASN1_SEQUENCE) {
+#ifdef DEBUG
+		debug("fieldID not a SEQUENCE");
+#endif
+		return -1;
+	}
+
+	// fieldType
+	if (!asn1Next(&children, &childrenlen, &tag, &vallen, &val)) {
+#ifdef DEBUG
+		debug("Error decoding fieldType");
+#endif
+		return -1;
+	}
+
+	if ((tag != ASN1_OBJECT_IDENTIFIER) || (vallen != 7) || (*(val + 6) != 0x01)) {
+#ifdef DEBUG
+		debug("fieldType not OBJECT IDENTIFIER, length = 7 or value = prime-field");
+#endif
+		return -1;
+	}
+
+	// prime
+	if (!asn1Next(&children, &childrenlen, &tag, &vallen, &val)) {
+#ifdef DEBUG
+		debug("Error decoding prime");
+#endif
+		return -1;
+	}
+
+	if (tag != ASN1_INTEGER) {
+#ifdef DEBUG
+		debug("prime not INTEGER");
+#endif
+		return -1;
+	}
+
+	if (*val == 0) {
+		val++;
+		vallen--;
+	}
+
+	curve->prime.val = val;
+	curve->prime.len = vallen;
+
+	// curve
+	if (!asn1Next(&po, &length, &tag, &childrenlen, &children)) {
+#ifdef DEBUG
+		debug("Error decoding curve");
+#endif
+		return -1;
+	}
+
+	if (tag != ASN1_SEQUENCE) {
+#ifdef DEBUG
+		debug("curve not a SEQUENCE");
+#endif
+		return -1;
+	}
+
+	// a
+	if (!asn1Next(&children, &childrenlen, &tag, &vallen, &val)) {
+#ifdef DEBUG
+		debug("Error decoding curve parameter a");
+#endif
+		return -1;
+	}
+
+	if (tag != ASN1_OCTET_STRING) {
+#ifdef DEBUG
+		debug("parameter a not OCTET STRING");
+#endif
+		return -1;
+	}
+
+	curve->coefficientA.val = val;
+	curve->coefficientA.len = vallen;
+
+	// b
+	if (!asn1Next(&children, &childrenlen, &tag, &vallen, &val)) {
+#ifdef DEBUG
+		debug("Error decoding curve parameter b");
+#endif
+		return -1;
+	}
+
+	if (tag != ASN1_OCTET_STRING) {
+#ifdef DEBUG
+		debug("parameter b not OCTET STRING");
+#endif
+		return -1;
+	}
+
+	curve->coefficientB.val = val;
+	curve->coefficientB.len = vallen;
+
+	// base
+	if (!asn1Next(&po, &length, &tag, &vallen, &val)) {
+#ifdef DEBUG
+		debug("Error decoding base");
+#endif
+		return -1;
+	}
+
+	if ((tag != ASN1_OCTET_STRING) || (*val != 0x04)) {
+#ifdef DEBUG
+		debug("parameter base not OCTET STRING or not uncompressed format");
+#endif
+		return -1;
+	}
+
+	curve->basePointG.val = val;
+	curve->basePointG.len = vallen;
+
+	// order
+	if (!asn1Next(&po, &length, &tag, &vallen, &val)) {
+#ifdef DEBUG
+		debug("Error decoding order");
+#endif
+		return -1;
+	}
+
+	if (tag != ASN1_INTEGER) {
+#ifdef DEBUG
+		debug("parameter order not INTEGER");
+#endif
+		return -1;
+	}
+
+	if (*val == 0) {
+		val++;
+		vallen--;
+	}
+
+	curve->order.val = val;
+	curve->order.len = vallen;
+
+	// cofactor
+	if (!asn1Next(&po, &length, &tag, &vallen, &val)) {
+#ifdef DEBUG
+		debug("Error decoding cofactor");
+#endif
+		return -1;
+	}
+
+	if (tag != ASN1_INTEGER) {
+#ifdef DEBUG
+		debug("parameter cofactor not INTEGER");
+#endif
+		return -1;
+	}
+
+	if (*val == 0) {
+		val++;
+		vallen--;
+	}
+
+	curve->coFactor.val = val;
+	curve->coFactor.len = vallen;
+
+	return 0;
 }
 
 

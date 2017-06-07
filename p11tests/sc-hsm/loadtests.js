@@ -1,13 +1,13 @@
 /**
  *  ---------
  * |.##> <##.|  SmartCard-HSM Support Scripts
- * |#       #|  
+ * |#       #|
  * |#       #|  Copyright (c) 2011-2012 CardContact Software & System Consulting
  * |'##> <##'|  Andreas Schwier, 32429 Minden, Germany (www.cardcontact.de)
- *  --------- 
+ *  ---------
  *
  * Consult your license package for usage terms and conditions.
- * 
+ *
  * @fileoverview SmartCard-HSM PKCS11 Tests
  */
 
@@ -16,7 +16,8 @@ load("tools/TestGroup.js");
 load("tools/TestProcedure.js");
 
 load("tools/eccutils.js");
-// load("../ca/ca.js");
+
+X509CA = require("scsh/x509/X509CA").X509CA;
 
 
 // Define test parameter
@@ -37,6 +38,13 @@ var emailaddress = "joe.doe@openehic.org";
 
 
 
+function log(s) {
+	print(s);
+	GPSystem.trace(s);
+}
+
+
+
 //
 // Dump information about slot
 //
@@ -50,7 +58,7 @@ function dumpSlotInfo(s) {
 	print(" isTokenPresent    : " + s.isTokenPresent());
 	print(" isHardwareDevice  : " + s.isHardwareDevice());
 	print(" isRemovableDevice : " + s.isRemovableDevice());
-	
+
 	if (s.isTokenPresent()) {
 		var label = s.getTokenLabel();
 
@@ -62,7 +70,7 @@ function dumpSlotInfo(s) {
 		print("  Max PIN Length            : " + s.getTokenMaxPinLen());
 		print("  Min PIN Length            : " + s.getTokenMinPinLen());
 		print("  hasTokenProtectedAuthPath : " + s.hasTokenProtectedAuthPath());
-		
+
 		var mechs = s.getMechanisms();
 		for (var j = 0; j < mechs.length; j++) {
 			print("   Mechanisms #" + j);
@@ -103,7 +111,7 @@ function getSlot(p) {
 	var slot;
 	for (var i = 0; i < slots.length; i++) {
 		var s = slots[i];
-	
+
 		if (s.isRemovableDevice()) {
 			if (s.isTokenPresent()) {
 				return (s.getId());
@@ -117,85 +125,20 @@ function getSlot(p) {
 
 function getObjectByLabel(s, clazz, label) {
 	// Enumerate public and private objects
-	var objs = s.enumerateObjects();
-	
-//	print("Objects listed in R/O user session:");
-	for (var i = 0; i < objs.length; i++) {
-		var o = objs[i];
-		var cl = o.getNumberAttribute(PKCS11Object.CKA_CLASS);
-//		print("Class :" + str4class(cl));
-		if (cl != clazz) {
-			continue;
-		}
-		
-		var lab = o.getAttribute(PKCS11Object.CKA_LABEL);
-		if (lab != null) {
-			var labelstr = lab.toString(ASCII);
-//			print(" Label :" + labelstr);
-			if (labelstr == label) {
-				return o;
-			}
-		}
+
+	var attr = [];
+	attr[PKCS11Object.CKA_CLASS] = clazz;
+	attr[PKCS11Object.CKA_LABEL] = new ByteString(label, ASCII);
+
+	var objs = s.enumerateObjects(attr);
+
+	if (objs.length != 1) {
+		return null;
 	}
-	return null;
+
+	return objs[0];
 }
 
-
-/*
-function getPrivateKey(s, id) {
-	// Enumerate public and private objects
-	var objs = s.enumerateObjects();
-	
-//	print("Objects listed in R/O user session:");
-	for (var i = 0; i < objs.length; i++) {
-		var o = objs[i];
-		var cl = o.getNumberAttribute(PKCS11Object.CKA_CLASS);
-//		print("Class :" + str4class(cl));
-		
-		var kid = o.getAttribute(PKCS11Object.CKA_ID);
-//		if (kid != null) {
-//			print(" Id     :" + kid.toString(HEX));
-//		}
-		var label = o.getAttribute(PKCS11Object.CKA_LABEL);
-//		if (label != null) {
-//			print(" Label :" + label.toString(ASCII));
-//		}
-		if ((cl == PKCS11Object.CKO_PRIVATE_KEY) && (kid.equals(id))) {
-//			print("Matching private key: " + label.toString(UTF8));
-			return o;
-		}
-	}
-	return null;
-}
-
-
-
-function getCertificate(s, id) {
-	// Enumerate public and private objects
-	var objs = s.enumerateObjects();
-	
-//	print("Objects listed in R/O user session:");
-	for (var i = 0; i < objs.length; i++) {
-		var o = objs[i];
-		var cl = o.getNumberAttribute(PKCS11Object.CKA_CLASS);
-//		print("Class :" + str4class(cl));
-		
-		var kid = o.getAttribute(PKCS11Object.CKA_ID);
-//		if (kid != null) {
-//			print(" Id     :" + kid.toString(HEX));
-//		}
-		var label = o.getAttribute(PKCS11Object.CKA_LABEL);
-//		if (label != null) {
-//			print(" Label :" + label.toString(ASCII));
-//		}
-		if ((cl == PKCS11Object.CKO_CERTIFICATE) && (kid.equals(id))) {
-//			print("Matching certificate: " + label.toString(UTF8));
-			return o;
-		}
-	}
-	return null;
-}
-*/
 
 
 function generateRSAKeyPair(s, label, keysize) {
@@ -223,23 +166,24 @@ function generateRSAKeyPair(s, label, keysize) {
 	var pub = keys[0];
 
 	var cl = pub.getNumberAttribute(PKCS11Object.CKA_CLASS);
-	print("Class  : " + str4class(cl));
+	log("Class  : " + str4class(cl));
 
 	var kid = pub.getAttribute(PKCS11Object.CKA_ID);
-	print(" Id    : " + kid.toString(HEX));
+	log(" Id    : " + kid.toString(HEX));
 
 	var label = pub.getAttribute(PKCS11Object.CKA_LABEL);
-	print(" Label : " + label.toString(ASCII));
+	log(" Label : " + label.toString(ASCII));
 
-	var value = pub.getAttribute(PKCS11Object.CKA_VALUE);
-	print(" Value : " + value.toString(HEX));
-
-	var pk = new ASN1(value);
-	print(pk);
 	var key = new Key();
 	key.setType(Key.PUBLIC);
-	key.setComponent(Key.MODULUS, pk.get(0).value);
-	key.setComponent(Key.EXPONENT, pk.get(1).value);
+
+	var value = pub.getAttribute(PKCS11Object.CKA_MODULUS);
+	log(" Modulus : " + value.toString(HEX));
+	key.setComponent(Key.MODULUS, value);
+
+	var value = pub.getAttribute(PKCS11Object.CKA_PUBLIC_EXPONENT);
+	log(" Public Exponent : " + value.toString(HEX));
+	key.setComponent(Key.EXPONENT, value);
 	return key;
 }
 
@@ -249,7 +193,7 @@ function generateECCKeyPair(s, label, curve) {
 
 	var curveoid = new ByteString(curve, OID);
 	var curveasn = new ASN1(ASN1.OBJECT_IDENTIFIER, curveoid);
-	
+
 	var priAttr = new Array();
 	priAttr[PKCS11Object.CKA_TOKEN] = true;
 	priAttr[PKCS11Object.CKA_SIGN] = true;
@@ -268,21 +212,23 @@ function generateECCKeyPair(s, label, curve) {
 	var pub = keys[0];
 
 	var cl = pub.getNumberAttribute(PKCS11Object.CKA_CLASS);
-	print("Class  : " + str4class(cl));
+	log("Class  : " + str4class(cl));
 
 	var kid = pub.getAttribute(PKCS11Object.CKA_ID);
-	print(" Id    : " + kid.toString(HEX));
+	log(" Id    : " + kid.toString(HEX));
 
 	var label = pub.getAttribute(PKCS11Object.CKA_LABEL);
-	print(" Label : " + label.toString(ASCII));
+	log(" Label : " + label.toString(ASCII));
 
-	var value = pub.getAttribute(PKCS11Object.CKA_VALUE);
-	print(" Value : " + value.toString(HEX));
+	var point = pub.getAttribute(PKCS11Object.CKA_EC_POINT);
+	log(" Point : " + point.toString(HEX));
 
-	var pk = new ASN1(value);
-	print(pk);
-	var point = pk.value.bytes(1);
-	
+	var params = pub.getAttribute(PKCS11Object.CKA_EC_PARAMS);
+	log(" Params : " + params.toString(HEX));
+
+	var curveoid = params.bytes(2);
+	var point = (new ASN1(point)).value.bytes(1);
+
 	var key = new Key();
 	key.setType(Key.PUBLIC);
 	key.setComponent(Key.ECC_CURVE_OID, curveoid);
@@ -312,21 +258,21 @@ function issueCertificate(ca, s, cn, keysizeOrCurve, profile) {
 	var label = cn;
 	var subject = [ { C:"DE" }, { O:"CardContact" }, { OU:"CardContact Demo CA 1" }, { CN:cn } ];
 
-	print("Generating key pair for " + cn);
+	log("Generating key pair for " + cn);
 	if (typeof(keysizeOrCurve) == "string") {
 		var publicKey = generateECCKeyPair(s, label, keysizeOrCurve);
 	} else {
 		var publicKey = generateRSAKeyPair(s, label, keysizeOrCurve);
 	}
-	
+
 	if (typeof(keysizeOrCurve) == "string") {
 		publicKey.setComponent(Key.ECC_CURVE_OID, new ByteString(keysizeOrCurve, OID));
 	}
-	
+
 	var extvalues = { email : emailaddress };
-	print("Issuing certificate for " + cn);
+	log("Issuing certificate for " + cn);
 	var cert = ca.issueCertificate(publicKey, subject, profile, extvalues);
-	print(cert);
+	log(cert);
 
 	storeCertificate(s, label, cert);
 }
@@ -336,20 +282,19 @@ function issueCertificate(ca, s, cn, keysizeOrCurve, profile) {
 var testRunner = new TestRunner("SmartCard-HSM PKCS#11 Tests");
 testRunner.addTestGroupFromXML("tg_enumerate.xml", param);
 //testRunner.addTestGroupFromXML("tg_initialize.xml", param);
-//testRunner.addTestGroupFromXML("tg_generatekeys.xml", param);
-//testRunner.addTestGroupFromXML("tg_certificate.xml", param);
+testRunner.addTestGroupFromXML("tg_generatekeys.xml", param);
+testRunner.addTestGroupFromXML("tg_certificate.xml", param);
 testRunner.addTestGroupFromXML("tg_signing.xml", param);
 testRunner.addTestGroupFromXML("tg_decryption.xml", param);
 //testRunner.addTestGroupFromXML("tg_dataobjects.xml", param);
-//testRunner.addTestGroupFromXML("tg_delete.xml", param);
+testRunner.addTestGroupFromXML("tg_delete.xml", param);
 
 
 // Create and initialize simple CA
 var crypto = new Crypto();
-/*
 var ca = new X509CA(crypto);
 
-var fn = GPSystem.mapFilename("../ca/DEMO-CA.jks", GPSystem.CWD);
+var fn = GPSystem.mapFilename("scsh/x509/DEMO-CA.jks", GPSystem.SYS);
 var ks = new KeyStore("SUN", "JKS", fn, "openscdp");
 var key = new Key();
 key.setID("DEMOCA");
@@ -362,7 +307,7 @@ ca.setSignerCertificate(cert);
 
 param["ca"] = ca;
 param["crypto"] = crypto;
-*/
+
 print("Test-Suite loaded...");
 
 

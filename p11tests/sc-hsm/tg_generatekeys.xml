@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="doctg.xsl" ?>
+<testgroup
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="http://www.openscdp.org/schema/testframework-1.0.xsd"
+	id="tg_generatekey" arrayElement="testcase,function" arrayIndex="id,Name">
+	<name>Signing</name>
+	<description>
+		<p>Generate keys and store certificates.</p>
+	</description>
+	<reference>
+		<p></p>
+	</reference>
+
+<!-- Initializing the test group environment -->
+
+
+	<constructor Param="name, parameter">
+		<Script><![CDATA[
+		//Call constructor of super class TestGroup and define name of test group
+		TestGroup.call(this, name, parameter);
+		]]></Script>
+	</constructor>
+
+
+
+<!-- Setup method called before each test case is executed -->
+	<setup>
+		<Script><![CDATA[
+
+		]]></Script>
+	</setup>
+
+
+
+<!-- Teardown method called after each test case is executed -->
+	<teardown>
+		<Script><![CDATA[
+
+
+		]]></Script>
+	</teardown>
+
+
+
+	<testcase id="001_Generate_RSA1024withID">
+		<name>Generate a RSA 1024 key with id</name>
+		<description>
+			<p></p>
+		</description>
+		<requirement>
+			<p></p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p);
+
+	log("Using slot: " + slot);
+
+	// Open R/W session
+	var s = new PKCS11Session(p, slot, true);
+
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+
+	var id = new ByteString("23", HEX);
+	var priAttr = new Array();
+	priAttr[PKCS11Object.CKA_SIGN] = true;
+	priAttr[PKCS11Object.CKA_DECRYPT] = true;
+	priAttr[PKCS11Object.CKA_UNWRAP] = true;
+	priAttr[PKCS11Object.CKA_SENSITIVE] = true;
+	priAttr[PKCS11Object.CKA_ID] = id;
+	priAttr[PKCS11Object.CKA_PRIVATE] = true;
+	priAttr[PKCS11Object.CKA_TOKEN] = true;
+	priAttr[PKCS11Object.CKA_LABEL] = "GeneratedPrivateKey";
+
+	var pubAttr = new Array();
+	pubAttr[PKCS11Object.CKA_VERIFY] = true;
+	pubAttr[PKCS11Object.CKA_ENCRYPT] = true;
+	pubAttr[PKCS11Object.CKA_WRAP] = true;
+	priAttr[PKCS11Object.CKA_TOKEN] = true;
+	pubAttr[PKCS11Object.CKA_MODULUS_BITS] = 1024;
+	pubAttr[PKCS11Object.CKA_PUBLIC_EXPONENT] = new ByteString("010001", HEX);
+	pubAttr[PKCS11Object.CKA_LABEL] = "GeneratedPublicKey";
+
+	var keys = s.generateKeyPair(PKCS11Session.CKM_RSA_PKCS_KEY_PAIR_GEN, null, pubAttr, priAttr);
+
+	var pub = keys[0];
+
+	var cl = pub.getNumberAttribute(PKCS11Object.CKA_CLASS);
+	log("Class  : " + str4class(cl));
+
+	var kid = pub.getAttribute(PKCS11Object.CKA_ID);
+	log(" Id    : " + kid.toString(HEX));
+
+	var label = pub.getAttribute(PKCS11Object.CKA_LABEL);
+	log(" Label : " + label.toString(ASCII));
+
+//	var value = pub.getAttribute(PKCS11Object.CKA_VALUE);
+//	log(" Value : " + value.toString(HEX));
+
+	var msg = new ByteString("0001FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF003021300906052B0E03021A050004140A4D55A8D778E5022FAB701977C5D840BBC486D0", HEX);
+	assert(msg.length == 128);
+
+	// Test with single step C_Sign
+	s.signInit(PKCS11Session.CKM_RSA_X_509, keys[1]);
+
+	var signature = s.sign(msg);
+	log("Signature : " + signature);
+
+	keys[1].destroy();
+	keys[0].destroy();
+
+	s.close();
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="002_Generate_RSA1024withoutID">
+		<name>Generate a RSA 1024 key without id</name>
+		<description>
+			<p></p>
+		</description>
+		<requirement>
+			<p></p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p);
+
+	log("Using slot: " + slot);
+
+	// Open R/W session
+	var s = new PKCS11Session(p, slot, true);
+
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+
+	var priAttr = new Array();
+	priAttr[PKCS11Object.CKA_SIGN] = true;
+	priAttr[PKCS11Object.CKA_DECRYPT] = true;
+	priAttr[PKCS11Object.CKA_UNWRAP] = true;
+	priAttr[PKCS11Object.CKA_SENSITIVE] = true;
+	priAttr[PKCS11Object.CKA_PRIVATE] = true;
+	priAttr[PKCS11Object.CKA_TOKEN] = true;
+	priAttr[PKCS11Object.CKA_LABEL] = "GeneratedPrivateKey";
+
+	var pubAttr = new Array();
+	pubAttr[PKCS11Object.CKA_VERIFY] = true;
+	pubAttr[PKCS11Object.CKA_ENCRYPT] = true;
+	pubAttr[PKCS11Object.CKA_WRAP] = true;
+	priAttr[PKCS11Object.CKA_TOKEN] = true;
+	pubAttr[PKCS11Object.CKA_MODULUS_BITS] = 1024;
+	pubAttr[PKCS11Object.CKA_PUBLIC_EXPONENT] = new ByteString("010001", HEX);
+	pubAttr[PKCS11Object.CKA_LABEL] = "GeneratedPublicKey";
+
+	var keys = s.generateKeyPair(PKCS11Session.CKM_RSA_PKCS_KEY_PAIR_GEN, null, pubAttr, priAttr);
+
+	var pub = keys[0];
+
+	var cl = pub.getNumberAttribute(PKCS11Object.CKA_CLASS);
+	log("Class  : " + str4class(cl));
+
+	var kid = pub.getAttribute(PKCS11Object.CKA_ID);
+	log(" Id    : " + kid.toString(HEX));
+
+	var label = pub.getAttribute(PKCS11Object.CKA_LABEL);
+	log(" Label : " + label.toString(ASCII));
+
+//	var value = pub.getAttribute(PKCS11Object.CKA_VALUE);
+//	log(" Value : " + value.toString(HEX));
+
+	keys[1].destroy();
+	keys[0].destroy();
+
+	s.close();
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="003_Generate_RSA1536withoutID">
+		<name>Generate a RSA 1536 key without id</name>
+		<description>
+			<p></p>
+		</description>
+		<requirement>
+			<p></p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p);
+
+	log("Using slot: " + slot);
+
+	// Open R/W session
+	var s = new PKCS11Session(p, slot, true);
+
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+
+	var priAttr = new Array();
+	priAttr[PKCS11Object.CKA_SIGN] = true;
+	priAttr[PKCS11Object.CKA_DECRYPT] = true;
+	priAttr[PKCS11Object.CKA_UNWRAP] = true;
+	priAttr[PKCS11Object.CKA_SENSITIVE] = true;
+	priAttr[PKCS11Object.CKA_PRIVATE] = true;
+	priAttr[PKCS11Object.CKA_TOKEN] = true;
+	priAttr[PKCS11Object.CKA_LABEL] = "GeneratedPrivateKey";
+
+	var pubAttr = new Array();
+	pubAttr[PKCS11Object.CKA_VERIFY] = true;
+	pubAttr[PKCS11Object.CKA_ENCRYPT] = true;
+	pubAttr[PKCS11Object.CKA_WRAP] = true;
+	priAttr[PKCS11Object.CKA_TOKEN] = true;
+	pubAttr[PKCS11Object.CKA_MODULUS_BITS] = 1536;
+	pubAttr[PKCS11Object.CKA_PUBLIC_EXPONENT] = new ByteString("010001", HEX);
+	pubAttr[PKCS11Object.CKA_LABEL] = "GeneratedPublicKey";
+
+	var keys = s.generateKeyPair(PKCS11Session.CKM_RSA_PKCS_KEY_PAIR_GEN, null, pubAttr, priAttr);
+
+	var pub = keys[0];
+
+	var cl = pub.getNumberAttribute(PKCS11Object.CKA_CLASS);
+	log("Class  : " + str4class(cl));
+
+	var kid = pub.getAttribute(PKCS11Object.CKA_ID);
+	log(" Id    : " + kid.toString(HEX));
+
+	var label = pub.getAttribute(PKCS11Object.CKA_LABEL);
+	log(" Label : " + label.toString(ASCII));
+
+//	var value = pub.getAttribute(PKCS11Object.CKA_VALUE);
+//	log(" Value : " + value.toString(HEX));
+
+	keys[1].destroy();
+	keys[0].destroy();
+
+	s.close();
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="004_Generate_RSA2048withoutID">
+		<name>Generate a RSA 2048 key without id</name>
+		<description>
+			<p></p>
+		</description>
+		<requirement>
+			<p></p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p);
+
+	log("Using slot: " + slot);
+
+	// Open R/W session
+	var s = new PKCS11Session(p, slot, true);
+
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+
+	var priAttr = new Array();
+	priAttr[PKCS11Object.CKA_SIGN] = true;
+	priAttr[PKCS11Object.CKA_DECRYPT] = true;
+	priAttr[PKCS11Object.CKA_UNWRAP] = true;
+	priAttr[PKCS11Object.CKA_SENSITIVE] = true;
+	priAttr[PKCS11Object.CKA_PRIVATE] = true;
+	priAttr[PKCS11Object.CKA_TOKEN] = true;
+	priAttr[PKCS11Object.CKA_LABEL] = "GeneratedPrivateKey";
+
+	var pubAttr = new Array();
+	pubAttr[PKCS11Object.CKA_VERIFY] = true;
+	pubAttr[PKCS11Object.CKA_ENCRYPT] = true;
+	pubAttr[PKCS11Object.CKA_WRAP] = true;
+	priAttr[PKCS11Object.CKA_TOKEN] = true;
+	pubAttr[PKCS11Object.CKA_MODULUS_BITS] = 2048;
+	pubAttr[PKCS11Object.CKA_PUBLIC_EXPONENT] = new ByteString("010001", HEX);
+	pubAttr[PKCS11Object.CKA_LABEL] = "GeneratedPublicKey";
+
+	var keys = s.generateKeyPair(PKCS11Session.CKM_RSA_PKCS_KEY_PAIR_GEN, null, pubAttr, priAttr);
+
+	var pub = keys[0];
+
+	var cl = pub.getNumberAttribute(PKCS11Object.CKA_CLASS);
+	log("Class  : " + str4class(cl));
+
+	var kid = pub.getAttribute(PKCS11Object.CKA_ID);
+	log(" Id    : " + kid.toString(HEX));
+
+	var label = pub.getAttribute(PKCS11Object.CKA_LABEL);
+	log(" Label : " + label.toString(ASCII));
+
+//	var value = pub.getAttribute(PKCS11Object.CKA_VALUE);
+//	log(" Value : " + value.toString(HEX));
+
+	keys[1].destroy();
+	keys[0].destroy();
+
+	s.close();
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+</testgroup>
