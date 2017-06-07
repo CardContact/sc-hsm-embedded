@@ -417,6 +417,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 	struct p11Session_t *session;
 	struct p11Slot_t *slot;
 	struct p11Attribute_t *attribute;
+	struct p11Token_t *token;
 
 	FUNC_CALLED();
 
@@ -460,6 +461,20 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 		}
 	}
 
+	if (pObject->tokenObj) {
+		rv = getValidatedToken(slot, &token);
+
+		if (rv != CKR_OK) {
+			FUNC_FAILS(rv, "Could not get validated token");
+		}
+
+		rv = setTokenObjectAttributes(slot, pObject, pTemplate, ulCount);
+
+		if ((rv != CKR_OK) && (rv != CKR_FUNCTION_NOT_SUPPORTED)) {
+			FUNC_FAILS(rv, "Could not update attribute on token");
+		}
+	}
+
 	for (i = 0; i < ulCount; i++) {
 		attribute = pObject->attrList;
 
@@ -468,7 +483,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 		}
 
 		if (!attribute) {
-			FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "We do not allow manufacturer specific attributes");
+			FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "Attribute not found");
 		}
 
 		/* Check if the value of CKA_PRIVATE changes */
@@ -499,12 +514,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 
 				/* insert new private object */
 				addObject(slot->token, tmp, FALSE);
-
-				rv = synchronizeToken(slot, slot->token);
-
-				if (rv < 0) {
-					FUNC_RETURNS(rv);
-				}
 			}
 		} else {
 			if (pTemplate[i].ulValueLen > attribute->attrData.ulValueLen) {
@@ -516,13 +525,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 			memcpy(attribute->attrData.pValue, pTemplate[i].pValue, pTemplate[i].ulValueLen);
 
 			pObject->dirtyFlag = 1;
-
-			rv = synchronizeToken(slot, slot->token);
-
-			if (rv < 0) {
-				FUNC_RETURNS(rv);
-			}
 		}
+	}
+
+	rv = synchronizeToken(slot, slot->token);
+
+	if (rv != CKR_OK) {
+		FUNC_FAILS(rv, "Synchronizing token failed");
 	}
 
 	FUNC_RETURNS(rv);

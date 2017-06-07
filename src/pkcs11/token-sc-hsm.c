@@ -1022,6 +1022,7 @@ static int sc_hsm_C_CreateObject(
 	int pos, rc, vallen, idlen;
 	unsigned short fid, certfid;
 	CK_CERTIFICATE_TYPE ct;
+	CK_ATTRIBUTE idattr = { CKA_ID, NULL, 0 };
 	unsigned char *val, *po, *id;
 	struct p11Object_t *p11Key, *p11o;
 	struct p15CertificateDescription *p15cert;
@@ -1144,6 +1145,14 @@ static int sc_hsm_C_CreateObject(
 	if (rc != CKR_OK) {
 		free(p11o);
 		FUNC_FAILS(rc, "Could not create certificate object");
+	}
+
+	if ((id == NULL) && (p11Key == NULL)) {		// CA certificate without CKA_ID
+		buff[0] = certfid >> 8;
+		buff[1] = certfid & 0XFF;
+		idattr.pValue = buff;
+		idattr.ulValueLen = 2;
+		addAttribute(p11o, &idattr);
 	}
 
 	p11o->tokenid = (int)certfid;
@@ -1298,6 +1307,157 @@ static int sc_hsm_C_GenerateKeyPair(
 	*phPrivateKey = priKey;
 
 	FUNC_RETURNS(rc);
+}
+
+
+
+static int sc_hsm_C_SetAttributeValue(struct p11Slot_t *slot, struct p11Object_t *pObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount)
+{
+	struct p11Attribute_t *attribute;
+	unsigned char desc[MAX_P15_SIZE];
+	struct bytebuffer_s bb = { desc, 0, sizeof(desc) };
+	unsigned short fid;
+	struct p15PrivateKeyDescription *p15key = NULL;
+	struct p15CertificateDescription *p15cert = NULL;
+	struct p11Object_t *p11;
+	int rc, i;
+
+	FUNC_CALLED();
+
+	rc = findAttribute(pObject, CKA_CLASS, &attribute);
+	if (rc < 0)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Attribute CKA_CLASS not found. Data corrupted");
+
+
+	switch(*(CK_OBJECT_CLASS *)attribute->attrData.pValue) {
+	case CKO_PRIVATE_KEY:
+		fid = (PRKD_PREFIX << 8) | pObject->tokenid;
+
+		rc = readEF(slot, fid, desc, sizeof(desc));
+
+		if (rc < 0) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading private key description");
+		}
+
+		rc = decodePrivateKeyDescription(desc, rc, &p15key);
+
+		if (rc < 0) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Error decoding private key description");
+		}
+
+		for (i = 0; i < ulCount; i++) {
+			switch(pTemplate[i].type) {
+			case CKA_ID:
+				rc = findMatchingTokenObjectById(slot->token, CKO_PRIVATE_KEY, pTemplate[i].pValue, pTemplate[i].ulValueLen, &p11);
+				if ((rc == CKR_OK) && (p11 != pObject)) {
+					freePrivateKeyDescription(&p15key);
+					FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_ID does already exist");
+				}
+
+				if (p15key->id.val) {
+					free(p15key->id.val);
+				}
+				p15key->id.val = calloc(1, pTemplate[i].ulValueLen);
+				if (p15key->id.val == NULL) {
+					freePrivateKeyDescription(&p15key);
+					FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+				}
+				memcpy(p15key->id.val, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+				p15key->id.len = pTemplate[i].ulValueLen;
+				break;
+			case CKA_LABEL:
+				if (p15key->coa.label) {
+					free(p15key->coa.label);
+				}
+				p15key->coa.label = calloc(1, pTemplate[i].ulValueLen + 1);
+				if (p15key->coa.label == NULL) {
+					freePrivateKeyDescription(&p15key);
+					FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+				}
+				memcpy(p15key->coa.label, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+				break;
+			}
+		}
+
+		rc = encodePrivateKeyDescription(&bb, p15key);
+
+		freePrivateKeyDescription(&p15key);
+
+		if (rc < 0)
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Encoding PRKD failed");
+
+		rc = writeEF(slot, fid, bb.val, bb.len);
+
+		if (rc < 0)
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Writing PRKD failed");
+
+		break;
+	case CKO_CERTIFICATE:
+		if (pObject->tokenid >= 0x100) {
+			fid = (CD_PREFIX << 8) | (pObject->tokenid & 0xFF);
+
+			rc = readEF(slot, fid, desc, sizeof(desc));
+
+			if (rc < 0) {
+				FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate description");
+			}
+
+			rc = decodeCertificateDescription(desc, rc, &p15cert);
+
+			if (rc < 0) {
+				FUNC_FAILS(CKR_DEVICE_ERROR, "Error decoding certificate description");
+			}
+
+			for (i = 0; i < ulCount; i++) {
+				switch(pTemplate[i].type) {
+				case CKA_ID:
+					rc = findMatchingTokenObjectById(slot->token, CKO_CERTIFICATE, pTemplate[i].pValue, pTemplate[i].ulValueLen, &p11);
+					if ((rc == CKR_OK) && (p11 != pObject)) {
+						freeCertificateDescription(&p15cert);
+						FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_ID does already exist");
+					}
+
+					if (p15cert->id.val) {
+						free(p15cert->id.val);
+					}
+					p15cert->id.val = calloc(1, pTemplate[i].ulValueLen);
+					if (p15cert->id.val == NULL) {
+						freeCertificateDescription(&p15cert);
+						FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+					}
+					memcpy(p15cert->id.val, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+					p15cert->id.len = pTemplate[i].ulValueLen;
+					break;
+				case CKA_LABEL:
+					if (p15cert->coa.label) {
+						free(p15cert->coa.label);
+					}
+					p15cert->coa.label = calloc(1, pTemplate[i].ulValueLen + 1);
+					if (p15cert->coa.label == NULL) {
+						freeCertificateDescription(&p15cert);
+						FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+					}
+					memcpy(p15cert->coa.label, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+					break;
+				}
+			}
+
+			rc = encodeCertificateDescription(&bb, p15cert);
+
+			freeCertificateDescription(&p15cert);
+
+			if (rc < 0)
+				FUNC_FAILS(CKR_DEVICE_ERROR, "Encoding CD failed");
+
+			rc = writeEF(slot, fid, bb.val, bb.len);
+
+			if (rc < 0)
+				FUNC_FAILS(CKR_DEVICE_ERROR, "Writing CD failed");
+		}
+		break;
+	}
+
+	FUNC_RETURNS(CKR_OK);
 }
 
 
@@ -1895,8 +2055,8 @@ struct p11TokenDriver *getSmartCardHSMTokenDriver()
 
 		sc_hsm_C_GenerateKeyPair,	// int (*C_GenerateKeyPair)  (struct p11Slot_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG, struct p11Object_t **, struct p11Object_t **);
 		sc_hsm_C_CreateObject,		// int (*C_CreateObject)     (struct p11Slot_t *, CK_ATTRIBUTE_PTR, CK_ULONG ulCount, struct p11Object_t **);
-
 		sc_hsm_destroyObject,		// int (*destroyObject)       (struct p11Slot_t *, struct p11Object_t *);
+		sc_hsm_C_SetAttributeValue,	// int (*C_SetAttributeValue)(struct p11Slot_t *, struct p11Object_t *, CK_ATTRIBUTE_PTR, CK_ULONG);
 		sc_hsm_C_GenerateRandom		// int (*C_GenerateRandom)   (struct p11Slot_t *, CK_BYTE_PTR , CK_ULONG );
 	};
 

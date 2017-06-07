@@ -438,7 +438,26 @@ int generateTokenRandom(struct p11Slot_t *slot,
 		return CKR_FUNCTION_NOT_SUPPORTED;
 	}
 	return slot->token->drv->C_GenerateRandom(slot, pRandomData, ulRandomLen);
+}
 
+
+
+/**
+ * Update attribute for token object
+ *
+ * @param slot                          The slot in which the token is inserted
+ * @param object                        The token object to be updates
+ * @param pTemplate                     The list of attributes to update
+ * @param ulCount                       The number of attributes to update
+ *
+ * @return          CKR_OK or any other Cryptoki error code
+ */
+int setTokenObjectAttributes(struct p11Slot_t *slot, struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount)
+{
+	if (slot->token->drv->C_SetAttributeValue == NULL) {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+	return slot->token->drv->C_SetAttributeValue(slot, object, pTemplate, ulCount);
 }
 
 

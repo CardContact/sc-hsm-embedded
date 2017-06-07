@@ -1491,6 +1491,7 @@ struct p11TokenDriver *getStarcosTokenDriver()
 		NULL,				// int (*C_CreateObject)     (struct p11Slot_t *, CK_ATTRIBUTE_PTR, CK_ULONG ulCount, struct p11Object_t **);
 
 		NULL,				// int (*destroyObject)       (struct p11Slot_t *, struct p11Object_t *);
+		NULL,				// int (*C_SetAttributeValue)(struct p11Slot_t *, struct p11Object_t *, CK_ATTRIBUTE_PTR, CK_ULONG);
 		starcos_C_GenerateRandom	// int (*C_GenerateRandom)   (struct p11Slot_t *, CK_BYTE_PTR , CK_ULONG );
 	};
 

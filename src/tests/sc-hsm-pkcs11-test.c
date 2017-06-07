@@ -1114,6 +1114,10 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 			{ CKA_ID, id, sizeof(id) }
 	};
 	int certAttributes = 5;
+	CK_ATTRIBUTE changeTemplate[2] = {
+			{ CKA_LABEL, &label, strlen((char *)label) },
+			{ CKA_ID, id, sizeof(id) }
+	};
 	CK_OBJECT_HANDLE hndPrivateKey, hndPublicKey, hndCert, hndCACert, hndRSAPrivateKey, hndRSAPublicKey;
 	CK_MECHANISM mech_genecc = { CKM_EC_KEY_PAIR_GEN, 0, 0 };
 	CK_MECHANISM mech_genrsa = { CKM_RSA_PKCS_KEY_PAIR_GEN, 0, 0 };
@@ -1252,6 +1256,24 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		printf("Public Key:\n");
 		dumpObject(p11, session, hndRSAPublicKey);
 	}
+
+	printf("Calling C_SetAttributeValue(Label, ID) ");
+	changeTemplate[0].pValue = "New Label";
+	changeTemplate[0].ulValueLen = strlen(changeTemplate[0].pValue);
+
+	changeTemplate[1].pValue = "\xCA\xFF\xEE";
+	changeTemplate[1].ulValueLen = 3;
+
+	rc = p11->C_SetAttributeValue(session, hndRSAPrivateKey, changeTemplate, 2);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+
+	printf("Calling C_SetAttributeValue(Label, ID) ");
+	changeTemplate[0].pValue = "New Certificate Label";
+	changeTemplate[0].ulValueLen = strlen(changeTemplate[0].pValue);
+
+	rc = p11->C_SetAttributeValue(session, hndCACert, changeTemplate, 1);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 
 	printf("Calling C_DestroyObject(CACert) ");
