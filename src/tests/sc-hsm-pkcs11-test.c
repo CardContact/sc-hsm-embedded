@@ -1060,6 +1060,24 @@ void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 
 
+void testRandom(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
+{
+	int rc;
+	CK_BYTE scr[4096];
+
+	printf("Calling C_GenerateRandom(1) ");
+	rc = p11->C_GenerateRandom(session, scr, 1);
+
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_GenerateRandom(4096) ");
+	rc = p11->C_GenerateRandom(session, scr, 4096);
+
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+}
+
+
+
 void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
 	int rc;
@@ -2042,7 +2060,11 @@ int main(int argc, char *argv[])
 				memset(attr, 0, sizeof(attr));
 				listObjects(p11, session, attr, 0);
 
-				testKeyGeneration(p11, session);
+				testRandom(p11, session);
+
+				if (strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
+					testKeyGeneration(p11, session);
+				}
 
 				testRSASigning(p11, slotid, 0);
 

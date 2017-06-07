@@ -593,6 +593,38 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 
 
 
+static int sc_hsm_C_GenerateRandom(struct p11Slot_t *slot, CK_BYTE_PTR rnd, CK_ULONG rndlen)
+{
+	unsigned short SW1SW2;
+	int maxblk, rc;
+
+	FUNC_CALLED();
+
+	maxblk = 1024;			// Maximum block size
+	while (rndlen > 0) {
+		if (rndlen < maxblk) {
+			maxblk = rndlen;
+		}
+		rc = transmitAPDU(slot, 0x00, 0x84, 0x00, 0x00,
+				0, NULL,
+				maxblk, rnd, rndlen, &SW1SW2);
+
+		if (rc < 0) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+		}
+
+		if (SW1SW2 != 0x9000) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "device reported error");
+		}
+		rndlen -= rc;
+		rnd += rc;
+	}
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
 static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pPublicKeyTemplate, CK_ULONG ulPublicKeyAttributeCount, int *keysize)
 {
 	int rc,pos;
@@ -1864,7 +1896,8 @@ struct p11TokenDriver *getSmartCardHSMTokenDriver()
 		sc_hsm_C_GenerateKeyPair,	// int (*C_GenerateKeyPair)  (struct p11Slot_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG, struct p11Object_t **, struct p11Object_t **);
 		sc_hsm_C_CreateObject,		// int (*C_CreateObject)     (struct p11Slot_t *, CK_ATTRIBUTE_PTR, CK_ULONG ulCount, struct p11Object_t **);
 
-		sc_hsm_destroyObject		// int (*destroyObject)       (struct p11Slot_t *, struct p11Object_t *);
+		sc_hsm_destroyObject,		// int (*destroyObject)       (struct p11Slot_t *, struct p11Object_t *);
+		sc_hsm_C_GenerateRandom		// int (*C_GenerateRandom)   (struct p11Slot_t *, CK_BYTE_PTR , CK_ULONG );
 	};
 
 	return &sc_hsm_token;

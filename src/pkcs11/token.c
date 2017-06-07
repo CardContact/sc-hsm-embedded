@@ -422,6 +422,28 @@ int generateTokenKeypair(struct p11Slot_t *slot,
 
 
 /**
+ * Create random data using token
+ *
+ * @param slot                          The slot in which the token is inserted
+ * @param pRandomData                   The buffer receiving random data
+ * @param ulRandomLen                   The requested number of random bytes
+ *
+ * @return          CKR_OK or any other Cryptoki error code
+ */
+int generateTokenRandom(struct p11Slot_t *slot,
+		CK_BYTE_PTR pRandomData,
+		CK_ULONG ulRandomLen)
+{
+	if (slot->token->drv->C_GenerateRandom == NULL) {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+	return slot->token->drv->C_GenerateRandom(slot, pRandomData, ulRandomLen);
+
+}
+
+
+
+/**
  * Synchronize a token objects that have been changed (e.g. have the dirty flag set)
  *
  * @param slot      The slot in which the token is inserted

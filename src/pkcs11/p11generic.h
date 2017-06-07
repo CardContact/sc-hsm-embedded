@@ -202,6 +202,8 @@ struct p11TokenDriver {
 	int (*C_CreateObject)     (struct p11Slot_t *, CK_ATTRIBUTE_PTR, CK_ULONG ulCount, struct p11Object_t **);
 	int (*destroyObject)      (struct p11Slot_t *, struct p11Object_t *);
 
+	int (*C_GenerateRandom)   (struct p11Slot_t *, CK_BYTE_PTR , CK_ULONG );
+
 };
 
 

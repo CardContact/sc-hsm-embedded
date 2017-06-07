@@ -832,6 +832,38 @@ static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech
 
 
 
+static int starcos_C_GenerateRandom(struct p11Slot_t *slot, CK_BYTE_PTR rnd, CK_ULONG rndlen)
+{
+	unsigned short SW1SW2;
+	int maxblk, rc;
+
+	FUNC_CALLED();
+
+	maxblk = 1024;			// Maximum block size
+	while (rndlen > 0) {
+		if (rndlen < maxblk) {
+			maxblk = rndlen;
+		}
+		rc = transmitAPDU(slot, 0x00, 0x84, 0x00, 0x00,
+				0, NULL,
+				maxblk, rnd, rndlen, &SW1SW2);
+
+		if (rc < 0) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+		}
+
+		if (SW1SW2 != 0x9000) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "device reported error");
+		}
+		rndlen -= rc;
+		rnd += rc;
+	}
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
 int starcosAddCertificateObject(struct p11Token_t *token, struct p15CertificateDescription *p15)
 {
 	unsigned char certValue[MAX_CERTIFICATE_SIZE];
@@ -1458,7 +1490,8 @@ struct p11TokenDriver *getStarcosTokenDriver()
 		NULL,				// int (*C_GenerateKeyPair)  (struct p11Slot_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG, struct p11Object_t **, struct p11Object_t **);
 		NULL,				// int (*C_CreateObject)     (struct p11Slot_t *, CK_ATTRIBUTE_PTR, CK_ULONG ulCount, struct p11Object_t **);
 
-		NULL				// int (*destroyObject)       (struct p11Slot_t *, struct p11Object_t *);
+		NULL,				// int (*destroyObject)       (struct p11Slot_t *, struct p11Object_t *);
+		starcos_C_GenerateRandom	// int (*C_GenerateRandom)   (struct p11Slot_t *, CK_BYTE_PTR , CK_ULONG );
 	};
 
 

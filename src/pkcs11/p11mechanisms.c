@@ -1373,12 +1373,48 @@ CK_DECLARE_FUNCTION(CK_RV, C_GenerateRandom)(
 		CK_ULONG ulRandomLen
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	struct p11Slot_t *slot;
+	struct p11Session_t *pSession;
+	struct p11Token_t *token;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	if (!isValidPtr(pRandomData)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	rv = findSlot(&context->slotPool, pSession->slotID, &slot);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	rv = getValidatedToken(slot, &token);
+
+	if (rv != CKR_OK) {
+		return rv;
+	}
+
+	rv = generateTokenRandom(slot, pRandomData, ulRandomLen);
+
+	if (rv == CKR_DEVICE_ERROR) {
+		rv = handleDeviceError(hSession);
+		FUNC_FAILS(rv, "Device error reported");
+	}
+
+	if (rv != CKR_OK) {
+		FUNC_FAILS(rv, "Generating random on token failed");
 	}
 
 	FUNC_RETURNS(rv);
