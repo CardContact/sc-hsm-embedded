@@ -441,6 +441,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_SetAttributeValue)(
 		FUNC_RETURNS(rv);
 	}
 
+#ifdef DEBUG
+	debug("Template\n");
+	dumpAttributes(pTemplate, ulCount);
+#endif
+
 	rv = findSessionObject(session, hObject, &pObject);
 
 	/* only session objects can be modified without user authentication */

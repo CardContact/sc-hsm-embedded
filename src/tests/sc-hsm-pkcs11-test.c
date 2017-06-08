@@ -1123,13 +1123,13 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	CK_MECHANISM mech_genrsa = { CKM_RSA_PKCS_KEY_PAIR_GEN, 0, 0 };
 	CK_BYTE publicExponent[] = { 0x01, 0x00, 0x01 };
 	CK_ULONG keysize = 1024;
+	CK_BYTE innerCAR[] = { 'D','E','T','E','S','T','0','0','0','0','0' };
 	unsigned char *po, *val;
 	int tag, len, vlen;
 
 	publicKeyTemplate[publicKeyAttributes].type = CKA_EC_PARAMS;
 	publicKeyTemplate[publicKeyAttributes].pValue = "\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07";
 	publicKeyTemplate[publicKeyAttributes].ulValueLen = 10;
-	publicKeyTemplate[publicKeyAttributes].type = CKA_EC_PARAMS;
 	publicKeyAttributes++;
 
 	privateKeyTemplate[privateKeyAttributes].type = CKA_SIGN;
@@ -1229,6 +1229,11 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	publicKeyTemplate[publicKeyAttributes].type = CKA_PUBLIC_EXPONENT;
 	publicKeyTemplate[publicKeyAttributes].pValue = publicExponent;
 	publicKeyTemplate[publicKeyAttributes].ulValueLen = sizeof(publicExponent);
+	publicKeyAttributes++;
+
+	publicKeyTemplate[publicKeyAttributes].type = CKA_CVC_INNER_CAR;
+	publicKeyTemplate[publicKeyAttributes].pValue = innerCAR;
+	publicKeyTemplate[publicKeyAttributes].ulValueLen = sizeof(innerCAR);
 	publicKeyAttributes++;
 
 	privateKeyAttributes = 5;
