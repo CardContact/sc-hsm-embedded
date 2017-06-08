@@ -1,7 +1,7 @@
 sc-hsm-embedded PKCS#11 Module
 ==============================
 
-Light-weight, read-only PKCS#11 library for using the SmartCard-HSM in embedded systems.
+Light-weight PKCS#11 library for using the SmartCard-HSM in embedded systems.
 
 The module also supports various signature cards commonly used in Germany.
 
@@ -14,7 +14,8 @@ attached card readers and token, the smaller Card Terminal API (CT-API) can be u
 Supported Hardware
 ------------------
 The module can be compiled for Linux and Windows. It supports the SmartCard-HSM USB-stick
-and SmartCard-HSM cards inserted into an Identive SCR 3310 reader.
+and SmartCard-HSM cards inserted into an Identive SCR 3310 reader. When using the PC/SC interface
+any compliant reader can be used.
 
 The ctccid module uses standard functions from the CCID specification, so the driver may work
 with other CCID compliant readers as well. However, the only reader used during tests is
@@ -26,7 +27,12 @@ https://github.com/CardContact/sc-hsm-embedded/wiki
 
 Installation (Linux)
 --------------------
-Download source and run configure, make, make install.
+Download source and run 
+
+* autoreconf -fi
+* configure
+* make
+* make install
 
 Installation (Windows)
 ----------------------
