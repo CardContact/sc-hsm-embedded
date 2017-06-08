@@ -1414,7 +1414,7 @@ void testTransportPIN(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_SetPIN User ");
-	rc = p11->C_SetPIN(session, (CK_UTF8CHAR_PTR)"12345", 5, (CK_UTF8CHAR_PTR)pin, pinlen);
+	rc = p11->C_SetPIN(session, (CK_UTF8CHAR_PTR)"835212", 6, (CK_UTF8CHAR_PTR)pin, pinlen);
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_CloseSession ");
@@ -2052,11 +2052,12 @@ int main(int argc, char *argv[])
 				if (*optTokenFilter && strncmp(optTokenFilter, (const char *)tokeninfo.label, strlen(optTokenFilter)))
 					continue;
 
-#if 0
-				if (tokeninfo.flags & CKF_USER_PIN_TO_BE_CHANGED) {
-					testTransportPIN(p11, slotid);
+
+				if (strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
+					if (tokeninfo.flags & CKF_USER_PIN_TO_BE_CHANGED) {
+						testTransportPIN(p11, slotid);
+					}
 				}
-#endif
 
 				if (optUnlockPIN) {
 					unlockPIN(p11, slotid);

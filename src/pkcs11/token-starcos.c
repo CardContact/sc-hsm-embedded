@@ -1321,7 +1321,7 @@ int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct
 	ptoken->info.firmwareVersion.major = 3;
 	ptoken->info.firmwareVersion.minor = drv->version;
 
-	ptoken->info.flags = CKF_WRITE_PROTECTED;
+	ptoken->info.flags = CKF_WRITE_PROTECTED|CKF_RNG;
 	ptoken->user = INT_CKU_NO_USER;
 	ptoken->drv = drv;
 

@@ -230,7 +230,7 @@ int createPublicKeyObjectFromCVC(struct p15PrivateKeyDescription *p15, unsigned 
 	rc = cvcDecode(cert, certlen, &cvc);
 
 	if (rc < 0) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not CVC request");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not decode CVC request");
 	}
 
 	template[12].pValue = cert;

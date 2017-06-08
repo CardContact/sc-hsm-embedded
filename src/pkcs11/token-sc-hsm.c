@@ -102,13 +102,13 @@ static int isCandidate(unsigned char *atr, size_t atrLen)
 
 
 
-static int checkPINStatus(struct p11Slot_t *slot)
+static int checkPINStatus(struct p11Slot_t *slot, unsigned char ref)
 {
 	int rc;
 	unsigned short SW1SW2;
 	FUNC_CALLED();
 
-	rc = transmitAPDU(slot, 0x00, 0x20, 0x00, 0x81,
+	rc = transmitAPDU(slot, 0x00, 0x20, 0x00, ref,
 			0, NULL,
 			0, NULL, 0, &SW1SW2);
 
@@ -121,15 +121,16 @@ static int checkPINStatus(struct p11Slot_t *slot)
 
 
 
-static int selectApplet(struct p11Slot_t *slot)
+static int selectApplet(struct p11Slot_t *slot, unsigned char *tag85, size_t *tag85len)
 {
 	int rc;
 	unsigned short SW1SW2;
+	unsigned char scr[256], *po;
 	FUNC_CALLED();
 
-	rc = transmitAPDU(slot, 0x00, 0xA4, 0x04, 0x0C,
+	rc = transmitAPDU(slot, 0x00, 0xA4, 0x04, 0x04,
 			sizeof(aid), aid,
-			0, NULL, 0, &SW1SW2);
+			0, scr, sizeof(scr), &SW1SW2);
 
 	if (rc < 0) {
 		FUNC_FAILS(rc, "transmitAPDU failed");
@@ -137,6 +138,14 @@ static int selectApplet(struct p11Slot_t *slot)
 
 	if (SW1SW2 != 0x9000) {
 		FUNC_FAILS(-1, "Token is not a SmartCard-HSM");
+	}
+
+	if (tag85 != NULL) {
+		po = asn1Find(scr, (unsigned char*)"\x62\x85", 2);
+		if ((po != NULL) && (*(po + 1) <= *tag85len)) {
+			*tag85len = *(po + 1);
+			memcpy(tag85, po + 2, *tag85len);
+		}
 	}
 
 	FUNC_RETURNS(CKR_OK);
@@ -750,6 +759,38 @@ static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_P
 	}
 
 	*keysize = (int)keybits;
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+static int decodeDevAutCert(struct p11Token_t *token)
+{
+	int rc, len;
+	unsigned char cert[MAX_CERTIFICATE_SIZE];
+	struct cvc cvc;
+
+	FUNC_CALLED();
+
+	rc = readEF(token->slot, 0x2F02, cert, sizeof(cert));
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading C.DevAut");
+	}
+
+	rc = cvcDecode(cert, rc, &cvc);
+
+	if (rc < 0) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not decode CVC request");
+	}
+
+	memset(token->info.serialNumber, ' ', sizeof(token->info.serialNumber));
+	len = cvc.chr.len - 5;
+	if (len > sizeof(token->info.serialNumber))
+		len = sizeof(token->info.serialNumber);
+
+	memcpy(token->info.serialNumber, cvc.chr.val, len);
+
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -1564,10 +1605,10 @@ static int updatePinStatus(struct p11Token_t *token, int pinstatus)
 {
 	int rc = CKR_OK;
 
-	token->info.flags &= ~(CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED | CKF_USER_PIN_FINAL_TRY | CKF_USER_PIN_LOCKED | CKF_USER_PIN_COUNT_LOW);
+	token->info.flags &= ~(CKF_USER_PIN_INITIALIZED | CKF_USER_PIN_FINAL_TRY | CKF_USER_PIN_LOCKED | CKF_USER_PIN_COUNT_LOW);
 
-	if (pinstatus != 0x6984) {
-		token->info.flags |= CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED;
+	if (pinstatus != 0x6A88) {
+		token->info.flags |= CKF_USER_PIN_INITIALIZED;
 	}
 
 	switch(pinstatus) {
@@ -1575,6 +1616,7 @@ static int updatePinStatus(struct p11Token_t *token, int pinstatus)
 		rc = CKR_OK;
 		break;
 	case 0x6984:
+		token->info.flags |= CKF_USER_PIN_TO_BE_CHANGED;
 		rc = CKR_USER_PIN_NOT_INITIALIZED;
 		break;
 	case 0x6983:
@@ -1588,6 +1630,9 @@ static int updatePinStatus(struct p11Token_t *token, int pinstatus)
 	case 0x63C2:
 		token->info.flags |= CKF_USER_PIN_COUNT_LOW;
 		rc = CKR_PIN_INCORRECT;
+		break;
+	case 0x6A80:
+		rc = CKR_PIN_LEN_RANGE;
 		break;
 	default:
 		rc = CKR_PIN_INCORRECT;
@@ -1706,12 +1751,12 @@ static int sc_hsm_logout(struct p11Slot_t *slot)
 	sc = getPrivateData(slot->token);
 	memset(sc->sopin, 0, sizeof(sc->sopin));
 
-	rc = selectApplet(slot);
+	rc = selectApplet(slot, NULL, NULL);
 	if (rc < 0) {
 		FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "applet selection failed");
 	}
 
-	rc = checkPINStatus(slot);
+	rc = checkPINStatus(slot, 0x81);
 	if (rc < 0) {
 		FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "checkPINStatus failed");
 	}
@@ -1764,7 +1809,7 @@ static int sc_hsm_initpin(struct p11Slot_t *slot, unsigned char *pin, int pinlen
 		FUNC_FAILS(CKR_PIN_INCORRECT, "Invalid SO-PIN");
 	}
 
-	rc = checkPINStatus(slot);
+	rc = checkPINStatus(slot, 0x81);
 
 	if (rc < 0) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
@@ -1865,27 +1910,42 @@ struct p11TokenDriver *getSmartCardHSMTokenDriver();
 int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 {
 	struct p11Token_t *ptoken;
-	int rc, pinstatus;
+	int rc, pinstatus, isinitialized;
+	size_t tag85len;
+	unsigned char tag85[10];
 
 	FUNC_CALLED();
 
-	rc = checkPINStatus(slot);
+	rc = checkPINStatus(slot, 0x81);
 	if (rc < 0) {
 		FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "checkPINStatus failed");
 	}
 
+	tag85len = 0;
 	if (rc != 0x9000) {
-		rc = selectApplet(slot);
+		tag85len = sizeof(tag85);
+		rc = selectApplet(slot, tag85, &tag85len);
+
 		if (rc < 0) {
 			FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "applet selection failed");
 		}
 
-		rc = checkPINStatus(slot);
+		rc = checkPINStatus(slot, 0x81);
 		if (rc < 0) {
 			FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "checkPINStatus failed");
 		}
 	}
 	pinstatus = rc;
+
+	isinitialized = 1;
+	if ((pinstatus == 0x6984) || (pinstatus == 0x6A88)) {
+		rc = checkPINStatus(slot, 0x88);
+		if (rc < 0) {
+			FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "checkPINStatus failed");
+		}
+		if (rc == 0x6A88)
+			isinitialized = 0;
+	}
 
 	rc = allocateToken(&ptoken, sizeof(struct token_sc_hsm));
 	if (rc != CKR_OK)
@@ -1906,7 +1966,16 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	ptoken->info.ulMaxRwSessionCount = CK_EFFECTIVELY_INFINITE;
 	ptoken->info.ulSessionCount = CK_UNAVAILABLE_INFORMATION;
 
-	ptoken->info.flags = CKF_LOGIN_REQUIRED;
+	if (tag85len > 0) {
+		ptoken->info.firmwareVersion.major = tag85[tag85len - 2];
+		ptoken->info.firmwareVersion.minor = tag85[tag85len - 1];
+
+		if (tag85len > 0) {
+			ptoken->info.hardwareVersion.major = tag85[tag85len - 3];
+		}
+	}
+
+	ptoken->info.flags = CKF_LOGIN_REQUIRED|CKF_RNG;
 
 	if (slot->hasFeatureVerifyPINDirect)
 		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
@@ -1915,6 +1984,16 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	ptoken->drv = getSmartCardHSMTokenDriver();
 
 	updatePinStatus(ptoken, pinstatus);
+
+	if (isinitialized) {
+		ptoken->info.flags |= CKF_TOKEN_INITIALIZED;
+	}
+
+	rc = decodeDevAutCert(ptoken);
+	if (rc != CKR_OK) {
+		freeToken(ptoken);
+		FUNC_FAILS(rc, "addToken() failed");
+	}
 
 	rc = sc_hsm_loadObjects(ptoken);
 	if (rc != CKR_OK) {

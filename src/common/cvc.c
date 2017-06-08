@@ -36,8 +36,7 @@
 
 
 #ifdef DEBUG
-#include <stdio.h>
-#define debug(arg) printf(arg);
+extern void debug(char *, ...);
 #endif
 
 
@@ -497,33 +496,40 @@ int cvcDecode(unsigned char *cert, size_t certlen, struct cvc *cvc)
 		return -1;
 	}
 
-	if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->primeOrModulus.len, &cvc->primeOrModulus.val) || (tag != 0x81)) {
-		return -1;
-	}
-
-	if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->coefficientAorExponent.len, &cvc->coefficientAorExponent.val) || (tag != 0x82)) {
-		return -1;
-	}
-
-	if (rlen > 0) {
-		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->coefficientB.len, &cvc->coefficientB.val) || (tag != 0x83)) {
-			return -1;
-		}
-
-		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->basePointG.len, &cvc->basePointG.val) || (tag != 0x84)) {
-			return -1;
-		}
-
-		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->order.len, &cvc->order.val) || (tag != 0x85)) {
-			return -1;
-		}
-
+	ppo = po;
+	if ((rlen > 0) && (asn1Tag(&ppo) == 0x86)) {
 		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->publicPoint.len, &cvc->publicPoint.val) || (tag != 0x86)) {
 			return -1;
 		}
-
-		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->cofactor.len, &cvc->cofactor.val) || (tag != 0x87)) {
+	} else {
+		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->primeOrModulus.len, &cvc->primeOrModulus.val) || (tag != 0x81)) {
 			return -1;
+		}
+
+		if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->coefficientAorExponent.len, &cvc->coefficientAorExponent.val) || (tag != 0x82)) {
+			return -1;
+		}
+
+		if (rlen > 0) {
+			if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->coefficientB.len, &cvc->coefficientB.val) || (tag != 0x83)) {
+				return -1;
+			}
+
+			if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->basePointG.len, &cvc->basePointG.val) || (tag != 0x84)) {
+				return -1;
+			}
+
+			if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->order.len, &cvc->order.val) || (tag != 0x85)) {
+				return -1;
+			}
+
+			if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->publicPoint.len, &cvc->publicPoint.val) || (tag != 0x86)) {
+				return -1;
+			}
+
+			if (!asn1Next(&po, &rlen, &tag, (int *)&cvc->cofactor.len, &cvc->cofactor.val) || (tag != 0x87)) {
+				return -1;
+			}
 		}
 	}
 
