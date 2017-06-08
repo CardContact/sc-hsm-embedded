@@ -764,6 +764,42 @@ static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_P
 
 
 
+static int decodeLabel(struct p11Token_t *token)
+{
+	int rc, len;
+	unsigned char ciainfo[256], *po;
+
+	FUNC_CALLED();
+
+	rc = readEF(token->slot, 0x2F03, ciainfo, sizeof(ciainfo));
+
+	if (rc < 0)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading CIAInfo");
+
+	rc = asn1Validate(ciainfo, rc);
+
+	if (rc < 0)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not decode CVC request");
+
+	po = asn1Find(ciainfo, (unsigned char *)"\x30\x80", 2);
+
+	if (po == NULL)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "label not found");
+
+	memset(token->info.label, ' ', sizeof(token->info.label));
+	asn1Tag(&po);
+	len = asn1Length(&po);
+
+	if (len > sizeof(token->info.label))
+		len = sizeof(token->info.label);
+
+	memcpy(token->info.label, po, len);
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
 static int decodeDevAutCert(struct p11Token_t *token)
 {
 	int rc, len;
@@ -1988,6 +2024,8 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	if (isinitialized) {
 		ptoken->info.flags |= CKF_TOKEN_INITIALIZED;
 	}
+
+	decodeLabel(ptoken);
 
 	rc = decodeDevAutCert(ptoken);
 	if (rc != CKR_OK) {
