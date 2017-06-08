@@ -222,7 +222,7 @@ struct id2name_t p11CKRName[] = {
 #define CKT_LONG        4
 #define CKT_ULONG       5
 
-#define P11CKA			70
+#define P11CKA			71
 
 struct id2name_t p11CKAName[P11CKA + 1] = {
 		{ CKA_CLASS                              , "CKA_CLASS", CKT_LONG },
@@ -292,6 +292,7 @@ struct id2name_t p11CKAName[P11CKA + 1] = {
 		{ CKA_CVC_CED                            , "CKA_CVC_CED", CKT_BIN },
 		{ CKA_CVC_CXD                            , "CKA_CVC_CXD", CKT_BIN },
 		{ CKA_CVC_CHAT                           , "CKA_CVC_CHAT", CKT_BIN },
+		{ CKA_CVC_CURVE_OID                      , "CKA_CVC_CURVE_OID", CKT_BIN },
 		{ CKA_SC_HSM_PUBLIC_KEY_ALGORITHM        , "CKA_SC_HSM_PUBLIC_KEY_ALGORITHM", CKT_BIN },
 		{ CKA_SC_HSM_KEY_USE_COUNTER             , "CKA_SC_HSM_KEY_USE_COUNTER", CKT_BIN },
 		{ CKA_SC_HSM_ALGORITHM_LIST              , "CKA_SC_HSM_ALGORITHM_LIST", CKT_BIN },
@@ -1082,6 +1083,7 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
 	int rc;
 	CK_CHAR label[] = "TestKey";
+	CK_BBOOL _false = FALSE;
 	CK_BBOOL _true = TRUE;
 	CK_OBJECT_CLASS publicKeyClass = CKO_PUBLIC_KEY;
 	CK_ATTRIBUTE publicKeyTemplate[20] = {
@@ -1103,6 +1105,10 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	CK_ATTRIBUTE template[] = {
 			{ CKA_CVC_REQUEST, &cvcreq, sizeof(cvcreq)},
 	};
+	unsigned char oid[20];
+	CK_ATTRIBUTE oidTemplate[] = {
+			{ CKA_CVC_CURVE_OID, &oid, sizeof(oid)},
+	};
 	CK_OBJECT_CLASS certClass = CKO_CERTIFICATE;
 	CK_CERTIFICATE_TYPE certType = CKC_CVC_TR3110;
 	CK_BYTE id[100];
@@ -1118,7 +1124,7 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 			{ CKA_LABEL, &label, strlen((char *)label) },
 			{ CKA_ID, id, sizeof(id) }
 	};
-	CK_OBJECT_HANDLE hndPrivateKey, hndPublicKey, hndCert, hndCACert, hndRSAPrivateKey, hndRSAPublicKey;
+	CK_OBJECT_HANDLE hndPrivateKey, hndPublicKey, hndCert, hndCACert, hndSessionCACert, hndRSAPrivateKey, hndRSAPublicKey;
 	CK_MECHANISM mech_genecc = { CKM_EC_KEY_PAIR_GEN, 0, 0 };
 	CK_MECHANISM mech_genrsa = { CKM_RSA_PKCS_KEY_PAIR_GEN, 0, 0 };
 	CK_BYTE publicExponent[] = { 0x01, 0x00, 0x01 };
@@ -1198,6 +1204,26 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		printf("Certificate [%d]:\n", (int)hndCACert);
 		dumpObject(p11, session, hndCACert);
 	}
+
+
+	// Create a CKO_CERTIFICATE session object to parse and determine certain certificate fields
+	printf("Calling C_CreateObject to create session CA certificate ");
+	certTemplate[1].pValue = &_false;
+	rc = p11->C_CreateObject(session, certTemplate, certAttributes - 1, &hndSessionCACert);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc == CKR_OK) {
+		printf("Certificate [%d]:\n", (int)hndSessionCACert);
+		dumpObject(p11, session, hndSessionCACert);
+	}
+
+	printf("Calling C_GetAttributeValue ");
+	rc = p11->C_GetAttributeValue(session, hndSessionCACert, (CK_ATTRIBUTE_PTR)&oidTemplate, 1);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DestroyObject(Session CACert) ");
+	rc = p11->C_DestroyObject(session, hndSessionCACert);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 
 	publicKeyTemplate[3].pValue = ecparam_prime256v1.val;

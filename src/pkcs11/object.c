@@ -428,6 +428,7 @@ struct id2name_t p11CKAName[] = {
 { CKA_CVC_CED                            , "CKA_CVC_CED", CKT_BIN },
 { CKA_CVC_CXD                            , "CKA_CVC_CXD", CKT_BIN },
 { CKA_CVC_CHAT                           , "CKA_CVC_CHAT", CKT_BIN },
+{ CKA_CVC_CURVE_OID                      , "CKA_CVC_CURVE_OID", CKT_BIN },
 { CKA_SC_HSM_PUBLIC_KEY_ALGORITHM        , "CKA_SC_HSM_PUBLIC_KEY_ALGORITHM", CKT_BIN },
 { CKA_SC_HSM_KEY_USE_COUNTER             , "CKA_SC_HSM_KEY_USE_COUNTER", CKT_BIN },
 { CKA_SC_HSM_ALGORITHM_LIST              , "CKA_SC_HSM_ALGORITHM_LIST", CKT_BIN },

@@ -194,6 +194,7 @@ int populateIssuerSubjectSerial(struct p11Object_t *pObject)
 int populateCVCAttributes(struct p11Object_t *pObject)
 {
 	CK_ATTRIBUTE attr = { CKA_VALUE, NULL, 0 };
+	bytestring oid;
 	struct p11Attribute_t *pattr;
 	struct cvc cvc;
 
@@ -244,6 +245,13 @@ int populateCVCAttributes(struct p11Object_t *pObject)
 		attr.type = CKA_CVC_CHAT;
 		attr.pValue = cvc.chat.val;
 		attr.ulValueLen = cvc.chat.len;
+		addAttribute(pObject, &attr);
+	}
+
+	if (!cvcDetermineCurveOID(&cvc, &oid)) {
+		attr.type = CKA_CVC_CURVE_OID;
+		attr.pValue = oid->val;
+		attr.ulValueLen = oid->len;
 		addAttribute(pObject, &attr);
 	}
 

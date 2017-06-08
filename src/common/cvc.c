@@ -147,6 +147,9 @@ int cvcDetermineCurveOID(struct cvc *cvc, bytestring *oid)
 {
 	struct ec_curve *c;
 
+	if (cvc->primeOrModulus.val == NULL) {
+		return -1;
+	}
 	c = curves;
 	while ((c->oid.val != NULL) && bsCompare((bytestring)&c->prime, &cvc->primeOrModulus)) {
 		c++;

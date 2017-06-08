@@ -62,6 +62,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 	struct p11Session_t *session;
 	struct p11Slot_t *slot;
 	struct p11Token_t *token;
+	CK_OBJECT_CLASS objClass;
+	CK_CERTIFICATE_TYPE ct;
 	int pos;
 
 	FUNC_CALLED();
@@ -103,6 +105,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 	if (rv != CKR_OK)
 		FUNC_FAILS(rv, "CKA_CLASS has invalid value");
 
+	objClass = *(CK_OBJECT_CLASS *)pTemplate[pos].pValue;
+
 	pos = findAttributeInTemplate(CKA_TOKEN, pTemplate, ulCount);
 	if (pos < 0)
 		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_TOKEN not found in private key template");
@@ -134,7 +138,49 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 		}
 	} else {
 		// Session objects
-		FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "Creating session objects not supported");
+		if (objClass == CKO_CERTIFICATE) {
+			pos = findAttributeInTemplate(CKA_CERTIFICATE_TYPE, pTemplate, ulCount);
+			if (pos == -1)
+				FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_CERTIFICATE_TYPE not found in template");
+
+			rv = validateAttribute(&pTemplate[pos], sizeof(CK_CERTIFICATE_TYPE));
+			if (rv != CKR_OK)
+				FUNC_FAILS(rv, "CKA_CERTIFICATE_TYPE");
+
+			ct = *(CK_CERTIFICATE_TYPE *)pTemplate[pos].pValue;
+			if ((ct != CKC_CVC_TR3110) && (ct != CKC_X_509))
+				FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_CERTIFICATE_TYPE");
+
+			pObject = calloc(sizeof(struct p11Object_t), 1);
+
+			if (pObject == NULL) {
+				FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+			}
+
+			rv = createCertificateObject(pTemplate, ulCount, pObject);
+
+			if (rv != CKR_OK) {
+				free(pObject);
+				FUNC_FAILS(rv, "Could not create certificate object");
+			}
+
+			if (ct == CKC_X_509) {
+				rv = populateIssuerSubjectSerial(pObject);
+			} else {
+				rv = populateCVCAttributes(pObject);
+			}
+
+			if (rv != CKR_OK) {
+		#ifdef DEBUG
+				debug("Populating additional attributes failed\n");
+		#endif
+			}
+
+			addSessionObject(session, pObject);
+
+		} else {
+			FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "Creating session objects not supported");
+		}
 	}
 
 	*phObject = pObject->handle;
