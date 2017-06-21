@@ -143,6 +143,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\common\asn1.c" />
+    <ClCompile Include="..\..\src\common\bytebuffer.c" />
+    <ClCompile Include="..\..\src\common\bytestring.c" />
     <ClCompile Include="..\..\src\common\mutex.c" />
     <ClCompile Include="..\..\src\tests\sc-hsm-pkcs11-test.c" />
   </ItemGroup>
@@ -150,6 +153,11 @@
     <ProjectReference Include="..\sc-hsm-pkcs11-pcsc\sc-hsm-pkcs11-pcsc.vcxproj">
       <Project>{f5b86c95-2843-4ea1-9c39-c48f5fc7ebba}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\common\asn1.h" />
+    <ClInclude Include="..\..\src\common\bytebuffer.h" />
+    <ClInclude Include="..\..\src\common\bytestring.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

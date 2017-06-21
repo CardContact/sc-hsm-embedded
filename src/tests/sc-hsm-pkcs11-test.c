@@ -1780,6 +1780,7 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 						nothreads++;
 					} else {
 						if (!data[t].iterations) {
+							status = NULL;
 							rc = pthread_join(threads[t], &status);
 							free(status);
 							printf("Thread %d completed\n", t);

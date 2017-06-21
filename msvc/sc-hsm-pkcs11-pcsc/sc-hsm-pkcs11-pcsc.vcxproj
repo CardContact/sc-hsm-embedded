@@ -148,9 +148,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\common\asn1.c" />
+    <ClCompile Include="..\..\src\common\bytebuffer.c" />
+    <ClCompile Include="..\..\src\common\bytestring.c" />
+    <ClCompile Include="..\..\src\common\cvc.c" />
     <ClCompile Include="..\..\src\common\mutex.c" />
-    <ClCompile Include="..\..\src\pkcs11\asn1.c" />
-    <ClCompile Include="..\..\src\pkcs11\bytestring.c" />
     <ClCompile Include="..\..\src\pkcs11\certificateobject.c" />
     <ClCompile Include="..\..\src\pkcs11\crc32.c" />
     <ClCompile Include="..\..\src\pkcs11\dataobject.c" />
@@ -180,8 +182,10 @@
     <ClCompile Include="..\..\src\pkcs11\token.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\pkcs11\asn1.h" />
-    <ClInclude Include="..\..\src\pkcs11\bytestring.h" />
+    <ClInclude Include="..\..\src\common\asn1.h" />
+    <ClInclude Include="..\..\src\common\bytebuffer.h" />
+    <ClInclude Include="..\..\src\common\bytestring.h" />
+    <ClInclude Include="..\..\src\common\cvc.h" />
     <ClInclude Include="..\..\src\pkcs11\certificateobject.h" />
     <ClInclude Include="..\..\src\pkcs11\cryptoki.h" />
     <ClInclude Include="..\..\src\pkcs11\dataobject.h" />

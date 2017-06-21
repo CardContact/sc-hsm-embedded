@@ -636,7 +636,7 @@ static int sc_hsm_C_GenerateRandom(struct p11Slot_t *slot, CK_BYTE_PTR rnd, CK_U
 
 static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pPublicKeyTemplate, CK_ULONG ulPublicKeyAttributeCount, int *keysize)
 {
-	int rc,pos;
+	int rc,pos,ofs;
 	CK_ULONG keybits;
 	struct bytestring_s publicKeyAlgorithm;
 	struct bytestring_s oid;
@@ -654,7 +654,7 @@ static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_P
 		asn1AppendBytes(bb, 0x42, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
 	}
 
-	int ofs = bbGetLength(bb);
+	ofs = bbGetLength(bb);
 
 	rc = findAttributeInTemplate(CKA_SC_HSM_PUBLIC_KEY_ALGORITHM, pPublicKeyTemplate, ulPublicKeyAttributeCount);
 	if (rc >= 0) {
@@ -680,7 +680,7 @@ static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_P
 		}
 
 		if (*(unsigned char *)pPublicKeyTemplate[pos].pValue == 0x06) {
-			oid.val = pPublicKeyTemplate[pos].pValue + 2;
+			oid.val = (unsigned char *)pPublicKeyTemplate[pos].pValue + 2;
 			oid.len = pPublicKeyTemplate[pos].ulValueLen - 2;
 
 			curve = cvcGetCurveForOID(&oid);
@@ -725,8 +725,8 @@ static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_P
 		}
 
 		asn1Append(bb, 0x82, &publicExponent);
-		scr[0] = keybits >> 8;
-		scr[1] = keybits & 0xFF;
+		scr[0] = (unsigned char)(keybits >> 8);
+		scr[1] = (unsigned char)(keybits & 0xFF);
 		asn1AppendBytes(bb, 0x02, scr, 2);
 	}
 
