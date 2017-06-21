@@ -77,6 +77,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
+	// updateSlots() potentially change a lot of internal structures
+	// which is why both are protected here using the global lock
+	p11LockMutex(context->mutex);
+
+	rv = updateSlots(&context->slotPool);
+
+	p11UnlockMutex(context->mutex);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
 	rv = findSlot(&context->slotPool, slotID, &slot);
 
 	if (rv != CKR_OK) {

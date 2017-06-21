@@ -138,6 +138,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotInfo)(
 
 	rv = updateSlots(&context->slotPool);
 
+	p11UnlockMutex(context->mutex);
+
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
@@ -147,8 +149,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetSlotInfo)(
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
-
-	p11UnlockMutex(context->mutex);
 
 	getValidatedToken(slot, &token);				// Update token status
 
