@@ -419,11 +419,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetInfo)
 			sizeof(pInfo->manufacturerID));
 #ifdef CTAPI
 	strbpcpy(pInfo->libraryDescription,
-			"SmartCard-HSM R/O with CT-API",
+			"SmartCard-HSM via CT-API",
 			sizeof(pInfo->libraryDescription));
 #else
 	strbpcpy(pInfo->libraryDescription,
-			"SmartCard-HSM R/O with PC/SC",
+			"SmartCard-HSM via PC/SC",
 			sizeof(pInfo->libraryDescription));
 #endif
 	pInfo->libraryVersion.major = VERSION_MAJOR;

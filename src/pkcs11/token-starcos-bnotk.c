@@ -88,6 +88,7 @@ static struct p15PrivateKeyDescription prkd_eSign2[] = {
 static struct p15CertificateDescription certd_eSign1[] = {
 	{
 		0,                                          // isCA
+		0,                                          // isModifiable
 		P15_CT_X509,                                // Certificate type
 		{ "C.CH.DS" },                              // Label
 		{ (unsigned char *)"\x01", 1 },				// Id
@@ -95,12 +96,14 @@ static struct p15CertificateDescription certd_eSign1[] = {
 	},
 	{
 		1,
+		0,
 		P15_CT_X509,
 		{ "C.CA.DS" },
 		{ (unsigned char *)"\x11", 1 },
 		{ (unsigned char *)"\xC0\x11", 2 }
 	},
 	{
+		0,
 		0,
 		P15_CT_X509_ATTRIBUTE,
 		{ "C.ATTRIBUTE.DS" },
@@ -115,6 +118,7 @@ static struct p15CertificateDescription certd_eSign1[] = {
 static struct p15CertificateDescription certd_eSign2[] = {
 	{
 		0,
+		0,
 		P15_CT_X509,
 		{ "C2.CH.DS" },
 		{ (unsigned char *)"\x02", 1 },
@@ -122,12 +126,14 @@ static struct p15CertificateDescription certd_eSign2[] = {
 	},
 	{
 		1,
+		0,
 		P15_CT_X509,
 		{ "C2.CA.DS" },
 		{ (unsigned char *)"\x12", 1 },
 		{ (unsigned char *)"\xC0\x12", 2 }
 	},
 	{
+		0,
 		0,
 		P15_CT_X509_ATTRIBUTE,
 		{ "C2.ATTRIBUTE.DS" },
@@ -156,6 +162,7 @@ static struct p15PrivateKeyDescription prkd_eUserPKI[] = {
 static struct p15CertificateDescription certd_eUserPKI[] = {
 	{
 		0,                                          // isCA
+		0,                                          // isModifiable
 		P15_CT_X509,                                // Certificate type
 		{ "C.CH.AUT" },                             // Label
 		{ (unsigned char *)"\x03", 1 },				// Id
@@ -163,6 +170,7 @@ static struct p15CertificateDescription certd_eUserPKI[] = {
 	},
 	{
 		1,
+		0,
 		P15_CT_X509,
 		{ "C.CA.AUT" },
 		{ (unsigned char *)"\x11", 1 },

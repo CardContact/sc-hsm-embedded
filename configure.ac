@@ -4,7 +4,7 @@
 # (c) 2016 CardContact Systems GmbH (www.cardcontact.de)
 
 define([PACKAGE_VERSION_MAJOR],[2])
-define([PACKAGE_VERSION_MINOR],[9])
+define([PACKAGE_VERSION_MINOR],[10])
 
 AC_INIT(sc-hsm-embedded, [PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR])
 AC_CONFIG_MACRO_DIR([m4])

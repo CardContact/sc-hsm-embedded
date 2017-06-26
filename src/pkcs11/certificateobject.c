@@ -550,7 +550,8 @@ int createCertificateObjectFromP15(struct p15CertificateDescription *p15, unsign
 			{ CKA_PRIVATE, &false, sizeof(false) },
 			{ CKA_LABEL, NULL, 0 },
 			{ CKA_ID, NULL, 0 },
-			{ CKA_VALUE, NULL, 0 }
+			{ CKA_VALUE, NULL, 0 },
+			{ CKA_MODIFIABLE, &false, sizeof(false) }
 	};
 	struct p11Object_t *p11o;
 	unsigned char *po;
@@ -596,6 +597,10 @@ int createCertificateObjectFromP15(struct p15CertificateDescription *p15, unsign
 	if (p15->isCA) {
 		template[2].pValue = &true;
 		category = 2;
+	}
+
+	if (p15->isModifiable) {
+		template[9].pValue = &true;
 	}
 
 	p11o = calloc(sizeof(struct p11Object_t), 1);

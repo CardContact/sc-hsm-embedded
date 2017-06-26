@@ -98,7 +98,8 @@ struct p15PrivateKeyDescription {
  */
 struct p15CertificateDescription {
 	int             isCA;               /**< CA certificate                       */
-	int             certtype;           /**< the certificate type as tag value    */
+	int             isModifiable;       /**< Certificate can be replaced          */
+	int             certtype;           /**< The certificate type as tag value    */
 	struct p15CommonObjectAttributes
 	                coa;                /**< CommonObjectAttributes               */
 	struct bytestring_s

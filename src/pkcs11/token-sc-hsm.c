@@ -802,30 +802,56 @@ static int decodeLabel(struct p11Token_t *token)
 
 static int decodeDevAutCert(struct p11Token_t *token)
 {
-	int rc, len;
+	int rc, len, certlen;
 	unsigned char cert[MAX_CERTIFICATE_SIZE];
-	struct cvc cvc;
+	struct p15CertificateDescription p15;
+	struct p11Object_t *p11cert;
+	struct p11Attribute_t *attribute;
+	unsigned char *po;
 
 	FUNC_CALLED();
 
-	rc = readEF(token->slot, 0x2F02, cert, sizeof(cert));
+	len = readEF(token->slot, 0x2F02, cert, sizeof(cert));
 
-	if (rc < 0) {
+	if (len < 0) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading C.DevAut");
 	}
 
-	rc = cvcDecode(cert, rc, &cvc);
+	memset(&p15, 0, sizeof(p15));
+	p15.certtype = P15_CT_CVC;
+	p15.coa.label = "C.DevAut";
+	p15.isModifiable = 0;
 
-	if (rc < 0) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not decode CVC request");
+	rc = createCertificateObjectFromP15(&p15, cert, len, &p11cert);
+	if (rc != CKR_OK) {
+		FUNC_FAILS(rc, "Problem adding C.DevAut");
+	}
+	addObject(token, p11cert, TRUE);
+
+	findAttribute(p11cert, CKA_CVC_CHR, &attribute);
+
+	po = cert;
+	asn1Tag(&po);
+	po += asn1Length(&po);
+	certlen = po - cert;
+
+	if (certlen < len) {		// Add device issuer CA certificate
+		p15.certtype = P15_CT_CVC;
+		p15.coa.label = "C.DICA";
+		p15.isCA = TRUE;
+		rc = createCertificateObjectFromP15(&p15, cert + certlen, len - certlen, &p11cert);
+		if (rc != CKR_OK) {
+			FUNC_FAILS(rc, "Problem adding C.DICA");
+		}
+		addObject(token, p11cert, TRUE);
 	}
 
 	memset(token->info.serialNumber, ' ', sizeof(token->info.serialNumber));
-	len = cvc.chr.len - 5;
+	len = attribute->attrData.ulValueLen - 5;
 	if (len > sizeof(token->info.serialNumber))
 		len = sizeof(token->info.serialNumber);
 
-	memcpy(token->info.serialNumber, cvc.chr.val, len);
+	memcpy(token->info.serialNumber, attribute->attrData.pValue, len);
 
 	FUNC_RETURNS(CKR_OK);
 }
@@ -873,6 +899,7 @@ static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char
 		p15cert.coa = p15key->coa;
 		p15cert.id = p15key->id;
 		p15cert.isCA = 0;
+		p15cert.isModifiable = 1;
 
 		rc = createCertificateObjectFromP15(&p15cert, certValue, certLen, &p11cert);
 
@@ -905,6 +932,7 @@ static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char
 			p15cert.coa = p15key->coa;
 			p15cert.id = p15key->id;
 			p15cert.isCA = 0;
+			p15cert.isModifiable = 1;
 
 			rc = createCertificateObjectFromP15(&p15cert, certValue, certLen, &p11cert);
 
@@ -994,6 +1022,8 @@ static int addCACertificateObject(struct p11Token_t *token, unsigned char id)
 	}
 
 	p15cert->isCA = 1;
+	p15cert->isModifiable = 1;
+
 	rc = createCertificateObjectFromP15(p15cert, certValue, rc, &p11cert);
 
 	if (rc != CKR_OK) {
