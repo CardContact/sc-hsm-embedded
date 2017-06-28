@@ -1186,6 +1186,7 @@ static int sc_hsm_C_CreateObject(
 
 	id = NULL;
 	p11Key = NULL;
+	p11o = NULL;
 
 	pos = findAttributeInTemplate(CKA_ID, pTemplate, ulCount);
 	if (pos >= 0) {
@@ -1198,10 +1199,10 @@ static int sc_hsm_C_CreateObject(
 			debug("No private key found with matching CKA_ID");
 		}
 #endif
-	}
 
-	p11o = NULL;		// See if we already have a certificate object for that ID
-	findMatchingTokenObjectById(slot->token, CKO_CERTIFICATE, id, idlen, &p11o);
+		// See if we already have a certificate object for that ID
+		findMatchingTokenObjectById(slot->token, CKO_CERTIFICATE, id, idlen, &p11o);
+	}
 
 	if (p11Key != NULL) {
 		certfid = p11Key->tokenid;
