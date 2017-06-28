@@ -832,8 +832,8 @@ static int decodeDevAutCert(struct p11Token_t *token)
 
 	po = cert;
 	asn1Tag(&po);
-	po += asn1Length(&po);
-	certlen = po - cert;
+	certlen = asn1Length(&po);
+	certlen += po - cert;
 
 	if (certlen < len) {		// Add device issuer CA certificate
 		p15.certtype = P15_CT_CVC;
