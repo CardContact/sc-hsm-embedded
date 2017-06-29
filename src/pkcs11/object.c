@@ -731,8 +731,14 @@ int removeAllAttributes(struct p11Object_t *object)
  */
 void addObjectToList(struct p11Object_t **list, struct p11Object_t *object)
 {
-	object->next = *list;
+	while ((*list) != NULL)
+		list = &((*list)->next);
+	
+	object->next = NULL;
 	*list = object;
+
+//	object->next = *list;
+//	*list = object;
 }
 
 

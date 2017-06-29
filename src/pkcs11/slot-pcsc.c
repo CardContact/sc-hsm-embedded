@@ -616,6 +616,7 @@ int unlockPCSCSlot(struct p11Slot_t *slot)
 
 
 
+#ifndef MINIDRIVER
 /**
  * Match an references against a filter expression
  *
@@ -830,6 +831,10 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 			slot->maxCAPDU = 1000;
 		}
 
+		if (context->caller != CALLER_FIREFOX) {
+			slot->supportsVirtualSlots = 1;
+		}
+
 		addSlot(&context->slotPool, slot);
 
 #ifdef DEBUG
@@ -850,6 +855,8 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 #ifdef DEBUG
 			debug("Pre-allocate virtual slots '' %d\n", prealloc, vslotcnt);
 #endif
+
+			slot->supportsVirtualSlots = 1;
 			for (i = 0; i < vslotcnt; i++) {
 				getVirtualSlot(slot, i, &vslot);
 			}
@@ -864,6 +871,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 
 	FUNC_RETURNS(CKR_OK);
 }
+#endif
 
 
 

@@ -172,8 +172,6 @@ static unsigned char algo_PSS_SHA384[] =       { 0x89, 0x03, 0x23, 0x53, 0x40 };
 static unsigned char algo_PSS_SHA512[] =       { 0x89, 0x03, 0x23, 0x53, 0x50 };
 
 
-extern struct p11Context_t *context;
-
 
 static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 {
@@ -382,22 +380,20 @@ static int newDGNToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 	*token = ptoken;
 
-	if (context->caller == CALLER_FIREFOX) {
-		FUNC_RETURNS(CKR_OK);
+	if (slot->supportsVirtualSlots) {
+		rc = getVirtualSlot(slot, 0, &vslot);
+		if (rc != CKR_OK)
+			FUNC_FAILS(rc, "Virtual slot creation failed");
+
+		drv = getDGNTokenDriver();
+		rc = createStarcosToken(vslot, &ptoken, drv, &starcosApplications[0]);
+		if (rc != CKR_OK)
+			FUNC_FAILS(rc, "Token creation failed");
+
+		rc = addToken(vslot, ptoken);
+		if (rc != CKR_OK)
+			FUNC_FAILS(rc, "addToken() failed");
 	}
-
-	rc = getVirtualSlot(slot, 0, &vslot);
-	if (rc != CKR_OK)
-		FUNC_FAILS(rc, "Virtual slot creation failed");
-
-	drv = getDGNTokenDriver();
-	rc = createStarcosToken(vslot, &ptoken, drv, &starcosApplications[0]);
-	if (rc != CKR_OK)
-		FUNC_FAILS(rc, "Token creation failed");
-
-	rc = addToken(vslot, ptoken);
-	if (rc != CKR_OK)
-		FUNC_FAILS(rc, "addToken() failed");
 
 	FUNC_RETURNS(CKR_OK);
 }

@@ -53,7 +53,9 @@
 
 
 
+#ifndef MINIDRIVER
 extern struct p11Context_t *context;
+#endif
 
 
 
@@ -141,8 +143,10 @@ int removeToken(struct p11Slot_t *slot)
 	slot->token = NULL;
 	slot->info.flags &= ~CKF_TOKEN_PRESENT;
 
+#ifndef MINIDRIVER
 	// Final close with resource deallocation is done from freeToken().
 	tokenRemovedForSessionsOnSlot(&context->sessionPool, slot->id);
+#endif
 
 	return CKR_OK;
 }
@@ -416,6 +420,7 @@ int getVirtualSlot(struct p11Slot_t *slot, int index, struct p11Slot_t **vslot)
 
 	FUNC_CALLED();
 
+#ifndef MINIDRIVER
 	if ((index < 0) || (index > sizeof(slot->virtualSlots) / sizeof(*slot->virtualSlots)))
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Index must not exceed size of virtual slot list");
 
@@ -452,6 +457,8 @@ int getVirtualSlot(struct p11Slot_t *slot, int index, struct p11Slot_t **vslot)
 	addSlot(&context->slotPool, newslot);
 
 	*vslot = newslot;
+#endif
+
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -481,7 +488,9 @@ int getValidatedToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	if (pslot->primarySlot)
 		pslot = pslot->primarySlot;
 
+#ifndef MINIDRIVER
 	p11LockMutex(context->mutex);
+#endif
 
 #ifdef CTAPI
 	rc = getCTAPIToken(pslot, token);
@@ -489,7 +498,9 @@ int getValidatedToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	rc = getPCSCToken(pslot, token);
 #endif
 
+#ifndef MINIDRIVER
 	p11UnlockMutex(context->mutex);
+#endif
 
 	if (rc != CKR_OK)
 		return rc;
@@ -513,6 +524,7 @@ int handleDeviceError(CK_SESSION_HANDLE hSession)
 
 	FUNC_CALLED();
 
+#ifndef MINIDRIVER
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
@@ -546,6 +558,7 @@ int handleDeviceError(CK_SESSION_HANDLE hSession)
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
 	}
+#endif
 
 	FUNC_RETURNS(CKR_DEVICE_ERROR);
 }
@@ -629,6 +642,7 @@ int findSlotKey(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Objec
 
 
 
+#ifndef MINIDRIVER
 int updateSlots(struct p11SlotPool_t *pool)
 {
 	int rc;
@@ -643,6 +657,7 @@ int updateSlots(struct p11SlotPool_t *pool)
 
 	FUNC_RETURNS(rc);
 }
+#endif
 
 
 

@@ -43,7 +43,7 @@
 
 #ifndef VERSION_MAJOR
 #define VERSION_MAJOR     2
-#define VERSION_MINOR     9
+#define VERSION_MINOR     10
 #endif
 
 #ifndef _MAX_PATH
@@ -138,6 +138,7 @@ struct p11Slot_t {
 	int maxCAPDU;                     /**< Maximum length of command APDU      */
 	int maxRAPDU;                     /**< Maximum length of response APDU     */
 	int noExtLengthReadAll;           /**< Prevent using Le='000000'           */
+	int supportsVirtualSlots;         /**< Allow a token to generate v-slotts  */
 	struct p11Slot_t *primarySlot;    /**< Base slot if slot is virtual        */
 	struct p11Slot_t *virtualSlots[2];/**< Virtual slots using this as base    */
 	struct p11Token_t *token;         /**< Pointer to token in the slot        */

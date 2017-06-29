@@ -87,6 +87,7 @@ int addObject(struct p11Token_t *token, struct p11Object_t *object, int publicOb
 int findObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, struct p11Object_t **object, int publicObject);
 int findMatchingTokenObject(struct p11Token_t *token, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t **pObject);
 int findMatchingTokenObjectById(struct p11Token_t *token, CK_OBJECT_CLASS class, unsigned char *id, int sizelen, struct p11Object_t **pObject);
+void enumerateTokenPrivateObjects(struct p11Token_t *token, struct p11Object_t **pObject);
 int removeTokenObject(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject);
 int removeObjectLeavingAttributes(struct p11Token_t *token, CK_OBJECT_HANDLE handle, int publicObject);
 int saveObjects(struct p11Slot_t *slot, struct p11Token_t *token, int publicObject);

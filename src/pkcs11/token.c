@@ -235,6 +235,24 @@ int findMatchingTokenObjectById(struct p11Token_t *token, CK_OBJECT_CLASS class,
 }
 
 
+
+/**
+ * Enumerate private objects
+ *
+ * @param token     The token whose object shall be enumerated
+ * @param pObject	Pointer to a pointer containing the current object on input and the next object or NULL on output
+ */
+void enumerateTokenPrivateObjects(struct p11Token_t *token, struct p11Object_t **pObject)
+{
+	if (*pObject == NULL) {
+		*pObject = token->tokenPrivObjList;
+	} else {
+		*pObject = (*pObject)->next;
+	}
+}
+
+
+
 /**
  * Remove object from list of token objects
  *
@@ -625,8 +643,9 @@ int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p
 void freeToken(struct p11Token_t *token)
 {
 	if (token) {
+#ifndef MINIDRIVER
 		closeSessionsForSlot(&context->sessionPool, token->slot->id);
-
+#endif
 		if (token->drv->freeToken)
 			token->drv->freeToken(token);
 

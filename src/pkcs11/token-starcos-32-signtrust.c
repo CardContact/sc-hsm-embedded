@@ -276,8 +276,6 @@ static const CK_MECHANISM_TYPE p11MechanismList[] = {
 };
 
 
-extern struct p11Context_t *context;
-
 
 static int isCandidate(unsigned char *atr, size_t atrLen)
 {
@@ -319,36 +317,34 @@ static int newSigntrust32Token(struct p11Slot_t *slot, struct p11Token_t **token
 
 	*token = ptoken;
 
-	if (context->caller == CALLER_FIREFOX) {
-		FUNC_RETURNS(CKR_OK);
-	}
+	if (slot->supportsVirtualSlots) {
+		rc = getVirtualSlot(slot, 0, &vslot);
+		if (rc != CKR_OK)
+			FUNC_FAILS(rc, "Virtual slot creation failed");
 
-	rc = getVirtualSlot(slot, 0, &vslot);
-	if (rc != CKR_OK)
-		FUNC_FAILS(rc, "Virtual slot creation failed");
+		rc = createStarcosToken(vslot, &ptoken, drv, &starcosApplications[STARCOS_QES1]);
+		if (rc != CKR_OK)
+			FUNC_FAILS(rc, "Token creation failed");
 
-	rc = createStarcosToken(vslot, &ptoken, drv, &starcosApplications[STARCOS_QES1]);
-	if (rc != CKR_OK)
-		FUNC_FAILS(rc, "Token creation failed");
-
-	rc = addToken(vslot, ptoken);
-	if (rc != CKR_OK)
-		FUNC_FAILS(rc, "addToken() failed");
+		rc = addToken(vslot, ptoken);
+		if (rc != CKR_OK)
+			FUNC_FAILS(rc, "addToken() failed");
 
 
 #if 0
-	getVirtualSlot(slot, 1, &vslot);
-	if (rc != CKR_OK)
-		FUNC_FAILS(rc, "Virtual slot creation failed");
+		getVirtualSlot(slot, 1, &vslot);
+		if (rc != CKR_OK)
+			FUNC_FAILS(rc, "Virtual slot creation failed");
 
-	rc = createStarcosToken(vslot, &ptoken, drv, &starcosApplications[STARCOS_QES2]);
-	if (rc != CKR_OK)
-		FUNC_FAILS(rc, "Token creation failed");
+		rc = createStarcosToken(vslot, &ptoken, drv, &starcosApplications[STARCOS_QES2]);
+		if (rc != CKR_OK)
+			FUNC_FAILS(rc, "Token creation failed");
 
-	rc = addToken(vslot, ptoken);
-	if (rc != CKR_OK)
-		FUNC_FAILS(rc, "addToken() failed");
+		rc = addToken(vslot, ptoken);
+		if (rc != CKR_OK)
+			FUNC_FAILS(rc, "addToken() failed");
 #endif
+	}
 
 	FUNC_RETURNS(CKR_OK);
 }
