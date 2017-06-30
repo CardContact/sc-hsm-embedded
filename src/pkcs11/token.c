@@ -510,7 +510,14 @@ int synchronizeToken(struct p11Slot_t *slot, struct p11Token_t *token)
  */
 int logIn(struct p11Slot_t *slot, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen)
 {
-	return slot->token->drv->login(slot, userType, pPin, ulPinLen);
+	int rc = slot->token->drv->login(slot, userType, pPin, ulPinLen);
+
+	if (rc == CKR_OK) {
+		slot->token->user = userType;
+	} else {
+		slot->token->user = INT_CKU_NO_USER;
+	}
+	return rc;
 }
 
 
@@ -526,7 +533,7 @@ int logIn(struct p11Slot_t *slot, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, C
  */
 int logOut(struct p11Slot_t *slot)
 {
-	slot->token->user = 0xFF;
+	slot->token->user = INT_CKU_NO_USER;
 
 	return slot->token->drv->logout(slot);
 }

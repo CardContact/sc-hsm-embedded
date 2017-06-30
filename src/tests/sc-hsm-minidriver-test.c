@@ -315,15 +315,42 @@ int main(int argc, char *argv[])
 	dwrc = (*cardData.pfnCardEnumFiles)(&cardData, NULL, &filenames, &dwlen, 0);
 	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwlen > 0)));
 
-	printf("Calling CardGetContainerInfo(6)");
+	printf("Calling CardGetContainerInfo(0)");
 	containerInfo.dwVersion = CONTAINER_INFO_CURRENT_VERSION;
-	dwrc = (*cardData.pfnCardGetContainerInfo)(&cardData, 6, 0, &containerInfo);
+	dwrc = (*cardData.pfnCardGetContainerInfo)(&cardData, 0, 0, &containerInfo);
 	printf(" - %x : %s\n", dwrc, verdict(dwrc == SCARD_S_SUCCESS));
 
-	printf("Calling CardGetContainerInfo(5)");
-	containerInfo.dwVersion = CONTAINER_INFO_CURRENT_VERSION;
-	dwrc = (*cardData.pfnCardGetContainerInfo)(&cardData, 5, 0, &containerInfo);
+	printf("Calling CardAuthenticatePin(wszCARD_USER_USER)");
+	dwrc = (*cardData.pfnCardAuthenticatePin)(&cardData, wszCARD_USER_USER, "648219", 6, &dwparam);
+	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 3)));
+
+	printf("Calling CardGetProperty(CP_CARD_AUTHENTICATED_STATE)");
+	dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_AUTHENTICATED_STATE, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, 0);
+	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 2)));
+
+	printf("Calling CardAuthenticatePin(wszCARD_USER_USER) - Wrong PIN");
+	dwrc = (*cardData.pfnCardAuthenticatePin)(&cardData, wszCARD_USER_USER, "123456", 6, &dwparam);
+	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_W_WRONG_CHV) && (dwparam == 2)));
+
+	printf("Calling CardGetProperty(CP_CARD_AUTHENTICATED_STATE)");
+	dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_AUTHENTICATED_STATE, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, 0);
+	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 0)));
+
+	printf("Calling CardAuthenticatePin(wszCARD_USER_USER)");
+	dwrc = (*cardData.pfnCardAuthenticatePin)(&cardData, wszCARD_USER_USER, "648219", 6, &dwparam);
+	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 3)));
+
+	printf("Calling CardGetProperty(CP_CARD_AUTHENTICATED_STATE)");
+	dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_AUTHENTICATED_STATE, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, 0);
+	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 2)));
+
+	printf("Calling CardDeAuthenticate(wszCARD_USER_USER)");
+	dwrc = (*cardData.pfnCardDeauthenticate)(&cardData, wszCARD_USER_USER, 0);
 	printf(" - %x : %s\n", dwrc, verdict(dwrc == SCARD_S_SUCCESS));
+
+	printf("Calling CardGetProperty(CP_CARD_AUTHENTICATED_STATE)");
+	dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_AUTHENTICATED_STATE, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, 0);
+	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 0)));
 
 	printf("Calling CardDeleteContext()");
 	dwrc = (*cardData.pfnCardDeleteContext)(&cardData);

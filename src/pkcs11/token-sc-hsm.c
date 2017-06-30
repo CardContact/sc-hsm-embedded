@@ -1678,15 +1678,21 @@ static int updatePinStatus(struct p11Token_t *token, int pinstatus)
 		token->info.flags |= CKF_USER_PIN_INITIALIZED;
 	}
 
+	if ((pinstatus & 0x63C0) == 0x63C0)
+		token->pinTriesLeft = pinstatus & 0xF;
+
 	switch(pinstatus) {
 	case 0x9000:
+		token->pinTriesLeft = 3;
 		rc = CKR_OK;
 		break;
 	case 0x6984:
+		token->pinTriesLeft = 3;
 		token->info.flags |= CKF_USER_PIN_TO_BE_CHANGED;
 		rc = CKR_USER_PIN_NOT_INITIALIZED;
 		break;
 	case 0x6983:
+		token->pinTriesLeft = 0;
 		token->info.flags |= CKF_USER_PIN_LOCKED;
 		rc = CKR_PIN_LOCKED;
 		break;

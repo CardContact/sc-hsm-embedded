@@ -104,6 +104,7 @@ struct p11Token_t {
 	int rosessions;                     /**< Number of read/only sessions                   */
 	CK_ULONG freeObjectNumber;          /**< The number of objects in this token            */
 
+	int pinTriesLeft;					/**< The number of remaining PIN tries			    */
 	int pinUseCounter;                  /**< Number of crypto operations per PIN verify     */
 	int pinChangeRequired;              /**< PIN change required before use                 */
 
