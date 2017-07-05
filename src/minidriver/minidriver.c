@@ -43,6 +43,13 @@
 #define MINIMUM_SUPPORTED_VERSION	4
 #define MAXIMUM_SUPPORTED_VERSION	7
 
+// DigestInfo Header encoding in front of hash value
+static unsigned char di_sha1[] =   { 0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05, 0x00, 0x04, 0x14 };
+static unsigned char di_sha256[] = { 0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20 };
+static unsigned char di_sha384[] = { 0x30, 0x41, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02, 0x05, 0x00, 0x04, 0x30 };
+static unsigned char di_sha512[] = { 0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03, 0x05, 0x00, 0x04, 0x40 };
+static unsigned char di_md5[] =    { 0x30, 0x20, 0x30, 0x0c, 0x06, 0x08, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x02, 0x05, 0x05, 0x00, 0x04, 0x10 };
+
 
 
 /**
@@ -855,7 +862,7 @@ static DWORD encodeECCPublicKey(PCARD_DATA pCardData, struct p11Object_t *p11pub
 	ecc = (BCRYPT_ECCKEY_BLOB *)(*pblob);
 
 	ecc->dwMagic = BCRYPT_ECDH_PUBLIC_P256_MAGIC;
-	ecc->cbKey = 0x20;
+	ecc->cbKey = 0x40;
 
 	memcpy((*pblob) + sizeof(BCRYPT_ECCKEY_BLOB), (PBYTE)pointattr->attrData.pValue + 3, 0x40);
 
@@ -940,11 +947,176 @@ static DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 
 static DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO pInfo)
 {
+	struct p11Token_t *token;
+	struct p11Object_t *p11prikey;
+	struct p11Attribute_t *attr;
+	unsigned char signature[512], signInput[90],*di;		// di_sha512 needs 83 bytes
+	CK_MECHANISM mech;
+	CK_KEY_TYPE keytype;
+	CK_ULONG cklen;
+	DWORD dwret;
+	int rc,dilen;
+
 	FUNC_CALLED();
 
-	if (pCardData == NULL)
+#ifdef DEBUG
+	debug(" (pCardData=%p,pInfo=%p)\n", pCardData, pInfo);
+#endif
+
+	if (pCardData == NULL)		// CMR_467
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
 
+	if (pInfo == NULL)			// CMR_468
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pInfo validation failed");
+
+	debug(" pInfo(dwVersion=%lu,bContainerIndex=%d,dwKeySpec=%lx,dwSigningFlags=%lx,aiHashAlg=%lx,pbData=%p,cbData=%d,pbSignedData=%p,cbSignedData=%d,pPaddingInfo=%p,dwPaddingType=%lu)\n", 
+		    pInfo->dwVersion, pInfo->bContainerIndex, pInfo->dwKeySpec, pInfo->dwSigningFlags, pInfo->aiHashAlg, pInfo->pbData, pInfo->cbData, pInfo->pbSignedData, pInfo->cbSignedData, pInfo->pPaddingInfo, pInfo->dwPaddingType);
+
+	if ((pInfo->dwVersion != CARD_SIGNING_INFO_BASIC_VERSION) && (pInfo->dwVersion != CARD_SIGNING_INFO_CURRENT_VERSION))
+		FUNC_FAILS(ERROR_REVISION_MISMATCH, "Version check failed");		// CMR_469
+
+	if (pInfo->pbData == NULL)			// CMR_470
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pInfo->pbData validation failed");
+
+	if ((pInfo->dwKeySpec != AT_ECDHE_P256) && (pInfo->dwKeySpec != AT_ECDHE_P384) && (pInfo->dwKeySpec != AT_ECDHE_P521) && 
+		(pInfo->dwKeySpec != AT_ECDSA_P256) && (pInfo->dwKeySpec != AT_ECDSA_P384) && (pInfo->dwKeySpec != AT_ECDSA_P521) && 
+		(pInfo->dwKeySpec != AT_SIGNATURE) && (pInfo->dwKeySpec != AT_KEYEXCHANGE))
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pInfo->dwKeySpec validation failed");		// CMR_472
+
+	// #define CRYPT_NOHASHOID         0x00000001
+	// maps to
+	// #define CARD_PADDING_NONE       0x00000001
+	if (pInfo->dwSigningFlags & ~(CARD_PADDING_INFO_PRESENT|CARD_BUFFER_SIZE_ONLY|CARD_PADDING_NONE|CARD_PADDING_PKCS1|CARD_PADDING_PSS|CARD_PADDING_OAEP))
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pInfo->dwSigningFlags validation failed");	// CMR_
+
+	dwret = validateToken(pCardData, &token);
+	if (dwret != SCARD_S_SUCCESS)
+		FUNC_FAILS(dwret, "Could not obtain fresh token reference");
+
+	p11prikey = NULL;
+	getKeyForIndex(pCardData, (int)pInfo->bContainerIndex, &p11prikey);
+
+	if (p11prikey == NULL)		// CMR_471
+		FUNC_FAILS(SCARD_E_NO_KEY_CONTAINER, "bContainerIndex invalid");
+
+	mech.pParameter = NULL;
+	mech.ulParameterLen = 0;
+	mech.mechanism = CKM_RSA_PKCS;
+
+	keytype = CKK_RSA;
+	if (findAttribute(p11prikey, CKA_KEY_TYPE, &attr)) {
+		keytype = *(CK_KEY_TYPE *)attr->attrData.pValue;
+		if (keytype == CKK_ECDSA)
+			mech.mechanism = CKM_ECDSA;
+	}
+
+	di = NULL;
+	dilen = 0;
+	if (!(pInfo->dwSigningFlags & CARD_PADDING_INFO_PRESENT)) {
+		if ((pInfo->aiHashAlg != 0) && (pInfo->dwVersion != CARD_SIGNING_INFO_BASIC_VERSION))
+			FUNC_FAILS(ERROR_REVISION_MISMATCH, "Version check failed");
+
+		switch(pInfo->aiHashAlg) {
+		case 0:
+			break;
+		case CALG_SHA:
+			di = di_sha1;
+			dilen = sizeof(di_sha1);
+			break;
+		case CALG_SHA_256:
+			di = di_sha256;
+			dilen = sizeof(di_sha256);
+			break;
+		case CALG_SHA_384:
+			di = di_sha384;
+			dilen = sizeof(di_sha384);
+			break;
+		case CALG_SHA_512:
+			di = di_sha512;
+			dilen = sizeof(di_sha512);
+			break;
+		case CALG_MD5:
+			di = di_md5;
+			dilen = sizeof(di_md5);
+			break;
+		case CALG_SSL3_SHAMD5:
+			di = NULL;
+			dilen = 0;
+			break;
+		default:
+			FUNC_FAILS(SCARD_E_UNSUPPORTED_FEATURE, "aiHashAlg not supported");
+		}
+	} else {
+		if (pInfo->dwPaddingType == CARD_PADDING_PKCS1) {
+			BCRYPT_PKCS1_PADDING_INFO *padinfo = (BCRYPT_PKCS1_PADDING_INFO *)pInfo->pPaddingInfo;
+
+			if (!wcscmp(padinfo->pszAlgId, BCRYPT_SHA1_ALGORITHM)) {
+				di = di_sha1;
+				dilen = sizeof(di_sha1);
+			} else if (!wcscmp(padinfo->pszAlgId, BCRYPT_SHA256_ALGORITHM)) {
+				di = di_sha256;
+				dilen = sizeof(di_sha256);
+			} else if (!wcscmp(padinfo->pszAlgId, BCRYPT_SHA384_ALGORITHM)) {
+				di = di_sha384;
+				dilen = sizeof(di_sha384);
+			} else if (!wcscmp(padinfo->pszAlgId, BCRYPT_SHA512_ALGORITHM)) {
+				di = di_sha512;
+				dilen = sizeof(di_sha512);
+			} else if (!wcscmp(padinfo->pszAlgId, BCRYPT_MD5_ALGORITHM)) {
+				di = di_md5;
+				dilen = sizeof(di_md5);
+			} else {
+				FUNC_FAILS(SCARD_E_UNSUPPORTED_FEATURE, "pszAlgId not supported");
+			}
+		} else if (pInfo->dwPaddingType == CARD_PADDING_PSS) {
+			BCRYPT_PSS_PADDING_INFO *padinfo = (BCRYPT_PSS_PADDING_INFO *)pInfo->pPaddingInfo;
+
+			if (!wcscmp(padinfo->pszAlgId, BCRYPT_SHA1_ALGORITHM)) {
+				mech.mechanism = CKM_SC_HSM_PSS_SHA1;
+			} else if (!wcscmp(padinfo->pszAlgId, BCRYPT_SHA256_ALGORITHM)) {
+				mech.mechanism = CKM_SC_HSM_PSS_SHA256;
+			} else {
+				FUNC_FAILS(SCARD_E_UNSUPPORTED_FEATURE, "pszAlgId not supported");
+			}
+		} else if (pInfo->dwPaddingType != CARD_PADDING_NONE) {
+			FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pInfo->dwPaddingType invalid");
+		}
+	}
+
+	if (dilen > 0)
+		memcpy(signInput, di, dilen);
+
+	if (dilen + pInfo->cbData > sizeof(signInput))
+			FUNC_FAILS(SCARD_E_INSUFFICIENT_BUFFER, "Buffer for signature input too small");
+		
+	memcpy(signInput + dilen, pInfo->pbData, pInfo->cbData);
+	dilen += pInfo->cbData;
+
+	rc = p11prikey->C_SignInit(p11prikey, &mech);
+
+	if (rc != CKR_OK) {
+		dwret = mapError(rc);
+		FUNC_FAILS(dwret, "C_SignInit failed");
+	}
+
+	cklen = sizeof(signature);
+	rc = p11prikey->C_Sign(p11prikey, mech.mechanism, signInput, dilen, signature, &cklen);
+
+	if (rc != CKR_OK) {
+		dwret = mapError(rc);
+		FUNC_FAILS(dwret, "C_SignInit failed");
+	}
+
+	pInfo->cbSignedData = cklen;
+	pInfo->pbSignedData = (PBYTE)pCardData->pfnCspAlloc(cklen);
+	if (pInfo->pbSignedData == NULL)
+		FUNC_FAILS(SCARD_E_NO_MEMORY, "Out of memory");
+
+	if (keytype == CKK_RSA)
+		copyInverted(pInfo->pbSignedData, signature, cklen);
+	else
+		memcpy(pInfo->pbSignedData, signature, cklen);
+	
 	FUNC_RETURNS(SCARD_S_SUCCESS);
 }
 

@@ -39,6 +39,8 @@
 
 static int testscompleted = 0;
 static int testsfailed = 0;
+static char *reader = NULL;
+
 
 #ifndef _WIN32
 
@@ -138,8 +140,357 @@ void WINAPI CSP_FREE(__in LPVOID Address) {
 }
 
 
-int main(int argc, char *argv[])
+int testSignRSA(NCRYPT_KEY_HANDLE hKey, DWORD padding, LPCWSTR hashAlg )
+{
+	BCRYPT_KEY_HANDLE hPubKey;
+	SECURITY_STATUS secstat;
+	BCRYPT_PKCS1_PADDING_INFO p1padinfo;
+	BCRYPT_PSS_PADDING_INFO psspadinfo;
+	BCRYPT_ALG_HANDLE hSignAlg;
+	void *paddingInfo;
+	PCCERT_CONTEXT certctx;
+	NTSTATUS ntstat;
+	unsigned char cert[4096],hash[64],signature[256],pubkeyblob[1024];
+	DWORD dwlen,hashlen;
 
+	printf(" RSA with %S and %s padding", hashAlg, (padding == BCRYPT_PAD_PKCS1 ? "V1.5" : "PSS"));
+
+	memset(hash, 0xA5, sizeof(hash));
+	hashlen = sizeof(hash);
+
+	if (!wcscmp(hashAlg, BCRYPT_SHA1_ALGORITHM)) {
+		hashlen = 20;
+	} else if (!wcscmp(hashAlg, BCRYPT_SHA256_ALGORITHM)) {
+		hashlen = 32;
+	} else if (!wcscmp(hashAlg, BCRYPT_SHA384_ALGORITHM)) {
+		hashlen = 48;
+	} else if (!wcscmp(hashAlg, BCRYPT_SHA512_ALGORITHM)) {
+		hashlen = 64;
+	} else if (!wcscmp(hashAlg, BCRYPT_MD5_ALGORITHM)) {
+		hashlen = 16;
+	}
+
+	if (padding == BCRYPT_PAD_PKCS1) {
+		memset(&p1padinfo, 0, sizeof(p1padinfo));
+		p1padinfo.pszAlgId = hashAlg;
+		paddingInfo = &p1padinfo;
+	} else {
+		memset(&psspadinfo, 0, sizeof(psspadinfo));
+		psspadinfo.pszAlgId = hashAlg;
+		paddingInfo = &psspadinfo;
+	}
+
+	// Export public key from smart card
+	secstat = NCryptExportKey(hKey, 0, BCRYPT_RSAPUBLIC_BLOB, 0, pubkeyblob, sizeof(pubkeyblob), &dwlen, 0);
+
+	if (secstat != ERROR_SUCCESS) {
+		printf("NCryptExportKey failed: %ld\n", secstat);
+		return -1;
+	}
+
+	ntstat = BCryptOpenAlgorithmProvider(&hSignAlg, BCRYPT_RSA_ALGORITHM, NULL, 0);
+	if (ntstat != ERROR_SUCCESS) {
+		printf("BCryptOpenAlgorithmProvider failed: %ld\n", ntstat);
+		return -1;
+	}
+
+	ntstat = BCryptImportKeyPair(hSignAlg, 0, BCRYPT_RSAPUBLIC_BLOB, &hPubKey, pubkeyblob, dwlen, 0);
+	if (ntstat != ERROR_SUCCESS) {
+		printf("BCryptImportKeyPair failed: %ld\n", ntstat);
+		return -1;
+	}
+
+	secstat = NCryptSignHash(hKey, paddingInfo, hash, hashlen, signature, sizeof(signature), &dwlen, padding);
+
+	if (secstat != ERROR_SUCCESS) {
+		printf("NCryptSignHash failed: %ld\n", secstat);
+		return -1;
+	}
+
+	ntstat = BCryptVerifySignature(hPubKey, paddingInfo, hash, hashlen, signature, dwlen, padding);
+
+	if (ntstat != ERROR_SUCCESS) {
+		printf("BCryptVerifySignature failed: %ld\n", ntstat);
+		return -1;
+	}
+
+	BCryptDestroyKey(hPubKey);
+
+	// Verify with certificate
+	// Get certificate for key
+	secstat = NCryptGetProperty(hKey, NCRYPT_CERTIFICATE_PROPERTY, cert, sizeof(cert), &dwlen, 0);
+
+	if (secstat != ERROR_SUCCESS) {
+		printf("NCryptGetProperty failed: %ld\n", secstat);
+		return -1;
+	}
+
+	certctx = CertCreateCertificateContext(X509_ASN_ENCODING, cert, dwlen);
+	if (certctx == NULL) {
+		printf("CertCreateCertificateContext failed\n");
+		return -1;
+	}
+
+	if (!CryptImportPublicKeyInfoEx2(X509_ASN_ENCODING, &certctx->pCertInfo->SubjectPublicKeyInfo, 0, NULL, &hPubKey)) {
+		printf("CryptImportPublicKeyInfoEx2 failed\n");
+		return -1;
+	}
+
+	secstat = NCryptSignHash(hKey, paddingInfo, hash, hashlen, signature, sizeof(signature), &dwlen, padding);
+
+	if (secstat != ERROR_SUCCESS) {
+		printf("NCryptSignHash failed: %ld\n", secstat);
+		return -1;
+	}
+
+	ntstat = BCryptVerifySignature(hPubKey, paddingInfo, hash, hashlen, signature, dwlen, padding);
+
+	if (ntstat != ERROR_SUCCESS) {
+		printf("BCryptVerifySignature failed: %ld\n", ntstat);
+		return -1;
+	}
+
+	BCryptDestroyKey(hPubKey);
+	CertFreeCertificateContext(certctx);
+
+	return 0;
+}
+
+
+
+int testSignECDSA(NCRYPT_KEY_HANDLE hKey, LPCWSTR hashAlg )
+{
+	BCRYPT_KEY_HANDLE hPubKey;
+	SECURITY_STATUS secstat;
+	PCCERT_CONTEXT certctx;
+	BCRYPT_ALG_HANDLE hSignAlg;
+	NTSTATUS ntstat;
+	unsigned char cert[4096],hash[64],signature[256],pubkeyblob[1024];
+	DWORD dwlen,hashlen;
+
+	printf(" ECDSA with %S", hashAlg);
+
+	memset(hash, 0xA5, sizeof(hash));
+	hashlen = sizeof(hash);
+
+	if (!wcscmp(hashAlg, BCRYPT_SHA1_ALGORITHM)) {
+		hashlen = 20;
+	} else if (!wcscmp(hashAlg, BCRYPT_SHA256_ALGORITHM)) {
+		hashlen = 32;
+	} else if (!wcscmp(hashAlg, BCRYPT_SHA384_ALGORITHM)) {
+		hashlen = 48;
+	} else if (!wcscmp(hashAlg, BCRYPT_SHA512_ALGORITHM)) {
+		hashlen = 64;
+	} else if (!wcscmp(hashAlg, BCRYPT_MD5_ALGORITHM)) {
+		hashlen = 16;
+	}
+
+#if 0
+	// Export public key from smart card
+	secstat = NCryptExportKey(hKey, 0, BCRYPT_ECCPUBLIC_BLOB, 0, pubkeyblob, sizeof(pubkeyblob), &dwlen, 0);
+
+	if (secstat != ERROR_SUCCESS) {
+		printf("NCryptExportKey failed: %ld\n", secstat);
+		return -1;
+	}
+
+	ntstat = BCryptOpenAlgorithmProvider(&hSignAlg, BCRYPT_ECDSA_P256_ALGORITHM, NULL, 0);
+	if (ntstat != ERROR_SUCCESS) {
+		printf("BCryptOpenAlgorithmProvider failed: %ld\n", ntstat);
+		return -1;
+	}
+
+	ntstat = BCryptImportKeyPair(hSignAlg, 0, BCRYPT_ECCPUBLIC_BLOB, &hPubKey, pubkeyblob, dwlen, 0);
+	if (ntstat != ERROR_SUCCESS) {
+		printf("BCryptImportKeyPair failed: %ld\n", ntstat);
+		return -1;
+	}
+
+	secstat = NCryptSignHash(hKey, NULL, hash, hashlen, signature, dwlen, &dwlen, 0);
+
+	if (secstat != ERROR_SUCCESS) {
+		printf("NCryptSignHash failed: %ld\n", secstat);
+		return -1;
+	}
+
+	ntstat = BCryptVerifySignature(hPubKey, NULL, hash, hashlen, signature, dwlen, 0);
+
+	if (ntstat != ERROR_SUCCESS) {
+		printf("BCryptVerifySignature failed: %ld\n", ntstat);
+		return -1;
+	}
+
+	BCryptDestroyKey(hPubKey);
+#endif
+
+	// Get certificate for key
+	secstat = NCryptGetProperty(hKey, NCRYPT_CERTIFICATE_PROPERTY, cert, sizeof(cert), &dwlen, 0);
+
+	if (secstat != ERROR_SUCCESS) {
+		printf("NCryptGetProperty failed: %ld\n", secstat);
+		return -1;
+	}
+
+	certctx = CertCreateCertificateContext(X509_ASN_ENCODING, cert, dwlen);
+	if (certctx == NULL) {
+		printf("CertCreateCertificateContext failed\n");
+		return -1;
+	}
+
+	if (!CryptImportPublicKeyInfoEx2(X509_ASN_ENCODING, &certctx->pCertInfo->SubjectPublicKeyInfo, 0, NULL, &hPubKey)) {
+		printf("CryptImportPublicKeyInfoEx2 failed\n");
+		return -1;
+	}
+
+	secstat = NCryptSignHash(hKey, NULL, hash, hashlen, signature, dwlen, &dwlen, 0);
+
+	if (secstat != ERROR_SUCCESS) {
+		printf("NCryptSignHash failed: %ld\n", secstat);
+		return -1;
+	}
+
+	ntstat = BCryptVerifySignature(hPubKey, NULL, hash, hashlen, signature, dwlen, 0);
+
+	if (ntstat != ERROR_SUCCESS) {
+		printf("BCryptVerifySignature failed: %ld\n", ntstat);
+		return -1;
+	}
+
+	BCryptDestroyKey(hPubKey);
+	CertFreeCertificateContext(certctx);
+
+	return 0;
+}
+
+
+
+int cryptoTests()
+
+{
+	NCRYPT_PROV_HANDLE hProvider;
+	NCRYPT_KEY_HANDLE hKey;
+	NCryptKeyName *keyName;
+	PVOID enumState = NULL;
+	SECURITY_STATUS secstat;
+	NCryptAlgorithmName *algos;
+	DWORD dwlen, dwi;
+	int rc;
+
+	secstat = NCryptOpenStorageProvider(&hProvider, MS_SMART_CARD_KEY_STORAGE_PROVIDER, 0);
+
+	if (secstat != ERROR_SUCCESS) {
+		printf("NCryptOpenStorageProvider failed: %ld\n", secstat);
+		return -1;
+	}
+
+	secstat = NCryptEnumAlgorithms(hProvider, NCRYPT_CIPHER_OPERATION|NCRYPT_HASH_OPERATION|NCRYPT_ASYMMETRIC_ENCRYPTION_OPERATION|NCRYPT_SECRET_AGREEMENT_OPERATION, &dwlen, &algos, 0);
+
+	if (secstat != ERROR_SUCCESS) {
+		printf("NCryptEnumAlgorithms failed: %ld\n", secstat);
+		return -1;
+	}
+
+	for (dwi = 0; dwi < dwlen; dwi++) {
+		printf("%S %lx %lx %lx\n", (algos + dwi)->pszName, (algos + dwi)->dwClass, (algos + dwi)->dwAlgOperations, (algos + dwi)->dwFlags);
+	}
+
+	NCryptFreeBuffer(algos);
+
+	while (TRUE) {
+		secstat = NCryptEnumKeys(hProvider, NULL, &keyName, &enumState, 0);
+
+		if (secstat != ERROR_SUCCESS) {
+			break;
+		}
+
+		printf("%S (%S)\n", keyName->pszName, keyName->pszAlgid);
+
+		secstat = NCryptOpenKey(hProvider, &hKey, keyName->pszName, 0, 0);
+
+		if (secstat != ERROR_SUCCESS) {
+			printf("Failed: %ld\n", secstat);
+			return -1;
+		}
+
+		if ((keyName->dwLegacyKeySpec == AT_KEYEXCHANGE) || (keyName->dwLegacyKeySpec == AT_SIGNATURE)) {
+			rc = testSignRSA(hKey, BCRYPT_PAD_PKCS1, BCRYPT_SHA1_ALGORITHM );
+			printf(" - %s\n", verdict(rc == 0));
+
+			rc = testSignRSA(hKey, BCRYPT_PAD_PKCS1, BCRYPT_SHA256_ALGORITHM );
+			printf(" - %s\n", verdict(rc == 0));
+
+			rc = testSignRSA(hKey, BCRYPT_PAD_PKCS1, BCRYPT_SHA384_ALGORITHM );
+			printf(" - %s\n", verdict(rc == 0));
+
+			rc = testSignRSA(hKey, BCRYPT_PAD_PKCS1, BCRYPT_SHA512_ALGORITHM );
+			printf(" - %s\n", verdict(rc == 0));
+
+			rc = testSignRSA(hKey, BCRYPT_PAD_PKCS1, BCRYPT_MD5_ALGORITHM );
+			printf(" - %s\n", verdict(rc == 0));
+		} else {
+			rc = testSignECDSA(hKey, BCRYPT_SHA1_ALGORITHM );
+			printf(" - %s\n", verdict(rc == 0));
+
+			rc = testSignECDSA(hKey, BCRYPT_SHA256_ALGORITHM );
+			printf(" - %s\n", verdict(rc == 0));
+
+			rc = testSignECDSA(hKey, BCRYPT_SHA384_ALGORITHM );
+			printf(" - %s\n", verdict(rc == 0));
+
+			rc = testSignECDSA(hKey, BCRYPT_SHA512_ALGORITHM );
+			printf(" - %s\n", verdict(rc == 0));
+
+			rc = testSignECDSA(hKey, BCRYPT_MD5_ALGORITHM );
+			printf(" - %s\n", verdict(rc == 0));
+		}
+
+		NCryptFreeObject(hKey);
+	}
+
+	NCryptFreeObject(hProvider);
+
+	return 0;
+}
+
+
+
+int listReaders()
+{
+	SCARDCONTEXT hSCardCtx;
+	DWORD cch = 0;
+	LPTSTR readers = NULL;
+
+	if (SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &hSCardCtx) != SCARD_S_SUCCESS) {
+		printf("SCardEstablishContext() failed\n");
+		exit(1);
+	}
+
+	if (SCardListReaders(hSCardCtx, NULL, NULL, &cch) != SCARD_S_SUCCESS) {
+		printf("SCardListReaders() failed\n");
+		exit(1);
+	}
+
+	readers = malloc(cch);
+	reader = readers;
+
+	if (SCardListReaders(hSCardCtx, NULL, readers, &cch) != SCARD_S_SUCCESS) {
+		printf("SCardListReaders() failed\n");
+		exit(1);
+	}
+
+	while(*readers) {
+		printf("%s\n", readers);
+		readers += strlen(readers) + 1;
+	}
+
+	SCardReleaseContext(hSCardCtx);
+
+	return 0;
+}
+
+
+
+int apiTests(char *reader)
 {
 	LIB_HANDLE dlhandle;
 	PFN_CARD_ACQUIRE_CONTEXT pcac;
@@ -150,28 +501,16 @@ int main(int argc, char *argv[])
 	CARD_FILE_INFO fileInfo;
 	CONTAINER_INFO containerInfo;
 	PIN_INFO pinInfo;
-	DWORD cch = 0;
-	LPTSTR readers = NULL;
 	LPSTR filenames;
 	PBYTE pb;
-	DWORD dwActiveProtocol, readernamelen, state, protocol, atrlen;
+	DWORD readernamelen, state, protocol, atrlen;
 	unsigned char atr[36], cardid[16];
 	DWORD dwrc,dwlen,dwparam;
 	BOOL flag;
 
-	dlhandle = dlopen("sc-hsm-minidriver.dll", RTLD_NOW);
-
-	if (!dlhandle) {
-		printf("dlopen failed with %s\n", dlerror());
-		exit(1);
-	}
-
-	pcac = (PFN_CARD_ACQUIRE_CONTEXT)dlsym(dlhandle, "CardAcquireContext");
-
 	memset(&cardData, 0, sizeof(cardData));
 	cardData.dwVersion = 7;
 	cardData.pwszCardName = L"TestCard";
-	cardData.hScard = 1;
 
 	cardData.pfnCspAlloc = CSP_ALLOC;
 	cardData.pfnCspReAlloc = CSP_REALLOC;
@@ -182,26 +521,22 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (SCardListReaders(cardData.hSCardCtx, NULL, NULL, &cch) != SCARD_S_SUCCESS) {
-		printf("SCardListReaders() failed\n");
+	dlhandle = dlopen("sc-hsm-minidriver.dll", RTLD_NOW);
+
+	if (!dlhandle) {
+		printf("dlopen failed with %s\n", dlerror());
 		exit(1);
 	}
 
-	readers = calloc(cch, 1);
-
-	if (SCardListReaders(cardData.hSCardCtx, NULL, readers, &cch) != SCARD_S_SUCCESS) {
-		printf("SCardListReaders() failed\n");
-		exit(1);
-	}
-
-	// readers = readers + strlen(readers) + 1;
-	if (SCardConnect(cardData.hSCardCtx, readers, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T1, &cardData.hScard, &dwActiveProtocol) != SCARD_S_SUCCESS) {
-		printf("SCardConnect() failed\n");
-		exit(1);
-	}
+	pcac = (PFN_CARD_ACQUIRE_CONTEXT)dlsym(dlhandle, "CardAcquireContext");
 
 	readernamelen = 0;
 	atrlen = sizeof(atr);
+
+	if (SCardConnect(cardData.hSCardCtx, reader, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T1, &cardData.hScard, &protocol) != SCARD_S_SUCCESS) {
+		printf("SCardStatus() failed\n");
+		exit(1);
+	}
 
 	if (SCardStatus(cardData.hScard, NULL, &readernamelen, &state, &protocol, atr, &atrlen) != SCARD_S_SUCCESS) {
 		printf("SCardStatus() failed\n");
@@ -357,6 +692,43 @@ int main(int argc, char *argv[])
 	printf(" - %x : %s\n", dwrc, verdict(dwrc == SCARD_S_SUCCESS));
 
 	SCardReleaseContext(cardData.hSCardCtx);
+
+	return 0;
+}
+
+
+
+int main(int argc, char *argv[])
+
+{
+	if (argc == 1) {
+		printf("Usage: sc-hsm-minidriver-test [-l] [-r <name>] [-a] [-c]\n");
+		printf("       -l         list readers\n");
+		printf("       -r <name>  define readers\n");
+		printf("       -a         run API tests\n");
+		printf("       -c         run crypto tests\n");
+		exit(1);
+	}
+
+	argc--;
+	argv++;
+
+	while (argc--) {
+		if (!strcmp(*argv, "-l")) {
+			listReaders();
+		} else if (!strcmp(*argv, "-a")) {
+			if (reader == NULL) {
+				printf("Need a reader name set with -r or use -l to select first reader\n");
+				exit(1);
+			}
+			apiTests(reader);
+		} else if (!strcmp(*argv, "-c")) {
+			cryptoTests();
+		} else {
+			printf("Unknown parameter %s\n", *argv);
+		}
+		argv++;
+	}
 
 	printf("Unit test finished.\n");
 	printf("%d tests performed.\n", testscompleted);
