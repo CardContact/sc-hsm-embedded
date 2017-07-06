@@ -70,10 +70,10 @@ void decodeBCDString(unsigned char *Inbuff, int len, char *Outbuff)
 }
 
 
-void initDebug()
+void initDebug(char *progname)
 {
-	static const char debug_fn[] = "/var/tmp/sc-hsm-embedded/minidriver-%d.log";
 	char scr[128];
+	char *home,*prefix;
 #ifdef WIN32
 	DWORD pid;
 #else
@@ -85,11 +85,20 @@ void initDebug()
 	}
 
 #ifdef WIN32
+	home = getenv("HOMEPATH");
+	if (home == NULL)
+		home = "c:\\";
+	prefix = "\\AppData\\LocalLow\\";
 	pid = GetCurrentProcessId();
 #else
+	home = getenv("HOME");
+	if (home == NULL)
+		home = "/var/tmp";
+	prefix = "/sc-hsm-embedded/";
 	pid = getpid();
 #endif
-	sprintf(scr, debug_fn, pid);
+
+	sprintf(scr, "%s%s%s-%d.log", home, prefix, progname, pid);
 	debugFileHandle = fopen(scr, "a+");
 
 	if (debugFileHandle != NULL) {

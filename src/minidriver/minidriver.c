@@ -935,10 +935,85 @@ static DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	__inout PCARD_RSA_DECRYPT_INFO  pInfo)
 
 {
+	struct p11Token_t *token;
+	struct p11Object_t *p11prikey;
+	struct p11Attribute_t *attr;
+	unsigned char cryptogram[512], plain[512];
+	CK_MECHANISM mech;
+	CK_KEY_TYPE keytype;
+	CK_ULONG plainlen;
+	DWORD dwret;
+	int rc;
+
 	FUNC_CALLED();
 
-	if (pCardData == NULL)
+#ifdef DEBUG
+	debug(" (pCardData=%p,pInfo=%p)\n", pCardData, pInfo);
+#endif
+
+	if (pCardData == NULL)		// CMR_413
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	if (pInfo == NULL)			// CMR_414
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pInfo validation failed");
+
+#ifdef DEBUG
+	debug(" pInfo(dwVersion=%lu,bContainerIndex=%d,dwKeySpec=%lx,pbData=%p,cbData=%d,pPaddingInfo=%p,dwPaddingType=%lu)\n", 
+		    pInfo->dwVersion, pInfo->bContainerIndex, pInfo->dwKeySpec, pInfo->pbData, pInfo->cbData, pInfo->pPaddingInfo, pInfo->dwPaddingType);
+#endif
+
+	if ((pInfo->dwVersion != CARD_SIGNING_INFO_BASIC_VERSION) && (pInfo->dwVersion != CARD_SIGNING_INFO_CURRENT_VERSION))
+		FUNC_FAILS(ERROR_REVISION_MISMATCH, "Version check failed");		// CMR_415
+
+	if (pInfo->pbData == NULL)			// CMR_418
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pInfo->pbData validation failed");
+
+	if ((pInfo->dwKeySpec != AT_SIGNATURE) && (pInfo->dwKeySpec != AT_KEYEXCHANGE))
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pInfo->dwKeySpec validation failed");		// CMR_417
+
+	dwret = validateToken(pCardData, &token);
+	if (dwret != SCARD_S_SUCCESS)
+		FUNC_FAILS(dwret, "Could not obtain fresh token reference");
+
+	p11prikey = NULL;
+	getKeyForIndex(pCardData, (int)pInfo->bContainerIndex, &p11prikey);
+
+	if (p11prikey == NULL)		// CMR_416
+		FUNC_FAILS(SCARD_E_NO_KEY_CONTAINER, "bContainerIndex invalid");
+
+	mech.pParameter = NULL;
+	mech.ulParameterLen = 0;
+	mech.mechanism = CKM_RSA_PKCS;
+
+	keytype = CKK_RSA;
+	if (findAttribute(p11prikey, CKA_KEY_TYPE, &attr)) {
+		keytype = *(CK_KEY_TYPE *)attr->attrData.pValue;
+	}
+
+	if (keytype != CKK_RSA)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "Key is not a RSA key");
+
+	rc = p11prikey->C_DecryptInit(p11prikey, &mech);
+
+	if (rc != CKR_OK) {
+		dwret = mapError(rc);
+		FUNC_FAILS(dwret, "C_DecryptInit failed");
+	}
+
+	copyInverted(cryptogram, pInfo->pbData, pInfo->cbData);
+	plainlen = sizeof(plain);
+
+	rc = p11prikey->C_Decrypt(p11prikey, mech.mechanism, cryptogram, pInfo->cbData, plain, &plainlen);
+
+	if (rc != CKR_OK) {
+		dwret = mapError(rc);
+		FUNC_FAILS(dwret, "C_SignInit failed");
+	}
+
+	copyInverted(pInfo->pbData, plain, plainlen);
+	pInfo->cbData = plainlen;
+
+	memset(plain, 0xA5, sizeof(plain));
 
 	FUNC_RETURNS(SCARD_S_SUCCESS);
 }
@@ -969,8 +1044,10 @@ static DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNIN
 	if (pInfo == NULL)			// CMR_468
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pInfo validation failed");
 
+#ifdef DEBUG
 	debug(" pInfo(dwVersion=%lu,bContainerIndex=%d,dwKeySpec=%lx,dwSigningFlags=%lx,aiHashAlg=%lx,pbData=%p,cbData=%d,pbSignedData=%p,cbSignedData=%d,pPaddingInfo=%p,dwPaddingType=%lu)\n", 
 		    pInfo->dwVersion, pInfo->bContainerIndex, pInfo->dwKeySpec, pInfo->dwSigningFlags, pInfo->aiHashAlg, pInfo->pbData, pInfo->cbData, pInfo->pbSignedData, pInfo->cbSignedData, pInfo->pPaddingInfo, pInfo->dwPaddingType);
+#endif
 
 	if ((pInfo->dwVersion != CARD_SIGNING_INFO_BASIC_VERSION) && (pInfo->dwVersion != CARD_SIGNING_INFO_CURRENT_VERSION))
 		FUNC_FAILS(ERROR_REVISION_MISMATCH, "Version check failed");		// CMR_469
@@ -1540,15 +1617,19 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 	switch (ul_reason_for_call)   {
 	case DLL_PROCESS_ATTACH:
 #ifdef DEBUG
-		initDebug();
+		initDebug("minidriver");
 		debug("Process %s attached\n", name);
 #endif
 		break;
 	case DLL_THREAD_ATTACH:
+#ifdef DEBUG
 		debug("Thread in Process %s attached\n", name);
 		break;
+#endif
 	case DLL_THREAD_DETACH:
+#ifdef DEBUG
 		debug("Thread in Process %s detached\n", name);
+#endif
 		break;
 	case DLL_PROCESS_DETACH:
 #ifdef DEBUG

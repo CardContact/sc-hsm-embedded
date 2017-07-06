@@ -153,7 +153,7 @@ int testSignRSA(NCRYPT_KEY_HANDLE hKey, DWORD padding, LPCWSTR hashAlg )
 	unsigned char cert[4096],hash[64],signature[256],pubkeyblob[1024];
 	DWORD dwlen,hashlen;
 
-	printf(" RSA with %S and %s padding", hashAlg, (padding == BCRYPT_PAD_PKCS1 ? "V1.5" : "PSS"));
+	printf(" RSA signing with %S and %s padding", hashAlg, (padding == BCRYPT_PAD_PKCS1 ? "V1.5" : "PSS"));
 
 	memset(hash, 0xA5, sizeof(hash));
 	hashlen = sizeof(hash);
@@ -364,6 +364,71 @@ int testSignECDSA(NCRYPT_KEY_HANDLE hKey, LPCWSTR hashAlg )
 
 
 
+int testDecryptRSA(NCRYPT_KEY_HANDLE hKey, DWORD padding )
+{
+	BCRYPT_KEY_HANDLE hPubKey;
+	SECURITY_STATUS secstat;
+	BCRYPT_OAEP_PADDING_INFO oaeppadinfo;
+	BCRYPT_ALG_HANDLE hSignAlg;
+	void *paddingInfo;
+	NTSTATUS ntstat;
+	unsigned char secret[64],plain[256],cryptogram[256],pubkeyblob[1024];
+	DWORD dwlen,secretlen;
+
+	printf(" RSA decryption with %s padding", (padding == BCRYPT_PAD_PKCS1 ? "V1.5" : "OAEP"));
+
+	memset(secret, 0xA5, sizeof(secret));
+	secretlen = sizeof(secret);
+
+	if (padding == BCRYPT_PAD_PKCS1) {
+		paddingInfo = NULL;
+	} else {
+		memset(&oaeppadinfo, 0, sizeof(oaeppadinfo));
+		oaeppadinfo.pszAlgId = BCRYPT_SHA256_ALGORITHM;
+		paddingInfo = &oaeppadinfo;
+	}
+
+	// Export public key from smart card
+	secstat = NCryptExportKey(hKey, 0, BCRYPT_RSAPUBLIC_BLOB, 0, pubkeyblob, sizeof(pubkeyblob), &dwlen, 0);
+
+	if (secstat != ERROR_SUCCESS) {
+		printf("NCryptExportKey failed: %ld\n", secstat);
+		return -1;
+	}
+
+	ntstat = BCryptOpenAlgorithmProvider(&hSignAlg, BCRYPT_RSA_ALGORITHM, NULL, 0);
+	if (ntstat != ERROR_SUCCESS) {
+		printf("BCryptOpenAlgorithmProvider failed: %ld\n", ntstat);
+		return -1;
+	}
+
+	ntstat = BCryptImportKeyPair(hSignAlg, 0, BCRYPT_RSAPUBLIC_BLOB, &hPubKey, pubkeyblob, dwlen, 0);
+	if (ntstat != ERROR_SUCCESS) {
+		printf("BCryptImportKeyPair failed: %ld\n", ntstat);
+		return -1;
+	}
+
+	ntstat = BCryptEncrypt(hPubKey, secret, secretlen, paddingInfo, NULL, 0, cryptogram, sizeof(cryptogram), &dwlen, padding);
+
+	if (ntstat != ERROR_SUCCESS) {
+		printf("BCryptEncrypt failed: %ld\n", ntstat);
+		return -1;
+	}
+
+	secstat = NCryptDecrypt(hKey, cryptogram, dwlen, paddingInfo, plain, sizeof(plain), &dwlen, padding);
+
+	if (secstat != ERROR_SUCCESS) {
+		printf("NCryptExportKey failed: %ld\n", secstat);
+		return -1;
+	}
+
+	BCryptDestroyKey(hPubKey);
+
+	return 0;
+}
+
+
+
 int cryptoTests()
 
 {
@@ -426,6 +491,9 @@ int cryptoTests()
 			printf(" - %s\n", verdict(rc == 0));
 
 			rc = testSignRSA(hKey, BCRYPT_PAD_PKCS1, BCRYPT_MD5_ALGORITHM );
+			printf(" - %s\n", verdict(rc == 0));
+
+			rc = testDecryptRSA(hKey, BCRYPT_PAD_PKCS1 );
 			printf(" - %s\n", verdict(rc == 0));
 		} else {
 			rc = testSignECDSA(hKey, BCRYPT_SHA1_ALGORITHM );
@@ -716,6 +784,14 @@ int main(int argc, char *argv[])
 	while (argc--) {
 		if (!strcmp(*argv, "-l")) {
 			listReaders();
+		} else if (!strcmp(*argv, "-r")) {
+			if (argc == 0) {
+				printf("Reader name missing in -r parameter\n");
+				exit(1);
+			}
+			argv++;
+			argc--;
+			reader = *argv;
 		} else if (!strcmp(*argv, "-a")) {
 			if (reader == NULL) {
 				printf("Need a reader name set with -r or use -l to select first reader\n");
