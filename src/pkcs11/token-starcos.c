@@ -158,7 +158,7 @@ int starcosSelectApplication(struct p11Token_t *token)
 
 int starcosReadTLVEF(struct p11Token_t *token, bytestring fid, unsigned char *content, size_t len)
 {
-	int rc, le, ne, ofs, maxapdu;
+	int rc, le, tl, ne, ofs, maxapdu;
 	unsigned short SW1SW2;
 	unsigned char *po;
 
@@ -200,15 +200,15 @@ int starcosReadTLVEF(struct p11Token_t *token, bytestring fid, unsigned char *co
 	maxapdu -= 2;		// Accommodate SW1/SW2
 
 	le = 65536;			// Read all if no certificate found
-	if (*content == 0x30) {
+	if ((*content == 0x30) || (*content == 0x5A)) {
 		po = content;
 		asn1Tag(&po);
-		rc = asn1Length(&po);
-		rc += po - content;
-		le = rc - ofs;
+		tl = asn1Length(&po);
+		tl += po - content;
+		le = tl - ofs;
 	}
 
-	do	{
+	while ((rc > 0) && (ofs < len) && (le > 0)) {
 		ne = le;
 		// Restrict Ne to the maximum APDU length allowed
 		if (((le != 65536) || token->slot->noExtLengthReadAll) && (le > maxapdu))
@@ -228,9 +228,58 @@ int starcosReadTLVEF(struct p11Token_t *token, bytestring fid, unsigned char *co
 		ofs += rc;
 		if (le != 65536)
 			le -= rc;
-	} while ((rc > 0) && (ofs < len) && (le > 0));
+	}
 
 	FUNC_RETURNS(ofs);
+}
+
+
+
+#ifndef bcddigit
+		#define bcddigit(x) ((x) >= 10 ? 'A' - 10 + (x) : '0' + (x))
+#endif
+
+int starcosReadICCSN(struct p11Token_t *token)
+{
+	static struct bytestring_s EFICCSN = { (unsigned char *)"\x2F\x02", 2 };
+	unsigned char scr[12],*s,*d;
+	unsigned short SW1SW2;
+	int rc;
+
+	FUNC_CALLED();
+
+	// Select MF
+	rc = transmitAPDU(token->slot, 0x00, 0xA4, 0x00, 0x0C,
+			0, NULL,
+			0, NULL, 0, &SW1SW2);
+
+	if (rc < 0) {
+		FUNC_FAILS(rc, "transmitAPDU failed");
+	}
+
+	if (SW1SW2 != 0x9000) {
+		FUNC_FAILS(-1, "Could not select MF");
+	}
+
+	rc = starcosReadTLVEF(token, &EFICCSN, scr, sizeof(scr));
+
+	if (rc < 0)
+		FUNC_FAILS(rc, "Reading EF.SN.ICC");
+	
+	memset(token->info.serialNumber, ' ', sizeof(token->info.serialNumber));
+
+	s = scr + 4;		// Ignore 5A08 and first two bytes as serial number is only 16 digits while ICCSN is 20 digits
+	rc -= 4;
+	d = token->info.serialNumber;
+
+	while (rc > 0) {
+		*d++ = bcddigit(*s >> 4);
+		*d++ = bcddigit(*s & 15);
+		*s++;
+		rc--;
+	}
+
+	return 0;
 }
 
 
@@ -1335,6 +1384,13 @@ int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct
 	sc = starcosGetPrivateData(ptoken);
 	sc->selectedApplication = 0;
 	sc->application = application;
+
+	rc = starcosReadICCSN(ptoken);
+
+	if (rc < 0) {
+		freeToken(ptoken);
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Can't read ICCSN");
+	}
 
 	strbpcpy(ptoken->info.label, sc->application->name, sizeof(ptoken->info.label));
 

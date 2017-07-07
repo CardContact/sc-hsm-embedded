@@ -1,0 +1,205 @@
+<?xml version='1.0' encoding='windows-1252'?>
+
+<?if $(var.Platform) = x64 ?>
+	<?define ProductName="SmartCard-HSM Middleware (64-Bit $(var.DebRel))" ?>
+	<?define UpgradeCode = "{b448e37f-c6f3-4fb7-8ee8-11b18aefac1d}" ?>
+<?else ?>
+	<?define ProductName = "SmartCard-HSM Middleware (32-Bit $(var.DebRel))" ?>
+	<?define UpgradeCode = "{C9BC848A-FC0E-4A61-8441-2CCD3C1D4E5C}" ?>
+<?endif ?>
+
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+	<Product Name='$(var.ProductName)' Manufacturer='CardContact Systems GmbH'
+		Id='*' 
+		UpgradeCode='$(var.UpgradeCode)'
+		Language='1033' Codepage='1252' Version='$(var.Version)'>
+
+		<Package Id='*' Keywords='Installer' Description="SmartCard-HSM Middleware Installer"
+			Comments='PKCS#11 Module and CSP-Minidriver' Manufacturer='CardContact Systems GmbH'
+			InstallerVersion='200' Languages='1033' Compressed='yes' SummaryCodepage='1252'
+			InstallScope='perMachine' />
+
+		<Media Id="1" Cabinet="sc_hsm_middleware.cab" EmbedCab="yes" CompressionLevel="high"/>
+
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Directory Id="ProgramFilesFolder" Name="PFiles">
+				<Directory Id="CardContact" Name="CardContact">
+					<Directory Id="INSTALLDIR" Name="SmartCard-HSM Middleware">
+						<Component Id="sc_hsm_minidriver_test" Guid="*" Win64="no">
+							<File Id="sc_hsm_minidriver_test" Source="$(var.DebRel)\sc-hsm-minidriver-test.exe" Vital="yes"/>
+						</Component>
+					</Directory>
+				</Directory>
+			</Directory>
+
+<?if $(var.Platform) = x64 ?>
+			<Directory Id="ProgramFiles64Folder" Name="PFiles">
+				<Directory Id="CardContact_64" Name="CardContact">
+					<Directory Id="INSTALLDIR64" Name="SmartCard-HSM Middleware">
+						<Component Id="sc_hsm_minidriver_test_64" Guid="*" Win64="yes">
+							<File Id="sc_hsm_minidriver_test_64" Source="x64\$(var.DebRel)\sc-hsm-minidriver-test.exe" Vital="yes"/>
+						</Component>
+					</Directory>
+				</Directory>
+			</Directory>
+<?endif ?>
+
+			<Directory Id="SystemFolder" Name=".">
+				<Component Id="sc_hsm_minidriver" Guid="*" Win64="no">
+					<File Id="sc_hsm_minidriver" Source="$(var.DebRel)\sc-hsm-minidriver.dll" Vital="yes"/>
+				</Component>
+			</Directory>
+	
+<?if $(var.Platform) = x64 ?>
+			<Directory Id="System64Folder" Name=".">
+				<Component Id="sc_hsm_minidriver_64" Guid="*" Win64="yes">
+					<File Id="sc_hsm_minidriver_64" Source="x64\$(var.DebRel)\sc-hsm-minidriver.dll" Vital="yes"/>
+				</Component>
+			</Directory>
+<?endif ?>
+
+			<Component Id="RegistryEntries" Guid="*">
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\SmartCard-HSM">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3bfe1800008131fe458031815448534d31738021408107fa"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\SmartCard-HSM (Contactless)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3B8E80018031815448534D3173802140810718"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\SmartCard-HSM (Micro-SD)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3BF81300008131FE454A434F5076323431B7"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\Bundesnotarkammer Signaturkarte (3.5ID ECC C1 BNK 1)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3B9B96C00A31FE458067041EB50100894C810545"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\Bundesnotarkammer Signaturkarte (3.5ID ECC C1 BNK 2)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3BDB96FF8131FE4580670534B50201C0A181053C"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\Bundesnotarkammer Signaturkarte (3.5ID ECC C1 BNK 3)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3BD996FF8131FE458031B8738601C0810502"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\Bundesnotarkammer Signaturkarte (3.5ID ECC C1 BNK 4)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3BDF96FF8131FE45805B44452E424E4F544B3131318105A0"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\Bundesnotarkammer Signaturkarte (3.5ID ECC C1 BNK 5)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3BDF96FF8131FE45805B44452E424E4F544B3130308105A0"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\DGN Signaturkarte (3.5ID ECC C1 DGN)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3BD996FF8131FE458031B8738601E0810522"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+<?if $(var.Platform) = x64 ?>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\SmartCard-HSM (JCOP241r3)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3bfe1800008131fe458031815448534d31738021408107fa"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\SmartCard-HSM (Contactless)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3B8E80018031815448534D3173802140810718"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\SmartCard-HSM (Micro-SD)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3BF81300008131FE454A434F5076323431B7"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\Bundesnotarkammer Signaturkarte (3.5ID ECC C1 BNK 1)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3B9B96C00A31FE458067041EB50100894C810545"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\Bundesnotarkammer Signaturkarte (3.5ID ECC C1 BNK 2)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3BDB96FF8131FE4580670534B50201C0A181053C"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\Bundesnotarkammer Signaturkarte (3.5ID ECC C1 BNK 3)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3BD996FF8131FE458031B8738601C0810502"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\Bundesnotarkammer Signaturkarte (3.5ID ECC C1 BNK 4)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3BDF96FF8131FE45805B44452E424E4F544B3131318105A0"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\Bundesnotarkammer Signaturkarte (3.5ID ECC C1 BNK 5)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3BDF96FF8131FE45805B44452E424E4F544B3130308105A0"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\DGN Signaturkarte(3.5ID ECC C1 DGN)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3BD996FF8131FE458031B8738601E0810522"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
+<?endif ?>
+			</Component>
+		</Directory>
+
+		<Feature Id='Complete' Level='1'>
+			<ComponentRef Id='sc_hsm_minidriver_test' />
+			<ComponentRef Id='sc_hsm_minidriver' />
+			<ComponentRef Id='RegistryEntries' />
+<?if $(var.Platform) = x64 ?>
+			<ComponentRef Id='sc_hsm_minidriver_test_64' />
+			<ComponentRef Id='sc_hsm_minidriver_64' />
+<?endif ?>
+		</Feature>
+
+	</Product>
+</Wix>
+
