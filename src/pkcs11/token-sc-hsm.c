@@ -36,6 +36,11 @@
 
 #include "token-sc-hsm.h"
 
+#include <common/asn1.h>
+#include <common/cvc.h>
+#include <common/pkcs15.h>
+#include <common/debug.h>
+
 #include <pkcs11/slot.h>
 #include <pkcs11/object.h>
 #include <pkcs11/token.h>
@@ -43,11 +48,6 @@
 #include <pkcs11/privatekeyobject.h>
 #include <pkcs11/publickeyobject.h>
 #include <pkcs11/strbpcpy.h>
-#include <pkcs11/pkcs15.h>
-#include <pkcs11/debug.h>
-
-#include <common/asn1.h>
-#include <common/cvc.h>
 
 
 

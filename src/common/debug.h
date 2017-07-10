@@ -37,7 +37,7 @@
 #ifdef DEBUG
 
 void decodeBCDString(unsigned char *Inbuff, int len, char *Outbuff);
-void initDebug();
+void initDebug(char *module);
 void debug(char *log, ...);
 void termDebug();
 

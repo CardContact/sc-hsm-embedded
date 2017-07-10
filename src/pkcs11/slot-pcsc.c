@@ -49,7 +49,7 @@
 #include <pkcs11/crc32.h>
 
 #ifdef DEBUG
-#include <pkcs11/debug.h>
+#include <common/debug.h>
 #endif
 
 #ifdef _WIN32

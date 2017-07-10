@@ -36,6 +36,8 @@
 
 #include <common/bytestring.h>
 #include <common/asn1.h>
+#include <common/pkcs15.h>
+#include <common/debug.h>
 
 #include <pkcs11/slot.h>
 #include <pkcs11/object.h>
@@ -44,8 +46,6 @@
 #include <pkcs11/privatekeyobject.h>
 #include <pkcs11/publickeyobject.h>
 #include <pkcs11/strbpcpy.h>
-#include <pkcs11/pkcs15.h>
-#include <pkcs11/debug.h>
 
 
 
@@ -236,7 +236,7 @@ int starcosReadTLVEF(struct p11Token_t *token, bytestring fid, unsigned char *co
 
 
 #ifndef bcddigit
-		#define bcddigit(x) ((x) >= 10 ? 'A' - 10 + (x) : '0' + (x))
+	#define bcddigit(x) ((x) >= 10 ? 'A' - 10 + (x) : '0' + (x))
 #endif
 
 int starcosReadICCSN(struct p11Token_t *token)
@@ -275,7 +275,7 @@ int starcosReadICCSN(struct p11Token_t *token)
 	while (rc > 0) {
 		*d++ = bcddigit(*s >> 4);
 		*d++ = bcddigit(*s & 15);
-		*s++;
+		s++;
 		rc--;
 	}
 

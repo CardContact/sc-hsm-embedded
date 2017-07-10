@@ -41,7 +41,7 @@
 #include <pkcs11/strbpcpy.h>
 
 #ifdef DEBUG
-#include <pkcs11/debug.h>
+#include <common/debug.h>
 #endif
 
 #ifdef __APPLE__
@@ -319,7 +319,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 		return CKR_OK;
 
 #ifdef DEBUG
-	initDebug(context);
+	initDebug("pkcs11");
 	FUNC_CALLED();
 #endif
 

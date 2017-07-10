@@ -39,7 +39,7 @@
 // #include <pkcs11/session.h>
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/object.h>
-#include <pkcs11/pkcs15.h>
+#include <common/pkcs15.h>
 
 int createPrivateKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);
 int createPrivateKeyObjectFromP15(struct p15PrivateKeyDescription *p15, struct p11Object_t *cert, int useAA, struct p11Object_t **pObject);

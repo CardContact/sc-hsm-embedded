@@ -42,7 +42,7 @@
 #include <pkcs11/session.h>
 
 #ifdef DEBUG
-#include <pkcs11/debug.h>
+#include <common/debug.h>
 #endif
 
 #ifdef CTAPI

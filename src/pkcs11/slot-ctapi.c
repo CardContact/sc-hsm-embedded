@@ -50,7 +50,7 @@
 #include <pkcs11/strbpcpy.h>
 
 #ifdef DEBUG
-#include <pkcs11/debug.h>
+#include <common/debug.h>
 #endif
 
 #include <ctccid/ctapi.h>

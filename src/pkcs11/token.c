@@ -46,7 +46,7 @@
 #include <pkcs11/token-sc-hsm.h>
 
 #ifdef DEBUG
-#include <pkcs11/debug.h>
+#include <common/debug.h>
 #endif
 
 extern struct p11Context_t *context;

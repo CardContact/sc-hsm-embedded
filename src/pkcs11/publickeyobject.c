@@ -37,13 +37,13 @@
 #include <pkcs11/object.h>
 #include <pkcs11/publickeyobject.h>
 #include <pkcs11/certificateobject.h>
-#include <pkcs11/pkcs15.h>
+#include <common/pkcs15.h>
 
 #include <common/cvc.h>
 #include <common/asn1.h>
 
 #ifdef DEBUG
-#include <pkcs11/debug.h>
+#include <common/debug.h>
 
 extern int dumpAttributeList(struct p11Object_t *pObject);
 

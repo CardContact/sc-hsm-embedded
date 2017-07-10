@@ -38,7 +38,7 @@
 #include <pkcs11/dataobject.h>
 
 #ifdef DEBUG
-#include <pkcs11/debug.h>
+#include <common/debug.h>
 
 extern int dumpAttributeList(struct p11Object_t *pObject);
 

@@ -44,6 +44,8 @@
 #include <windows.h>
 #include <io.h>
 #else
+#include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
 #endif
 
@@ -93,8 +95,8 @@ void initDebug(char *progname)
 #else
 	home = getenv("HOME");
 	if (home == NULL)
-		home = "/var/tmp";
-	prefix = "/sc-hsm-embedded/";
+		home = "/var";
+	prefix = "/tmp/sc-hsm-embedded/";
 	pid = getpid();
 #endif
 

@@ -39,7 +39,7 @@
 #include <pkcs11/session.h>
 #include <pkcs11/cryptoki.h>
 #include <pkcs11/object.h>
-#include <pkcs11/pkcs15.h>
+#include <common/pkcs15.h>
 
 int createCertificateObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t *object);
 int populateIssuerSubjectSerial(struct p11Object_t *pObject);

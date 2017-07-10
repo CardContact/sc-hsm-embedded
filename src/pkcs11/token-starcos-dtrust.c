@@ -36,6 +36,8 @@
 
 #include <common/bytestring.h>
 #include <common/asn1.h>
+#include <common/pkcs15.h>
+#include <common/debug.h>
 
 #include <pkcs11/slot.h>
 #include <pkcs11/object.h>
@@ -44,8 +46,6 @@
 #include <pkcs11/privatekeyobject.h>
 #include <pkcs11/publickeyobject.h>
 #include <pkcs11/strbpcpy.h>
-#include <pkcs11/pkcs15.h>
-#include <pkcs11/debug.h>
 
 
 static unsigned char atr34[] = { 0x3B,0xD8,0x18,0xFF,0x81,0xB1,0xFE,0x45,0x1F,0x03,0x80,0x64,0x04,0x1A,0xB4,0x03,0x81,0x05,0x61 };

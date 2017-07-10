@@ -42,7 +42,7 @@
 #include <pkcs11/certificateobject.h>
 
 #ifdef DEBUG
-#include <pkcs11/debug.h>
+#include <common/debug.h>
 #endif
 
 extern struct p11Context_t *context;

@@ -62,7 +62,7 @@ static struct attributesForObject_t attributesKeyObject[] = {
 
 #ifdef DEBUG
 
-#include <pkcs11/debug.h>
+#include <common/debug.h>
 
 
 struct id2name_t p11CKMName[] = {
