@@ -114,7 +114,7 @@ int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, s
 			{ CKA_VERIFY_RECOVER, &true, sizeof(true) },
 			{ CKA_WRAP, &false, sizeof(false) },
 			{ CKA_TRUSTED, &false, sizeof(false) },
-			{ CKA_MODULUS_BITS, &modulus_bits, sizeof(modulus_bits) },
+			{ 0, NULL, 0 },
 			{ 0, NULL, 0 },
 			{ 0, NULL, 0 }
 	};
@@ -146,7 +146,7 @@ int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, s
 		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
-	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE) - 2;
+	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE) - 3;
 
 	switch(p15->keytype) {
 	case P15_KEYTYPE_RSA:
@@ -156,7 +156,13 @@ int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, s
 			FUNC_FAILS(CKR_KEY_TYPE_INCONSISTENT, "Can't decode modulus - Private key type does not match public key type in certificate");
 		}
 		cert->keysize = template[attributes].ulValueLen << 3;
+
 		attributes += 2;
+		modulus_bits = cert->keysize;
+		template[attributes].type = CKA_MODULUS_BITS;
+		template[attributes].ulValueLen = sizeof(modulus_bits);
+		template[attributes].pValue = &modulus_bits;
+		attributes++;
 		break;
 	case P15_KEYTYPE_ECC:
 		keyType = CKK_ECDSA;
