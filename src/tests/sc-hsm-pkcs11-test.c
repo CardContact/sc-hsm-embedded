@@ -354,6 +354,7 @@ static int optTestRSADecryption = 0;
 static int optTestPINBlock = 0;
 static int optTestMultiOnly = 0;
 static int optTestHotplug = 0;
+static int optTestEvent = 0;
 static int optOneThreadPerToken = 0;
 static int optNoClass3Tests = 0;
 static int optNoMultiThreadingTests = 0;
@@ -1704,6 +1705,44 @@ void testInsertRemove(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 
 
 
+void testEvent(CK_FUNCTION_LIST_PTR p11)
+{
+	CK_SLOT_ID slotid;
+	CK_SLOT_INFO slotinfo;
+	CK_TOKEN_INFO tokeninfo;
+	int rc;
+
+	do	{
+		rc = p11->C_WaitForSlotEvent(0, &slotid, NULL);
+
+		if (rc != CKR_OK) {
+			printf("C_WaitForSlotEvent - %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+			return;
+		}
+
+		rc = p11->C_GetSlotInfo(slotid, &slotinfo);
+
+		if (rc != CKR_OK) {
+			printf("C_GetSlotInfo - %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+			return;
+		}
+
+		printf("Slot manufacturer: %s\n", p11string(slotinfo.manufacturerID, sizeof(slotinfo.manufacturerID)));
+		printf("Slot ID : Slot description: %ld : %s\n", slotid, p11string(slotinfo.slotDescription, sizeof(slotinfo.slotDescription)));
+		printf("Slot flags: %08x\n", (int)slotinfo.flags);
+
+		rc = p11->C_GetTokenInfo(slotid, &tokeninfo);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), rc == CKR_OK ? "Passed" : rc == CKR_TOKEN_NOT_PRESENT ? "No token" : "Failed");
+
+		if (rc == CKR_OK) {
+			printf("Token label: %s\n", p11string(tokeninfo.label, sizeof(tokeninfo.label)));
+			printf("Token flags: %08lx\n", tokeninfo.flags);
+		}
+	} while (1);
+}
+
+
+
 void testHotplug(CK_FUNCTION_LIST_PTR p11)
 {
 	CK_ULONG slots, slotindex;
@@ -1923,6 +1962,8 @@ void decodeArgs(int argc, char **argv)
 			optTestMultiOnly = 1;
 		} else if (!strcmp(*argv, "--test-hotplug-only")) {
 			optTestHotplug = 1;
+		} else if (!strcmp(*argv, "--test-event-only")) {
+			optTestEvent = 1;
 		} else if (!strcmp(*argv, "--one-thread-per-token")) {
 			optOneThreadPerToken = 1;
 		} else if (!strcmp(*argv, "--no-class3-tests")) {
@@ -1999,6 +2040,8 @@ int main(int argc, char *argv[])
 
 	if (optTestHotplug) {
 		testHotplug(p11);
+	} else if (optTestEvent) {
+		testEvent(p11);
 	} else {
 		printf("Calling C_GetSlotList ");
 

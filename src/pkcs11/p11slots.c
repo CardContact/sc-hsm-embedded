@@ -205,13 +205,58 @@ CK_DECLARE_FUNCTION(CK_RV, C_WaitForSlotEvent)(
 		CK_VOID_PTR pReserved
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	struct p11Slot_t *slot;
+	CK_RV rv;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
+
+	if (!isValidPtr(pSlot)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (flags & ~CKF_DONT_BLOCK) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid flags argument");
+	}
+
+	// Update slot list if that was never done before
+	if (context->slotPool.list == NULL) {
+		// updateSlots() and getToken() potentially change a lot of internal structures
+		// which is why both are protected here using the global lock
+		p11LockMutex(context->mutex);
+
+		rv = updateSlots(&context->slotPool);
+
+		p11UnlockMutex(context->mutex);
+
+		if (rv != CKR_OK) {
+			FUNC_FAILS(rv, "Failed to update slot list");
+		}
+	}
+
+	while (1) {
+		rv = nextSlotEvent(&context->slotPool, &slot);
+
+		if ((rv != CKR_OK) && (rv != CKR_NO_EVENT)) {
+			FUNC_FAILS(rv, "Could not get next slot event");
+		}
+
+		if ((rv == CKR_NO_EVENT) && !(flags & flags & ~CKF_DONT_BLOCK)) {
+			rv = waitForSlotEvent(&context->slotPool);
+
+			if (rv != CKR_OK) {
+				FUNC_FAILS(rv, "Error waiting for slot event");
+			}
+			continue;
+		}
+		break;
+	}
+
+	if (rv == CKR_OK)
+		*pSlot = slot->id;
 
 	FUNC_RETURNS(rv);
 }

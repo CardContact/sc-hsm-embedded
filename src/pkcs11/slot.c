@@ -91,6 +91,8 @@ int addToken(struct p11Slot_t *slot, struct p11Token_t *token)
 
 	slot->token = token;                     /* Add token to slot                */
 	slot->info.flags |= CKF_TOKEN_PRESENT;   /* indicate the presence of a token */
+	if (slot->primarySlot != NULL)
+		slot->eventOccured = TRUE;
 
 	return CKR_OK;
 }
@@ -142,6 +144,8 @@ int removeToken(struct p11Slot_t *slot)
 	slot->removedToken = slot->token;
 	slot->token = NULL;
 	slot->info.flags &= ~CKF_TOKEN_PRESENT;
+	if (slot->primarySlot != NULL)
+		slot->eventOccured = TRUE;
 
 #ifndef MINIDRIVER
 	// Final close with resource deallocation is done from freeToken().

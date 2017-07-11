@@ -57,7 +57,7 @@ extern "C" {
 #define CKC_CVC_TR3110				CKC_VENDOR_DEFINED + 0x00000001
 
 #define CKM_SC_HSM_PSS_SHA1			CKC_VENDOR_DEFINED + 0x00000001
-#define CKM_SC_HSM_PSS_SHA256		CKC_VENDOR_DEFINED + 0x00000001
+#define CKM_SC_HSM_PSS_SHA256			CKC_VENDOR_DEFINED + 0x00000001
 
 /* Support for C++ compiler ----------------------------------------------- */
 

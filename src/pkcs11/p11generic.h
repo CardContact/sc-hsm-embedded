@@ -128,6 +128,7 @@ struct p11Slot_t {
 	CK_SLOT_ID id;                    /**< The id of the slot                  */
 	CK_SLOT_INFO info;                /**< General information about the slot  */
 	int closed;                       /**< Slot hardware currently absent      */
+	int eventOccured;                 /**< A slot event occurred               */
 	unsigned long hasFeatureVerifyPINDirect;
 #ifdef CTAPI
 	unsigned short ctn;               /**< Card terminal number                */

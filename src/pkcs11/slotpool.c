@@ -41,6 +41,12 @@
 #include <pkcs11/token.h>
 #include <common/debug.h>
 
+#ifdef CTAPI
+#include "slot-ctapi.h"
+#else
+#include "slot-pcsc.h"
+#endif
+
 extern struct p11Context_t *context;
 
 
@@ -210,4 +216,56 @@ int findSlot(struct p11SlotPool_t *pool, CK_SLOT_ID slotID, struct p11Slot_t **s
 	}
 
 	FUNC_RETURNS(CKR_SLOT_ID_INVALID);
+}
+
+
+
+int nextSlotEvent(struct p11SlotPool_t *pool, struct p11Slot_t **pslot)
+{
+	struct p11Slot_t *slot;
+
+	slot = pool->list;
+	*pslot = NULL;
+
+	while (slot != NULL) {
+		if (slot->eventOccured) {
+			slot->eventOccured = FALSE;
+			*pslot = slot;
+			FUNC_RETURNS(CKR_OK);
+		}
+
+		slot = slot->next;
+	}
+
+	FUNC_RETURNS(CKR_NO_EVENT);
+}
+
+
+
+int waitForSlotEvent(struct p11SlotPool_t *pool)
+{
+	int rc;
+
+	FUNC_CALLED();
+
+#ifdef CTAPI
+	rc = CKR_FUNCTION_NOT_SUPPORTED;
+#else
+	rc = waitForPCSCEvent(pool, -1);
+#endif
+	if (rc != CKR_OK) {
+		FUNC_FAILS(rc, "Failed to wait for slot event");
+	}
+
+	p11LockMutex(context->mutex);
+
+	rc = updateSlots(&context->slotPool);
+
+	p11UnlockMutex(context->mutex);
+
+	if (rc != CKR_OK) {
+		FUNC_FAILS(rc, "Failed to update slot list");
+	}
+
+	FUNC_RETURNS(rc);
 }
