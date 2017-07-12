@@ -651,17 +651,19 @@ int findSlotKey(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Objec
 
 int closeSlot(struct p11Slot_t *slot)
 {
-	int rc;
+	int rc = CKR_OK;
 
 	FUNC_CALLED();
 
 	if (slot->primarySlot)
 		FUNC_RETURNS(CKR_OK);
 
+#ifndef MINIDRIVER
 #ifdef CTAPI
 	rc = closeCTAPISlot(slot);
 #else
 	rc = closePCSCSlot(slot);
+#endif
 #endif
 
 	FUNC_RETURNS(rc);
