@@ -718,12 +718,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjects)(
 
 	if (session->searchObj.objectsCollected == session->searchObj.searchNumOfObjects) {
 		*pulObjectCount = 0;
+#ifdef DEBUG
+		debug("No objects in left in search list\n");
+#endif
 		FUNC_RETURNS(CKR_OK);
 	}
 
 	pObject = session->searchObj.searchList;
 
 	i = session->searchObj.objectsCollected;
+#ifdef DEBUG
+	debug("objectsCollected=%d\n", i);
+#endif
 
 	while (i > 0) {
 		pObject = pObject->next;
@@ -740,6 +746,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjects)(
 		phObject++;
 		pObject = pObject->next;
 	}
+
+#ifdef DEBUG
+	debug("*pulObjectCount=%d\n", cnt);
+#endif
 
 	*pulObjectCount = cnt;
 	session->searchObj.objectsCollected += cnt;

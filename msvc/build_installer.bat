@@ -1,6 +1,6 @@
 set WIXBIN="c:\Program Files (x86)\WiX Toolset v3.11\bin"
 
-set DEBREL=Debug
+set DEBREL=Release
 
 %WIXBIN%\candle -arch x86 installer.wxs -dPlatform=x86 -dDebRel=%DEBREL% -dVersion=2.10.0
 %WIXBIN%\light -out sc-hsm-middleware-x86.msi installer.wixobj

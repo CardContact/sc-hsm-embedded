@@ -26,7 +26,10 @@
 				<Directory Id="CardContact" Name="CardContact">
 					<Directory Id="INSTALLDIR" Name="SmartCard-HSM Middleware">
 						<Component Id="sc_hsm_minidriver_test" Guid="*" Win64="no">
-							<File Id="sc_hsm_minidriver_test" Source="$(var.DebRel)\sc-hsm-minidriver-test.exe" Vital="yes"/>
+							<File Id="sc_hsm_minidriver_test" Source="sc-hsm-minidriver-test\$(var.DebRel)\sc-hsm-minidriver-test.exe" Vital="yes"/>
+						</Component>
+						<Component Id="sc_hsm_pkcs11_test" Guid="*" Win64="no">
+							<File Id="sc_hsm_pkcs11_test" Source="sc-hsm-pkcs11-test\$(var.DebRel)\sc-hsm-pkcs11-test.exe" Vital="yes"/>
 						</Component>
 					</Directory>
 				</Directory>
@@ -37,7 +40,10 @@
 				<Directory Id="CardContact_64" Name="CardContact">
 					<Directory Id="INSTALLDIR64" Name="SmartCard-HSM Middleware">
 						<Component Id="sc_hsm_minidriver_test_64" Guid="*" Win64="yes">
-							<File Id="sc_hsm_minidriver_test_64" Source="x64\$(var.DebRel)\sc-hsm-minidriver-test.exe" Vital="yes"/>
+							<File Id="sc_hsm_minidriver_test_64" Source="sc-hsm-minidriver-test\x64\$(var.DebRel)\sc-hsm-minidriver-test.exe" Vital="yes"/>
+						</Component>
+						<Component Id="sc_hsm_pkcs11_test_64" Guid="*" Win64="yes">
+							<File Id="sc_hsm_pkcs11_test_64" Source="sc-hsm-pkcs11-test\x64\$(var.DebRel)\sc-hsm-pkcs11-test.exe" Vital="yes"/>
 						</Component>
 					</Directory>
 				</Directory>
@@ -46,14 +52,20 @@
 
 			<Directory Id="SystemFolder" Name=".">
 				<Component Id="sc_hsm_minidriver" Guid="*" Win64="no">
-					<File Id="sc_hsm_minidriver" Source="$(var.DebRel)\sc-hsm-minidriver.dll" Vital="yes"/>
+					<File Id="sc_hsm_minidriver" Source="sc-hsm-minidriver\$(var.DebRel)\sc-hsm-minidriver.dll" Vital="yes"/>
+				</Component>
+				<Component Id="sc_hsm_pkcs11" Guid="*" Win64="no">
+					<File Id="sc_hsm_pkcs11" Source="sc-hsm-pkcs11-pcsc\$(var.DebRel)\sc-hsm-pkcs11.dll" Vital="yes"/>
 				</Component>
 			</Directory>
 	
 <?if $(var.Platform) = x64 ?>
 			<Directory Id="System64Folder" Name=".">
 				<Component Id="sc_hsm_minidriver_64" Guid="*" Win64="yes">
-					<File Id="sc_hsm_minidriver_64" Source="x64\$(var.DebRel)\sc-hsm-minidriver.dll" Vital="yes"/>
+					<File Id="sc_hsm_minidriver_64" Source="sc-hsm-minidriver\x64\$(var.DebRel)\sc-hsm-minidriver.dll" Vital="yes"/>
+				</Component>
+				<Component Id="sc_hsm_pkcs11_64" Guid="*" Win64="yes">
+					<File Id="sc_hsm_pkcs11_64" Source="sc-hsm-pkcs11-pcsc\x64\$(var.DebRel)\sc-hsm-pkcs11.dll" Vital="yes"/>
 				</Component>
 			</Directory>
 <?endif ?>
@@ -193,10 +205,14 @@
 		<Feature Id='Complete' Level='1'>
 			<ComponentRef Id='sc_hsm_minidriver_test' />
 			<ComponentRef Id='sc_hsm_minidriver' />
+			<ComponentRef Id='sc_hsm_pkcs11_test' />
+			<ComponentRef Id='sc_hsm_pkcs11' />
 			<ComponentRef Id='RegistryEntries' />
 <?if $(var.Platform) = x64 ?>
 			<ComponentRef Id='sc_hsm_minidriver_test_64' />
 			<ComponentRef Id='sc_hsm_minidriver_64' />
+			<ComponentRef Id='sc_hsm_pkcs11_test_64' />
+			<ComponentRef Id='sc_hsm_pkcs11_64' />
 <?endif ?>
 		</Feature>
 
