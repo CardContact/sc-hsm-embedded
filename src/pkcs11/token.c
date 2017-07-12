@@ -650,9 +650,6 @@ int newToken(struct p11Slot_t *slot, unsigned char *atr, size_t atrlen, struct p
 void freeToken(struct p11Token_t *token)
 {
 	if (token) {
-#ifndef MINIDRIVER
-		closeSessionsForSlot(&context->sessionPool, token->slot->id);
-#endif
 		if (token->drv->freeToken)
 			token->drv->freeToken(token);
 

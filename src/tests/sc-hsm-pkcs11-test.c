@@ -2179,7 +2179,7 @@ int main(int argc, char *argv[])
 		}
 		free(slotlist);
 
-#ifndef WIN32
+#ifndef _WIN32
 		if (!optNoMultiThreadingTests)
 			testSigningMultiThreading(p11);
 #endif

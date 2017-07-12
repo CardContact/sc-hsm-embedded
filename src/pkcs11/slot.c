@@ -135,6 +135,9 @@ int removeToken(struct p11Slot_t *slot)
 	}
 
 	if (slot->removedToken) {
+#ifndef MINIDRIVER
+		closeSessionsForSlot(&context->sessionPool, slot->id);
+#endif
 		freeToken(slot->removedToken);
 		slot->removedToken = NULL;
 	}
@@ -148,7 +151,7 @@ int removeToken(struct p11Slot_t *slot)
 		slot->eventOccured = TRUE;
 
 #ifndef MINIDRIVER
-	// Final close with resource deallocation is done from freeToken().
+	// Final close with resource deallocation is done before freeToken() above.
 	tokenRemovedForSessionsOnSlot(&context->sessionPool, slot->id);
 #endif
 
@@ -643,25 +646,6 @@ int findSlotKey(struct p11Slot_t *slot, CK_OBJECT_HANDLE handle, struct p11Objec
 
 	return rc == CKR_OBJECT_HANDLE_INVALID ? CKR_KEY_HANDLE_INVALID : rc;
 }
-
-
-
-#ifndef MINIDRIVER
-int updateSlots(struct p11SlotPool_t *pool)
-{
-	int rc;
-
-	FUNC_CALLED();
-
-#ifdef CTAPI
-	rc = updateCTAPISlots(pool);
-#else
-	rc = updatePCSCSlots(pool);
-#endif
-
-	FUNC_RETURNS(rc);
-}
-#endif
 
 
 

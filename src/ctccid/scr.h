@@ -34,7 +34,7 @@
 #ifndef _SCR_H_
 #define _SCR_H_
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #define usleep(us) Sleep((us) / 1000)
 #endif

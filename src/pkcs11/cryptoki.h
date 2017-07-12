@@ -25,7 +25,7 @@
 
 /* Specifies that the function is a DLL entry point. */
 
-#ifdef WIN32
+#if defined(WIN32) || defined(_WIN32)
 #define CK_IMPORT_SPEC __declspec(dllimport)
 #pragma pack(push, cryptoki, 1)
 #else
@@ -43,7 +43,7 @@
 #endif
 
 /* Ensures the calling convention for Win32 builds */
-#ifdef WIN32
+#if defined(WIN32) || defined(_WIN32)
 #define CK_CALL_SPEC __cdecl
 #else
 #define CK_CALL_SPEC
@@ -69,7 +69,7 @@
 
 #include "pkcs11.h"
 
-#ifdef WIN32
+#if defined(WIN32) || defined(_WIN32)
 #pragma pack(pop, cryptoki)
 #endif
 

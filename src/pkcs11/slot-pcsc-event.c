@@ -328,6 +328,12 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 
 
 
+/**
+ * Wait for a status change in the PC/SC subsystems, e.g. a card insertion or removal or attach or detach of a card reader
+ *
+ * @param pool the pool of already allocated slots
+ * @param timeout the timeout in milliseconds or 0 for infinite wait
+ */
 int waitForPCSCEvent(struct p11SlotPool_t *pool, int timeout)
 {
 	LONG rc;
@@ -389,7 +395,7 @@ int waitForPCSCEvent(struct p11SlotPool_t *pool, int timeout)
 		rs[i].dwCurrentState = rs[i].dwEventState;
 	}
 
-	to = (timeout < 0 ? INFINITE : timeout);
+	to = (timeout <= 0 ? INFINITE : timeout);
 
 	rc = SCardGetStatusChange(globalContext, to, rs, readers);
 
@@ -408,7 +414,7 @@ int waitForPCSCEvent(struct p11SlotPool_t *pool, int timeout)
 			if (rs[i].pvUserData) {
 				slot = (struct p11Slot_t *)rs[i].pvUserData;
 				slot->eventOccured = TRUE;
-			} else {
+			} else {		// PnP notification
 				updatePCSCSlots(pool);
 			}
 		}

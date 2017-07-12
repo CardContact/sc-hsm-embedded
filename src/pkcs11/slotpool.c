@@ -39,6 +39,7 @@
 #include <pkcs11/slotpool.h>
 #include <pkcs11/slot.h>
 #include <pkcs11/token.h>
+#include <pkcs11/session.h>
 #include <common/debug.h>
 
 #ifdef CTAPI
@@ -118,6 +119,7 @@ int terminateSlotPool(struct p11SlotPool_t *pool)
 		}
 
 		if (pSlot->removedToken) {
+			closeSessionsForSlot(&context->sessionPool, pSlot->id);
 			freeToken(pSlot->removedToken);
 			pSlot->removedToken = NULL;
 		}
@@ -220,6 +222,36 @@ int findSlot(struct p11SlotPool_t *pool, CK_SLOT_ID slotID, struct p11Slot_t **s
 
 
 
+/**
+ * Update the slot list, adding newly attached readers
+ *
+ * @param pool Pointer to slot-pool structure.
+ *
+ */
+int updateSlots(struct p11SlotPool_t *pool)
+{
+	int rc;
+
+	FUNC_CALLED();
+
+#ifdef CTAPI
+	rc = updateCTAPISlots(pool);
+#else
+	rc = updatePCSCSlots(pool);
+#endif
+
+	FUNC_RETURNS(rc);
+}
+
+
+
+/**
+ * Return the next slot with the event flag set.
+ *
+ * @param pool Pointer to slot-pool structure.
+ * @param pslot Pointer slot pointer being updated on success
+ * @returns CKR_OK if a slot was found or CKR_NO_EVENT otherwise
+ */
 int nextSlotEvent(struct p11SlotPool_t *pool, struct p11Slot_t **pslot)
 {
 	struct p11Slot_t *slot;
@@ -242,6 +274,12 @@ int nextSlotEvent(struct p11SlotPool_t *pool, struct p11Slot_t **pslot)
 
 
 
+/**
+ * Wait a new event
+ *
+ * @param pool Pointer to slot-pool structure.
+ * @returns CKR_OK if a slot was found or CKR_NO_EVENT otherwise
+ */
 int waitForSlotEvent(struct p11SlotPool_t *pool)
 {
 	int rc;
@@ -255,16 +293,6 @@ int waitForSlotEvent(struct p11SlotPool_t *pool)
 #endif
 	if (rc != CKR_OK) {
 		FUNC_FAILS(rc, "Failed to wait for slot event");
-	}
-
-	p11LockMutex(context->mutex);
-
-	rc = updateSlots(&context->slotPool);
-
-	p11UnlockMutex(context->mutex);
-
-	if (rc != CKR_OK) {
-		FUNC_FAILS(rc, "Failed to update slot list");
 	}
 
 	FUNC_RETURNS(rc);
