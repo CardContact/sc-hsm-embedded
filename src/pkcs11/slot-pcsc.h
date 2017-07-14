@@ -117,6 +117,7 @@ int transmitAPDUviaPCSC(struct p11Slot_t *slot,
 	unsigned char *capdu, size_t capdu_len,
 	unsigned char *rapdu, size_t rapdu_len);
 int getPCSCToken(struct p11Slot_t *slot, struct p11Token_t **token);
+void checkPCSCPinPad(struct p11Slot_t *slot);
 int checkForNewPCSCToken(struct p11Slot_t *slot);
 int lockPCSCSlot(struct p11Slot_t *slot);
 int unlockPCSCSlot(struct p11Slot_t *slot);

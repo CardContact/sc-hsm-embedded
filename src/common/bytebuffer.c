@@ -38,7 +38,7 @@
 int bbCompare(bytebuffer s1, bytebuffer s2)
 {
 	if (s1->len != s2->len) {
-		return s1->len - s2->len;
+		return (int)s1->len - (int)s2->len;
 	}
 	return memcmp(s1->val, s2->val, s1->len);
 }
@@ -78,7 +78,7 @@ int bbInsert(bytebuffer s1, size_t offset, bytestring s2)
 	memmove(s1->val + offset + s2->len, s1->val + offset, s1->len - offset);
 	memmove(s1->val + offset, s2->val, s2->len);
 	s1->len += s2->len;
-	return s1->len;
+	return (int)s1->len;
 }
 
 

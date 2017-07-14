@@ -46,8 +46,8 @@
  */
 void strbpcpy(CK_CHAR *dst, const char *src, int dstsize)
 {
-	int c = strlen(src);
-	if (c > dstsize) {
+	size_t c = strlen(src);
+	if (c > (size_t)dstsize) {
 		c = dstsize;
 	}
 	memcpy(dst, src, c);

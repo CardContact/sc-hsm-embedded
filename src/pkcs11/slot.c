@@ -229,7 +229,7 @@ int encodeCommandAPDU(
 		}
 	}
 
-	FUNC_RETURNS(po - apdu);
+	FUNC_RETURNS((int)(po - apdu));
 }
 
 
@@ -422,12 +422,12 @@ void appendStr(CK_UTF8CHAR_PTR dest, int destlen, char *str)
 
 int getVirtualSlot(struct p11Slot_t *slot, int index, struct p11Slot_t **vslot)
 {
+#ifndef MINIDRIVER
 	struct p11Slot_t *newslot;
 	char postfix[3];
 
 	FUNC_CALLED();
 
-#ifndef MINIDRIVER
 	if ((index < 0) || (index > sizeof(slot->virtualSlots) / sizeof(*slot->virtualSlots)))
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Index must not exceed size of virtual slot list");
 
@@ -524,6 +524,7 @@ int getValidatedToken(struct p11Slot_t *slot, struct p11Token_t **token)
  */
 int handleDeviceError(CK_SESSION_HANDLE hSession)
 {
+#ifndef MINIDRIVER
 	int rv;
 	struct p11Session_t *session;
 	struct p11Slot_t *slot;
@@ -531,7 +532,6 @@ int handleDeviceError(CK_SESSION_HANDLE hSession)
 
 	FUNC_CALLED();
 
-#ifndef MINIDRIVER
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}

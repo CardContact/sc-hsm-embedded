@@ -38,6 +38,7 @@
 
 #include <pkcs11/slot.h>
 #include <pkcs11/token.h>
+#include <pkcs11/slot-pcsc.h>
 
 
 #define MINIMUM_SUPPORTED_VERSION	4
@@ -1453,8 +1454,21 @@ static DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 {
 	FUNC_CALLED();
 
-	if (pCardData == NULL)
+#ifdef DEBUG
+	debug(" (pCardData=%p,wszProperty='%S',pbData=%p,cbDataLen=%lu,dwFlags=%lu )\n", pCardData, wszProperty, pbData, cbDataLen, dwFlags);
+#endif
+
+	if (pCardData == NULL)		// CMR_332
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	if (wszProperty == NULL)	// CMR_333
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "wszProperty validation failed");
+
+	if ((wcscmp(CP_PIN_CONTEXT_STRING, wszProperty) != 0) && (pbData == NULL))			// CMR_334
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pbData validation failed");
+
+	if ((wcscmp(CP_PARENT_WINDOW, wszProperty) != 0) && (wcscmp(CP_PIN_CONTEXT_STRING, wszProperty) != 0))
+		FUNC_FAILS(SCARD_E_UNSUPPORTED_FEATURE, "Unsupported wszProperty");
 
 	FUNC_RETURNS(SCARD_S_SUCCESS);
 }
@@ -1564,7 +1578,7 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 		pCardData->pfnCardGetContainerProperty = CardGetContainerProperty;
 		pCardData->pfnCardSetContainerProperty = (PFN_CARD_SET_CONTAINER_PROPERTY)UnsupportedFeature;
 		pCardData->pfnCardGetProperty = CardGetProperty;
-		pCardData->pfnCardSetProperty = (PFN_CARD_SET_PROPERTY)UnsupportedFeature;
+		pCardData->pfnCardSetProperty = CardSetProperty;
 	}
 
 	if (pCardData->dwVersion >= CARD_DATA_VERSION_SEVEN) {
@@ -1591,6 +1605,8 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 	slot->context = pCardData->hSCardCtx;
 	slot->maxCAPDU = MAX_CAPDU;
 	slot->maxRAPDU = MAX_RAPDU;
+
+	checkPCSCPinPad(slot);
 
 	rc = newToken(slot, pCardData->pbAtr, pCardData->cbAtr, &token);
 

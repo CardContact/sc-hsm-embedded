@@ -141,7 +141,7 @@ int populateIssuerSubjectSerial(struct p11Object_t *pObject)
 
 	attr.type = CKA_SERIAL_NUMBER;
 	attr.pValue = obj;
-	attr.ulValueLen = cursor - obj;
+	attr.ulValueLen = (CK_ULONG)(cursor - obj);
 
 	addAttribute(pObject, &attr);
 
@@ -160,7 +160,7 @@ int populateIssuerSubjectSerial(struct p11Object_t *pObject)
 
 	attr.type = CKA_ISSUER;
 	attr.pValue = obj;
-	attr.ulValueLen = cursor - obj;
+	attr.ulValueLen = (CK_ULONG)(cursor - obj);
 
 	addAttribute(pObject, &attr);
 
@@ -179,7 +179,7 @@ int populateIssuerSubjectSerial(struct p11Object_t *pObject)
 
 	attr.type = CKA_SUBJECT;
 	attr.pValue = obj;
-	attr.ulValueLen = cursor - obj;
+	attr.ulValueLen = (CK_ULONG)(cursor - obj);
 
 	addAttribute(pObject, &attr);
 
@@ -209,49 +209,49 @@ int populateCVCAttributes(struct p11Object_t *pObject)
 	if (cvc.car.val) {
 		attr.type = CKA_CVC_INNER_CAR;
 		attr.pValue = cvc.car.val;
-		attr.ulValueLen = cvc.car.len;
+		attr.ulValueLen = (CK_ULONG)cvc.car.len;
 		addAttribute(pObject, &attr);
 	}
 
 	if (cvc.outer_car.val) {
 		attr.type = CKA_CVC_OUTER_CAR;
 		attr.pValue = cvc.outer_car.val;
-		attr.ulValueLen = cvc.outer_car.len;
+		attr.ulValueLen = (CK_ULONG)cvc.outer_car.len;
 		addAttribute(pObject, &attr);
 	}
 
 	if (cvc.chr.val) {
 		attr.type = CKA_CVC_CHR;
 		attr.pValue = cvc.chr.val;
-		attr.ulValueLen = cvc.chr.len;
+		attr.ulValueLen = (CK_ULONG)cvc.chr.len;
 		addAttribute(pObject, &attr);
 	}
 
 	if (cvc.ced.val) {
 		attr.type = CKA_CVC_CED;
 		attr.pValue = cvc.ced.val;
-		attr.ulValueLen = cvc.ced.len;
+		attr.ulValueLen = (CK_ULONG)cvc.ced.len;
 		addAttribute(pObject, &attr);
 	}
 
 	if (cvc.cxd.val) {
 		attr.type = CKA_CVC_CXD;
 		attr.pValue = cvc.cxd.val;
-		attr.ulValueLen = cvc.cxd.len;
+		attr.ulValueLen = (CK_ULONG)cvc.cxd.len;
 		addAttribute(pObject, &attr);
 	}
 
 	if (cvc.chat.val) {
 		attr.type = CKA_CVC_CHAT;
 		attr.pValue = cvc.chat.val;
-		attr.ulValueLen = cvc.chat.len;
+		attr.ulValueLen = (CK_ULONG)cvc.chat.len;
 		addAttribute(pObject, &attr);
 	}
 
 	if (!cvcDetermineCurveOID(&cvc, &oid)) {
 		attr.type = CKA_CVC_CURVE_OID;
 		attr.pValue = oid->val;
-		attr.ulValueLen = oid->len;
+		attr.ulValueLen = (CK_ULONG)oid->len;
 		addAttribute(pObject, &attr);
 	}
 
@@ -475,7 +475,7 @@ int decodeECParamsFromSPKI(unsigned char *spki,
 		return -1;
 	}
 
-	ecparams->ulValueLen = cursor - (unsigned char *)ecparams->pValue;
+	ecparams->ulValueLen = (CK_ULONG)(cursor - (unsigned char *)ecparams->pValue);
 
 	return 0;
 }
@@ -568,12 +568,12 @@ int createCertificateObjectFromP15(struct p15CertificateDescription *p15, unsign
 	len = asn1Length(&po);
 	po += len;
 
-	if ((po - cert) > certlen) {
+	if ((size_t)(po - cert) > certlen) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Certificate corrupted");
 	}
 
 	template[8].pValue = cert;
-	template[8].ulValueLen = po - cert;
+	template[8].ulValueLen = (CK_ULONG)(po - cert);
 
 	switch(p15->certtype) {
 		case P15_CT_X509:
@@ -586,12 +586,12 @@ int createCertificateObjectFromP15(struct p15CertificateDescription *p15, unsign
 
 	if (p15->coa.label) {
 		template[6].pValue = p15->coa.label;
-		template[6].ulValueLen = strlen(template[6].pValue);
+		template[6].ulValueLen = (CK_ULONG)strlen(template[6].pValue);
 	}
 
 	if (p15->id.len) {
 		template[7].pValue = p15->id.val;
-		template[7].ulValueLen = p15->id.len;
+		template[7].ulValueLen = (CK_ULONG)p15->id.len;
 	}
 
 	if (p15->isCA) {

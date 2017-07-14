@@ -419,7 +419,7 @@ static char *p11string(CK_UTF8CHAR *str, size_t len)
 	memcpy(buffer, str, len);
 	buffer[len] = 0;
 
-	i = len;
+	i = (int)len;
 	while (i > 0) {
 		i--;
 		if (buffer[i] == ' ') {
@@ -660,19 +660,19 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 		printf("C_SignInit (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		len = 0;
-		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, strlen(tbs), NULL, &len);
+		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), NULL, &len);
 		printf("C_Sign (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Signature size = %lu\n", len);
 
 		len--;
-		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, strlen(tbs), signature, &len);
+		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), signature, &len);
 		printf("C_Sign (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_BUFFER_TOO_SMALL));
 
 		printf("Signature size = %lu\n", len);
 
 		len = sizeof(signature);
-		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, strlen(tbs), signature, &len);
+		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), signature, &len);
 		printf("C_Sign (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK || rc == CKR_DEVICE_REMOVED || rc == CKR_TOKEN_NOT_PRESENT));
 
 		if (rc == CKR_DEVICE_REMOVED || rc == CKR_TOKEN_NOT_PRESENT)
@@ -706,7 +706,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 		rc = p11->C_SignUpdate(session, (CK_BYTE_PTR)tbs, 6);
 		printf("C_SignUpdate (Thread %i, Session %ld, Slot=%ld - Part #1) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
-		rc = p11->C_SignUpdate(session, (CK_BYTE_PTR)tbs + 6, strlen(tbs) - 6);
+		rc = p11->C_SignUpdate(session, (CK_BYTE_PTR)tbs + 6, (CK_ULONG)strlen(tbs) - 6);
 		printf("C_SignUpdate (Thread %i, Session %ld, Slot=%ld - Part #2) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 #else
 		largetbs = calloc(1, 1000);
@@ -797,13 +797,13 @@ int testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 		printf("Calling C_Sign()");
 
 		len = 0;
-		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, strlen(tbs), NULL, &len);
+		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), NULL, &len);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Signature size = %lu\n", len);
 
 		len = sizeof(signature);
-		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, strlen(tbs), signature, &len);
+		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), signature, &len);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		bin2str(scr, sizeof(scr), signature, len);
@@ -853,8 +853,6 @@ void testSigningMultiThreading(CK_FUNCTION_LIST_PTR p11)
 	CK_TOKEN_INFO tokeninfo;
 	pthread_t threads[NUM_THREADS];
 	time_t start, stop;
-	pthread_attr_t attr;
-	void *status;
 	struct thread_data data[NUM_THREADS];
 	int rc, tokens, firstloop, nothreads;
 	long t;
@@ -975,7 +973,7 @@ void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	CK_ATTRIBUTE template[] = {
 			{ CKA_CLASS, &class, sizeof(class) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
-			{ CKA_LABEL, &label, strlen((char *)label) }
+			{ CKA_LABEL, &label, (CK_ULONG)strlen((char *)label) }
 	};
 	CK_OBJECT_HANDLE hnd;
 //	CK_MECHANISM mech_raw = { CKM_RSA_X_509, 0, 0 };
@@ -1090,7 +1088,7 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	CK_ATTRIBUTE publicKeyTemplate[20] = {
 			{ CKA_CLASS, &publicKeyClass, sizeof(publicKeyClass) },
 			{ CKA_TOKEN, &_true, sizeof(_true)},
-			{ CKA_LABEL, &label, strlen((char *)label) }
+			{ CKA_LABEL, &label, (CK_ULONG)strlen((char *)label) }
 	};
 	int publicKeyAttributes = 3;
 	CK_OBJECT_CLASS privateKeyClass = CKO_PRIVATE_KEY;
@@ -1099,7 +1097,7 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 			{ CKA_TOKEN, &_true, sizeof(_true)},
 			{ CKA_PRIVATE, &_true, sizeof(_true)},
 			{ CKA_SENSITIVE, &_true, sizeof(_true)},
-			{ CKA_LABEL, &label, strlen((char *)label) }
+			{ CKA_LABEL, &label, (CK_ULONG)strlen((char *)label) }
 	};
 	int privateKeyAttributes = 5;
 	unsigned char cvcreq[512];
@@ -1122,7 +1120,7 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	};
 	int certAttributes = 5;
 	CK_ATTRIBUTE changeTemplate[2] = {
-			{ CKA_LABEL, &label, strlen((char *)label) },
+			{ CKA_LABEL, &label, (CK_ULONG)strlen((char *)label) },
 			{ CKA_ID, id, sizeof(id) }
 	};
 	CK_OBJECT_HANDLE hndPrivateKey, hndPublicKey, hndCert, hndCACert, hndSessionCACert, hndRSAPrivateKey, hndRSAPublicKey;
@@ -1228,7 +1226,7 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 
 	publicKeyTemplate[3].pValue = ecparam_prime256v1.val;
-	publicKeyTemplate[3].ulValueLen = ecparam_prime256v1.len;
+	publicKeyTemplate[3].ulValueLen = (CK_ULONG)ecparam_prime256v1.len;
 
 	printf("Calling C_GenerateKeyPair(EC, explicit parameter) ");
 
@@ -1291,7 +1289,7 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	printf("Calling C_SetAttributeValue(Label, ID) ");
 	changeTemplate[0].pValue = "New Label";
-	changeTemplate[0].ulValueLen = strlen(changeTemplate[0].pValue);
+	changeTemplate[0].ulValueLen = (CK_ULONG)strlen(changeTemplate[0].pValue);
 
 	changeTemplate[1].pValue = "\xCA\xFF\xEE";
 	changeTemplate[1].ulValueLen = 3;
@@ -1302,7 +1300,7 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	printf("Calling C_SetAttributeValue(Label, ID) ");
 	changeTemplate[0].pValue = "New Certificate Label";
-	changeTemplate[0].ulValueLen = strlen(changeTemplate[0].pValue);
+	changeTemplate[0].ulValueLen = (CK_ULONG)strlen(changeTemplate[0].pValue);
 
 	rc = p11->C_SetAttributeValue(session, hndCACert, changeTemplate, 1);
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
@@ -1751,7 +1749,6 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 	CK_SLOT_INFO slotinfo;
 	CK_TOKEN_INFO tokeninfo;
 	pthread_t threads[100];
-	pthread_attr_t attr;
 	void *status;
 	struct thread_data data[100];
 	int rc, tokens, nothreads = 0, t;
@@ -1798,7 +1795,7 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 
 				tokens++;
 
-				for (t = slotindex * optThreadsPerToken; t < (slotindex + 1) * optThreadsPerToken; t++) {
+				for (t = slotindex * optThreadsPerToken; t < (int)(slotindex + 1) * optThreadsPerToken; t++) {
 					if (t >= 100) {
 						printf("ERROR: Can not handle more than 100 threads");
 						exit(1);
@@ -1901,7 +1898,7 @@ void decodeArgs(int argc, char **argv)
 			}
 			argv++;
 			pin = (CK_UTF8CHAR_PTR)*argv;
-			pinlen = strlen((char *)pin);
+			pinlen = (CK_ULONG)strlen((char *)pin);
 			argc--;
 		} else if (!strcmp(*argv, "--so-pin")) {
 			if (argc < 0) {
@@ -1910,7 +1907,7 @@ void decodeArgs(int argc, char **argv)
 			}
 			argv++;
 			sopin = (CK_UTF8CHAR_PTR)*argv;
-			sopinlen = strlen((char *)sopin);
+			sopinlen = (CK_ULONG)strlen((char *)sopin);
 			argc--;
 		} else if (!strcmp(*argv, "--module")) {
 			if (argc < 0) {
@@ -2070,7 +2067,7 @@ int main(int argc, char *argv[])
 
 		i = 0;
 
-		while (i < slots) {
+		while (i < (int)slots) {
 			slotid = *(slotlist + i);
 			i++;
 
@@ -2113,10 +2110,10 @@ int main(int argc, char *argv[])
 				if (pin == NULL) {
 					if (!strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
 						pin = (CK_UTF8CHAR_PTR)PIN_STARCOS;
-						pinlen = strlen(PIN_STARCOS);
+						pinlen = (CK_ULONG)strlen(PIN_STARCOS);
 					} else {
 						pin = (CK_UTF8CHAR_PTR)PIN_SC_HSM;
-						pinlen = strlen(PIN_SC_HSM);
+						pinlen = (CK_ULONG)strlen(PIN_SC_HSM);
 					}
 					printf("Using PIN %s\n", pin);
 				}

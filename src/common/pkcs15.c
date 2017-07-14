@@ -124,7 +124,7 @@ static int decodeCommonKeyAttributes(unsigned char *cka, int ckalen, struct p15P
 
 static int encodeCommonKeyAttributes(bytebuffer bb, struct p15PrivateKeyDescription *p15)
 {
-	int ofs = bbGetLength(bb);
+	size_t ofs = bbGetLength(bb);
 	unsigned char scr[sizeof(int) + 1];
 
 	if (p15->id.val != NULL) {
@@ -183,7 +183,7 @@ static int decodeKeyAttributes(unsigned char *ka, int kalen, struct p15PrivateKe
 
 static int encodeKeyAttributes(bytebuffer bb, struct p15PrivateKeyDescription *p15)
 {
-	int ofs = bbGetLength(bb);
+	size_t ofs = bbGetLength(bb);
 	int rc;
 	unsigned char scr[sizeof(int) + 1];
 
@@ -297,7 +297,7 @@ int decodePrivateKeyDescription(unsigned char *prkd, size_t prkdlen, struct p15P
 	int rc,tag,len;
 	unsigned char *po;
 
-	rc = asn1Validate(prkd, prkdlen);
+	rc = (int)asn1Validate(prkd, prkdlen);
 
 	if (rc != 0) {
 		return -1;
@@ -376,7 +376,7 @@ static int decodeCommonCertificateAttributes(unsigned char *cca, int ccalen, str
 
 static int encodeCommonCertificateAttributes(bytebuffer bb, struct p15CertificateDescription *p15)
 {
-	int ofs = bbGetLength(bb);
+	size_t ofs = bbGetLength(bb);
 	unsigned char scr[1];
 
 	if (p15->id.val != NULL) {
@@ -441,7 +441,7 @@ static int decodeCertificateAttributes(unsigned char *cd, int cdlen, struct p15C
 
 static int encodeCertificateAttributes(bytebuffer bb, struct p15CertificateDescription *p15)
 {
-	int ofs = bbGetLength(bb);
+	size_t ofs = bbGetLength(bb);
 
 	asn1AppendBytes(bb, ASN1_OCTET_STRING, p15->efidOrPath.val, p15->efidOrPath.len);
 	asn1EncapBuffer(ASN1_SEQUENCE, bb, ofs);
@@ -466,7 +466,7 @@ int decodeCertificateDescription(unsigned char *cd, size_t cdlen, struct p15Cert
 	int rc,tag,len;
 	unsigned char *po;
 
-	rc = asn1Validate(cd, cdlen);
+	rc = (int)asn1Validate(cd, cdlen);
 
 	if (rc != 0) {
 		return -1;

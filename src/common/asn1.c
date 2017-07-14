@@ -197,7 +197,7 @@ int asn1Encap(unsigned short Tag, unsigned char *Msg, int MsgLen)
 	po = tmpbuf;
 	asn1StoreTag(&po, Tag);
 	asn1StoreLength(&po, MsgLen);
-	len = po - tmpbuf;
+	len = (int)(po - tmpbuf);
 
 	memmove(Msg + len, Msg, MsgLen);
 	memmove(Msg, tmpbuf, len);
@@ -223,7 +223,7 @@ int asn1Append(bytebuffer buf, unsigned short tag, const bytestring val)
 
 	po = tmpbuf;
 	asn1StoreTag(&po, tag);
-	asn1StoreLength(&po, val->len);
+	asn1StoreLength(&po, (int)val->len);
 	bs.len = po - tmpbuf;
 	bbAppend(buf, &bs);
 	return bbAppend(buf, val);
@@ -247,7 +247,7 @@ int asn1AppendBytes(bytebuffer buf, unsigned short tag, unsigned char *val, size
 
 	po = tmpbuf;
 	asn1StoreTag(&po, tag);
-	asn1StoreLength(&po, len);
+	asn1StoreLength(&po, (int)len);
 	bs.len = po - tmpbuf;
 	bbAppend(buf, &bs);
 	bs.val = val;
@@ -274,7 +274,7 @@ int asn1EncapBuffer(unsigned short tag, bytebuffer buf, size_t offset)
 
 	po = tmpbuf;
 	asn1StoreTag(&po, tag);
-	asn1StoreLength(&po, buf->len - offset);
+	asn1StoreLength(&po, (int)(buf->len - offset));
 	bs.len = po - tmpbuf;
 
 	return bbInsert(buf, offset, &bs);
@@ -325,7 +325,7 @@ unsigned char *asn1Find(unsigned char *data, unsigned char *path, int level)
 			d = asn1Tag(&data);
 			l = asn1Length(&data);
 			data += l;
-			datalen -= data - obj;
+			datalen -= (int)(data - obj);
 		} while ((datalen > 0) && (p != d));
 
 		if ((datalen <= 0) && (p != d))
@@ -369,7 +369,7 @@ int asn1Next(unsigned char **ref, int *reflen, int *tag, int *length, unsigned c
 
 	*value = *ref;
 	*ref += *length;
-	*reflen -= *ref - base;
+	*reflen -= (int)(*ref - base);
 
 	return 1;
 }
@@ -383,9 +383,9 @@ int asn1Next(unsigned char **ref, int *reflen, int *tag, int *length, unsigned c
  * @param length the maximum length on the buffer
  * @return 0 if valid, offset with error otherwise
  */
-int asn1Validate(unsigned char *data, size_t length)
+size_t asn1Validate(unsigned char *data, size_t length)
 {
-	int ofs;
+	size_t ofs;
 	int l, rc, tag, tl;
 	unsigned char *po;
 
@@ -442,14 +442,14 @@ int asn1Validate(unsigned char *data, size_t length)
 		while(1) {					// Process list of contained TLV objects
 			po = data + ofs;
 
-			rc = asn1Validate(po, l);
+			rc = (int)asn1Validate(po, l);
 			if (rc != 0) {
 				return ofs + rc;
 			}
 
 			tag = asn1Tag(&po);
 			tl = asn1Length(&po);
-			tl += po - (data + ofs);
+			tl += (int)(po - (data + ofs));
 
 			ofs += tl;
 
@@ -542,7 +542,8 @@ int asn1DecodeInteger(unsigned char *data, size_t length, int *value)
 
 int asn1EncodeInteger(int value, unsigned char *data, size_t length)
 {
-	int c, i;
+	int i;
+	size_t c;
 	unsigned char p;
 
 	// Determine number of bytes required to store signed integer
@@ -567,12 +568,12 @@ int asn1EncodeInteger(int value, unsigned char *data, size_t length)
 		c = length;
 	}
 
-	i = c;
+	i = (int)c;
 	while (i-- > 0) {
 		*data++ = (value >> (i << 3)) & 0xFF;
 	}
 
-	return c;
+	return (int)c;
 }
 
 

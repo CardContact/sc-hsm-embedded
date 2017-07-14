@@ -126,12 +126,12 @@ int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, s
 
 	if (p15->coa.label) {
 		template[4].pValue = p15->coa.label;
-		template[4].ulValueLen = strlen(template[4].pValue);
+		template[4].ulValueLen = (CK_ULONG)strlen(template[4].pValue);
 	}
 
 	if (p15->id.len) {
 		template[5].pValue = p15->id.val;
-		template[5].ulValueLen = p15->id.len;
+		template[5].ulValueLen = (CK_ULONG)p15->id.len;
 	}
 
 	rc = getSubjectPublicKeyInfo(cert, &spki);
@@ -244,12 +244,12 @@ int createPublicKeyObjectFromCVC(struct p15PrivateKeyDescription *p15, unsigned 
 
 	if (p15->coa.label) {
 		template[4].pValue = p15->coa.label;
-		template[4].ulValueLen = strlen(template[4].pValue);
+		template[4].ulValueLen = (CK_ULONG)strlen(template[4].pValue);
 	}
 
 	if (p15->id.len) {
 		template[5].pValue = p15->id.val;
-		template[5].ulValueLen = p15->id.len;
+		template[5].ulValueLen = (CK_ULONG)p15->id.len;
 	}
 
 	p11o = calloc(sizeof(struct p11Object_t), 1);
@@ -266,10 +266,10 @@ int createPublicKeyObjectFromCVC(struct p15PrivateKeyDescription *p15, unsigned 
 
 		template[attributes].type = CKA_MODULUS;
 		template[attributes].pValue = cvc.primeOrModulus.val;
-		template[attributes].ulValueLen = cvc.primeOrModulus.len;
+		template[attributes].ulValueLen = (CK_ULONG)cvc.primeOrModulus.len;
 		attributes++;
 
-		modulus_bits = cvc.primeOrModulus.len << 3;
+		modulus_bits = (CK_ULONG)(cvc.primeOrModulus.len << 3);
 		template[attributes].type = CKA_MODULUS_BITS;
 		template[attributes].pValue = &modulus_bits;
 		template[attributes].ulValueLen = sizeof(modulus_bits);
@@ -277,7 +277,7 @@ int createPublicKeyObjectFromCVC(struct p15PrivateKeyDescription *p15, unsigned 
 
 		template[attributes].type = CKA_PUBLIC_EXPONENT;
 		template[attributes].pValue = cvc.coefficientAorExponent.val;
-		template[attributes].ulValueLen = cvc.coefficientAorExponent.len;
+		template[attributes].ulValueLen = (CK_ULONG)cvc.coefficientAorExponent.len;
 		attributes++;
 		break;
 	case P15_KEYTYPE_ECC:
@@ -290,14 +290,14 @@ int createPublicKeyObjectFromCVC(struct p15PrivateKeyDescription *p15, unsigned 
 			asn1Append(&ecparam, ASN1_OBJECT_IDENTIFIER, oid);
 			template[attributes].type = CKA_EC_PARAMS;
 			template[attributes].pValue = ecparam.val;
-			template[attributes].ulValueLen = ecparam.len;
+			template[attributes].ulValueLen = (CK_ULONG)ecparam.len;
 			attributes++;
 		}
 
 		asn1Append(&ecpuk, ASN1_OCTET_STRING, &cvc.publicPoint);
 		template[attributes].type = CKA_EC_POINT;
 		template[attributes].pValue = ecpuk.val;
-		template[attributes].ulValueLen = ecpuk.len;
+		template[attributes].ulValueLen = (CK_ULONG)ecpuk.len;
 		attributes++;
 		break;
 	default:
@@ -312,7 +312,7 @@ int createPublicKeyObjectFromCVC(struct p15PrivateKeyDescription *p15, unsigned 
 		FUNC_FAILS(rc, "Could not create public key object");
 	}
 
-	p11o->keysize =  cvc.primeOrModulus.len << 3;
+	p11o->keysize =  (CK_ULONG)(cvc.primeOrModulus.len << 3);
 	*pObject = p11o;
 
 	FUNC_RETURNS(CKR_OK);

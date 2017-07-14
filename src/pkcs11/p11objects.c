@@ -631,7 +631,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjectsInit)(
 
 #ifdef DEBUG
 	debug("Search Filter:\n");
-	for (i = 0; i < ulCount; i++) {
+	for (i = 0; i < (int)ulCount; i++) {
 		dumpAttribute(&pTemplate[i]);
 	}
 #endif
@@ -737,7 +737,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_FindObjects)(
 	}
 
 	cnt = session->searchObj.searchNumOfObjects - session->searchObj.objectsCollected;
-	if (cnt > ulMaxObjectCount) {
+	if (cnt > (int)ulMaxObjectCount) {
 		cnt = ulMaxObjectCount;
 	}
 

@@ -353,7 +353,7 @@ static int newSigntrust32Token(struct p11Slot_t *slot, struct p11Token_t **token
 
 static int starcos_C_GetMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount)
 {
-	int numberOfMechanisms;
+	CK_ULONG numberOfMechanisms;
 
 	FUNC_CALLED();
 

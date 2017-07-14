@@ -139,12 +139,12 @@ int createPrivateKeyObjectFromP15(struct p15PrivateKeyDescription *p15, struct p
 
 	if (p15->coa.label) {
 		template[4].pValue = p15->coa.label;
-		template[4].ulValueLen = strlen(template[4].pValue);
+		template[4].ulValueLen = (CK_ULONG)strlen(template[4].pValue);
 	}
 
 	if (p15->id.val) {
 		template[5].pValue = p15->id.val;
-		template[5].ulValueLen = p15->id.len;
+		template[5].ulValueLen = (CK_ULONG)p15->id.len;
 	}
 
 	template[9].pValue = p15->usage & P15_DECIPHER ? &true : &false;
@@ -228,12 +228,12 @@ int createPrivateKeyObjectFromP15AndPublicKey(struct p15PrivateKeyDescription *p
 
 	if (p15->coa.label) {
 		template[4].pValue = p15->coa.label;
-		template[4].ulValueLen = strlen(template[4].pValue);
+		template[4].ulValueLen = (CK_ULONG)strlen(template[4].pValue);
 	}
 
 	if (p15->id.val) {
 		template[5].pValue = p15->id.val;
-		template[5].ulValueLen = p15->id.len;
+		template[5].ulValueLen = (CK_ULONG)p15->id.len;
 	}
 
 	template[9].pValue = p15->usage & P15_DECIPHER ? &true : &false;

@@ -212,7 +212,7 @@ static int loadObjects(struct p11Token_t *token)
 		FUNC_FAILS(rc, "Could not switch to DF.Certs");
 	}
 
-	for (i = 0; i < sc->application->certsLen; i++) {
+	for (i = 0; i < (int)sc->application->certsLen; i++) {
 		struct p15CertificateDescription *p15 = &sc->application->certs[i];
 
 		rc = starcosAddCertificateObject(token, p15);
@@ -225,7 +225,7 @@ static int loadObjects(struct p11Token_t *token)
 
 	starcosSelectApplication(token);
 
-	for (i = 0; i < sc->application->privateKeysLen; i++) {
+	for (i = 0; i < (int)sc->application->privateKeysLen; i++) {
 		struct p15PrivateKeyDescription *p15 = &sc->application->privateKeys[i];
 
 		rc = starcosAddPrivateKeyObject(token, p15);
@@ -396,7 +396,7 @@ static int newDTrustToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 static int starcos_C_GetMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount)
 {
-	int numberOfMechanisms;
+	CK_ULONG numberOfMechanisms;
 
 	FUNC_CALLED();
 

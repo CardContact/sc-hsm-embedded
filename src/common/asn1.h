@@ -60,7 +60,7 @@ int             asn1Append(bytebuffer buf, unsigned short tag, const bytestring 
 int             asn1AppendBytes(bytebuffer buf, unsigned short tag, unsigned char *val, size_t len);
 int             asn1EncapBuffer(unsigned short tag, bytebuffer buf, size_t offset);
 unsigned char  *asn1Find(unsigned char *data, unsigned char *path, int level);
-int             asn1Validate(unsigned char *data, size_t length);
+size_t          asn1Validate(unsigned char *data, size_t length);
 int             asn1Next(unsigned char **ref, int *reflen, int *tag, int *length, unsigned char **value);
 void            asn1DecodeFlags(unsigned char *data, size_t length, unsigned long *flags);
 void            asn1EncodeFlags(unsigned long flags, unsigned char *data, size_t length);

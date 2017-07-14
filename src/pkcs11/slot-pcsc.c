@@ -294,9 +294,9 @@ int transmitAPDUviaPCSC(struct p11Slot_t *slot,
 		FUNC_FAILS(-1, "No card handle");
 	}
 
-	lenr = rapdu_len;
+	lenr = (DWORD)rapdu_len;
 
-	rc = SCardTransmit(slot->card, SCARD_PCI_T1, capdu, capdu_len, NULL, rapdu, &lenr);
+	rc = SCardTransmit(slot->card, SCARD_PCI_T1, capdu, (DWORD)capdu_len, NULL, rapdu, &lenr);
 
 #ifdef DEBUG
 	debug("SCardTransmit: %s\n", pcsc_error_to_string(rc));
@@ -351,12 +351,12 @@ int transmitVerifyPinAPDUviaPCSC(struct p11Slot_t *slot,
 	verify.bTeoPrologue[1]= 0;
 	verify.bTeoPrologue[2]= 0;
 
-	verify.ulDataLength = capdu_len;
+	verify.ulDataLength = (unsigned int)capdu_len;
 	memcpy(verify.abData, capdu, capdu_len);
 
-	lenr = rapdu_len;
+	lenr = (DWORD)rapdu_len;
 
-	rc = SCardControl(slot->card, slot->hasFeatureVerifyPINDirect, &verify,  18 + capdu_len + 1, rapdu, rapdu_len, &lenr);
+	rc = SCardControl(slot->card, slot->hasFeatureVerifyPINDirect, &verify,  (DWORD)(18 + capdu_len + 1), rapdu, (DWORD)rapdu_len, &lenr);
 
 #ifdef DEBUG
 	debug("SCardControl (VERIFY_PIN_DIRECT): %s\n", pcsc_error_to_string(rc));
@@ -367,6 +367,51 @@ int transmitVerifyPinAPDUviaPCSC(struct p11Slot_t *slot,
 	}
 
 	FUNC_RETURNS(lenr);
+}
+
+
+
+void checkPCSCPinPad(struct p11Slot_t *slot)
+{
+	WORD feature;
+	DWORD featurecode, lenr;
+	unsigned char buf[256];
+	char *po;
+	int i;
+	LONG rv;
+
+	rv = SCardControl(slot->card, SCARD_CTL_CODE(3400), NULL,0, buf, sizeof(buf), &lenr);
+
+#ifdef DEBUG
+	debug("SCardControl (CM_IOCTL_GET_FEATURE_REQUEST): %s\n", pcsc_error_to_string(rv));
+#endif
+
+	/* Ignore the feature codes if an error occured */
+	if (rv == SCARD_S_SUCCESS) {
+		for (i = 0; i < (int)lenr; i += 6) {
+			feature = buf[i];
+			featurecode = (buf[i + 2] << 24) + (buf[i + 3] << 16) + (buf[i + 4] << 8) + buf[i + 5];
+	#ifdef DEBUG
+			debug("%s - 0x%08X\n", pcsc_feature_to_string(feature), featurecode);
+	#endif
+			if (feature == FEATURE_VERIFY_PIN_DIRECT) {
+				po = getenv("PKCS11_IGNORE_PINPAD");
+	#ifdef DEBUG
+				if (po) {
+					debug("PKCS11_IGNORE_PINPAD=%s\n", po);
+				} else {
+					debug("PKCS11_IGNORE_PINPAD not found\n");
+				}
+	#endif
+				if (!po || (*po == '0')) {
+	#ifdef DEBUG
+					debug("Slot supports feature VERIFY_PIN_DIRECT - setting CKF_PROTECTED_AUTHENTICATION_PATH for token\n");
+	#endif
+					slot->hasFeatureVerifyPINDirect = featurecode;
+				}
+			}
+		}
+	}
 }
 
 
@@ -396,14 +441,11 @@ int transmitVerifyPinAPDUviaPCSC(struct p11Slot_t *slot,
 int checkForNewPCSCToken(struct p11Slot_t *slot)
 {
 	struct p11Token_t *ptoken;
-	int rc, i;
+	int rc;
 	LONG rv;
 	DWORD dwActiveProtocol;
-	WORD feature;
-	DWORD featurecode, lenr, atrlen,readernamelen,state,protocol;
-	unsigned char buf[256];
+	DWORD atrlen,readernamelen,state,protocol;
 	unsigned char atr[36];
-	char *po;
 
 	FUNC_CALLED();
 
@@ -427,38 +469,7 @@ int checkForNewPCSCToken(struct p11Slot_t *slot)
 	}
 
 	if (!slot->hasFeatureVerifyPINDirect) {
-		rv = SCardControl(slot->card, SCARD_CTL_CODE(3400), NULL,0, buf, sizeof(buf), &lenr);
-
-#ifdef DEBUG
-		debug("SCardControl (CM_IOCTL_GET_FEATURE_REQUEST): %s\n", pcsc_error_to_string(rv));
-#endif
-
-		/* Ignore the feature codes if an error occured */
-		if (rv == SCARD_S_SUCCESS) {
-			for (i = 0; i < lenr; i += 6) {
-				feature = buf[i];
-				featurecode = (buf[i + 2] << 24) + (buf[i + 3] << 16) + (buf[i + 4] << 8) + buf[i + 5];
-	#ifdef DEBUG
-				debug("%s - 0x%08X\n", pcsc_feature_to_string(feature), featurecode);
-	#endif
-				if (feature == FEATURE_VERIFY_PIN_DIRECT) {
-					po = getenv("PKCS11_IGNORE_PINPAD");
-	#ifdef DEBUG
-					if (po) {
-						debug("PKCS11_IGNORE_PINPAD=%s\n", po);
-					} else {
-						debug("PKCS11_IGNORE_PINPAD not found\n");
-					}
-	#endif
-					if (!po || (*po == '0')) {
-	#ifdef DEBUG
-						debug("Slot supports feature VERIFY_PIN_DIRECT - setting CKF_PROTECTED_AUTHENTICATION_PATH for token\n");
-	#endif
-						slot->hasFeatureVerifyPINDirect = featurecode;
-					}
-				}
-			}
-		}
+		checkPCSCPinPad(slot);
 	}
 
 	readernamelen = 0;

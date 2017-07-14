@@ -126,7 +126,7 @@ int starcosSwitchApplication(struct p11Token_t *token, struct starcosApplication
 	}
 
 	rc = transmitAPDU(token->slot, 0x00, 0xA4, 0x04, 0x0C,
-			application->aid.len, application->aid.val,
+			(int)application->aid.len, application->aid.val,
 			0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {
@@ -158,7 +158,8 @@ int starcosSelectApplication(struct p11Token_t *token)
 
 int starcosReadTLVEF(struct p11Token_t *token, bytestring fid, unsigned char *content, size_t len)
 {
-	int rc, le, tl, ne, ofs, maxapdu;
+	int rc, le, tl, ne, maxapdu;
+	size_t ofs;
 	unsigned short SW1SW2;
 	unsigned char *po;
 
@@ -166,7 +167,7 @@ int starcosReadTLVEF(struct p11Token_t *token, bytestring fid, unsigned char *co
 
 	// Select EF
 	rc = transmitAPDU(token->slot, 0x00, 0xA4, 0x02, 0x0C,
-			fid->len, fid->val,
+			(int)fid->len, fid->val,
 			0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {
@@ -180,7 +181,7 @@ int starcosReadTLVEF(struct p11Token_t *token, bytestring fid, unsigned char *co
 	// Read first block to determine tag and length
 	rc = transmitAPDU(token->slot, 0x00, 0xB0, 0x00, 0x00,
 			0, NULL,
-			0, content, len, &SW1SW2);
+			0, content, (int)len, &SW1SW2);
 
 	if (rc < 0) {
 		FUNC_FAILS(rc, "transmitAPDU failed");
@@ -204,8 +205,8 @@ int starcosReadTLVEF(struct p11Token_t *token, bytestring fid, unsigned char *co
 		po = content;
 		asn1Tag(&po);
 		tl = asn1Length(&po);
-		tl += po - content;
-		le = tl - ofs;
+		tl += (int)(po - content);
+		le = tl - (int)ofs;
 	}
 
 	while ((rc > 0) && (ofs < len) && (le > 0)) {
@@ -214,9 +215,9 @@ int starcosReadTLVEF(struct p11Token_t *token, bytestring fid, unsigned char *co
 		if (((le != 65536) || token->slot->noExtLengthReadAll) && (le > maxapdu))
 			ne = maxapdu;
 
-		rc = transmitAPDU(token->slot, 0x00, 0xB0, ofs >> 8, ofs & 0xFF,
+		rc = transmitAPDU(token->slot, 0x00, 0xB0, (unsigned char)(ofs >> 8), (unsigned char)(ofs & 0xFF),
 				0, NULL,
-				ne, content + ofs, len - ofs, &SW1SW2);
+				ne, content + ofs, (int)(len - ofs), &SW1SW2);
 
 		if (rc < 0) {
 			FUNC_FAILS(rc, "transmitAPDU failed");
@@ -230,7 +231,7 @@ int starcosReadTLVEF(struct p11Token_t *token, bytestring fid, unsigned char *co
 			le -= rc;
 	}
 
-	FUNC_RETURNS(ofs);
+	FUNC_RETURNS((int)ofs);
 }
 
 
@@ -404,7 +405,7 @@ int starcosDeterminePinUseCounter(struct p11Token_t *token, unsigned char recref
 	}
 
 	rc = asn1Encap(0x30, rec, rc);
-	rc = asn1Validate(rec, rc);
+	rc = (int)asn1Validate(rec, rc);
 
 	if (rc > 0) {
 		FUNC_FAILS(rc, "ASN.1 structure invalid");
@@ -559,7 +560,8 @@ static int getAlgorithmIdForDecryption(struct p11Token_t *token, CK_MECHANISM_TY
 
 int starcosDigest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned char *data, size_t len)
 {
-	int rc,chunk;
+	int rc;
+	size_t chunk;
 	unsigned short SW1SW2;
 	unsigned char scr[1008],*algo, *po;
 
@@ -573,7 +575,7 @@ int starcosDigest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned cha
 	po = algo;
 	asn1Tag(&po);
 	rc = asn1Length(&po);
-	rc += po - algo;
+	rc += (int)(po - algo);
 
 	rc = transmitAPDU(token->slot, 0x00, 0x22, 0x41, 0xAA,
 		rc, algo,
@@ -591,7 +593,7 @@ int starcosDigest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned cha
 		scr[0] = 0x90;
 		scr[1] = 0x00;
 		memcpy(scr + 2, data, len);
-		rc = asn1Encap(0x80, scr + 2, len) + 2;
+		rc = asn1Encap(0x80, scr + 2, (int)len) + 2;
 
 		rc = transmitAPDU(token->slot, 0x00, 0x2A, 0x90, 0xA0,
 				rc, scr,
@@ -621,10 +623,10 @@ int starcosDigest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned cha
 		}
 
 		while (len > 0) {
-			chunk = (len > token->drv->maxHashBlock ? token->drv->maxHashBlock : len);
+			chunk = (len > (size_t)token->drv->maxHashBlock ? (size_t)token->drv->maxHashBlock : len);
 
 			memcpy(scr, data, chunk);
-			rc = asn1Encap(0x80, scr, chunk);
+			rc = asn1Encap(0x80, scr, (int)chunk);
 
 			rc = transmitAPDU(token->slot, len > chunk ? 0x10 : 0x00, 0x2A, 0x90, 0xA0,
 					rc, scr,
@@ -679,7 +681,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 		FUNC_RETURNS(CKR_OK);
 	}
 
-	if (*pulSignatureLen < signaturelen) {
+	if (*pulSignatureLen < (CK_ULONG)signaturelen) {
 		*pulSignatureLen = signaturelen;
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Signature length is larger than buffer");
 	}
@@ -724,7 +726,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 	*d++ = (unsigned char)pObject->tokenid;
 
 	rc = transmitAPDU(pObject->token->slot, 0x00, 0x22, 0x41, 0xB6,
-		d - scr, scr,
+		(int)(d - scr), scr,
 		0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {
@@ -830,7 +832,7 @@ static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech
 	*d++ = (unsigned char)pObject->tokenid;
 
 	rc = transmitAPDU(pObject->token->slot, 0x00, 0x22, 0x41, 0xB8,
-		d - scr, scr,
+		(int)(d - scr), scr,
 		0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {
@@ -871,7 +873,7 @@ static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech
 	}
 
 	*pulDataLen = rc;
-	if (rc > *pulDataLen) {
+	if (rc > (int)*pulDataLen) {
 		starcosUnlock(pObject->token);
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "supplied buffer too small");
 	}
@@ -891,7 +893,8 @@ static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech
 static int starcos_C_GenerateRandom(struct p11Slot_t *slot, CK_BYTE_PTR rnd, CK_ULONG rndlen)
 {
 	unsigned short SW1SW2;
-	int maxblk, rc;
+	CK_ULONG maxblk;
+	int rc;
 
 	FUNC_CALLED();
 
@@ -960,7 +963,7 @@ int starcosAddPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDes
 	FUNC_CALLED();
 
 	template[1].pValue = p15->id.val;
-	template[1].ulValueLen = p15->id.len;
+	template[1].ulValueLen = (CK_ULONG)p15->id.len;
 
 	rc = findMatchingTokenObject(token, template, 2, &p11cert);
 
@@ -1008,7 +1011,7 @@ static int loadObjects(struct p11Token_t *token)
 
 	sc = starcosGetPrivateData(token);
 
-	for (i = 0; i < sc->application->certsLen; i++) {
+	for (i = 0; i < (int)sc->application->certsLen; i++) {
 		struct p15CertificateDescription *p15 = &sc->application->certs[i];
 
 		rc = starcosAddCertificateObject(token, p15);
@@ -1019,7 +1022,7 @@ static int loadObjects(struct p11Token_t *token)
 		}
 	}
 
-	for (i = 0; i < sc->application->privateKeysLen; i++) {
+	for (i = 0; i < (int)sc->application->privateKeysLen; i++) {
 		struct p15PrivateKeyDescription *p15 = &sc->application->privateKeys[i];
 
 		rc = starcosAddPrivateKeyObject(token, p15);
@@ -1452,7 +1455,7 @@ int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct
 
 static int starcos_C_GetMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount)
 {
-	int numberOfMechanisms;
+	CK_ULONG numberOfMechanisms;
 
 	FUNC_CALLED();
 
@@ -1562,4 +1565,3 @@ struct p11TokenDriver *getStarcosTokenDriver()
 
 	return &starcos_token;
 }
-

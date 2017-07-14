@@ -173,7 +173,7 @@ int cvcDetermineCurveFromECParam(unsigned char *ecparam, size_t ecparamlen, stru
 	memset(curve, 0, sizeof(struct ec_curve));
 
 	po = ecparam;
-	length = ecparamlen;
+	length = (int)ecparamlen;
 
 	if (!asn1Next(&po, &length, &tag, &childrenlen, &children)) {
 #ifdef DEBUG
@@ -387,7 +387,7 @@ int cvcDecode(unsigned char *cert, size_t certlen, struct cvc *cvc)
 
 	memset(cvc, 0, sizeof(struct cvc));
 
-	rc = asn1Validate(cert, certlen);
+	rc = (int)asn1Validate(cert, certlen);
 
 	if (rc != 0) {
 		return -1;
@@ -536,5 +536,5 @@ int cvcDecode(unsigned char *cert, size_t certlen, struct cvc *cvc)
 		}
 	}
 
-	return certlen;
+	return (int)certlen;
 }

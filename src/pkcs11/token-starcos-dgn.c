@@ -250,7 +250,7 @@ static int esign_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_
 		FUNC_RETURNS(CKR_OK);
 	}
 
-	if (*pulSignatureLen < signaturelen) {
+	if (*pulSignatureLen < (CK_ULONG)signaturelen) {
 		*pulSignatureLen = signaturelen;
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Signature length is larger than buffer");
 	}
@@ -285,7 +285,7 @@ static int esign_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_
 	*d++ = (unsigned char)pObject->tokenid;
 
 	rc = transmitAPDU(pObject->token->slot, 0x00, 0x22, 0x41, 0xA4,
-		d - scr, scr,
+		(int)(d - scr), scr,
 		0, NULL, 0, &SW1SW2);
 
 	if (rc < 0) {

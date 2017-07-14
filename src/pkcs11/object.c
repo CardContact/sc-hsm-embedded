@@ -579,7 +579,7 @@ void dumpAttributes(CK_ATTRIBUTE_PTR attr, CK_ULONG cnt)
 {
 	int i;
 
-	for (i = 0; i < cnt; i++)
+	for (i = 0; i < (int)cnt; i++)
 		dumpAttribute(&attr[i]);
 }
 #endif
@@ -676,7 +676,7 @@ int findAttributeInTemplate(CK_ATTRIBUTE_TYPE attributeType, CK_ATTRIBUTE_PTR pT
 {
 	int i;
 
-	for (i = 0; i < ulCount; i++) {
+	for (i = 0; i < (int)ulCount; i++) {
 		if (pTemplate[i].type == attributeType) {
 			return i;
 		}
@@ -998,7 +998,7 @@ int isMatchingObject(struct p11Object_t *pObject, CK_ATTRIBUTE_PTR pTemplate, CK
 	struct p11Attribute_t *pAttribute;
 	int i, rv;
 
-	for (i = 0; i < ulCount; i++) {
+	for (i = 0; i < (int)ulCount; i++) {
 		rv = findAttribute(pObject, pTemplate[i].type, &pAttribute);
 
 		if (rv < 0) {

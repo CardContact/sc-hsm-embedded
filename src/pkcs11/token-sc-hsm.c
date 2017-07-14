@@ -161,7 +161,7 @@ static int enumerateObjects(struct p11Slot_t *slot, unsigned char *filelist, siz
 
 	rc = transmitAPDU(slot, 0x80, 0x58, 0x00, 0x00,
 			0, NULL,
-			65536, filelist, len, &SW1SW2);
+			65536, filelist, (int)len, &SW1SW2);
 
 	if (rc < 0) {
 		FUNC_FAILS(rc, "transmitAPDU failed");
@@ -184,7 +184,7 @@ static int readEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *con
 
 	rc = transmitAPDU(slot, 0x00, 0xB1, fid >> 8, fid & 0xFF,
 			4, (unsigned char*)"\x54\x02\x00\x00",
-			65536, content, len, &SW1SW2);
+			65536, content, (int)len, &SW1SW2);
 
 	if (rc < 0) {
 		FUNC_FAILS(rc, "transmitAPDU failed");
@@ -201,7 +201,8 @@ static int readEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *con
 
 static int writeEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *content, size_t len)
 {
-	int rc,maxblk, blen, ofs;
+	int rc, blen, ofs;
+	size_t maxblk;
 	unsigned short SW1SW2;
 	unsigned char buff[MAX_CAPDU],*p;
 
@@ -211,7 +212,7 @@ static int writeEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *co
 	ofs = 0;
 
 	while (len > 0) {
-		blen = len > maxblk ? maxblk : len;
+		blen = (int)(len > maxblk ? maxblk : len);
 
 		p = buff;
 
@@ -225,7 +226,7 @@ static int writeEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *co
 		memcpy(p, content, blen);
 		content += blen;
 		len -= blen;
-		blen += p - buff;
+		blen += (int)(p - buff);
 
 		rc = transmitAPDU(slot, 0x00, 0xD7, fid >> 8, fid & 0xFF,
 				blen, buff,
@@ -338,7 +339,7 @@ static int decodeECDSASignature(unsigned char *data, int datalen,
 
 	FUNC_CALLED();
 
-	r = asn1Validate(data, datalen);
+	r = (int)asn1Validate(data, datalen);
 
 	if (r != 0) {
 		FUNC_FAILS(-1, "Signature is not a valid TLV structure");
@@ -454,7 +455,7 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 		FUNC_RETURNS(CKR_OK);
 	}
 
-	if (*pulSignatureLen < signaturelen) {
+	if (*pulSignatureLen < (CK_ULONG)signaturelen) {
 		*pulSignatureLen = signaturelen;
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Signature length is larger than buffer");
 	}
@@ -541,7 +542,7 @@ static int stripPKCS15Padding(unsigned char *scr, int len, CK_BYTE_PTR pData, CK
 	scr++;
 	len--;
 
-	if (len > *pulDataLen) {
+	if (len > (int)*pulDataLen) {
 		return CKR_BUFFER_TOO_SMALL;
 	}
 
@@ -584,7 +585,7 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 	}
 
 	if (mech == CKM_RSA_X_509) {
-		if (rc > *pulDataLen) {
+		if (rc > (int)*pulDataLen) {
 			*pulDataLen = rc;
 			FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "supplied buffer too small");
 		}
@@ -605,7 +606,8 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 static int sc_hsm_C_GenerateRandom(struct p11Slot_t *slot, CK_BYTE_PTR rnd, CK_ULONG rndlen)
 {
 	unsigned short SW1SW2;
-	int maxblk, rc;
+	size_t maxblk;
+	int rc;
 
 	FUNC_CALLED();
 
@@ -616,7 +618,7 @@ static int sc_hsm_C_GenerateRandom(struct p11Slot_t *slot, CK_BYTE_PTR rnd, CK_U
 		}
 		rc = transmitAPDU(slot, 0x00, 0x84, 0x00, 0x00,
 				0, NULL,
-				maxblk, rnd, rndlen, &SW1SW2);
+				(int)maxblk, rnd, rndlen, &SW1SW2);
 
 		if (rc < 0) {
 			FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
@@ -654,7 +656,7 @@ static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_P
 		asn1AppendBytes(bb, 0x42, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
 	}
 
-	ofs = bbGetLength(bb);
+	ofs = (int)bbGetLength(bb);
 
 	rc = findAttributeInTemplate(CKA_SC_HSM_PUBLIC_KEY_ALGORITHM, pPublicKeyTemplate, ulPublicKeyAttributeCount);
 	if (rc >= 0) {
@@ -705,7 +707,7 @@ static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_P
 		asn1Append(bb, 0x85, &curve->order);
 		asn1Append(bb, 0x87, &curve->coFactor);
 
-		keybits = curve->prime.len << 3;
+		keybits = (int)(curve->prime.len << 3);
 	} else {
 		rc = findAttributeInTemplate(CKA_MODULUS_BITS, pPublicKeyTemplate, ulPublicKeyAttributeCount);
 		if (rc < 0) {
@@ -776,7 +778,7 @@ static int decodeLabel(struct p11Token_t *token)
 	if (rc < 0)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading CIAInfo");
 
-	rc = asn1Validate(ciainfo, rc);
+	rc = (int)asn1Validate(ciainfo, rc);
 
 	if (rc < 0)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not decode CVC request");
@@ -833,7 +835,7 @@ static int decodeDevAutCert(struct p11Token_t *token)
 	po = cert;
 	asn1Tag(&po);
 	certlen = asn1Length(&po);
-	certlen += po - cert;
+	certlen += (int)(po - cert);
 
 	if (certlen < len) {		// Add device issuer CA certificate
 		p15.certtype = P15_CT_CVC;
@@ -1334,7 +1336,7 @@ static int sc_hsm_C_GenerateKeyPair(
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Determine free id failed");
 
 	rc = transmitAPDU(slot, 0x00, 0x46, id, 0x00,
-			bbGetLength(&bb), buff,
+			(int)bbGetLength(&bb), buff,
 			0, NULL, 0, &SW1SW2);
 
 	if (rc < 0)
@@ -1453,7 +1455,7 @@ static int sc_hsm_C_SetAttributeValue(struct p11Slot_t *slot, struct p11Object_t
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Error decoding private key description");
 		}
 
-		for (i = 0; i < ulCount; i++) {
+		for (i = 0; i < (int)ulCount; i++) {
 			switch(pTemplate[i].type) {
 			case CKA_ID:
 				rc = findMatchingTokenObjectById(slot->token, CKO_PRIVATE_KEY, pTemplate[i].pValue, pTemplate[i].ulValueLen, &p11);
@@ -1516,7 +1518,7 @@ static int sc_hsm_C_SetAttributeValue(struct p11Slot_t *slot, struct p11Object_t
 				FUNC_FAILS(CKR_DEVICE_ERROR, "Error decoding certificate description");
 			}
 
-			for (i = 0; i < ulCount; i++) {
+			for (i = 0; i < (int)ulCount; i++) {
 				switch(pTemplate[i].type) {
 				case CKA_ID:
 					rc = findMatchingTokenObjectById(slot->token, CKO_CERTIFICATE, pTemplate[i].pValue, pTemplate[i].ulValueLen, &p11);
@@ -2091,7 +2093,7 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 static int sc_hsm_C_GetMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount)
 {
-	int numberOfMechanisms;
+	CK_ULONG numberOfMechanisms;
 
 	FUNC_CALLED();
 

@@ -263,9 +263,9 @@ int testSignECDSA(NCRYPT_KEY_HANDLE hKey, LPCWSTR hashAlg )
 	BCRYPT_KEY_HANDLE hPubKey;
 	SECURITY_STATUS secstat;
 	PCCERT_CONTEXT certctx;
-	BCRYPT_ALG_HANDLE hSignAlg;
+//	BCRYPT_ALG_HANDLE hSignAlg;
 	NTSTATUS ntstat;
-	unsigned char cert[4096],hash[64],signature[256],pubkeyblob[1024];
+	unsigned char cert[4096],hash[64],signature[256];	// ,pubkeyblob[1024];
 	DWORD dwlen,hashlen;
 
 	printf(" ECDSA with %S", hashAlg);

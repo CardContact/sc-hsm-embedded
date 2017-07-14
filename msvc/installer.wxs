@@ -31,6 +31,12 @@
 						<Component Id="sc_hsm_pkcs11_test" Guid="*" Win64="no">
 							<File Id="sc_hsm_pkcs11_test" Source="sc-hsm-pkcs11-test\$(var.DebRel)\sc-hsm-pkcs11-test.exe" Vital="yes"/>
 						</Component>
+						<Component Id="ram_client" Guid="*" Win64="no">
+							<File Id="ram_client" Source="ram-client\$(var.DebRel)\ram-client.exe" Vital="yes"/>
+						</Component>
+						<Component Id="curl_dll" Guid="*" Win64="no">
+							<File Id="curl_dll" Source="..\libcurl-7.46\bin\libcurl.dll" Vital="yes"/>
+						</Component>
 					</Directory>
 				</Directory>
 			</Directory>
@@ -207,6 +213,8 @@
 			<ComponentRef Id='sc_hsm_minidriver' />
 			<ComponentRef Id='sc_hsm_pkcs11_test' />
 			<ComponentRef Id='sc_hsm_pkcs11' />
+			<ComponentRef Id='ram_client' />
+			<ComponentRef Id='curl_dll' />
 			<ComponentRef Id='RegistryEntries' />
 <?if $(var.Platform) = x64 ?>
 			<ComponentRef Id='sc_hsm_minidriver_test_64' />
