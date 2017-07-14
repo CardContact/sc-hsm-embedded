@@ -853,6 +853,8 @@ void testSigningMultiThreading(CK_FUNCTION_LIST_PTR p11)
 	CK_TOKEN_INFO tokeninfo;
 	pthread_t threads[NUM_THREADS];
 	time_t start, stop;
+	pthread_attr_t attr;
+	void *status;
 	struct thread_data data[NUM_THREADS];
 	int rc, tokens, firstloop, nothreads;
 	long t;
@@ -1222,6 +1224,14 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	printf("Calling C_DestroyObject(Session CACert) ");
 	rc = p11->C_DestroyObject(session, hndSessionCACert);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DestroyObject(ECPublicKey) ");
+	rc = p11->C_DestroyObject(session, hndPublicKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DestroyObject(ECPrivateKey) ");
+	rc = p11->C_DestroyObject(session, hndPrivateKey);
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 
@@ -1749,6 +1759,7 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 	CK_SLOT_INFO slotinfo;
 	CK_TOKEN_INFO tokeninfo;
 	pthread_t threads[100];
+	pthread_attr_t attr;
 	void *status;
 	struct thread_data data[100];
 	int rc, tokens, nothreads = 0, t;
