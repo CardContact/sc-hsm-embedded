@@ -56,7 +56,8 @@
 
 extern struct p11Context_t *context;
 
-static SCARDCONTEXT globalContext = 0;
+static SCARDCONTEXT globalContext = -1;
+static SCARDCONTEXT globalBlockingContext = -1;
 static int slotCounter = 0;
 
 
@@ -132,7 +133,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 	/*
 	 * Create a context if not already done
 	 */
-	if (!globalContext) {
+	if (globalContext == -1) {
 
 		rc = SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &globalContext);
 
@@ -145,6 +146,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		}
 	}
 
+	debug("Before calling SCardListReaders\n");
 	rc = SCardListReaders(globalContext, NULL, NULL, &cch);
 
 #ifdef DEBUG
@@ -343,9 +345,9 @@ int waitForPCSCEvent(struct p11SlotPool_t *pool, int timeout)
 
 	FUNC_CALLED();
 
-	if (!globalContext) {
+	if (globalBlockingContext == -1) {
 
-		rc = SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &globalContext);
+		rc = SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &globalBlockingContext);
 
 #ifdef DEBUG
 		debug("SCardEstablishContext: %s\n", pcsc_error_to_string(rc));
@@ -386,7 +388,7 @@ int waitForPCSCEvent(struct p11SlotPool_t *pool, int timeout)
 	i++;
 #endif
 
-	rc = SCardGetStatusChange(globalContext, 0, rs, readers);
+	rc = SCardGetStatusChange(globalBlockingContext, 0, rs, readers);
 	if (rc != SCARD_S_SUCCESS) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not query status change");
 	}
@@ -397,7 +399,7 @@ int waitForPCSCEvent(struct p11SlotPool_t *pool, int timeout)
 
 	to = (timeout <= 0 ? INFINITE : timeout);
 
-	rc = SCardGetStatusChange(globalContext, to, rs, readers);
+	rc = SCardGetStatusChange(globalBlockingContext, to, rs, readers);
 
 	if (rc == SCARD_E_CANCELLED)
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "Wait for slot event cancelled");
@@ -409,7 +411,9 @@ int waitForPCSCEvent(struct p11SlotPool_t *pool, int timeout)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not query status change");
 
 	for (i = 0; i < readers; i++) {
-		printf("Event for %08lx %08lx %s\n", rs[i].dwCurrentState, rs[i].dwEventState, rs[i].szReader);
+#ifdef DEBUG
+		debug("Event for %08lx %08lx %s\n", rs[i].dwCurrentState, rs[i].dwEventState, rs[i].szReader);
+#endif
 		if (rs[i].dwEventState & SCARD_STATE_CHANGED) {
 			if (rs[i].pvUserData) {
 				slot = (struct p11Slot_t *)rs[i].pvUserData;
@@ -437,19 +441,34 @@ int closePCSCSlot(struct p11Slot_t *slot)
 
 	slotCounter--;
 
-	if (slotCounter == 0 && globalContext) {
-		SCardCancel(globalContext);
+	if (slotCounter == 0) {
+		if (globalBlockingContext != -1) {
+			SCardCancel(globalBlockingContext);
+#ifdef DEBUG
+			debug("Releasing global blocking PC/SC context\n");
+#endif
+			rc = SCardReleaseContext(globalBlockingContext);
 
 #ifdef DEBUG
-		debug("Releasing global PC/SC context\n");
+			debug("SCardReleaseContext (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rc));
 #endif
-		rc = SCardReleaseContext(globalContext);
+
+			globalBlockingContext = -1;
+
+		}
+
+		if (globalContext != -1) {
+#ifdef DEBUG
+			debug("Releasing global PC/SC context\n");
+#endif
+			rc = SCardReleaseContext(globalContext);
 
 #ifdef DEBUG
-		debug("SCardReleaseContext (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rc));
+			debug("SCardReleaseContext (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rc));
 #endif
 
-		globalContext = 0;
+			globalContext = -1;
+		}
 	}
 
 	/* No token in slot */
