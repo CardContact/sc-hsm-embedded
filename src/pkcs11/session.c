@@ -116,10 +116,10 @@ int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle,
 
 	while (psession != NULL) {
 		if (psession->handle == handle) {
+			*session = psession;
 			if (psession->isRemoved) {
 				return CKR_DEVICE_REMOVED;
 			}
-			*session = psession;
 			return CKR_OK;
 		}
 

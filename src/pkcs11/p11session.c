@@ -148,7 +148,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseSession)(
 
 	rv = findSessionByHandle(&context->sessionPool, hSession, &session);
 
-	if (rv != CKR_OK) {
+	if ((rv != CKR_OK) && (rv != CKR_DEVICE_REMOVED)) {
 		FUNC_RETURNS(rv);
 	}
 
