@@ -146,7 +146,6 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 		}
 	}
 
-	debug("Before calling SCardListReaders\n");
 	rc = SCardListReaders(globalContext, NULL, NULL, &cch);
 
 #ifdef DEBUG

@@ -853,8 +853,10 @@ void testSigningMultiThreading(CK_FUNCTION_LIST_PTR p11)
 	CK_TOKEN_INFO tokeninfo;
 	pthread_t threads[NUM_THREADS];
 	time_t start, stop;
+#ifndef _WIN32
 	pthread_attr_t attr;
 	void *status;
+#endif
 	struct thread_data data[NUM_THREADS];
 	int rc, tokens, firstloop, nothreads;
 	long t;
@@ -1759,7 +1761,9 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 	CK_SLOT_INFO slotinfo;
 	CK_TOKEN_INFO tokeninfo;
 	pthread_t threads[100];
+#ifndef _WIN32
 	pthread_attr_t attr;
+#endif
 	void *status;
 	struct thread_data data[100];
 	int rc, tokens, nothreads = 0, t;
