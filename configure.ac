@@ -27,10 +27,6 @@ AC_ARG_ENABLE(ram,
 		AS_HELP_STRING([--enable-ram],[enable Remote Application Management (RAM)]),
 		[CPPFLAGS="$CPPFLAGS -DRAM" enable_ram="yes"], [])
 
-AC_ARG_ENABLE(ultralite,
-		AS_HELP_STRING([--enable-ultralite],[enable Ultralite signing module]),
-		[CPPFLAGS="$CPPFLAGS -DULTRALITE" enable_ultralite="yes"], [])
-
 if test "${enable_ram}" = "yes"; then
 	PKG_CHECK_MODULES(LIBCURL, libcurl)
 fi
@@ -52,7 +48,6 @@ fi
 AM_CONDITIONAL([ENABLE_PCSC], [test "${enable_pcsc}" = "yes"])
 AM_CONDITIONAL([ENABLE_CTAPI], [test "${enable_pcsc}" != "yes"])
 AM_CONDITIONAL([ENABLE_RAM], [test "${enable_ram}" = "yes"])
-AM_CONDITIONAL([ENABLE_ULTRALITE], [test "${enable_ultralite}" = "yes"])
 
 AC_DEFINE([VERSION_MAJOR], [PACKAGE_VERSION_MAJOR] )
 AC_DEFINE([VERSION_MINOR], [PACKAGE_VERSION_MINOR] )
@@ -64,7 +59,6 @@ AC_CONFIG_FILES([
     src/ctccid/Makefile
     src/pkcs11/Makefile
     src/tests/Makefile
-    src/ultralite/Makefile
     src/ramoverhttp/Makefile
 ])
 

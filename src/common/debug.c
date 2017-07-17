@@ -90,7 +90,7 @@ void initDebug(char *progname)
 	home = getenv("HOMEPATH");
 	if (home == NULL)
 		home = "c:\\";
-	prefix = "\\AppData\\LocalLow\\";
+	prefix = "\\AppData\\LocalLow\\sc-hsm-embedded\\";
 	pid = GetCurrentProcessId();
 #else
 	home = getenv("HOME");
