@@ -1,20 +1,22 @@
-sc-hsm-embedded PKCS#11 Module
-==============================
+sc-hsm-embedded PKCS#11 and CSP-Minidriver Module
+=================================================
 
-Light-weight PKCS#11 library for using the SmartCard-HSM in embedded systems.
+Light-weight PKCS#11 library for using the SmartCard-HSM in Windows, Linux, MacOSX and embedded systems.
 
-The module also supports various signature cards commonly used in Germany.
+The module also supports various STARCOS based signature cards commonly used in Germany.
 
 Purpose
 -------
-This module has been developed to support the integration of a SmartCard-HSM in
+This module has been initially developed to support the integration of a SmartCard-HSM in
 embedded systems with a little footprint. Rather than using a PC/SC daemon to manage
 attached card readers and token, the smaller Card Terminal API (CT-API) can be used.
 
+Over time the project has grown into a fully featured PKCS#11 and Microsoft CSP-Minidriver crypto middleware.
+
 Supported Hardware
 ------------------
-The module can be compiled for Linux and Windows. It supports the SmartCard-HSM USB-stick
-and SmartCard-HSM cards inserted into an Identive SCR 3310 reader. When using the PC/SC interface
+The module can be compiled for Linux, Windows and MacOSX. It supports the SmartCard-HSM USB-stick
+and SmartCard-HSM cards inserted into a CCID compliant reader. When using the PC/SC interface
 any compliant reader can be used.
 
 The ctccid module uses standard functions from the CCID specification, so the driver may work
@@ -36,15 +38,21 @@ Download source and run
 
 Installation (Windows)
 ----------------------
-Install the provided .msi file or unpack the archive and copy the
-sc-hsm-pkcs11.dll into the windows\systems32 directory or any
-other directory that is included in the PATH.
+Select the 32-Bit or 64-Bit version depending on your version of Windows.
+Installing the provided .msi file will make the sc-hsm-pkcs11.dll and sc-hsm-minidriver.dll
+available in windows/system32. Test tools are installed in %PROGRAMFILES%/CardContact/SmartCard-HSM.
+
+The 64-Bit version installs both, the 32-Bit and 64-Bit version of DLLs and test programms.
 
 Firefox
 -------
 Open Firefox and the Add-ons-Manager.
 Select "Install Add-ons From File"
 Select the file "sc-hsm-pkcs11.xpi"
+
+Note: Mozilla recently introduced mandatory signing of XPI installers. We are working to get our
+XPI included in that process. In the meantime you need to register the sc-hsm-pkcs11.dll manually
+using Preferences/Advanced/Security Devices.
 
 Thunderbird
 -----------
@@ -58,12 +66,6 @@ Open Firefox and the Add-ons-Manager.
 Uninstall the "SmartCard-HSM PKCS#11 Installer"
 Open the "Security Devices Manager"
 Unload the entry under "SmartCard-HSM"
-
-Windows64
----------
-The win64 directory contains 64-bit versions of the PKCS#11 module and the
-test program. Please remember that Firefox on Windows is generally a 32-bit
-program.
 
 Running the test program
 ------------------------
@@ -85,10 +87,18 @@ Debugging
 A debugging version of the PKCS#11 module is provided to aid debugging of
 card and card reader problems.
 
-Please copy the sc-hsm-pkcs11-debug.dll onto the sc-hsm-pkcs11.dll and create
-a directory c:\var\tmp\sc-hsm-embedded. Log files will be placed in that directory.
+Please install the debug version and create a sc-hsm-embedded directory under
+%HOME%/tmp on Linux/MacOSX and %HOMEDIR%/appdata/LocalLow on Windows.
 
-On Linux you will need to use configure with --enable-debug
+System applications running under root will write logfiles to /var/tmp/sc-hsm-embedded.
+
+On Linux you will need to use configure with --enable-debug.
+
+Release 2.10
+------------
+Add write support for the SmartCard-HSM
+Add CSP-Minidriver for Windows based applications
+Add C_WaitForSlotEvent
 
 Release 2.9
 -----------

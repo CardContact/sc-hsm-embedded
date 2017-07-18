@@ -37,6 +37,8 @@
 #include <ctype.h>
 #include <time.h>
 
+#include <sc-hsm/sc-hsm-pkcs11.h>
+
 #include <common/mutex.h>
 #include <common/asn1.h>
 
@@ -612,7 +614,7 @@ int findObject(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBUTE
 
 
 
-int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
+int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHANISM_TYPE mt)
 {
 	CK_SESSION_HANDLE session;
 	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
@@ -625,7 +627,6 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 	};
 	CK_OBJECT_HANDLE hnd;
 	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
-//	CK_MECHANISM mech = { CKM_SHA256_RSA_PKCS_PSS, 0, 0 };
 	char *tbs = "Hello World";
 	CK_BYTE signature[256];
 	CK_ULONG len;
@@ -634,6 +635,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 	char namebuf[40]; /* each thread need its own buffer */
 
 	keyno = 0;
+	mech.mechanism = mt;
 
 	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
 	printf("C_OpenSession (Thread %i, Slot=%ld) - %s : %s\n", id, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
@@ -646,6 +648,14 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 
 	if (rc != CKR_OK && rc != CKR_USER_ALREADY_LOGGED_IN)
 		goto out;
+
+	switch(mt) {
+	case CKM_RSA_PKCS:
+	case CKM_SC_HSM_PSS_SHA1:
+		tbs = "ThisIsA160BitHashStr"; break;
+	case CKM_SC_HSM_PSS_SHA256:
+		tbs = "ThisIsA256BitHashStringTestValue"; break;
+	}
 
 	while (1) {
 		printf("Calling findObject (Thread %i, Session %ld, Slot=%ld)\n", id, session, slotid);
@@ -832,7 +842,7 @@ SignThread(void *arg) {
 
 	rc = CKR_OK;
 	while (d->iterations && rc == CKR_OK) {
-		rc = testRSASigning(d->p11, d->slotid, d->thread_id);
+		rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SHA1_RSA_PKCS);
 		if (rc == CKR_OK)
 			rc = testECSigning(d->p11, d->slotid, d->thread_id);
 		d->iterations--;
@@ -2176,7 +2186,13 @@ int main(int argc, char *argv[])
 					testKeyGeneration(p11, session);
 				}
 
-				testRSASigning(p11, slotid, 0);
+				testRSASigning(p11, slotid, 0, CKM_SHA1_RSA_PKCS);
+
+				if (strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
+					testRSASigning(p11, slotid, 0, CKM_SHA256_RSA_PKCS_PSS);
+					testRSASigning(p11, slotid, 0, CKM_SC_HSM_PSS_SHA1);
+					testRSASigning(p11, slotid, 0, CKM_SC_HSM_PSS_SHA256);
+				}
 
 				//	Test requires valid crypto matching card used for testing
 				if (optTestRSADecryption)

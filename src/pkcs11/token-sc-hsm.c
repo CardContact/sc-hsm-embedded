@@ -280,6 +280,8 @@ static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 	case CKM_RSA_PKCS:
 	case CKM_SHA1_RSA_PKCS:
 	case CKM_SHA256_RSA_PKCS:
+	case CKM_SC_HSM_PSS_SHA1:
+	case CKM_SC_HSM_PSS_SHA256:
 	case CKM_SHA1_RSA_PKCS_PSS:
 	case CKM_SHA256_RSA_PKCS_PSS:
 		return pObject->keysize >> 3;
@@ -311,6 +313,9 @@ static int getAlgorithmIdForSigning(CK_MECHANISM_TYPE mech)
 		return ALGO_EC_RAW;
 	case CKM_ECDSA_SHA1:
 		return ALGO_EC_SHA1;
+	case CKM_SC_HSM_PSS_SHA1:
+	case CKM_SC_HSM_PSS_SHA256:
+		return ALGO_RSA_PSS;
 	default:
 		return -1;
 	}
@@ -407,6 +412,7 @@ static int sc_hsm_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 
 	FUNC_CALLED();
 
+	debug("Signature mechanism %08lx\n", mech->mechanism);
 	algo = getAlgorithmIdForSigning(mech->mechanism);
 	if (algo < 0) {
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
@@ -463,6 +469,14 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 	algo = getAlgorithmIdForSigning(mech);
 	if (algo < 0) {
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
+	}
+
+	if ((mech == CKM_SC_HSM_PSS_SHA1) && ulDataLen != 20) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Input for CKM_SC_HSM_PSS_SHA1 must be 20 bytes long");
+	}
+
+	if ((mech == CKM_SC_HSM_PSS_SHA256) && ulDataLen != 32) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Input for CKM_SC_HSM_PSS_SHA256 must be 32 bytes long");
 	}
 
 	if ((algo == ALGO_EC_RAW) || (algo == ALGO_EC_SHA1)) {

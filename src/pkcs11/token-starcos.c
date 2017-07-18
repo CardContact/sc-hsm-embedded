@@ -122,8 +122,15 @@ int starcosSwitchApplication(struct p11Token_t *token, struct starcosApplication
 	}
 
 	if (application->aidId == *sa) {
+#ifdef DEBUG
+		debug("Application %d already selected\n", *sa);
+#endif
 		return 0;
 	}
+
+#ifdef DEBUG
+		debug("Switch to application %d\n", application->aidId);
+#endif
 
 	rc = transmitAPDU(token->slot, 0x00, 0xA4, 0x04, 0x0C,
 			(int)application->aid.len, application->aid.val,
@@ -245,9 +252,21 @@ int starcosReadICCSN(struct p11Token_t *token)
 	static struct bytestring_s EFICCSN = { (unsigned char *)"\x2F\x02", 2 };
 	unsigned char scr[12],*s,*d;
 	unsigned short SW1SW2;
-	int rc;
+	struct starcosPrivateData *sc;
+	int rc,*sa;
 
 	FUNC_CALLED();
+
+	// Clear currently selected application indicator
+	sc = starcosGetPrivateData(token);
+
+	if (token->slot->primarySlot) {
+		sa = &(starcosGetPrivateData(getBaseToken(token))->selectedApplication);
+	} else {
+		sa = &sc->selectedApplication;
+	}
+
+	*sa = 0;
 
 	// Select MF
 	rc = transmitAPDU(token->slot, 0x00, 0xA4, 0x00, 0x0C,
@@ -449,6 +468,11 @@ static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 	case CKM_SHA256_RSA_PKCS_PSS:
 	case CKM_SHA384_RSA_PKCS_PSS:
 	case CKM_SHA512_RSA_PKCS_PSS:
+	case CKM_SC_HSM_PSS_SHA1:
+	case CKM_SC_HSM_PSS_SHA224:
+	case CKM_SC_HSM_PSS_SHA256:
+	case CKM_SC_HSM_PSS_SHA384:
+	case CKM_SC_HSM_PSS_SHA512:
 		return pObject->keysize >> 3;
 	case CKM_ECDSA_SHA1:
 	case CKM_ECDSA:
@@ -472,18 +496,23 @@ static int getAlgorithmIdForSigning(struct p11Token_t *token, CK_MECHANISM_TYPE 
 		*algotlv = algo_PKCS15;
 		break;
 	case CKM_SHA1_RSA_PKCS_PSS:
+	case CKM_SC_HSM_PSS_SHA1:
 		*algotlv = algo_PSS_SHA1;
 		break;
 	case CKM_SHA224_RSA_PKCS_PSS:
+	case CKM_SC_HSM_PSS_SHA224:
 		*algotlv = algo_PSS_SHA224;
 		break;
 	case CKM_SHA256_RSA_PKCS_PSS:
+	case CKM_SC_HSM_PSS_SHA256:
 		*algotlv = algo_PSS_SHA256;
 		break;
 	case CKM_SHA384_RSA_PKCS_PSS:
+	case CKM_SC_HSM_PSS_SHA384:
 		*algotlv = algo_PSS_SHA384;
 		break;
 	case CKM_SHA512_RSA_PKCS_PSS:
+	case CKM_SC_HSM_PSS_SHA512:
 		*algotlv = algo_PSS_SHA512;
 		break;
 	case CKM_ECDSA_SHA1:
@@ -698,7 +727,9 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 		FUNC_FAILS(CKR_DEVICE_ERROR, "selecting application failed");
 	}
 
-	if ((mech != CKM_RSA_PKCS) && (mech != CKM_ECDSA) && (mech != CKM_ECDSA_SHA1)) {
+	if ((mech != CKM_RSA_PKCS) && (mech != CKM_ECDSA) && (mech != CKM_ECDSA_SHA1) &&
+		(mech != CKM_SC_HSM_PSS_SHA1) && (mech != CKM_SC_HSM_PSS_SHA224) &&
+		(mech != CKM_SC_HSM_PSS_SHA256) && (mech != CKM_SC_HSM_PSS_SHA384)  && (mech != CKM_SC_HSM_PSS_SHA512)) {
 		rc = starcosDigest(pObject->token, mech, pData, ulDataLen);
 		if (rc != CKR_OK) {
 			starcosUnlock(pObject->token);
