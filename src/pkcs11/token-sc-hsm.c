@@ -412,7 +412,6 @@ static int sc_hsm_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 
 	FUNC_CALLED();
 
-	debug("Signature mechanism %08lx\n", mech->mechanism);
 	algo = getAlgorithmIdForSigning(mech->mechanism);
 	if (algo < 0) {
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");

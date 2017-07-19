@@ -59,14 +59,6 @@ static char *reader = NULL;
 #define dlopen(fn, flag) LoadLibrary(fn)
 #define dlclose(h) FreeLibrary(h)
 #define dlsym(h, n) GetProcAddress(h, n)
-#define pthread_t HANDLE
-#define pthread_create(t, a, f, p) (*t = CreateThread(0, 0, f, p, 0, 0), *t ? 0 : GetLastError())
-#define pthread_join(t, s) WaitForSingleObject(t, INFINITE)
-#define pthread_exit(r) ExitThread(0)
-#define pthread_attr_t int
-#define pthread_attr_init(a)
-#define pthread_attr_setdetachstate(a, f)
-#define pthread_attr_destroy(a)
 
 char* dlerror()
 {
@@ -75,38 +67,8 @@ char* dlerror()
 	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, 0, le, 0, (char*)&msg, 0, 0);
 	return msg;
 }
-
-size_t getline(char** pp, size_t* pl, FILE* f)
-{
-	char buf[256];
-	buf[0] = 0;
-	fgets(buf, sizeof(buf), f);
-	*pl = strlen(buf) + 1;
-	if (*pp)
-		free(*pp);
-	*pp = (char*)malloc(*pl);
-	if (*pp == 0) {
-		printf("malloc(%d) failed.", *pl);
-		exit(1);
-	}
-	memcpy(*pp, buf, *pl);
-	return *pl - 1;
-}
-
-void usleep(unsigned int usec) 
-{ 
-    HANDLE timer; 
-    LARGE_INTEGER ft; 
-  
-    ft.QuadPart = -(10 * (__int64)usec); 
-  
-    timer = CreateWaitableTimer(NULL, TRUE, NULL); 
-    SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0); 
-    WaitForSingleObject(timer, INFINITE); 
-    CloseHandle(timer); 
-}
-
 #endif /* _WIN32 */
+
 
 #include <cardmod.h>
 
@@ -130,14 +92,17 @@ LPVOID WINAPI CSP_ALLOC(__in SIZE_T Size) {
 }
 
 
+
 LPVOID WINAPI CSP_REALLOC(__in LPVOID Address, __in SIZE_T Size) {
 	return realloc(Address, Size);
 }
 
 
+
 void WINAPI CSP_FREE(__in LPVOID Address) {
 	free(Address);
 }
+
 
 
 int testSignRSA(NCRYPT_KEY_HANDLE hKey, DWORD padding, LPCWSTR hashAlg )
@@ -177,6 +142,7 @@ int testSignRSA(NCRYPT_KEY_HANDLE hKey, DWORD padding, LPCWSTR hashAlg )
 	} else {
 		memset(&psspadinfo, 0, sizeof(psspadinfo));
 		psspadinfo.pszAlgId = hashAlg;
+		psspadinfo.cbSalt = hashlen;
 		paddingInfo = &psspadinfo;
 	}
 
@@ -184,33 +150,33 @@ int testSignRSA(NCRYPT_KEY_HANDLE hKey, DWORD padding, LPCWSTR hashAlg )
 	secstat = NCryptExportKey(hKey, 0, BCRYPT_RSAPUBLIC_BLOB, 0, pubkeyblob, sizeof(pubkeyblob), &dwlen, 0);
 
 	if (secstat != ERROR_SUCCESS) {
-		printf("NCryptExportKey failed: %ld\n", secstat);
+		printf("\nNCryptExportKey failed: %ld\n", secstat);
 		return -1;
 	}
 
 	ntstat = BCryptOpenAlgorithmProvider(&hSignAlg, BCRYPT_RSA_ALGORITHM, NULL, 0);
 	if (ntstat != ERROR_SUCCESS) {
-		printf("BCryptOpenAlgorithmProvider failed: %ld\n", ntstat);
+		printf("\nBCryptOpenAlgorithmProvider failed: %ld\n", ntstat);
 		return -1;
 	}
 
 	ntstat = BCryptImportKeyPair(hSignAlg, 0, BCRYPT_RSAPUBLIC_BLOB, &hPubKey, pubkeyblob, dwlen, 0);
 	if (ntstat != ERROR_SUCCESS) {
-		printf("BCryptImportKeyPair failed: %ld\n", ntstat);
+		printf("\nBCryptImportKeyPair failed: %ld\n", ntstat);
 		return -1;
 	}
 
 	secstat = NCryptSignHash(hKey, paddingInfo, hash, hashlen, signature, sizeof(signature), &dwlen, padding);
 
 	if (secstat != ERROR_SUCCESS) {
-		printf("NCryptSignHash failed: %ld\n", secstat);
+		printf("\nNCryptSignHash failed: %ld\n", secstat);
 		return -1;
 	}
 
 	ntstat = BCryptVerifySignature(hPubKey, paddingInfo, hash, hashlen, signature, dwlen, padding);
 
 	if (ntstat != ERROR_SUCCESS) {
-		printf("BCryptVerifySignature failed: %ld\n", ntstat);
+		printf("\nBCryptVerifySignature failed: %ld\n", ntstat);
 		return -1;
 	}
 
@@ -221,32 +187,32 @@ int testSignRSA(NCRYPT_KEY_HANDLE hKey, DWORD padding, LPCWSTR hashAlg )
 	secstat = NCryptGetProperty(hKey, NCRYPT_CERTIFICATE_PROPERTY, cert, sizeof(cert), &dwlen, 0);
 
 	if (secstat != ERROR_SUCCESS) {
-		printf("NCryptGetProperty failed: %ld\n", secstat);
+		printf("\nNCryptGetProperty failed: %ld\n", secstat);
 		return -1;
 	}
 
 	certctx = CertCreateCertificateContext(X509_ASN_ENCODING, cert, dwlen);
 	if (certctx == NULL) {
-		printf("CertCreateCertificateContext failed\n");
+		printf("\nCertCreateCertificateContext failed\n");
 		return -1;
 	}
 
 	if (!CryptImportPublicKeyInfoEx2(X509_ASN_ENCODING, &certctx->pCertInfo->SubjectPublicKeyInfo, 0, NULL, &hPubKey)) {
-		printf("CryptImportPublicKeyInfoEx2 failed\n");
+		printf("\nCryptImportPublicKeyInfoEx2 failed\n");
 		return -1;
 	}
 
 	secstat = NCryptSignHash(hKey, paddingInfo, hash, hashlen, signature, sizeof(signature), &dwlen, padding);
 
 	if (secstat != ERROR_SUCCESS) {
-		printf("NCryptSignHash failed: %ld\n", secstat);
+		printf("\nNCryptSignHash failed: %ld\n", secstat);
 		return -1;
 	}
 
 	ntstat = BCryptVerifySignature(hPubKey, paddingInfo, hash, hashlen, signature, dwlen, padding);
 
 	if (ntstat != ERROR_SUCCESS) {
-		printf("BCryptVerifySignature failed: %ld\n", ntstat);
+		printf("\nBCryptVerifySignature failed: %ld\n", ntstat);
 		return -1;
 	}
 
@@ -290,33 +256,33 @@ int testSignECDSA(NCRYPT_KEY_HANDLE hKey, LPCWSTR hashAlg )
 	secstat = NCryptExportKey(hKey, 0, BCRYPT_ECCPUBLIC_BLOB, 0, pubkeyblob, sizeof(pubkeyblob), &dwlen, 0);
 
 	if (secstat != ERROR_SUCCESS) {
-		printf("NCryptExportKey failed: %ld\n", secstat);
+		printf("\nNCryptExportKey failed: %ld\n", secstat);
 		return -1;
 	}
 
 	ntstat = BCryptOpenAlgorithmProvider(&hSignAlg, BCRYPT_ECDSA_P256_ALGORITHM, NULL, 0);
 	if (ntstat != ERROR_SUCCESS) {
-		printf("BCryptOpenAlgorithmProvider failed: %ld\n", ntstat);
+		printf("\nBCryptOpenAlgorithmProvider failed: %ld\n", ntstat);
 		return -1;
 	}
 
 	ntstat = BCryptImportKeyPair(hSignAlg, 0, BCRYPT_ECCPUBLIC_BLOB, &hPubKey, pubkeyblob, dwlen, 0);
 	if (ntstat != ERROR_SUCCESS) {
-		printf("BCryptImportKeyPair failed: %ld\n", ntstat);
+		printf("\nBCryptImportKeyPair failed: %ld\n", ntstat);
 		return -1;
 	}
 
 	secstat = NCryptSignHash(hKey, NULL, hash, hashlen, signature, dwlen, &dwlen, 0);
 
 	if (secstat != ERROR_SUCCESS) {
-		printf("NCryptSignHash failed: %ld\n", secstat);
+		printf("\nNCryptSignHash failed: %ld\n", secstat);
 		return -1;
 	}
 
 	ntstat = BCryptVerifySignature(hPubKey, NULL, hash, hashlen, signature, dwlen, 0);
 
 	if (ntstat != ERROR_SUCCESS) {
-		printf("BCryptVerifySignature failed: %ld\n", ntstat);
+		printf("\nBCryptVerifySignature failed: %ld\n", ntstat);
 		return -1;
 	}
 
@@ -327,32 +293,32 @@ int testSignECDSA(NCRYPT_KEY_HANDLE hKey, LPCWSTR hashAlg )
 	secstat = NCryptGetProperty(hKey, NCRYPT_CERTIFICATE_PROPERTY, cert, sizeof(cert), &dwlen, 0);
 
 	if (secstat != ERROR_SUCCESS) {
-		printf("NCryptGetProperty failed: %ld\n", secstat);
+		printf("\nNCryptGetProperty failed: %ld\n", secstat);
 		return -1;
 	}
 
 	certctx = CertCreateCertificateContext(X509_ASN_ENCODING, cert, dwlen);
 	if (certctx == NULL) {
-		printf("CertCreateCertificateContext failed\n");
+		printf("\nCertCreateCertificateContext failed\n");
 		return -1;
 	}
 
 	if (!CryptImportPublicKeyInfoEx2(X509_ASN_ENCODING, &certctx->pCertInfo->SubjectPublicKeyInfo, 0, NULL, &hPubKey)) {
-		printf("CryptImportPublicKeyInfoEx2 failed\n");
+		printf("\nCryptImportPublicKeyInfoEx2 failed\n");
 		return -1;
 	}
 
 	secstat = NCryptSignHash(hKey, NULL, hash, hashlen, signature, dwlen, &dwlen, 0);
 
 	if (secstat != ERROR_SUCCESS) {
-		printf("NCryptSignHash failed: %ld\n", secstat);
+		printf("\nNCryptSignHash failed: %ld\n", secstat);
 		return -1;
 	}
 
 	ntstat = BCryptVerifySignature(hPubKey, NULL, hash, hashlen, signature, dwlen, 0);
 
 	if (ntstat != ERROR_SUCCESS) {
-		printf("BCryptVerifySignature failed: %ld\n", ntstat);
+		printf("\nBCryptVerifySignature failed: %ld\n", ntstat);
 		return -1;
 	}
 
@@ -378,6 +344,7 @@ int testDecryptRSA(NCRYPT_KEY_HANDLE hKey, DWORD padding )
 	printf(" RSA decryption with %s padding", (padding == BCRYPT_PAD_PKCS1 ? "V1.5" : "OAEP"));
 
 	memset(secret, 0xA5, sizeof(secret));
+	secret[0] = 0x5A;
 	secretlen = sizeof(secret);
 
 	if (padding == BCRYPT_PAD_PKCS1) {
@@ -392,38 +359,42 @@ int testDecryptRSA(NCRYPT_KEY_HANDLE hKey, DWORD padding )
 	secstat = NCryptExportKey(hKey, 0, BCRYPT_RSAPUBLIC_BLOB, 0, pubkeyblob, sizeof(pubkeyblob), &dwlen, 0);
 
 	if (secstat != ERROR_SUCCESS) {
-		printf("NCryptExportKey failed: %ld\n", secstat);
+		printf("\nNCryptExportKey failed: %ld\n", secstat);
 		return -1;
 	}
 
 	ntstat = BCryptOpenAlgorithmProvider(&hSignAlg, BCRYPT_RSA_ALGORITHM, NULL, 0);
 	if (ntstat != ERROR_SUCCESS) {
-		printf("BCryptOpenAlgorithmProvider failed: %ld\n", ntstat);
+		printf("\nBCryptOpenAlgorithmProvider failed: %ld\n", ntstat);
 		return -1;
 	}
 
 	ntstat = BCryptImportKeyPair(hSignAlg, 0, BCRYPT_RSAPUBLIC_BLOB, &hPubKey, pubkeyblob, dwlen, 0);
 	if (ntstat != ERROR_SUCCESS) {
-		printf("BCryptImportKeyPair failed: %ld\n", ntstat);
+		printf("\nBCryptImportKeyPair failed: %ld\n", ntstat);
 		return -1;
 	}
 
 	ntstat = BCryptEncrypt(hPubKey, secret, secretlen, paddingInfo, NULL, 0, cryptogram, sizeof(cryptogram), &dwlen, padding);
 
 	if (ntstat != ERROR_SUCCESS) {
-		printf("BCryptEncrypt failed: %ld\n", ntstat);
+		printf("\nBCryptEncrypt failed: %ld\n", ntstat);
 		return -1;
 	}
 
 	secstat = NCryptDecrypt(hKey, cryptogram, dwlen, paddingInfo, plain, sizeof(plain), &dwlen, padding);
 
 	if (secstat != ERROR_SUCCESS) {
-		printf("NCryptExportKey failed: %ld\n", secstat);
+		printf("\nNCryptExportKey failed: %ld\n", secstat);
 		return -1;
 	}
 
 	BCryptDestroyKey(hPubKey);
 
+	if ((secretlen != dwlen) || memcmp(plain, secret, secretlen)) {
+		printf("\nDecrypted data does not match plain data\n");
+		return -1;
+	}
 	return 0;
 }
 
@@ -493,7 +464,16 @@ int cryptoTests()
 			rc = testSignRSA(hKey, BCRYPT_PAD_PKCS1, BCRYPT_MD5_ALGORITHM );
 			printf(" - %s\n", verdict(rc == 0));
 
+			rc = testSignRSA(hKey, BCRYPT_PAD_PSS, BCRYPT_SHA1_ALGORITHM );
+			printf(" - %s\n", verdict(rc == 0));
+
+			rc = testSignRSA(hKey, BCRYPT_PAD_PSS, BCRYPT_SHA256_ALGORITHM );
+			printf(" - %s\n", verdict(rc == 0));
+
 			rc = testDecryptRSA(hKey, BCRYPT_PAD_PKCS1 );
+			printf(" - %s\n", verdict(rc == 0));
+
+			rc = testDecryptRSA(hKey, BCRYPT_PAD_OAEP );
 			printf(" - %s\n", verdict(rc == 0));
 		} else {
 			rc = testSignECDSA(hKey, BCRYPT_SHA1_ALGORITHM );

@@ -943,7 +943,8 @@ static DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	CK_MECHANISM mech;
 	CK_KEY_TYPE keytype;
 	CK_ULONG plainlen;
-	DWORD dwret;
+	PBYTE pp;
+	DWORD dwret, dwlen;
 	int rc;
 
 	FUNC_CALLED();
@@ -982,10 +983,6 @@ static DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	if (p11prikey == NULL)		// CMR_416
 		FUNC_FAILS(SCARD_E_NO_KEY_CONTAINER, "bContainerIndex invalid");
 
-	mech.pParameter = NULL;
-	mech.ulParameterLen = 0;
-	mech.mechanism = CKM_RSA_PKCS;
-
 	keytype = CKK_RSA;
 	if (findAttribute(p11prikey, CKA_KEY_TYPE, &attr)) {
 		keytype = *(CK_KEY_TYPE *)attr->attrData.pValue;
@@ -993,6 +990,19 @@ static DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 
 	if (keytype != CKK_RSA)
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "Key is not a RSA key");
+
+	mech.pParameter = NULL;
+	mech.ulParameterLen = 0;
+
+	if (pInfo->dwPaddingType == BCRYPT_PAD_PKCS1) {
+		mech.mechanism = CKM_RSA_PKCS;
+	} else {
+		if (!strncmp((char *)token->info.model, "SmartCard-HSM", 13)) {
+			mech.mechanism = CKM_RSA_X_509;
+		} else {
+			mech.mechanism = CKM_RSA_PKCS_OAEP;
+		}
+	}
 
 	rc = p11prikey->C_DecryptInit(p11prikey, &mech);
 
@@ -1013,6 +1023,21 @@ static DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 
 	copyInverted(pInfo->pbData, plain, plainlen);
 	pInfo->cbData = plainlen;
+
+	pp = NULL;
+	dwlen = 0;
+	if (!strncmp((char *)token->info.model, "SmartCard-HSM", 13) && (pInfo->dwPaddingType != BCRYPT_PAD_PKCS1)) {
+		dwret = pCardData->pfnCspUnpadData(pInfo, &dwlen, &pp);
+
+		if (dwret != 0) {
+			FUNC_FAILS(dwret, "pfnCspUnpadData() failed");
+		}
+
+		memcpy(pInfo->pbData, pp, dwlen);
+		pInfo->cbData = dwlen;
+
+		pCardData->pfnCspFree(pp);
+	}
 
 	memset(plain, 0xA5, sizeof(plain));
 
@@ -1153,6 +1178,10 @@ static DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNIN
 				mech.mechanism = CKM_SC_HSM_PSS_SHA1;
 			} else if (!wcscmp(padinfo->pszAlgId, BCRYPT_SHA256_ALGORITHM)) {
 				mech.mechanism = CKM_SC_HSM_PSS_SHA256;
+			} else if (!wcscmp(padinfo->pszAlgId, BCRYPT_SHA384_ALGORITHM)) {
+				mech.mechanism = CKM_SC_HSM_PSS_SHA384;
+			} else if (!wcscmp(padinfo->pszAlgId, BCRYPT_SHA512_ALGORITHM)) {
+				mech.mechanism = CKM_SC_HSM_PSS_SHA512;
 			} else {
 				FUNC_FAILS(SCARD_E_UNSUPPORTED_FEATURE, "pszAlgId not supported");
 			}
@@ -1582,7 +1611,6 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 	}
 
 	if (pCardData->dwVersion >= CARD_DATA_VERSION_SEVEN) {
-		pCardData->pfnCspUnpadData = (PFN_CSP_UNPAD_DATA)UnsupportedFeature;
 		pCardData->pfnMDImportSessionKey = (PFN_MD_IMPORT_SESSION_KEY)UnsupportedFeature;
 		pCardData->pfnMDEncryptData = (PFN_MD_ENCRYPT_DATA)UnsupportedFeature;
 		pCardData->pfnCardImportSessionKey = (PFN_CARD_IMPORT_SESSION_KEY)UnsupportedFeature;
