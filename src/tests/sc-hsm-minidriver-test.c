@@ -685,6 +685,10 @@ int apiTests(char *reader)
 	dwrc = (*cardData.pfnCardReadFile)(&cardData, szBASE_CSP_DIR, szCONTAINER_MAP_FILE, 0, &pb, &dwlen);
 	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwlen > 0)));
 
+	printf("Calling CardReadFile(mscp/msroots)");
+	dwrc = (*cardData.pfnCardReadFile)(&cardData, szBASE_CSP_DIR, szROOT_STORE_FILE, 0, &pb, &dwlen);
+	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwlen > 0)));
+
 	printf("Calling CardGetFileInfo(mscp/cmapfile)");
 	fileInfo.dwVersion = CARD_FILE_INFO_CURRENT_VERSION;
 	dwrc = (*cardData.pfnCardGetFileInfo)(&cardData, szBASE_CSP_DIR, szCONTAINER_MAP_FILE, &fileInfo);

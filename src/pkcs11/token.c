@@ -254,6 +254,23 @@ void enumerateTokenPrivateObjects(struct p11Token_t *token, struct p11Object_t *
 
 
 /**
+ * Enumerate public objects
+ *
+ * @param token     The token whose object shall be enumerated
+ * @param pObject	Pointer to a pointer containing the current object on input and the next object or NULL on output
+ */
+void enumerateTokenPublicObjects(struct p11Token_t *token, struct p11Object_t **pObject)
+{
+	if (*pObject == NULL) {
+		*pObject = token->tokenObjList;
+	} else {
+		*pObject = (*pObject)->next;
+	}
+}
+
+
+
+/**
  * Remove object from list of token objects
  *
  * @param token     The token whose object shall be removed

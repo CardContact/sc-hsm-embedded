@@ -525,11 +525,121 @@ static DWORD WINAPI CardDeauthenticateEx(__in PCARD_DATA pCardData,
 
 
 
+static void enumerateX509CACertificates(struct p11Token_t *token, struct p11Object_t **obj)
+{
+	struct p11Attribute_t *attr;
+
+	while (1)	{
+		enumerateTokenPublicObjects(token, obj);
+		if (*obj == NULL)
+			break;
+
+		if (findAttribute(*obj, CKA_CLASS, &attr) < 0) {
+			continue;
+		}
+
+		if (*(CK_OBJECT_CLASS *)attr->attrData.pValue != CKO_CERTIFICATE) {
+			continue;
+		}
+
+		if (findAttribute(*obj, CKA_CERTIFICATE_TYPE, &attr) < 0) {
+			continue;
+		}
+
+		if (*(CK_CERTIFICATE_TYPE *)attr->attrData.pValue != CKC_X_509) {
+			continue;
+		}
+
+		if (findAttribute(*obj, CKA_CERTIFICATE_CATEGORY, &attr) < 0) {
+			continue;
+		}
+
+		if (*(CK_ULONG *)attr->attrData.pValue != 2) {
+			continue;
+		}
+		return;
+	}
+}
+
+
+
+static DWORD encodeMSROOTSFile(PCARD_DATA pCardData, PBYTE *ppbData, PDWORD pcbData)
+{
+	struct p11Slot_t *slot = (struct p11Slot_t *)pCardData->pvVendorSpecific;
+	struct p11Object_t *obj = NULL;
+	struct p11Attribute_t *attr;
+	HCERTSTORE hCertStore = NULL;
+	PCCERT_CONTEXT cert = NULL;
+	CERT_BLOB certBlob = { 0, NULL };
+	int cnt = 0;
+
+	FUNC_CALLED();
+
+	hCertStore = CertOpenStore(CERT_STORE_PROV_MEMORY, X509_ASN_ENCODING, (HCRYPTPROV_LEGACY)NULL, 0, NULL);
+	
+	if (hCertStore == NULL)
+		FUNC_FAILS(SCARD_E_UNEXPECTED, "CertOpenStore() failed");
+
+	while (1)	{
+		enumerateX509CACertificates(slot->token, &obj);
+
+		if (obj == NULL)
+			break;
+
+		if (findAttribute(obj, CKA_VALUE, &attr) < 0) {
+			continue;
+		}
+
+		cert = CertCreateCertificateContext(X509_ASN_ENCODING, (PBYTE)attr->attrData.pValue, (DWORD)attr->attrData.ulValueLen);
+
+		if (cert == NULL) {
+#ifdef DEBUG
+			debug("Unable to decode certificate %i using CertCreateCertificateContext\n", cnt);
+#endif
+			continue;
+		}
+
+		CertAddCertificateContextToStore(hCertStore, cert, CERT_STORE_ADD_REPLACE_EXISTING, NULL);
+		CertFreeCertificateContext(cert);
+
+		cnt++;
+	}
+
+	if (!CertSaveStore(hCertStore, PKCS_7_ASN_ENCODING|X509_ASN_ENCODING, CERT_STORE_SAVE_AS_PKCS7, CERT_STORE_SAVE_TO_MEMORY, &certBlob, 0)) {
+		CertCloseStore(hCertStore, CERT_CLOSE_STORE_FORCE_FLAG);
+		FUNC_FAILS(SCARD_E_UNEXPECTED, "CertSaveStore() failed");
+	}
+
+	*pcbData = certBlob.cbData;
+	*ppbData = (PBYTE)pCardData->pfnCspAlloc(certBlob.cbData);
+
+	if (*ppbData == NULL) {
+		CertCloseStore(hCertStore, CERT_CLOSE_STORE_FORCE_FLAG);
+		FUNC_FAILS(SCARD_E_NO_MEMORY, "Out of memory");
+	}
+
+	certBlob.pbData = *ppbData;
+
+	if (!CertSaveStore(hCertStore, PKCS_7_ASN_ENCODING|X509_ASN_ENCODING, CERT_STORE_SAVE_AS_PKCS7, CERT_STORE_SAVE_TO_MEMORY, &certBlob, 0)) {
+		pCardData->pfnCspFree(*ppbData);
+		CertCloseStore(hCertStore, CERT_CLOSE_STORE_FORCE_FLAG);
+		FUNC_FAILS(SCARD_E_UNEXPECTED, "CertSaveStore() failed");
+	}
+
+	CertCloseStore(hCertStore, CERT_CLOSE_STORE_FORCE_FLAG);
+
+	FUNC_RETURNS(SCARD_S_SUCCESS);
+}
+
+
+
 static DWORD readCertificate(PCARD_DATA pCardData, int iContainerIndex, PBYTE *ppbData, PDWORD pcbData)
 {
 	struct p11Slot_t *slot;
 	struct p11Object_t *p11prikey, *p11cert;
 	struct p11Attribute_t *attr;
+
+	FUNC_CALLED();
 
 	p11prikey = NULL;
 	getKeyForIndex(pCardData, iContainerIndex, &p11prikey);
@@ -549,6 +659,9 @@ static DWORD readCertificate(PCARD_DATA pCardData, int iContainerIndex, PBYTE *p
 
 	*pcbData = attr->attrData.ulValueLen;
 	*ppbData = (PBYTE)pCardData->pfnCspAlloc(*pcbData);
+
+	if (*ppbData == NULL)
+		FUNC_FAILS(SCARD_E_NO_MEMORY, "Out of memory");
 
 	CopyMemory(*ppbData, attr->attrData.pValue, *pcbData);
 
@@ -608,6 +721,10 @@ static DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 		if (!strcmp(pszFileName, szCARD_IDENTIFIER_FILE)) {
 			*pcbData = 16;
 			*ppbData = (PBYTE)pCardData->pfnCspAlloc(*pcbData);
+
+			if (*ppbData == NULL)
+				FUNC_FAILS(SCARD_E_NO_MEMORY, "Out of memory");
+
 			memcpy(*ppbData, slot->token->info.serialNumber, *pcbData);
 
 		} else if (!strcmp(pszFileName, szCACHE_FILE)) {
@@ -616,6 +733,10 @@ static DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 			memset(&cache, 0, sizeof(cache));
 			*pcbData = sizeof(cache);
 			*ppbData = (PBYTE)pCardData->pfnCspAlloc(*pcbData);
+
+			if (*ppbData == NULL)
+				FUNC_FAILS(SCARD_E_NO_MEMORY, "Out of memory");
+
 			memcpy(*ppbData, &cache, *pcbData);
 
 		} else if (!strcmp(pszFileName, "cardapps")) {
@@ -623,6 +744,10 @@ static DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 
 			*pcbData = sizeof(apps);
 			*ppbData = (PBYTE)pCardData->pfnCspAlloc(*pcbData);
+
+			if (*ppbData == NULL)
+				FUNC_FAILS(SCARD_E_NO_MEMORY, "Out of memory");
+
 			memcpy(*ppbData, apps, *pcbData);
 
 		} else {
@@ -633,7 +758,17 @@ static DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 			containers = getNumberOfContainers(pCardData);
 			*pcbData = containers * sizeof(CONTAINER_MAP_RECORD);
 			*ppbData = (PBYTE)pCardData->pfnCspAlloc(*pcbData);
+
+			if (*ppbData == NULL)
+				FUNC_FAILS(SCARD_E_NO_MEMORY, "Out of memory");
+
 			dwret = encodeCMapFile(pCardData, (PCONTAINER_MAP_RECORD)*ppbData, containers);
+
+			if (dwret != SCARD_S_SUCCESS)
+				FUNC_FAILS(dwret, "Can't encode cmapfile");
+
+		} else if (!strcmp(pszFileName, szROOT_STORE_FILE)) {
+			dwret = encodeMSROOTSFile(pCardData, ppbData, pcbData);
 
 			if (dwret != SCARD_S_SUCCESS)
 				FUNC_FAILS(dwret, "Can't encode cmapfile");
@@ -694,7 +829,7 @@ static DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData,
 	__in DWORD dwFlags)
 {
 	static BYTE rootFiles[] = { 'c','a','r','d','i','d',0,'c','a','r','d','c','f',0,'c','a','r','d','a','p','p','s',0,0 };
-	static BYTE mscpFiles[] = { 'c','m','a','p','f','i','l','e',0 };
+	static BYTE mscpFiles[] = { 'c','m','a','p','f','i','l','e',0,'m','s','r','o','o','t','s',0 };
 	LPSTR po;
 	int containers,i;
 	DWORD dwret;
@@ -729,12 +864,20 @@ static DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData,
 	if (pszDirectoryName == NULL) {
 		*pdwcbFileName = sizeof(rootFiles);
 		*pmszFileNames = (LPSTR)pCardData->pfnCspAlloc(*pdwcbFileName);
+
+		if (*pmszFileNames == NULL)
+			FUNC_FAILS(SCARD_E_NO_MEMORY, "Out of memory");
+
 		memcpy(*pmszFileNames, rootFiles, *pdwcbFileName);
 	} else {
 		containers = getNumberOfContainers(pCardData);
 
 		*pdwcbFileName = sizeof(mscpFiles) + containers * 6 + 1;
 		*pmszFileNames = (LPSTR)pCardData->pfnCspAlloc(*pdwcbFileName);
+
+		if (*pmszFileNames == NULL)
+			FUNC_FAILS(SCARD_E_NO_MEMORY, "Out of memory");
+
 		memcpy(*pmszFileNames, mscpFiles, *pdwcbFileName);
 
 		po = *pmszFileNames + sizeof(mscpFiles);
@@ -816,7 +959,7 @@ static DWORD encodeRSAPublicKey(PCARD_DATA pCardData, unsigned char *modulus, si
 	RSAPUBKEY *rsa;
 
 	if (blob == NULL)
-		return SCARD_E_NO_MEMORY;
+		FUNC_FAILS(SCARD_E_NO_MEMORY, "Out of memory");
 
 	bh = (BLOBHEADER *)blob;
 	bh->bType = PUBLICKEYBLOB;
@@ -858,7 +1001,7 @@ static DWORD encodeECCPublicKey(PCARD_DATA pCardData, struct p11Object_t *p11pub
 	*pblob = (PBYTE)pCardData->pfnCspAlloc(*pbloblen);
 
 	if (*pblob == NULL)
-		return SCARD_E_NO_MEMORY;
+		FUNC_FAILS(SCARD_E_NO_MEMORY, "Out of memory");
 
 	ecc = (BCRYPT_ECCKEY_BLOB *)(*pblob);
 
@@ -1216,6 +1359,7 @@ static DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNIN
 
 	pInfo->cbSignedData = cklen;
 	pInfo->pbSignedData = (PBYTE)pCardData->pfnCspAlloc(cklen);
+
 	if (pInfo->pbSignedData == NULL)
 		FUNC_FAILS(SCARD_E_NO_MEMORY, "Out of memory");
 
@@ -1625,7 +1769,7 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 
 	slot = pCardData->pvVendorSpecific = pCardData->pfnCspAlloc(sizeof(struct p11Slot_t));
 	if (!slot)
-		return SCARD_E_NO_MEMORY;
+		FUNC_FAILS(SCARD_E_NO_MEMORY, "Out of memory");
 
 	memset(slot, 0, sizeof(struct p11Slot_t));
 
