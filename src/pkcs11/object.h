@@ -90,6 +90,11 @@ struct p11Object_t {
     int (*C_SignUpdate)   (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
     int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
 
+    int (*C_VerifyInit)   (struct p11Object_t *, CK_MECHANISM_PTR);
+    int (*C_Verify)       (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG);
+    int (*C_VerifyUpdate) (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
+    int (*C_VerifyFinal)  (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
+
     struct p11Attribute_t *attrList;    /**< The list of attributes              */
     struct p11Object_t *next;       /**< Pointer to next object              */
 

@@ -1,7 +1,8 @@
 # Process this file with autoconf to produce a configure script
 #
-# Support for em SmartCard-HSM
+# Support for the SmartCard-HSM
 # (c) 2016 CardContact Systems GmbH (www.cardcontact.de)
+#
 
 define([PACKAGE_VERSION_MAJOR],[2])
 define([PACKAGE_VERSION_MINOR],[10])
@@ -16,20 +17,28 @@ PKG_PROG_PKG_CONFIG
 AC_PROG_CC
 
 AC_ARG_ENABLE(debug,
-		AS_HELP_STRING([--enable-debug],[include debugging output]),
-		[CPPFLAGS="$CPPFLAGS -DDEBUG"], [])
+		[AS_HELP_STRING([--enable-debug],[include debugging output])],
+		[AC_DEFINE([DEBUG])],
+		[])
 
 AC_ARG_ENABLE(ctapi,
-		AS_HELP_STRING([--enable-ctapi],[enable CT-API support (disables PC/SC)]),
-		[CPPFLAGS="$CPPFLAGS -DCTAPI"], [enable_pcsc="yes"])
+		[AS_HELP_STRING([--enable-ctapi],[enable CT-API support (disables PC/SC)])],
+		[AC_DEFINE([CTAPI])],
+		[enable_pcsc="yes"])
 
 AC_ARG_ENABLE(ram,
-		AS_HELP_STRING([--enable-ram],[enable Remote Application Management (RAM)]),
-		[CPPFLAGS="$CPPFLAGS -DRAM" enable_ram="yes"], [])
+		[AS_HELP_STRING([--enable-ram],[enable Remote Application Management (RAM)])],
+		[AC_DEFINE([RAM])],
+		[])
 
-if test "${enable_ram}" = "yes"; then
-	PKG_CHECK_MODULES(LIBCURL, libcurl)
-fi
+AC_ARG_ENABLE(libcrypto,
+		[AS_HELP_STRING([--enable-libcrypto],[enable libcrypto for public key crypto @<:@detect@:>@])],
+		,
+		[enable_libcrypto="detect"]
+)
+
+AS_IF([test "${enable_ram}" = "yes"],
+	[PKG_CHECK_MODULES(LIBCURL, libcurl)])
 
 if test "${enable_pcsc}" = "yes"; then
 	PKG_CHECK_EXISTS(
@@ -44,10 +53,16 @@ else
 	PKG_CHECK_MODULES(LIBUSB, libusb-1.0)
 fi
 
+AS_IF([test "${enable_libcrypto}" = "detect"],
+	[ PKG_CHECK_EXISTS([libcrypto], [enable_libcrypto="yes"], [enable_libcrypto="no"]) ])
+
+AS_IF([test "${enable_libcrypto}" = "yes"],
+	[ PKG_CHECK_MODULES(LIBCRYPTO, [libcrypto >= 1.0.1], AC_DEFINE(ENABLE_LIBCRYPTO)) ])
 
 AM_CONDITIONAL([ENABLE_PCSC], [test "${enable_pcsc}" = "yes"])
 AM_CONDITIONAL([ENABLE_CTAPI], [test "${enable_pcsc}" != "yes"])
 AM_CONDITIONAL([ENABLE_RAM], [test "${enable_ram}" = "yes"])
+AM_CONDITIONAL([ENABLE_LIBCRYPTO], [test "${enable_libcrypto}" = "yes"])
 
 AC_DEFINE([VERSION_MAJOR], [PACKAGE_VERSION_MAJOR] )
 AC_DEFINE([VERSION_MINOR], [PACKAGE_VERSION_MINOR] )
@@ -63,4 +78,36 @@ AC_CONFIG_FILES([
 ])
 
 AC_OUTPUT
+
+cat <<EOF
+
+sc-hsm-embedded configuration options:
+
+
+Version:                 ${PACKAGE_VERSION}
+
+User binaries:           $(eval eval eval echo "${bindir}")
+
+debug support:           ${enable_debug}
+PC/SC support:           ${enable_pcsc}
+RAM support:             ${enable_ram}
+libcrypto support:       ${enable_libcrypto}
+
+Host:                    ${host}
+Compiler:                ${CC}
+Preprocessor flags:      ${CPPFLAGS}
+Compiler flags:          ${CFLAGS}
+Linker flags:            ${LDFLAGS}
+Libraries:               ${LIBS}
+
+LIBCRYPTO_CFLAGS:        ${LIBCRYPTO_CFLAGS}
+LIBCRYPTO_LIBS:          ${LIBCRYPTO_LIBS}
+LIBCURL_CFLAGS:          ${LIBCURL_CFLAGS}
+LIBCURL_LIBS:            ${LIBCURL_LIBS}
+PCSC_CFLAGS:             ${PCSC_CFLAGS}
+PCSC_LIBS:               ${PCSC_LIBS}
+LIBUSB_CFLAGS:           ${LIBUSB_CFLAGS}
+LIBUSB_LIBS:             ${LIBUSB_LIBS}
+
+EOF
 

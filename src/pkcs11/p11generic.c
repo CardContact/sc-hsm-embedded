@@ -40,6 +40,8 @@
 #include <pkcs11/slotpool.h>
 #include <pkcs11/strbpcpy.h>
 
+#include <pkcs11/crypto.h>
+
 #ifdef DEBUG
 #include <common/debug.h>
 #endif
@@ -338,6 +340,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 		FUNC_RETURNS(rv);
 	}
 
+#ifdef ENABLE_LIBCRYPTO
+	cryptoInitialize();
+#endif
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -371,6 +376,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_Finalize)
 
 		free(context);
 		context = NULL;
+#ifdef ENABLE_LIBCRYPTO
+		cryptoFinalize();
+#endif
 	}
 
 	context = NULL;

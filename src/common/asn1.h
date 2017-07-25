@@ -58,6 +58,7 @@ void            asn1StoreLength(unsigned char **Ref, int Length);
 int             asn1Encap(unsigned short Tag, unsigned char *Msg, int MsgLen);
 int             asn1Append(bytebuffer buf, unsigned short tag, const bytestring val);
 int             asn1AppendBytes(bytebuffer buf, unsigned short tag, unsigned char *val, size_t len);
+int             asn1AppendUnsignedBigInteger(bytebuffer buf, unsigned short tag, const bytestring val);
 int             asn1EncapBuffer(unsigned short tag, bytebuffer buf, size_t offset);
 unsigned char  *asn1Find(unsigned char *data, unsigned char *path, int level);
 size_t          asn1Validate(unsigned char *data, size_t length);

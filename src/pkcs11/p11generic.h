@@ -80,11 +80,17 @@
 		debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, (rc), (msg)); \
 		return rc; \
 } while (0)
+#define FUNC_FAILVIAOUT(rc, msg) do { \
+		debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, (rc), (msg)); \
+		rv = rc; \
+		goto out; \
+} while (0)
 
 #else
 #define FUNC_CALLED()
 #define FUNC_RETURNS(rc) return (rc)
 #define FUNC_FAILS(rc, msg) return (rc)
+#define FUNC_FAILVIAOUT(rc, msg) do { rv = rc; goto out; } while (0)
 #endif
 
 

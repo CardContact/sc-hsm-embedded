@@ -538,3 +538,37 @@ int cvcDecode(unsigned char *cert, size_t certlen, struct cvc *cvc)
 
 	return (int)certlen;
 }
+
+
+
+/**
+ * Wrap a ECDSA signature with fixed length components R and S two ASN1 INTEGER objects combined to an ASN1 SEQUENCE
+ *
+ * @param signature the pointer to the plain signature
+ * @param signatueLen the length of the plain signature
+ * @param wrappedSig the buffer receiving the wrapped signature
+ * @param bufflen on input the maximum size of the buffer on output the actual length
+ * @return -1 if conversion failed
+ */
+int cvcWrapECDSASignature(unsigned char *signature, int signatureLen, unsigned char *wrappedSig, int *bufflen)
+{
+	struct bytebuffer_s bb = { wrappedSig, 0, *bufflen };
+	struct bytestring_s str = { NULL, 0 };
+
+	str.val = signature;
+	str.len = signatureLen >> 1;
+	asn1AppendUnsignedBigInteger(&bb, ASN1_INTEGER, &str);
+
+	str.val = signature + str.len;
+	asn1AppendUnsignedBigInteger(&bb, ASN1_INTEGER, &str);
+
+	asn1EncapBuffer(ASN1_SEQUENCE, &bb, 0);
+
+	if (bbHasFailed(&bb)) {
+		return -1;
+	}
+
+	*bufflen = (int)bb.len;
+	return 0;
+}
+

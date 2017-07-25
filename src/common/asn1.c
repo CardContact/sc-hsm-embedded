@@ -232,6 +232,44 @@ int asn1Append(bytebuffer buf, unsigned short tag, const bytestring val)
 
 
 /**
+ * Append the provided encoded BigInteger with minimal encoding in an object with given tag.
+ *
+ * Leading zeros are removed, except for one if the most significant bit is one.
+ *
+ * @param buf       The byte buffer to which the new TLV object will be appended
+ * @param tag       The tag that shall be given to the encoded object
+ * @param val       The byte string containing the unsigned big integer
+ * @return          The function will return the total number of bytes in the message
+ *                  buffer of -1 in case of an overflow.
+ */
+int asn1AppendUnsignedBigInteger(bytebuffer buf, unsigned short tag, const bytestring val)
+{
+	static struct bytestring_s nullstr = { (unsigned char *)"\x00", 1 };
+	struct bytestring_s str;
+	size_t ofs;
+
+	ofs = buf->len;
+
+	// Remove leading zero, all except the last 0
+	str.val = val->val;
+	str.len = val->len;
+
+	while ((str.len > 1) && (*str.val == 0)) {
+		str.val++;
+		str.len--;
+	}
+
+	if (*str.val & 0x80) {
+		bbAppend(buf, &nullstr);
+	}
+
+	bbAppend(buf, &str);
+	return asn1EncapBuffer(tag, buf, ofs);
+}
+
+
+
+/**
  * Append the provided byte string with the given tag
  *
  * @param buf       The byte buffer to which the new TLV object will be appended

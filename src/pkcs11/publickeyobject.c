@@ -37,6 +37,7 @@
 #include <pkcs11/object.h>
 #include <pkcs11/publickeyobject.h>
 #include <pkcs11/certificateobject.h>
+#include <pkcs11/crypto.h>
 #include <common/pkcs15.h>
 
 #include <common/cvc.h>
@@ -83,6 +84,11 @@ int createPublicKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p
 	}
 
 	rc = copyObjectAttributes(pTemplate, ulCount, pObject, attributesPublicKeyObject);
+
+#ifdef ENABLE_LIBCRYPTO
+	pObject->C_VerifyInit = cryptoVerifyInit;
+	pObject->C_Verify = cryptoVerify;
+#endif
 
 #ifdef DEBUG
 	dumpAttributeList(pObject);

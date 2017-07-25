@@ -2,6 +2,10 @@ MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
 AM_CPPFLAGS = -I$(top_srcdir)/src $(PCSC_CFLAGS)
 
+if ENABLE_LIBCRYPTO
+AM_CPPFLAGS += $(LIBCRYPTO_CFLAGS)
+endif
+
 lib_LTLIBRARIES = libsc-hsm-pkcs11.la
 
 libsc_hsm_pkcs11_la_SOURCES = crc32.c dataobject.c object.c p11generic.c p11mechanisms.c p11objects.c \
@@ -12,11 +16,15 @@ libsc_hsm_pkcs11_la_SOURCES = crc32.c dataobject.c object.c p11generic.c p11mech
 
 if ENABLE_CTAPI
 libsc_hsm_pkcs11_la_LIBADD = $(top_builddir)/src/ctccid/libctccid.la
-endif
-
-if ENABLE_PCSC
+else
 libsc_hsm_pkcs11_la_LIBADD = $(PCSC_LIBS)
 endif
+
+if ENABLE_LIBCRYPTO
+libsc_hsm_pkcs11_la_SOURCES += crypto-libcrypto.c
+libsc_hsm_pkcs11_la_LIBADD += $(LIBCRYPTO_LIBS)
+endif
+
 
 libsc_hsm_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
 	$(top_builddir)/src/common/libcommon.la \

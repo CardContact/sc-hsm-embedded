@@ -91,6 +91,7 @@ struct ec_curve *cvcGetCurveForOID(bytestring oid);
 int cvcDetermineCurveOID(struct cvc *cvc, bytestring *oid);
 int cvcDetermineCurveFromECParam(unsigned char *ecparam, size_t ecparamlen, struct ec_curve *curve);
 int cvcDecode(unsigned char *cert, size_t certlen, struct cvc *cvc);
+int cvcWrapECDSASignature(unsigned char *signature, int signatureLen, unsigned char *wrappedSig, int *bufflen);
 
  /* Support for C++ compiler ----------------------------------------------- */
 

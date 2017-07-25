@@ -931,12 +931,46 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyInit)(
 		CK_OBJECT_HANDLE hKey
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	if (pSession->activeObjectHandle != CK_INVALID_HANDLE) {
+		FUNC_FAILS(CKR_OPERATION_ACTIVE, "Operation is already active");
+	}
+
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	if ((findSessionObject(pSession, hKey, &pObject) < 0) && (findObject(pSlot->token, hKey, &pObject, TRUE) < 0)) {
+		FUNC_FAILS(CKR_KEY_HANDLE_INVALID, "Can not find key for handle");
+	}
+
+	if (pObject->C_VerifyInit != NULL) {
+		rv = pObject->C_VerifyInit(pObject, pMechanism);
+	} else {
+		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported");
+	}
+
+	if (rv == CKR_OK) {
+		pSession->activeObjectHandle = pObject->handle;
+		pSession->activeMechanism = pMechanism->mechanism;
 	}
 
 	FUNC_RETURNS(rv);
@@ -954,12 +988,42 @@ CK_DECLARE_FUNCTION(CK_RV, C_Verify)(
 		CK_ULONG ulSignatureLen
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	int rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	if (pSession->activeObjectHandle == CK_INVALID_HANDLE) {
+		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
+	}
+
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	if ((findSessionObject(pSession, pSession->activeObjectHandle, &pObject) < 0) && (findObject(pSlot->token, pSession->activeObjectHandle, &pObject, TRUE) < 0)) {
+		FUNC_FAILS(CKR_KEY_HANDLE_INVALID, "Can not find key for handle");
+	}
+
+	if (pObject->C_Verify != NULL) {
+		rv = pObject->C_Verify(pObject, pSession->activeMechanism, pData, ulDataLen, pSignature, ulSignatureLen);
+		pSession->activeObjectHandle = CK_INVALID_HANDLE;
+	} else {
+		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported");
 	}
 
 	FUNC_RETURNS(rv);
@@ -975,12 +1039,41 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyUpdate)(
 		CK_ULONG ulPartLen
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	if (pSession->activeObjectHandle == CK_INVALID_HANDLE) {
+		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
+	}
+
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	if ((findSessionObject(pSession, pSession->activeObjectHandle, &pObject) < 0) && (findObject(pSlot->token, pSession->activeObjectHandle, &pObject, TRUE) < 0)) {
+		FUNC_FAILS(CKR_KEY_HANDLE_INVALID, "Can not find key for handle");
+	}
+
+	if (pObject->C_VerifyUpdate != NULL) {
+		rv = pObject->C_VerifyUpdate(pObject, pSession->activeMechanism, pPart, ulPartLen);
+	} else {
+		rv = appendToCryptoBuffer(pSession, pPart, ulPartLen);
 	}
 
 	FUNC_RETURNS(rv);
@@ -996,12 +1089,51 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyFinal)(
 		CK_ULONG ulSignatureLen
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	struct p11Object_t *pObject;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	if (pSession->activeObjectHandle == CK_INVALID_HANDLE) {
+		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
+	}
+
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	if ((findSessionObject(pSession, pSession->activeObjectHandle, &pObject) < 0) && (findObject(pSlot->token, pSession->activeObjectHandle, &pObject, TRUE) < 0)) {
+		FUNC_FAILS(CKR_KEY_HANDLE_INVALID, "Can not find key for handle");
+	}
+
+	if (pObject->C_VerifyFinal != NULL) {
+		rv = pObject->C_VerifyFinal(pObject, pSession->activeMechanism, pSignature, ulSignatureLen);
+
+		pSession->activeObjectHandle = CK_INVALID_HANDLE;
+		clearCryptoBuffer(pSession);
+	} else {
+		if (pObject->C_Verify != NULL) {
+			rv = pObject->C_Verify(pObject, pSession->activeMechanism, pSession->cryptoBuffer, pSession->cryptoBufferSize, pSignature, ulSignatureLen);
+
+			pSession->activeObjectHandle = CK_INVALID_HANDLE;
+			clearCryptoBuffer(pSession);
+		} else {
+			FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported");
+		}
 	}
 
 	FUNC_RETURNS(rv);
