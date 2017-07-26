@@ -54,7 +54,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 		CK_OBJECT_HANDLE hKey
 )
 {
-	int rv;
+	CK_RV rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
 	struct p11Session_t *pSession;
@@ -65,14 +65,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
+	if (!isValidPtr(pMechanism)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
-	}
-
-	if (pSession->activeObjectHandle != CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_ACTIVE, "Operation is already active");
 	}
 
 	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
@@ -81,25 +81,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlotKey(pSlot, hKey, &pObject);
-
-	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+	if ((findSessionObject(pSession, hKey, &pObject) < 0) && (findObject(pSlot->token, hKey, &pObject, TRUE) < 0)) {
+		FUNC_FAILS(CKR_KEY_HANDLE_INVALID, "Can not find key for handle");
 	}
 
 	if (pObject->C_EncryptInit != NULL) {
 		rv = pObject->C_EncryptInit(pObject, pMechanism);
-		if (rv == CKR_DEVICE_ERROR) {
-			rv = handleDeviceError(hSession);
-			FUNC_FAILS(rv, "Device error reported");
-		}
 	} else {
-		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
+		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported");
 	}
 
-	if (!rv) {
+	if (rv == CKR_OK) {
 		pSession->activeObjectHandle = pObject->handle;
-		rv = CKR_OK;
+		pSession->activeMechanism = pMechanism->mechanism;
 	}
 
 	FUNC_RETURNS(rv);
@@ -116,7 +110,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
 		CK_ULONG_PTR pulEncryptedDataLen
 )
 {
-	int rv;
+	CK_RV rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
 	struct p11Session_t *pSession;
@@ -125,6 +119,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	if (!isValidPtr(pData)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (pEncryptedData && !isValidPtr(pEncryptedData)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pulEncryptedDataLen)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
@@ -143,20 +149,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
 		FUNC_RETURNS(rv);
 	}
 
-	rv = findSlotKey(pSlot, pSession->activeObjectHandle, &pObject);
-
-	if (rv != CKR_OK) {
-		FUNC_RETURNS(rv);
+	if ((findSessionObject(pSession, pSession->activeObjectHandle, &pObject) < 0) && (findObject(pSlot->token, pSession->activeObjectHandle, &pObject, TRUE) < 0)) {
+		FUNC_FAILS(CKR_KEY_HANDLE_INVALID, "Can not find key for handle");
 	}
 
 	if (pObject->C_Encrypt != NULL) {
 		rv = pObject->C_Encrypt(pObject, pSession->activeMechanism, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
-		if (rv == CKR_DEVICE_ERROR) {
-			rv = handleDeviceError(hSession);
-			FUNC_FAILS(rv, "Device error reported");
+
+		if ((pEncryptedData != NULL) && (rv != CKR_BUFFER_TOO_SMALL)) {
+			pSession->activeObjectHandle = CK_INVALID_HANDLE;
 		}
 	} else {
-		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
+		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported");
 	}
 
 	FUNC_RETURNS(rv);
@@ -174,7 +178,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptUpdate)(
 		CK_ULONG_PTR pulEncryptedPartLen
 )
 {
-	int rv;
+	CK_RV rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
 	struct p11Session_t *pSession;
@@ -183,6 +187,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptUpdate)(
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	if (!isValidPtr(pPart)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (pEncryptedPart && !isValidPtr(pEncryptedPart)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pulEncryptedPartLen)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
@@ -229,7 +245,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptFinal)(
 		CK_ULONG_PTR pulLastEncryptedPartLen
 )
 {
-	int rv;
+	CK_RV rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
 	struct p11Session_t *pSession;
@@ -238,6 +254,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptFinal)(
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	if (pLastEncryptedPart && !isValidPtr(pLastEncryptedPart)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pulLastEncryptedPartLen)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
@@ -289,7 +313,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptInit)(
 		CK_OBJECT_HANDLE hKey
 )
 {
-	int rv;
+	CK_RV rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
 	struct p11Session_t *pSession;
@@ -300,14 +324,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptInit)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
+	if (!isValidPtr(pMechanism)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
-	}
-
-	if (pSession->activeObjectHandle != CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_ACTIVE, "Operation is already active");
 	}
 
 	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
@@ -352,7 +376,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Decrypt)(
 		CK_ULONG_PTR pulDataLen
 )
 {
-	int rv;
+	CK_RV rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
 	struct p11Session_t *pSession;
@@ -361,6 +385,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_Decrypt)(
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	if (!isValidPtr(pEncryptedData)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (pData && !isValidPtr(pData)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pulDataLen)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
@@ -414,7 +450,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptUpdate)(
 		CK_ULONG_PTR pulPartLen
 )
 {
-	int rv;
+	CK_RV rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
 	struct p11Session_t *pSession;
@@ -423,6 +459,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptUpdate)(
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	if (!isValidPtr(pEncryptedPart)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (pPart && !isValidPtr(pPart)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pulPartLen)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
@@ -469,7 +517,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptFinal)(
 		CK_ULONG_PTR pulLastPartLen
 )
 {
-	int rv;
+	CK_RV rv;
 	struct p11Object_t *pObject;
 	struct p11Slot_t *pSlot;
 	struct p11Session_t *pSession;
@@ -480,6 +528,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptFinal)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
+	if (pLastPart && !isValidPtr(pLastPart)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pulLastPartLen)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
@@ -643,14 +698,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignInit)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
+	if (!isValidPtr(pMechanism)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
-	}
-
-	if (pSession->activeObjectHandle != CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_ACTIVE, "Operation is already active");
 	}
 
 	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
@@ -704,6 +759,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	if (!isValidPtr(pData)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (pSignature && !isValidPtr(pSignature)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pulSignatureLen)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
@@ -767,6 +834,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignUpdate)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
+	if (!isValidPtr(pPart)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
@@ -820,6 +891,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	if (pSignature && !isValidPtr(pSignature)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pulSignatureLen)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
@@ -942,14 +1021,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyInit)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
+	if (!isValidPtr(pMechanism)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
 		FUNC_RETURNS(rv);
-	}
-
-	if (pSession->activeObjectHandle != CK_INVALID_HANDLE) {
-		FUNC_FAILS(CKR_OPERATION_ACTIVE, "Operation is already active");
 	}
 
 	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
@@ -997,6 +1076,14 @@ CK_DECLARE_FUNCTION(CK_RV, C_Verify)(
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	if (!isValidPtr(pData)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (pSignature && !isValidPtr(pSignature)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
@@ -1050,6 +1137,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyUpdate)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
+	if (!isValidPtr(pPart)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
 
 	if (rv != CKR_OK) {
@@ -1098,6 +1189,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyFinal)(
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
+	}
+
+	if (!isValidPtr(pSignature)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
 	}
 
 	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);

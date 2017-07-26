@@ -75,10 +75,10 @@ struct p11Object_t {
 
     struct p11Token_t *token;
 
-    int (*C_EncryptInit)  (struct p11Object_t *, CK_MECHANISM_PTR);
-    int (*C_Encrypt)      (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
-    int (*C_EncryptUpdate)(struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
-    int (*C_EncryptFinal) (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
+    CK_RV (*C_EncryptInit)  (struct p11Object_t *, CK_MECHANISM_PTR);
+    CK_RV (*C_Encrypt)      (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+    CK_RV (*C_EncryptUpdate)(struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+    CK_RV (*C_EncryptFinal) (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
 
     int (*C_DecryptInit)  (struct p11Object_t *, CK_MECHANISM_PTR);
     int (*C_Decrypt)      (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
@@ -90,10 +90,10 @@ struct p11Object_t {
     int (*C_SignUpdate)   (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
     int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
 
-    int (*C_VerifyInit)   (struct p11Object_t *, CK_MECHANISM_PTR);
-    int (*C_Verify)       (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG);
-    int (*C_VerifyUpdate) (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
-    int (*C_VerifyFinal)  (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
+    CK_RV (*C_VerifyInit)   (struct p11Object_t *, CK_MECHANISM_PTR);
+    CK_RV (*C_Verify)       (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG);
+    CK_RV (*C_VerifyUpdate) (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
+    CK_RV (*C_VerifyFinal)  (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
 
     struct p11Attribute_t *attrList;    /**< The list of attributes              */
     struct p11Object_t *next;       /**< Pointer to next object              */

@@ -352,7 +352,6 @@ static int testscompleted = 0;
 static int testsfailed = 0;
 
 static int optTestInsertRemove = 0;
-static int optTestRSADecryption = 0;
 static int optTestPINBlock = 0;
 static int optTestMultiOnly = 0;
 static int optTestHotplug = 0;
@@ -1052,97 +1051,103 @@ void testSigningMultiThreading(CK_FUNCTION_LIST_PTR p11)
 
 
 
-void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
+void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_MECHANISM_TYPE mt)
 {
 	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
 	CK_KEY_TYPE keyType = CKK_RSA;
-	CK_CHAR label[] = "C.CH.AUT";
+	CK_BBOOL _true = CK_TRUE;
 	CK_ATTRIBUTE template[] = {
 			{ CKA_CLASS, &class, sizeof(class) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
-			{ CKA_LABEL, &label, (CK_ULONG)strlen((char *)label) }
+			{ CKA_DECRYPT, &_true, sizeof(_true) }
 	};
-	CK_OBJECT_HANDLE hnd;
-//	CK_MECHANISM mech_raw = { CKM_RSA_X_509, 0, 0 };
-	CK_MECHANISM mech_p15 = { CKM_RSA_PKCS, 0, 0 };
-	CK_MECHANISM mech_oaep = { CKM_RSA_PKCS_OAEP, 0, 0 };
-	// Place valid cryptograms from use case tests here
-//	char *raw_cryptogram = "\xCD\x6A\x28\xD1\x4A\x4A\x07\xED\x33\x24\x61\xFC\xF7\x3A\x51\x1B\x4F\x15\xF7\xC6\x95\xFC\xB4\xBE\x00\xE4\xA1\x17\x95\x98\x2F\xB5\x7A\x26\xB7\xDA\xF9\x31\x9F\xA9\xB0\xBE\xF9\xCB\x94\xFF\x88\xF1\x4D\x35\x57\xF8\x56\x51\xAF\xD9\x00\xB0\x3C\xE3\x82\x8E\xF1\xC9\xED\x68\x95\xAF\xDE\xF1\x6D\x7C\x67\x39\x3C\x68\xD9\x02\xFD\x39\x24\x15\xA3\x66\x03\xB9\x9E\x96\xAC\x28\x50\x02\xC9\x0E\x87\x92\xDC\x3B\x9E\x35\x6E\x06\x79\xB7\xBC\x9F\x68\x5A\xAA\xC0\x08\x0F\xB4\x92\xC7\xC1\xE6\xCE\x17\xBC\xB8\x16\xF5\xBD\x41\x7E\x10\xC6\x51\xC5\xA2\x12\x89\xE5\x8A\x7F\x98\xCA\x6A\x44\x5D\x9E\x5B\x9C\xA3\xB6\x64\x52\xD0\xF1\xA1\x9D\xC3\x81\x89\xB5\x6E\xB6\xB8\x0C\x4B\xB1\x31\xD1\x37\x68\x2F\xB4\x0F\x7F\x03\x2F\x8A\x65\x7F\x98\xDF\x05\x15\x78\xC5\x14\x00\xB9\xF2\x82\x3A\xDA\x62\x85\xAF\xAB\x7C\x5B\x7E\x2F\x7C\xE4\xCA\xB0\xE5\xD7\x3A\x6D\x68\x5C\x48\x16\x4B\x36\x2E\xD9\xF3\xC7\x88\x11\x0B\x6B\xBB\x50\x39\x3D\x6C\x20\x24\x5E\x1C\x83\x80\x13\x3E\x59\x62\xEF\x94\x1D\xC9\x9D\x40\x18\x14\x51\x1E\x80\x07\x30\x74\x4A\xD9\x16\xFA\xFF\x60\x4B\x5C\xE4";
-//	char *p15_cryptogram = "\xAA\x80\xBF\x66\x99\x0A\x6E\xF3\x83\xA2\x7B\x2F\x89\x56\x0F\x7D\xC7\xFD\x44\x36\x86\x56\xC5\xC6\xA3\x3E\x89\xFC\x37\x87\x8A\xB0\xD5\xEB\x46\x20\x1D\xE4\xB7\xA7\xDE\xAC\x1E\x70\xBD\x66\x97\x91\xA3\xAC\xFA\x70\x80\x27\x8E\x7E\x8C\x06\x23\xA1\xB6\x83\x1A\x04\x96\xE7\x87\x1C\x61\xEC\xE0\x1A\x7D\xA9\x85\x85\x75\xBB\xDA\x77\x07\x65\x2A\x7A\x27\xCC\x14\xE4\x34\xBC\x70\xDF\x46\x67\xA0\x5B\x62\x2C\xF7\x2D\xFD\xF7\xA7\xFF\x89\x16\xC0\xE3\x2B\xEF\xDB\x1E\x11\x2A\xAE\x81\xDE\xDA\x96\xE4\xD3\xE4\x31\xE8\x31\xE9\xFD\xCD\x48\x0B\x9D\x95\xC0\x45\x14\x38\x03\x41\x00\xB0\xF9\xF0\x5A\x22\xBF\x2D\x81\xB4\x20\x7E\x05\x68\x90\x2D\x67\x9E\xEA\xC1\xFC\x7C\x92\x99\xD1\xDE\xE7\xEA\xE3\x0A\x14\x52\x19\xD0\x7C\xDE\x8C\x37\xBC\xA6\x52\xAB\x3D\x7A\xAE\x60\x11\xC7\x41\xAB\x53\x48\x08\xBA\xC6\x80\xC3\x72\xB7\x13\x15\xD7\x7E\x40\x8C\x0E\x29\x33\xB4\x11\xBB\x1B\x96\x7B\x2A\x52\x98\x24\xEE\xC0\x51\xD7\x55\x25\x59\x55\xD8\xB3\xAB\x06\x26\x28\x7F\x0F\xB2\x44\xF3\xBA\xEE\xA7\xA2\xDB\xAA\xD2\xE7\xB7\x79\x51\xB2\xFB\x1B\x7F\x1D\xE4\xA7\x08\x7D\xAF";
-	char *p15_cryptogram = "\x0A\x01\x74\xAD\x63\xD4\xB1\x34\x65\x9D\xEE\xC9\x14\x0A\x1D\xE9\x2E\x27\x38\xE4\x41\x75\x90\x59\xD2\x4F\xC7\xA5\x15\xB3\x69\xB7\x44\x14\xD7\xA0\xDA\xD7\xEE\xBB\xDC\x6B\x9F\x3D\x91\x1D\x15\xA9\xCF\x48\xFC\x11\x78\x89\x8D\xFA\x8C\x63\x1D\xD4\xFF\xD5\x71\xBB\x81\x4C\xA4\xB3\x06\x14\x5E\x34\xF7\xE8\x73\x39\x86\xB9\x31\x31\xE1\xC7\xAB\xCF\xEB\x1C\xA8\x2E\x1B\x3D\x05\x60\x0F\x32\xEF\x1C\x89\x30\x50\x4A\xC9\x90\x83\x6A\xAA\x12\x8A\x2B\xF6\x39\x2C\xF1\xEC\x4F\x01\x20\x50\xF0\x36\x49\x25\x11\x04\xB0\x94\xAA\xEF\x7D\xFE\xAA\x60\x34\x32\x6E\x65\x30\x66\x26\x6D\x8F\xB6\xE6\xF7\xED\x7A\xC9\xE8\x77\xD8\x5E\x84\x7B\x06\xE5\x0D\xC2\xA1\xC6\x46\x0B\x90\xCF\xF2\x9D\xA6\xC3\xEA\x29\xB0\xE2\xDE\x15\x1B\x72\x63\x01\x23\x85\xB3\x25\xAD\x43\x50\x7F\x1E\x7F\xBF\x6E\x22\x4A\x13\x33\x55\x55\xAA\xE1\x87\xDD\xE5\x16\x0F\x2A\x29\x34\xBB\xFA\x27\xD2\x03\x17\xAB\xF2\x91\x97\xE2\x3B\xCA\x74\x2E\xEA\xA6\x82\x10\x74\xDD\x7A\x99\x52\xA0\x44\x36\xB7\x85\xB4\x88\xE0\xD9\x00\x75\xC5\xD9\xBF\x5D\x5B\x32\xFD\xBD\xD6\x8F\x9B\x3D\x12\xD6\x5E\x15\x32";
-	char *oaep_cryptogram = "\x96\x1B\x87\x4A\x68\xD0\x17\xDC\x74\x3E\x22\x6B\xB0\x97\x36\x35\xE1\x05\xCB\xA8\x23\x97\xEF\xCB\x58\xE7\x70\x04\x6B\x85\x7B\x30\x8E\x7D\x23\x7F\x66\x3F\x5D\x80\xC3\x93\x0F\x30\xA2\x01\x34\x7C\x85\x8D\x94\x22\xE7\xBE\x3A\x59\x33\xD7\xCB\x69\xA5\xAB\xA4\x02\xAB\x33\xE6\x41\xF0\x5D\x85\xF0\x09\x7E\x9D\x88\xDD\x59\x63\xDB\xF3\x89\x8D\x1F\x8B\xE6\x22\x7D\xC1\x31\x42\xAE\x67\x68\xBA\x2A\x10\x51\x09\xF7\x4F\x2E\x0E\xF7\xB4\xF2\xE3\x53\x68\x97\x27\xD8\xAD\x6F\x8B\x40\x96\x69\x84\x08\x55\x43\xC7\xA0\xD8\x89\x7B\x72\x87\xDE\xC7\xDC\xD1\x22\x7B\x75\xA5\xBC\xEB\x73\x56\x97\xBE\xA1\xD1\x7B\x98\xF2\x5B\x84\x1D\x6E\xBA\x47\xEE\x96\x95\x81\xC8\xCC\x00\xB1\x43\xBA\xF7\xB7\x29\x79\x7A\x1D\x1E\x57\x05\xAF\xF5\x96\x2E\x8C\xC6\xC7\x51\x26\x74\x73\x4D\x06\xB7\xB3\xC1\x74\xA4\xC8\x8E\xC2\x8F\x1A\x6B\x80\x9D\xF7\x99\xD4\x05\x54\x38\x5D\xA3\x45\xE2\x4A\x4D\x3B\x53\xC3\xAE\x83\xF0\xDB\x90\xA6\xA4\xDD\x18\xF3\xD8\x36\x2C\x5C\x82\x04\xB2\x78\x32\x3A\x78\x58\x9B\x29\x2D\x45\x85\x4E\x4A\x08\xED\xDF\x36\x73\xFA\xD9\xB9\x4E\x0D\x8F\xCC\x50";
+	CK_OBJECT_CLASS classpuk = CKO_PUBLIC_KEY;
+	CK_BYTE keyid[256];
+	CK_ATTRIBUTE puktemplate[] = {
+			{ CKA_CLASS, &classpuk, sizeof(classpuk) },
+			{ CKA_ID, keyid, sizeof(keyid) }
+	};
+	CK_BYTE plain[512];
+	CK_ATTRIBUTE modulus = { CKA_MODULUS, &plain, sizeof(plain) };
+	CK_OBJECT_HANDLE hnd,pubhnd;
+	CK_MECHANISM mech = { CKM_RSA_PKCS, 0, 0 };
+	CK_BYTE cipher[512];
+	CK_BYTE secret[512];
+	CK_ULONG len, cipherlen,secretlen;
+	char scr[2048];
+	char *secretstr = "*SECRET*";
+	int rc, keyno;
 
-	CK_BYTE plain[256];
-	CK_ULONG len;
-	char scr[1024];
-	int rc;
+	mech.mechanism = mt;
 
-	rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), 0, &hnd);
+	secretlen = strlen(secretstr);
+	memcpy(secret, secretstr, secretlen);
 
-	if (rc != CKR_OK) {
-		printf("Key %s not found\n", label);
-		return;
+	keyno = 0;
+	while (1) {
+		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
+
+		if (rc != CKR_OK) {
+			printf("No more keys for decryption found\n");
+			return;
+		}
+
+		rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&puktemplate[1], 1);
+		printf("C_GetAttributeValue (Session %ld) - %s : %s\n", session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&puktemplate, sizeof(puktemplate) / sizeof(CK_ATTRIBUTE), 0, &pubhnd);
+		printf("C_FindObject for public key (Session %ld) - %s : %s\n", session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		if (rc != CKR_OK) {
+			return;
+		}
+
+		if (mt == CKM_RSA_X_509) {
+			rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&modulus, 1);
+			printf("C_GetAttributeValue (Session %ld) - %s : %s\n", session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+			memset(secret, 0, sizeof(secret));
+			strcpy(secret + 1, secretstr);
+			secretlen = modulus.ulValueLen;
+		}
+
+		printf("Calling C_EncryptInit()");
+		rc = p11->C_EncryptInit(session, &mech, pubhnd);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Calling C_Encrypt()");
+		cipherlen = sizeof(cipher);
+		rc = p11->C_Encrypt(session, secret, secretlen, NULL, &cipherlen);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Cipher size = %lu\n", cipherlen);
+
+		printf("Calling C_Encrypt()");
+		cipherlen = sizeof(cipher);
+		rc = p11->C_Encrypt(session, secret, secretlen, cipher, &cipherlen);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Calling C_DecryptInit()");
+		rc = p11->C_DecryptInit(session, &mech, hnd);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Calling C_Decrypt()");
+
+		len = 0;
+		rc = p11->C_Decrypt(session, cipher, cipherlen, NULL, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Plain size = %lu\n", len);
+
+		len = sizeof(plain);
+		rc = p11->C_Decrypt(session, cipher, cipherlen, plain, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		bin2str(scr, sizeof(scr), plain, len);
+		printf("Plain:\n%s\n%s\n", scr, verdict(!memcmp(plain, secret, len)));
+
+		keyno++;
 	}
-#if 0
-	printf("Calling C_DecryptInit()");
-	rc = p11->C_DecryptInit(session, &mech_raw, hnd);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-	printf("Calling C_Decrypt()");
-
-	len = 0;
-	rc = p11->C_Decrypt(session, (CK_BYTE_PTR)raw_cryptogram, 256, NULL, &len);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-	printf("Plain size = %lu\n", len);
-
-	len = sizeof(plain);
-	rc = p11->C_Decrypt(session, (CK_BYTE_PTR)raw_cryptogram, 256, plain, &len);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-	bin2str(scr, sizeof(scr), plain, len);
-	printf("Plain:\n%s\n", scr);
-#endif
-
-	printf("Calling C_DecryptInit()");
-	rc = p11->C_DecryptInit(session, &mech_p15, hnd);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-	printf("Calling C_Decrypt()");
-
-	len = 0;
-	rc = p11->C_Decrypt(session, (CK_BYTE_PTR)p15_cryptogram, 256, NULL, &len);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-	printf("Plain size = %lu\n", len);
-
-	len = sizeof(plain);
-	rc = p11->C_Decrypt(session, (CK_BYTE_PTR)p15_cryptogram, 256, plain, &len);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-	bin2str(scr, sizeof(scr), plain, len);
-	printf("Plain:\n%s\n", scr);
-
-
-	printf("Calling C_DecryptInit()");
-	rc = p11->C_DecryptInit(session, &mech_oaep, hnd);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-	printf("Calling C_Decrypt()");
-
-	len = 0;
-	rc = p11->C_Decrypt(session, (CK_BYTE_PTR)oaep_cryptogram, 256, NULL, &len);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-	printf("Plain size = %lu\n", len);
-
-	len = sizeof(plain);
-	rc = p11->C_Decrypt(session, (CK_BYTE_PTR)oaep_cryptogram, 256, plain, &len);
-	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-	bin2str(scr, sizeof(scr), plain, len);
-	printf("Plain:\n%s\n", scr);
-
 }
 
 
@@ -1971,7 +1976,6 @@ void usage()
 {
 	printf("sc-hsm-tool [--module <p11-file>] [--pin <user-pin>] [--token <tokenname>] [--optThreadsPerToken <count>] [--iterations <count>]\n");
 	printf("  --test-insert-remove       Enable insert / remove test\n");
-	printf("  --test-rsa-decryption      Enable RSA decryption test (requires matching cryptogram in testRSADecryption()\n");
 	printf("  --test-pin-block           Enable PIN blocking test\n");
 	printf("  --test-multithreading-only Perform multihreading tests only\n");
 	printf("  --test-hotplug-only        Perform hotplug tests only\n");
@@ -2049,8 +2053,6 @@ void decodeArgs(int argc, char **argv)
 			argc--;
 		} else if (!strcmp(*argv, "--test-insert-remove")) {
 			optTestInsertRemove = 1;
-		} else if (!strcmp(*argv, "--test-rsa-decryption")) {
-			optTestRSADecryption = 1;
 		} else if (!strcmp(*argv, "--test-pin-block")) {
 			optTestPINBlock = 1;
 		} else if (!strcmp(*argv, "--test-multithreading-only")) {
@@ -2255,6 +2257,10 @@ int main(int argc, char *argv[])
 				memset(attr, 0, sizeof(attr));
 				listObjects(p11, session, attr, 0);
 
+				testRSADecryption(p11, session, CKM_RSA_PKCS);
+				testRSADecryption(p11, session, CKM_RSA_X_509);
+				testRSADecryption(p11, session, CKM_RSA_PKCS_OAEP);
+
 				testRandom(p11, session);
 
 				if (strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
@@ -2270,9 +2276,9 @@ int main(int argc, char *argv[])
 					testRSASigning(p11, slotid, 0, CKM_SC_HSM_PSS_SHA256);
 				}
 
-				//	Test requires valid crypto matching card used for testing
-				if (optTestRSADecryption)
-					testRSADecryption(p11, session);
+				testRSADecryption(p11, session, CKM_RSA_PKCS);
+				testRSADecryption(p11, session, CKM_RSA_X_509);
+				testRSADecryption(p11, session, CKM_RSA_PKCS_OAEP);
 
 				if (strncmp("3.5ID ECC C1 DGN", (char *)tokeninfo.model, 16)) {
 					testECSigning(p11, slotid, 0, CKM_ECDSA_SHA1);

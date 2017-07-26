@@ -40,8 +40,10 @@
 
 void cryptoInitialize();
 void cryptoFinalize();
-int cryptoVerifyInit(struct p11Object_t *, CK_MECHANISM_PTR);
-int cryptoVerify(struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG);
-
+CK_RV stripOAEPPadding(unsigned char *raw, int rawlen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen);
+CK_RV cryptoVerifyInit(struct p11Object_t *, CK_MECHANISM_PTR);
+CK_RV cryptoVerify(struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG);
+CK_RV cryptoEncryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech);
+CK_RV cryptoEncrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen);
 
 #endif /* ___CRYPTO_INC___ */

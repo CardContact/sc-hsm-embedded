@@ -48,6 +48,7 @@
 #include <pkcs11/privatekeyobject.h>
 #include <pkcs11/publickeyobject.h>
 #include <pkcs11/strbpcpy.h>
+#include <pkcs11/crypto.h>
 
 
 
@@ -329,6 +330,10 @@ static int getAlgorithmIdForDecryption(CK_MECHANISM_TYPE mech)
 	case CKM_RSA_X_509:
 	case CKM_RSA_PKCS:
 		return ALGO_RSA_DECRYPT;
+#ifdef ENABLE_LIBCRYPTO
+	case CKM_RSA_PKCS_OAEP:
+		return ALGO_RSA_DECRYPT;
+#endif
 	default:
 		return -1;
 	}
@@ -604,11 +609,18 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 		}
 		*pulDataLen = rc;
 		memcpy(pData, scr, rc);
-	} else {
+	} else if (mech == CKM_RSA_PKCS) {
 		rc = stripPKCS15Padding(scr, rc, pData, pulDataLen);
 		if (rc != CKR_OK) {
 			FUNC_FAILS(rc, "Invalid PKCS#1 padding");
 		}
+	} else {
+#ifdef ENABLE_LIBCRYPTO
+		rc = stripOAEPPadding(scr, rc, pData, pulDataLen);
+		if (rc != CKR_OK) {
+			FUNC_FAILS(rc, "Invalid OAEP padding");
+		}
+#endif
 	}
 
 	FUNC_RETURNS(CKR_OK);

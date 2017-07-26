@@ -88,6 +88,8 @@ int createPublicKeyObject(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p
 #ifdef ENABLE_LIBCRYPTO
 	pObject->C_VerifyInit = cryptoVerifyInit;
 	pObject->C_Verify = cryptoVerify;
+	pObject->C_EncryptInit = cryptoEncryptInit;
+	pObject->C_Encrypt = cryptoEncrypt;
 #endif
 
 #ifdef DEBUG

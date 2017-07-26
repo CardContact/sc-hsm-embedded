@@ -48,6 +48,19 @@
 
 
 
+#ifdef DEBUG
+#define FUNC_CRYPTOFAILVIAOUT(msg) do { \
+		rv = translateError(); \
+		debug("Function %s fails with rc=%d \"%s\"\n", __FUNCTION__, (rv), (msg)); \
+		goto out; \
+} while (0)
+
+#else
+#define FUNC_CRYPTOFAILVIAOUT(msg) do { rv = translateError(); goto out; } while (0)
+#endif
+
+
+
 void cryptoInitialize()
 {
 #ifdef DEBUG
@@ -84,42 +97,73 @@ void cryptoFinalize()
 
 
 
+static CK_RV translateError()
+{
+	unsigned long err;
+	char scr[120];
+	CK_RV rv;
+
+	err = ERR_get_error();
+
+#ifdef DEBUG
+	ERR_error_string_n(err, scr, sizeof(scr));
+	debug("libcrypto: %s\n", scr);
+#endif
+	switch(err) {
+	case RSA_R_DATA_GREATER_THAN_MOD_LEN:
+	case RSA_R_DATA_TOO_LARGE:
+	case RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE:
+	case RSA_R_DATA_TOO_LARGE_FOR_MODULUS:
+	case RSA_R_DATA_TOO_SMALL:
+	case RSA_R_DATA_TOO_SMALL_FOR_KEY_SIZE:
+		rv = CKR_DATA_LEN_RANGE;
+		break;
+	default:
+		rv = CKR_GENERAL_ERROR;
+		break;
+	}
+	return rv;
+}
+
+
+
 /**
  * Digest input and verify signature
  */
-static int digestVerify(EVP_PKEY *key, const EVP_MD *hash, int padding, const unsigned char *data, int data_len, unsigned char *signature, int signature_len)
+static CK_RV digestVerify(EVP_PKEY *key, const EVP_MD *hash, int padding, const unsigned char *data, int data_len, unsigned char *signature, int signature_len)
 {
 	EVP_MD_CTX *md_ctx;
 	EVP_PKEY_CTX *pkey_ctx;
-	int rv, rc;
+	CK_RV rv;
+	int rc;
 
 	md_ctx = EVP_MD_CTX_create();
 	EVP_MD_CTX_init(md_ctx);
 
 	if (!EVP_DigestVerifyInit(md_ctx, &pkey_ctx, hash, NULL, key)) {
-		FUNC_FAILVIAOUT(CKR_DEVICE_ERROR, "EVP_DigestVerifyInit() failed");
+		FUNC_CRYPTOFAILVIAOUT("EVP_DigestVerifyInit() failed");
 	}
 
 	if (padding) {
 		if (!EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, padding)) {
-			FUNC_FAILVIAOUT(CKR_DEVICE_ERROR, "EVP_PKEY_CTX_set_rsa_padding() failed");
+			FUNC_CRYPTOFAILVIAOUT("EVP_PKEY_CTX_set_rsa_padding() failed");
 		}
 
 		if (padding == RSA_PKCS1_PSS_PADDING) {
 			if (!EVP_PKEY_CTX_set_rsa_pss_saltlen(pkey_ctx, -2)) {
-				FUNC_FAILVIAOUT(CKR_DEVICE_ERROR, "EVP_PKEY_CTX_set_rsa_pss_saltlen() failed");
+				FUNC_CRYPTOFAILVIAOUT("EVP_PKEY_CTX_set_rsa_pss_saltlen() failed");
 			}
 		}
 	}
 
 	if (!EVP_DigestVerifyUpdate(md_ctx, data, data_len)) {
-		FUNC_FAILVIAOUT(CKR_DEVICE_ERROR, "EVP_DigestVerifyUpdate() failed");
+		FUNC_CRYPTOFAILVIAOUT("EVP_DigestVerifyUpdate() failed");
 	}
 
 	rc = EVP_DigestVerifyFinal(md_ctx, signature, signature_len);
 
 	if (rc < 0) {
-		FUNC_FAILVIAOUT(CKR_DEVICE_ERROR, "EVP_DigestVerifyFinal() failed");
+		FUNC_CRYPTOFAILVIAOUT("EVP_DigestVerifyFinal() failed");
 	}
 
 	rv = rc == 1 ? CKR_OK : CKR_SIGNATURE_INVALID;
@@ -135,36 +179,37 @@ out:
 /**
  * Verify signature with provided hash value
  */
-static int verifyHash(EVP_PKEY *key, const EVP_MD *hash, int padding, const unsigned char *data, int data_len, unsigned char *signature, int signature_len)
+static CK_RV verifyHash(EVP_PKEY *key, const EVP_MD *hash, int padding, const unsigned char *data, int data_len, unsigned char *signature, int signature_len)
 {
 	EVP_PKEY_CTX *pkey_ctx;
-	int rv, rc;
+	CK_RV rv;
+	int rc;
 
 	pkey_ctx = EVP_PKEY_CTX_new(key, NULL);
 
 	if (!EVP_PKEY_verify_init(pkey_ctx)) {
-		FUNC_FAILVIAOUT(CKR_DEVICE_ERROR, "EVP_PKEY_verify_init() failed");
+		FUNC_CRYPTOFAILVIAOUT("EVP_PKEY_verify_init() failed");
 	}
 
 	if (padding) {
 		if (!EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, padding)) {
-			FUNC_FAILVIAOUT(CKR_DEVICE_ERROR, "EVP_PKEY_CTX_set_rsa_padding() failed");
+			FUNC_CRYPTOFAILVIAOUT("EVP_PKEY_CTX_set_rsa_padding() failed");
 		}
 
 		if (padding == RSA_PKCS1_PSS_PADDING) {
 			if (!EVP_PKEY_CTX_set_rsa_pss_saltlen(pkey_ctx, -2)) {
-				FUNC_FAILVIAOUT(CKR_DEVICE_ERROR, "EVP_PKEY_CTX_set_rsa_pss_saltlen() failed");
+				FUNC_CRYPTOFAILVIAOUT("EVP_PKEY_CTX_set_rsa_pss_saltlen() failed");
 			}
 		}
 	}
 
 	if (!EVP_PKEY_CTX_set_signature_md(pkey_ctx, hash)) {
-		FUNC_FAILVIAOUT(CKR_DEVICE_ERROR, "EVP_PKEY_CTX_set_signature_md() failed");
+		FUNC_CRYPTOFAILVIAOUT("EVP_PKEY_CTX_set_signature_md() failed");
 	}
 
 	rc = EVP_PKEY_verify(pkey_ctx, signature, signature_len, data, data_len);
 	if (rc < 0) {
-		FUNC_FAILVIAOUT(CKR_DEVICE_ERROR, "EVP_PKEY_verify() failed");
+		FUNC_CRYPTOFAILVIAOUT("EVP_PKEY_verify() failed");
 	}
 
 	rv = rc == 1 ? CKR_OK : CKR_SIGNATURE_INVALID;
@@ -181,15 +226,16 @@ out:
  * Verify signature against a provided DigestInfo block as used in CKM_RSA_PKCS
  *
  */
-static int verifyDigestInfo(RSA *key, const unsigned char *data, int data_len, unsigned char *signature, int signature_len)
+static CK_RV verifyDigestInfo(RSA *key, const unsigned char *data, int data_len, unsigned char *signature, int signature_len)
 {
 	unsigned char plain[512];
+	CK_RV rv;
 	int rc;
 
 	FUNC_CALLED();
 
 	if (signature_len != RSA_size(key)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Signature size does not match modulus size");
+		FUNC_FAILS(CKR_DATA_LEN_RANGE, "Signature size does not match modulus size");
 	}
 
 	if (signature_len > sizeof(plain)) {
@@ -197,6 +243,11 @@ static int verifyDigestInfo(RSA *key, const unsigned char *data, int data_len, u
 	}
 
 	rc = RSA_public_decrypt(signature_len, signature, plain, key, RSA_PKCS1_PADDING);
+
+	if (rc < 0) {
+		rv = translateError();
+		FUNC_FAILS(rv, "RSA_public_decrypt() failed");
+	}
 
 	if ((rc != data_len) || memcmp(plain, data, data_len)) {
 		FUNC_FAILS(CKR_SIGNATURE_INVALID, "DigestInfo does not match input reference value");
@@ -210,13 +261,13 @@ static int verifyDigestInfo(RSA *key, const unsigned char *data, int data_len, u
 /**
  * Verify with RSA key
  */
-static int verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_PTR in, CK_ULONG in_len, CK_BYTE_PTR signature, CK_ULONG signature_len)
+static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_PTR in, CK_ULONG in_len, CK_BYTE_PTR signature, CK_ULONG signature_len)
 {
 	struct p11Attribute_t *modulus;
 	struct p11Attribute_t *public_exponent;
 	RSA *rsa;
 	EVP_PKEY *pkey;
-	int rv = 0;
+	CK_RV rv;
 
 	FUNC_CALLED();
 
@@ -319,7 +370,7 @@ static const EVP_MD *getHashForHashLen(int len) {
 /**
  * Verify with ECDSA key
  */
-static int verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_PTR in, CK_ULONG in_len, CK_BYTE_PTR signature, CK_ULONG signature_len)
+static CK_RV verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_PTR in, CK_ULONG in_len, CK_BYTE_PTR signature, CK_ULONG signature_len)
 {
 	struct p11Attribute_t *ecparam;
 	struct p11Attribute_t *ecpoint;
@@ -330,25 +381,26 @@ static int verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 	EC_KEY *ec = NULL;
 	EVP_PKEY *pkey = NULL;
 	const EVP_MD *md = NULL;
-	int rv = 0, len;
+	CK_RV rv;
+	int rc, len;
 
 	FUNC_CALLED();
 
-	rv = findAttribute(obj, CKA_EC_PARAMS, &ecparam);
+	rc = findAttribute(obj, CKA_EC_PARAMS, &ecparam);
 
-	if (rv == -1)
-		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_EC_PARAMS not found");
+	if (rc == -1)
+		FUNC_FAILS(CKR_GENERAL_ERROR, "CKA_EC_PARAMS not found");
 
-	rv = findAttribute(obj, CKA_EC_POINT, &ecpoint);
+	rc = findAttribute(obj, CKA_EC_POINT, &ecpoint);
 
-	if (rv == -1)
-		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_EC_POINT not found");
+	if (rc == -1)
+		FUNC_FAILS(CKR_GENERAL_ERROR, "CKA_EC_POINT not found");
 
 	po = ecparam->attrData.pValue;
 
 	ecg = NULL;
 	if (d2i_ECPKParameters(&ecg, &po, ecparam->attrData.ulValueLen) == NULL) {
-		FUNC_FAILVIAOUT(CKR_TEMPLATE_INCOMPLETE, "d2i_ECPKParameters() could not decode curve");
+		FUNC_FAILVIAOUT(CKR_ATTRIBUTE_VALUE_INVALID, "d2i_ECPKParameters() could not decode curve");
 	}
 
 	ec = EC_KEY_new();
@@ -364,15 +416,15 @@ static int verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 	}
 
 	if (!EC_POINT_oct2point(ecg, ecp, ecpoint->attrData.pValue + 2, ecpoint->attrData.ulValueLen - 2, NULL)) {
-		FUNC_FAILVIAOUT(CKR_TEMPLATE_INCOMPLETE, "EC_POINT_oct2point() could not decode point");
+		FUNC_FAILVIAOUT(CKR_ATTRIBUTE_VALUE_INVALID, "EC_POINT_oct2point() could not decode point");
 	}
 
 	if (!EC_KEY_set_group(ec, ecg)) {
-		FUNC_FAILVIAOUT(CKR_TEMPLATE_INCOMPLETE, "EC_KEY_set_group() failed");
+		FUNC_FAILVIAOUT(CKR_GENERAL_ERROR, "EC_KEY_set_group() failed");
 	}
 
 	if (!EC_KEY_set_public_key(ec, ecp)) {
-		FUNC_FAILVIAOUT(CKR_TEMPLATE_INCOMPLETE, "EC_KEY_set_public_key() failed");
+		FUNC_FAILVIAOUT(CKR_GENERAL_ERROR, "EC_KEY_set_public_key() failed");
 	}
 
 	pkey = EVP_PKEY_new();
@@ -382,7 +434,7 @@ static int verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 	}
 
 	if (!EVP_PKEY_assign_EC_KEY(pkey, ec)) {
-		FUNC_FAILVIAOUT(CKR_TEMPLATE_INCOMPLETE, "EVP_PKEY_assign_EC_KEY() failed");
+		FUNC_FAILVIAOUT(CKR_GENERAL_ERROR, "EVP_PKEY_assign_EC_KEY() failed");
 	}
 
 	len = sizeof(wrappedSig);
@@ -397,7 +449,7 @@ static int verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 		case CKM_ECDSA:
 			md = getHashForHashLen(in_len);
 			if (md == NULL) {
-				FUNC_FAILVIAOUT(CKR_ARGUMENTS_BAD, "getHashForHashLen() failed");
+				FUNC_FAILVIAOUT(CKR_DATA_LEN_RANGE, "getHashForHashLen() failed matching hash algorithm for provided input length");
 			}
 			rv = verifyHash(pkey, md, 0, in, in_len, wrappedSig, len);
 			break;
@@ -421,16 +473,86 @@ out:
 
 
 
-int cryptoVerifyInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
+CK_RV stripOAEPPadding(unsigned char *raw, int rawlen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
-	struct p11Attribute_t *keytype;
-	int rv;
+	CK_RV rv;
+	int rc;
 
 	FUNC_CALLED();
 
-	rv = findAttribute(pObject, CKA_KEY_TYPE, &keytype);
+	rc = RSA_padding_check_PKCS1_OAEP(pData, (int)*pulDataLen, raw, rawlen, rawlen, NULL, 0);
+	if (rc < 0) {
+		rv = translateError();
+		FUNC_FAILS(rv, "RSA_padding_check_PKCS1_OAEP() failed");
+	}
 
-	if (rv == -1)
+	*pulDataLen = (CK_ULONG)rc;
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+/**
+ * Encrypt with RSA
+ */
+static CK_RV encryptRSA(struct p11Object_t *obj, int padding, CK_BYTE_PTR in, CK_ULONG in_len, CK_BYTE_PTR out, CK_ULONG_PTR out_len)
+{
+	struct p11Attribute_t *modulus;
+	struct p11Attribute_t *public_exponent;
+	RSA *rsa;
+	CK_RV rv = 0;
+	int rc;
+
+	FUNC_CALLED();
+
+	rc = findAttribute(obj, CKA_MODULUS, &modulus);
+
+	if (rc == -1)
+		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_MODULUS not found");
+
+	if (out == NULL) {
+		*out_len = modulus->attrData.ulValueLen;
+		FUNC_RETURNS(CKR_OK);
+	}
+
+	if (modulus->attrData.ulValueLen > *out_len)
+		FUNC_FAILS(CKR_SIGNATURE_LEN_RANGE, "Length of output buffer too small");
+
+	rc = findAttribute(obj, CKA_PUBLIC_EXPONENT, &public_exponent);
+
+	if (rc == -1)
+		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_EXPONENT not found");
+
+	rsa = RSA_new();
+
+	rsa->n = BN_bin2bn(modulus->attrData.pValue, modulus->attrData.ulValueLen, NULL);
+	rsa->e = BN_bin2bn(public_exponent->attrData.pValue, public_exponent->attrData.ulValueLen, NULL);
+
+	rc = RSA_public_encrypt(in_len, in, out, rsa, padding);
+
+	if (rc < 0) {
+		rv = translateError();
+		FUNC_FAILS(rv, "RSA_private_encrypt() failed");
+	}
+
+	*out_len = rc;
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+CK_RV cryptoVerifyInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
+{
+	struct p11Attribute_t *keytype;
+	int rc;
+
+	FUNC_CALLED();
+
+	rc = findAttribute(pObject, CKA_KEY_TYPE, &keytype);
+
+	if (rc == -1)
 		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_KEY_TYPE not found");
 
 	switch (*(CK_KEY_TYPE *)keytype->attrData.pValue) {
@@ -475,16 +597,17 @@ int cryptoVerifyInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 
 
 
-int cryptoVerify(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen)
+CK_RV cryptoVerify(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen)
 {
 	struct p11Attribute_t *keytype;
-	int rv;
+	CK_RV rv;
+	int rc;
 
 	FUNC_CALLED();
 
-	rv = findAttribute(pObject, CKA_KEY_TYPE, &keytype);
+	rc = findAttribute(pObject, CKA_KEY_TYPE, &keytype);
 
-	if (rv == -1)
+	if (rc == -1)
 		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_KEY_TYPE not found");
 
 	switch (*(CK_KEY_TYPE *)keytype->attrData.pValue) {
@@ -500,3 +623,68 @@ int cryptoVerify(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PT
 
 	FUNC_RETURNS(rv);
 }
+
+
+
+CK_RV cryptoEncryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
+{
+	struct p11Attribute_t *keytype;
+	int rc;
+
+	FUNC_CALLED();
+
+	rc = findAttribute(pObject, CKA_KEY_TYPE, &keytype);
+
+	if (rc == -1)
+		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_KEY_TYPE not found");
+
+	if (*(CK_KEY_TYPE *)keytype->attrData.pValue != CKK_RSA)
+		FUNC_FAILS(CKR_KEY_HANDLE_INVALID, "CKA_KEY_TYPE is not CKK_RSA");
+
+	switch(mech->mechanism) {
+	case CKM_RSA_X_509:
+	case CKM_RSA_PKCS:
+	case CKM_RSA_PKCS_OAEP:
+		break;
+	default:
+		FUNC_FAILS(CKR_MECHANISM_INVALID, "Invalid mechanism for RSA");
+	}
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+CK_RV cryptoEncrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
+{
+	struct p11Attribute_t *keytype;
+	CK_RV rv;
+	int rc;
+
+	FUNC_CALLED();
+
+	rc = findAttribute(pObject, CKA_KEY_TYPE, &keytype);
+
+	if (rc == -1)
+		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_KEY_TYPE not found");
+
+	if (*(CK_KEY_TYPE *)keytype->attrData.pValue != CKK_RSA)
+		FUNC_FAILS(CKR_KEY_HANDLE_INVALID, "CKA_KEY_TYPE is not CKK_RSA");
+
+	switch(mech) {
+	case CKM_RSA_X_509:
+		rv = encryptRSA(pObject, RSA_NO_PADDING, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
+		break;
+	case CKM_RSA_PKCS:
+		rv = encryptRSA(pObject, RSA_PKCS1_PADDING, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
+		break;
+	case CKM_RSA_PKCS_OAEP:
+		rv = encryptRSA(pObject, RSA_PKCS1_OAEP_PADDING, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
+		break;
+	default:
+		FUNC_FAILS(CKR_MECHANISM_INVALID, "Invalid mechanism for RSA");
+	}
+
+	FUNC_RETURNS(rv);
+}
+
