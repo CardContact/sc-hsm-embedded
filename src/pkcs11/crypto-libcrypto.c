@@ -446,6 +446,12 @@ static CK_RV verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYT
 		case CKM_ECDSA_SHA1:
 			rv = digestVerify(pkey, EVP_sha1(), 0, in, in_len, wrappedSig, len);
 			break;
+		case CKM_SC_HSM_ECDSA_SHA224:
+			rv = digestVerify(pkey, EVP_sha224(), 0, in, in_len, wrappedSig, len);
+			break;
+		case CKM_SC_HSM_ECDSA_SHA256:
+			rv = digestVerify(pkey, EVP_sha256(), 0, in, in_len, wrappedSig, len);
+			break;
 		case CKM_ECDSA:
 			md = getHashForHashLen(in_len);
 			if (md == NULL) {
@@ -588,6 +594,8 @@ CK_RV cryptoVerifyInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 	case CKK_EC:
 		switch(mech->mechanism) {
 		case CKM_ECDSA_SHA1:
+		case CKM_SC_HSM_ECDSA_SHA224:
+		case CKM_SC_HSM_ECDSA_SHA256:
 		case CKM_ECDSA:
 			break;
 		default:

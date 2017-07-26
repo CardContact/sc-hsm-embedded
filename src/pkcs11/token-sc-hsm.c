@@ -288,6 +288,8 @@ static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 		return pObject->keysize >> 3;
 	case CKM_ECDSA:
 	case CKM_ECDSA_SHA1:
+	case CKM_SC_HSM_ECDSA_SHA224:
+	case CKM_SC_HSM_ECDSA_SHA256:
 		return pObject->keysize >> 2;
 	default:
 		return -1;
@@ -314,6 +316,10 @@ static int getAlgorithmIdForSigning(CK_MECHANISM_TYPE mech)
 		return ALGO_EC_RAW;
 	case CKM_ECDSA_SHA1:
 		return ALGO_EC_SHA1;
+	case CKM_SC_HSM_ECDSA_SHA224:
+		return ALGO_EC_SHA224;
+	case CKM_SC_HSM_ECDSA_SHA256:
+		return ALGO_EC_SHA256;
 	case CKM_SC_HSM_PSS_SHA1:
 	case CKM_SC_HSM_PSS_SHA256:
 		return ALGO_RSA_PSS;
@@ -483,7 +489,7 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Input for CKM_SC_HSM_PSS_SHA256 must be 32 bytes long");
 	}
 
-	if ((algo == ALGO_EC_RAW) || (algo == ALGO_EC_SHA1)) {
+	if ((algo == ALGO_EC_RAW) || (algo == ALGO_EC_SHA1) || (algo == ALGO_EC_SHA224) || (algo == ALGO_EC_SHA256)) {
 		rc = transmitAPDU(pObject->token->slot, 0x80, 0x68, (unsigned char)pObject->tokenid, (unsigned char)algo,
 				ulDataLen, pData,
 				0, scr, sizeof(scr), &SW1SW2);
@@ -511,7 +517,7 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Signature operation failed");
 	}
 
-	if ((algo == ALGO_EC_RAW) || (algo == ALGO_EC_SHA1)) {
+	if ((algo == ALGO_EC_RAW) || (algo == ALGO_EC_SHA1) || (algo == ALGO_EC_SHA224) || (algo == ALGO_EC_SHA256)) {
 		rc = decodeECDSASignature(scr, rc, pSignature, *pulSignatureLen);
 		if (rc < 0) {
 			FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "supplied buffer too small");

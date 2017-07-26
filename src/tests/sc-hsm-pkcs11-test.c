@@ -2284,6 +2284,11 @@ int main(int argc, char *argv[])
 				}
 				testECSigning(p11, slotid, 0, CKM_ECDSA);
 
+				if (strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
+					testECSigning(p11, slotid, 0, CKM_SC_HSM_ECDSA_SHA224);
+					testECSigning(p11, slotid, 0, CKM_SC_HSM_ECDSA_SHA256);
+				}
+
 				printf("Calling C_CloseSession ");
 				rc = p11->C_CloseSession(session);
 				printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
