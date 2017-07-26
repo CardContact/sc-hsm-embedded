@@ -277,14 +277,16 @@ int createPublicKeyObjectFromCVC(struct p15PrivateKeyDescription *p15, unsigned 
 	case P15_KEYTYPE_ECC:
 		keyType = CKK_ECDSA;
 		if (cvcDetermineCurveOID(&cvc, &oid)) {
-			FUNC_FAILS(CKR_DEVICE_ERROR, "Can't determine EC curve oid from domain parameter");
+#ifdef DEBUG
+			debug("Can't determine EC curve oid from domain parameter\n");
+#endif
+		} else {
+			asn1Append(&ecparam, ASN1_OBJECT_IDENTIFIER, oid);
+			template[attributes].type = CKA_EC_PARAMS;
+			template[attributes].pValue = ecparam.val;
+			template[attributes].ulValueLen = ecparam.len;
+			attributes++;
 		}
-
-		asn1Append(&ecparam, ASN1_OBJECT_IDENTIFIER, oid);
-		template[attributes].type = CKA_EC_PARAMS;
-		template[attributes].pValue = ecparam.val;
-		template[attributes].ulValueLen = ecparam.len;
-		attributes++;
 
 		asn1Append(&ecpuk, ASN1_OCTET_STRING, &cvc.publicPoint);
 		template[attributes].type = CKA_EC_POINT;

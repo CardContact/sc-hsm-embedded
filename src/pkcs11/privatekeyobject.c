@@ -263,10 +263,13 @@ int createPrivateKeyObjectFromP15AndPublicKey(struct p15PrivateKeyDescription *p
 		keyType = CKK_ECDSA;
 
 		if (findAttribute(puk, CKA_EC_PARAMS, &pattr) < 0) {
-			FUNC_FAILS(CKR_DEVICE_ERROR, "Can't find CKA_EC_PARAMS in public key object");
-		}
+#ifdef DEBUG
+			debug("Can't find CKA_EC_PARAMS in public key object\n");
+#endif
 
-		template[attributes++] = pattr->attrData;
+		} else {
+			template[attributes++] = pattr->attrData;
+		}
 
 		break;
 	default:
