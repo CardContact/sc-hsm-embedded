@@ -358,7 +358,7 @@ static int optTestHotplug = 0;
 static int optTestEvent = 0;
 static int optOneThreadPerToken = 0;
 static int optNoClass3Tests = 0;
-static int optNoMultiThreadingTests = 0;
+static int optMultiThreadingTests = 0;
 static int optThreadsPerToken = 1;
 static int optIteration = 1;
 static int optUnlockPIN = 0;
@@ -1107,7 +1107,7 @@ void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_M
 			printf("C_GetAttributeValue (Session %ld) - %s : %s\n", session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 			memset(secret, 0, sizeof(secret));
-			strcpy(secret + 1, secretstr);
+			strcpy((char *)secret + 1, secretstr);
 			secretlen = modulus.ulValueLen;
 		}
 
@@ -1977,11 +1977,11 @@ void usage()
 	printf("sc-hsm-tool [--module <p11-file>] [--pin <user-pin>] [--token <tokenname>] [--optThreadsPerToken <count>] [--iterations <count>]\n");
 	printf("  --test-insert-remove       Enable insert / remove test\n");
 	printf("  --test-pin-block           Enable PIN blocking test\n");
-	printf("  --test-multithreading-only Perform multihreading tests only\n");
+	printf("  --test-multithreading-only Perform multithreading tests only\n");
 	printf("  --test-hotplug-only        Perform hotplug tests only\n");
 	printf("  --one-thread-per-token     Create a single thread per token rather than distributing %d\n", NUM_THREADS);
 	printf("  --no-class3-tests          No PIN tests with attached class 3 PIN PAD\n");
-	printf("  --no-multithreading-tests  No multihreading tests\n");
+	printf("  --multithreading-tests     Perform multithreading tests\n");
 	printf("  --unlock-pin               Unlock PIN without setting a new value\n");
 }
 
@@ -2065,8 +2065,8 @@ void decodeArgs(int argc, char **argv)
 			optOneThreadPerToken = 1;
 		} else if (!strcmp(*argv, "--no-class3-tests")) {
 			optNoClass3Tests = 1;
-		} else if (!strcmp(*argv, "--no-multithreading-tests")) {
-			optNoMultiThreadingTests = 1;
+		} else if (!strcmp(*argv, "--multithreading-tests")) {
+			optMultiThreadingTests = 1;
 		} else if (!strcmp(*argv, "--unlock-pin")) {
 			optUnlockPIN = 1;
 		} else {
@@ -2257,10 +2257,6 @@ int main(int argc, char *argv[])
 				memset(attr, 0, sizeof(attr));
 				listObjects(p11, session, attr, 0);
 
-				testRSADecryption(p11, session, CKM_RSA_PKCS);
-				testRSADecryption(p11, session, CKM_RSA_X_509);
-				testRSADecryption(p11, session, CKM_RSA_PKCS_OAEP);
-
 				testRandom(p11, session);
 
 				if (strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
@@ -2277,8 +2273,11 @@ int main(int argc, char *argv[])
 				}
 
 				testRSADecryption(p11, session, CKM_RSA_PKCS);
-				testRSADecryption(p11, session, CKM_RSA_X_509);
 				testRSADecryption(p11, session, CKM_RSA_PKCS_OAEP);
+
+				if (strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
+					testRSADecryption(p11, session, CKM_RSA_X_509);
+				}
 
 				if (strncmp("3.5ID ECC C1 DGN", (char *)tokeninfo.model, 16)) {
 					testECSigning(p11, slotid, 0, CKM_ECDSA_SHA1);
@@ -2293,7 +2292,7 @@ int main(int argc, char *argv[])
 		free(slotlist);
 
 #ifndef _WIN32
-		if (!optNoMultiThreadingTests)
+		if (optMultiThreadingTests)
 			testSigningMultiThreading(p11);
 #endif
 	}

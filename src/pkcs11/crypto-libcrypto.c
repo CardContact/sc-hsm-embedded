@@ -480,10 +480,10 @@ CK_RV stripOAEPPadding(unsigned char *raw, int rawlen, CK_BYTE_PTR pData, CK_ULO
 
 	FUNC_CALLED();
 
-	rc = RSA_padding_check_PKCS1_OAEP(pData, (int)*pulDataLen, raw, rawlen, rawlen, NULL, 0);
+	rc = RSA_padding_check_PKCS1_OAEP_mgf1(pData, (int)*pulDataLen, raw, rawlen, rawlen, NULL, 0, EVP_sha256(), NULL);
 	if (rc < 0) {
 		rv = translateError();
-		FUNC_FAILS(rv, "RSA_padding_check_PKCS1_OAEP() failed");
+		FUNC_FAILS(rv, "RSA_padding_check_PKCS1_OAEP_mgf1() failed");
 	}
 
 	*pulDataLen = (CK_ULONG)rc;
@@ -500,6 +500,7 @@ static CK_RV encryptRSA(struct p11Object_t *obj, int padding, CK_BYTE_PTR in, CK
 {
 	struct p11Attribute_t *modulus;
 	struct p11Attribute_t *public_exponent;
+	unsigned char raw[512];
 	RSA *rsa;
 	CK_RV rv = 0;
 	int rc;
@@ -529,7 +530,12 @@ static CK_RV encryptRSA(struct p11Object_t *obj, int padding, CK_BYTE_PTR in, CK
 	rsa->n = BN_bin2bn(modulus->attrData.pValue, modulus->attrData.ulValueLen, NULL);
 	rsa->e = BN_bin2bn(public_exponent->attrData.pValue, public_exponent->attrData.ulValueLen, NULL);
 
-	rc = RSA_public_encrypt(in_len, in, out, rsa, padding);
+	if (padding == RSA_PKCS1_OAEP_PADDING) {
+		rc = RSA_padding_add_PKCS1_OAEP_mgf1(raw, modulus->attrData.ulValueLen, in, in_len, NULL, 0, EVP_sha256(), NULL);
+		rc = RSA_public_encrypt(modulus->attrData.ulValueLen, raw, out, rsa, RSA_NO_PADDING);
+	} else {
+		rc = RSA_public_encrypt(in_len, in, out, rsa, padding);
+	}
 
 	if (rc < 0) {
 		rv = translateError();
