@@ -74,8 +74,20 @@ static const CK_MECHANISM_TYPE p11MechanismList[] = {
 		CKM_SHA256_RSA_PKCS_PSS,
 		CKM_ECDSA,
 		CKM_ECDSA_SHA1,
+#ifdef ENABLE_LIBCRYPTO
+		CKM_RSA_PKCS_OAEP,
+		CKM_SHA_1,
+		CKM_SHA224,
+		CKM_SHA256,
+		CKM_SHA384,
+		CKM_SHA512,
+#endif
 		CKM_EC_KEY_PAIR_GEN,
-		CKM_RSA_PKCS_KEY_PAIR_GEN
+		CKM_RSA_PKCS_KEY_PAIR_GEN,
+		CKM_SC_HSM_PSS_SHA1,
+		CKM_SC_HSM_PSS_SHA256,
+		CKM_SC_HSM_ECDSA_SHA224,
+		CKM_SC_HSM_ECDSA_SHA256
 };
 
 
@@ -2162,6 +2174,12 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 	case CKM_SHA256_RSA_PKCS:
 	case CKM_SHA1_RSA_PKCS_PSS:
 	case CKM_SHA256_RSA_PKCS_PSS:
+	case CKM_SC_HSM_PSS_SHA1:
+	case CKM_SC_HSM_PSS_SHA256:
+#ifdef ENABLE_LIBCRYPTO
+	case CKM_RSA_PKCS_OAEP:
+#endif
+
 		pInfo->ulMinKeySize = 1024;
 		pInfo->ulMaxKeySize = 2048;
 		break;
@@ -2169,10 +2187,23 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 	case CKM_EC_KEY_PAIR_GEN:
 	case CKM_ECDSA:
 	case CKM_ECDSA_SHA1:
+	case CKM_SC_HSM_ECDSA_SHA224:
+	case CKM_SC_HSM_ECDSA_SHA256:
 		pInfo->ulMinKeySize = 192;
 		pInfo->ulMaxKeySize = 320;
 		break;
 
+#ifdef ENABLE_LIBCRYPTO
+	case CKM_SHA_1:
+	case CKM_SHA224:
+	case CKM_SHA256:
+	case CKM_SHA384:
+	case CKM_SHA512:
+		pInfo->ulMinKeySize = 0;
+		pInfo->ulMaxKeySize = 0;
+		break;
+
+#endif
 	default:
 		rv = CKR_MECHANISM_INVALID;
 		break;
@@ -2184,13 +2215,28 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 		break;
 	case CKM_RSA_X_509:
 	case CKM_RSA_PKCS:
+#ifdef ENABLE_LIBCRYPTO
+		pInfo->flags = CKF_HW|CKF_SIGN|CKF_DECRYPT|CKF_VERIFY|CKF_ENCRYPT;
+#else
 		pInfo->flags = CKF_HW|CKF_SIGN|CKF_DECRYPT;
+#endif
 		break;
+#ifdef ENABLE_LIBCRYPTO
+	case CKM_RSA_PKCS_OAEP:
+		pInfo->flags = CKF_HW|CKF_DECRYPT|CKF_ENCRYPT;
+		break;
+#endif
 	case CKM_SHA1_RSA_PKCS:
 	case CKM_SHA256_RSA_PKCS:
 	case CKM_SHA1_RSA_PKCS_PSS:
 	case CKM_SHA256_RSA_PKCS_PSS:
+	case CKM_SC_HSM_PSS_SHA1:
+	case CKM_SC_HSM_PSS_SHA256:
+#ifdef ENABLE_LIBCRYPTO
+		pInfo->flags = CKF_HW|CKF_SIGN|CKF_VERIFY;
+#else
 		pInfo->flags = CKF_HW|CKF_SIGN;
+#endif
 		break;
 
 	case CKM_EC_KEY_PAIR_GEN:
@@ -2198,9 +2244,25 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 		break;
 	case CKM_ECDSA:
 	case CKM_ECDSA_SHA1:
+	case CKM_SC_HSM_ECDSA_SHA224:
+	case CKM_SC_HSM_ECDSA_SHA256:
+#ifdef ENABLE_LIBCRYPTO
+		pInfo->flags = CKF_HW|CKF_SIGN|CKF_VERIFY;
+#else
 		pInfo->flags = CKF_HW|CKF_SIGN;
+#endif
 		break;
 
+#ifdef ENABLE_LIBCRYPTO
+	case CKM_SHA_1:
+	case CKM_SHA224:
+	case CKM_SHA256:
+	case CKM_SHA384:
+	case CKM_SHA512:
+		pInfo->flags = CKF_DIGEST;
+		break;
+
+#endif
 	default:
 		rv = CKR_MECHANISM_INVALID;
 		break;

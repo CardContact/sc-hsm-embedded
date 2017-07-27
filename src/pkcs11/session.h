@@ -58,7 +58,7 @@ struct p11Session_t {
 	CK_SESSION_HANDLE handle;           /**< The handle of the session                          */
 	int isRemoved;                      /**< The token has been removed                         */
 	int activeObjectHandle;             /**< The handle of the active object, -1 if no object   */
-	CK_MECHANISM_TYPE activeMechanism;	/**< The currently active mechanism                     */
+	CK_MECHANISM_TYPE activeMechanism;  /**< The currently active mechanism                     */
 	CK_BYTE_PTR cryptoBuffer;           /**< Buffer storing intermediate results                */
 	CK_ULONG cryptoBufferSize;          /**< Current content of crypto buffer                   */
 	CK_ULONG cryptoBufferMax;           /**< Current size of crypto buffer                      */
@@ -67,9 +67,9 @@ struct p11Session_t {
 
 	int numberOfSessionObjects;
 	CK_LONG freeSessionObjNumber;
-	struct p11Object_t *sessionObjList; /**< Pointer to first object in pool     */
+	struct p11Object_t *sessionObjList; /**< Pointer to first object in pool                    */
 
-	struct p11Session_t *next;          /**< Pointer to next active session      */
+	struct p11Session_t *next;          /**< Pointer to next active session                     */
 };
 
 

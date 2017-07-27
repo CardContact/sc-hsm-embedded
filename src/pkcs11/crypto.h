@@ -45,5 +45,10 @@ CK_RV cryptoVerifyInit(struct p11Object_t *, CK_MECHANISM_PTR);
 CK_RV cryptoVerify(struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG);
 CK_RV cryptoEncryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech);
 CK_RV cryptoEncrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen);
+CK_RV cryptoDigestInit(struct p11Session_t * session, CK_MECHANISM_PTR mech);
+CK_RV cryptoDigest(struct p11Session_t * session, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pDigest, CK_ULONG_PTR pulDigestLen);
+CK_RV cryptoDigestUpdate(struct p11Session_t * session, CK_BYTE_PTR pPart, CK_ULONG ulPartLen);
+CK_RV cryptoDigestFinal(struct p11Session_t * session, CK_BYTE_PTR pDigest, CK_ULONG_PTR pulDigestLen);
+
 
 #endif /* ___CRYPTO_INC___ */

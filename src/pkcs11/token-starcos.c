@@ -79,6 +79,18 @@ static const CK_MECHANISM_TYPE p11MechanismList[] = {
 		CKM_SHA256_RSA_PKCS_PSS,
 		CKM_SHA384_RSA_PKCS_PSS,
 		CKM_SHA512_RSA_PKCS_PSS,
+		CKM_SC_HSM_PSS_SHA1,
+		CKM_SC_HSM_PSS_SHA224,
+		CKM_SC_HSM_PSS_SHA256,
+		CKM_SC_HSM_PSS_SHA384,
+		CKM_SC_HSM_PSS_SHA512,
+#ifdef ENABLE_LIBCRYPTO
+		CKM_SHA_1,
+		CKM_SHA224,
+		CKM_SHA256,
+		CKM_SHA384,
+		CKM_SHA512,
+#endif
 		CKM_ECDSA
 };
 
@@ -1518,10 +1530,18 @@ static int starcos_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_
 
 	switch (type) {
 	case CKM_RSA_PKCS:
-		pInfo->flags = CKF_SIGN|CKF_DECRYPT;
+#ifdef ENABLE_LIBCRYPTO
+		pInfo->flags = CKF_HW|CKF_SIGN|CKF_DECRYPT|CKF_VERIFY|CKF_ENCRYPT;
+#else
+		pInfo->flags = CKF_HW|CKF_SIGN|CKF_DECRYPT;
+#endif
 		break;
 	case CKM_RSA_PKCS_OAEP:
-		pInfo->flags = CKF_DECRYPT;
+#ifdef ENABLE_LIBCRYPTO
+		pInfo->flags = CKF_HW|CKF_DECRYPT|CKF_ENCRYPT;
+#else
+		pInfo->flags = CKF_HW|CKF_DECRYPT;
+#endif
 		break;
 	case CKM_SHA1_RSA_PKCS:
 	case CKM_SHA224_RSA_PKCS:
@@ -1533,10 +1553,29 @@ static int starcos_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_
 	case CKM_SHA256_RSA_PKCS_PSS:
 	case CKM_SHA384_RSA_PKCS_PSS:
 	case CKM_SHA512_RSA_PKCS_PSS:
+	case CKM_SC_HSM_PSS_SHA1:
+	case CKM_SC_HSM_PSS_SHA224:
+	case CKM_SC_HSM_PSS_SHA256:
+	case CKM_SC_HSM_PSS_SHA384:
+	case CKM_SC_HSM_PSS_SHA512:
 	case CKM_ECDSA:
-		pInfo->flags = CKF_SIGN;
+#ifdef ENABLE_LIBCRYPTO
+		pInfo->flags = CKF_HW|CKF_SIGN|CKF_VERIFY;
+#else
+		pInfo->flags = CKF_HW|CKF_SIGN;
+#endif
 		break;
 
+#ifdef ENABLE_LIBCRYPTO
+	case CKM_SHA_1:
+	case CKM_SHA224:
+	case CKM_SHA256:
+	case CKM_SHA384:
+	case CKM_SHA512:
+		pInfo->flags = CKF_DIGEST;
+		break;
+
+#endif
 	default:
 		rv = CKR_MECHANISM_INVALID;
 		break;
@@ -1545,6 +1584,9 @@ static int starcos_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_
 	if (type == CKM_ECDSA) {
 		pInfo->ulMinKeySize = 256;
 		pInfo->ulMaxKeySize = 256;
+	} else if ((type == CKM_SHA_1) || (type == CKM_SHA224) || (type == CKM_SHA256) || (type == CKM_SHA384) || (type == CKM_SHA512)) {
+		pInfo->ulMinKeySize = 0;
+		pInfo->ulMaxKeySize = 0;
 	} else {
 		pInfo->ulMinKeySize = 2048;
 		pInfo->ulMaxKeySize = 2048;

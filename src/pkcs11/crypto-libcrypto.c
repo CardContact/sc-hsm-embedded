@@ -39,6 +39,7 @@
 #include <openssl/err.h>
 
 #include <common/cvc.h>
+#include <pkcs11/session.h>
 #include <pkcs11/crypto.h>
 
 
@@ -355,7 +356,6 @@ static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 
 static const EVP_MD *getHashForHashLen(int len) {
 	switch(len) {
-	case 16: return EVP_md5();
 	case 20: return EVP_sha1();
 	case 28: return EVP_sha224();
 	case 32: return EVP_sha256();
@@ -524,7 +524,7 @@ static CK_RV encryptRSA(struct p11Object_t *obj, int padding, CK_BYTE_PTR in, CK
 	}
 
 	if (modulus->attrData.ulValueLen > *out_len)
-		FUNC_FAILS(CKR_SIGNATURE_LEN_RANGE, "Length of output buffer too small");
+		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Length of output buffer too small");
 
 	rc = findAttribute(obj, CKA_PUBLIC_EXPONENT, &public_exponent);
 
@@ -702,3 +702,126 @@ CK_RV cryptoEncrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE
 	FUNC_RETURNS(rv);
 }
 
+
+
+CK_RV cryptoDigestInit(struct p11Session_t * session, CK_MECHANISM_PTR mech)
+{
+	EVP_MD_CTX *md_ctx;
+	const EVP_MD *md;
+
+	FUNC_CALLED();
+
+	switch(mech->mechanism) {
+	case CKM_SHA_1:
+		md = EVP_sha1();
+		break;
+	case CKM_SHA224:
+		md = EVP_sha224();
+		break;
+	case CKM_SHA256:
+		md = EVP_sha256();
+		break;
+	case CKM_SHA384:
+		md = EVP_sha384();
+		break;
+	case CKM_SHA512:
+		md = EVP_sha512();
+		break;
+	default:
+		FUNC_FAILS(CKR_MECHANISM_INVALID, "Hash not supported");
+	}
+
+	md_ctx = EVP_MD_CTX_create();
+	EVP_DigestInit_ex(md_ctx, md, NULL);
+
+	session->cryptoBuffer = (CK_BYTE_PTR)md_ctx;
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+CK_RV cryptoDigest(struct p11Session_t * session, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pDigest, CK_ULONG_PTR pulDigestLen)
+{
+	EVP_MD_CTX *md_ctx;
+	unsigned int md_len;
+
+	FUNC_CALLED();
+
+	if (session->cryptoBuffer == NULL) {
+		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
+	}
+
+	md_ctx = (EVP_MD_CTX *)session->cryptoBuffer;
+
+	if (pDigest == NULL) {
+		*pulDigestLen = (CK_ULONG)EVP_MD_CTX_size(md_ctx);
+		FUNC_RETURNS(CKR_OK);
+	}
+
+	if (*pulDigestLen < (CK_ULONG)EVP_MD_CTX_size(md_ctx)) {
+		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Buffer too small");
+	}
+
+	EVP_DigestUpdate(md_ctx, pData, ulDataLen);
+	EVP_DigestFinal_ex(md_ctx, pDigest, &md_len);
+
+	*pulDigestLen = (CK_ULONG)md_len;
+
+	EVP_MD_CTX_destroy(md_ctx);
+	session->cryptoBuffer = NULL;
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+CK_RV cryptoDigestUpdate(struct p11Session_t * session, CK_BYTE_PTR pPart, CK_ULONG ulPartLen)
+{
+	EVP_MD_CTX *md_ctx;
+	FUNC_CALLED();
+
+	if (session->cryptoBuffer == NULL) {
+		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
+	}
+
+	md_ctx = (EVP_MD_CTX *)session->cryptoBuffer;
+
+	EVP_DigestUpdate(md_ctx, pPart, ulPartLen);
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+CK_RV cryptoDigestFinal(struct p11Session_t * session, CK_BYTE_PTR pDigest, CK_ULONG_PTR pulDigestLen)
+{
+	EVP_MD_CTX *md_ctx;
+	unsigned int md_len;
+
+	FUNC_CALLED();
+
+	if (session->cryptoBuffer == NULL) {
+		FUNC_FAILS(CKR_OPERATION_NOT_INITIALIZED, "Operation not initialized");
+	}
+
+	md_ctx = (EVP_MD_CTX *)session->cryptoBuffer;
+
+	if (pDigest == NULL) {
+		*pulDigestLen = (CK_ULONG)EVP_MD_CTX_size(md_ctx);
+		FUNC_RETURNS(CKR_OK);
+	}
+
+	if (*pulDigestLen < (CK_ULONG)EVP_MD_CTX_size(md_ctx)) {
+		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Buffer too small");
+	}
+
+	EVP_DigestFinal_ex(md_ctx, pDigest, &md_len);
+
+	*pulDigestLen = (CK_ULONG)md_len;
+
+	EVP_MD_CTX_destroy(md_ctx);
+	session->cryptoBuffer = NULL;
+
+	FUNC_RETURNS(CKR_OK);
+}

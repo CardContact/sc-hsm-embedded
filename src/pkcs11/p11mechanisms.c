@@ -40,6 +40,7 @@
 #include <pkcs11/slot.h>
 #include <pkcs11/slotpool.h>
 #include <pkcs11/token.h>
+#include <pkcs11/crypto.h>
 #include <common/debug.h>
 
 
@@ -583,6 +584,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestInit)(
 		CK_MECHANISM_PTR pMechanism
 )
 {
+	struct p11Session_t *pSession;
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
@@ -590,6 +592,20 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestInit)(
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
+
+	if (!isValidPtr(pMechanism)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+#ifdef ENABLE_LIBCRYPTO
+	rv = cryptoDigestInit(pSession, pMechanism);
+#endif
 
 	FUNC_RETURNS(rv);
 }
@@ -605,6 +621,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Digest)(
 		CK_ULONG_PTR pulDigestLen
 )
 {
+	struct p11Session_t *pSession;
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
@@ -612,6 +629,24 @@ CK_DECLARE_FUNCTION(CK_RV, C_Digest)(
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
+
+	if (pData && !isValidPtr(pData)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pulDigestLen)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+#ifdef ENABLE_LIBCRYPTO
+	rv = cryptoDigest(pSession, pData, ulDataLen, pDigest, pulDigestLen);
+#endif
 
 	FUNC_RETURNS(rv);
 }
@@ -626,6 +661,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestUpdate)(
 		CK_ULONG ulPartLen
 )
 {
+	struct p11Session_t *pSession;
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
@@ -633,6 +669,20 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestUpdate)(
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
+
+	if (!isValidPtr(pPart)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+#ifdef ENABLE_LIBCRYPTO
+	rv = cryptoDigestUpdate(pSession, pPart, ulPartLen);
+#endif
 
 	FUNC_RETURNS(rv);
 }
@@ -666,6 +716,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestFinal)(
 		CK_ULONG_PTR pulDigestLen
 )
 {
+	struct p11Session_t *pSession;
 	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
 
 	FUNC_CALLED();
@@ -673,6 +724,24 @@ CK_DECLARE_FUNCTION(CK_RV, C_DigestFinal)(
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
+
+	if (pDigest && !isValidPtr(pDigest)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pulDigestLen)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+#ifdef ENABLE_LIBCRYPTO
+	rv = cryptoDigestFinal(pSession, pDigest, pulDigestLen);
+#endif
 
 	FUNC_RETURNS(rv);
 }

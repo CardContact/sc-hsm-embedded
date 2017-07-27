@@ -1433,6 +1433,66 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 
 
+void testDigest(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_MECHANISM_TYPE mt)
+{
+	CK_BYTE hash1[64],hash2[64];
+	CK_ULONG hashlen1, hashlen2, msglen;
+	CK_BYTE *message = (CK_BYTE *)"Hello World, read this is a hash message";
+	CK_MECHANISM mech;
+	CK_RV rc;
+	char scr[1024];
+
+	msglen = strlen((char *)message);
+
+	mech.mechanism = mt;
+
+	printf("Calling C_DigestInit ");
+	rc = p11->C_DigestInit(session, &mech);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_Digest - query size");
+	hashlen1 = 0;
+	rc = p11->C_Digest(session, message, msglen, NULL, &hashlen1);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Hashlen = %ld\n", hashlen1);
+
+	printf("Calling C_Digest ");
+	rc = p11->C_Digest(session, message, msglen, hash1, &hashlen1);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	bin2str(scr, sizeof(scr), hash1, hashlen1);
+	printf("Plain: %s\n", scr);
+
+
+	printf("Calling C_DigestInit ");
+	rc = p11->C_DigestInit(session, &mech);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DigestUpdate ");
+	rc = p11->C_DigestUpdate(session, message, msglen - 20);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DigestUpdate ");
+	rc = p11->C_DigestUpdate(session, message + msglen - 20, 20);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DigestFinal - query size");
+	hashlen2 = 0;
+	rc = p11->C_DigestFinal(session, NULL, &hashlen2);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Hashlen = %ld - %s\n", hashlen1, verdict(hashlen1 == hashlen2));
+
+	rc = p11->C_DigestFinal(session, hash2, &hashlen2);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	bin2str(scr, sizeof(scr), hash2, hashlen2);
+	printf("Plain:%s - %s\n", scr, verdict(!memcmp(hash1, hash2, hashlen1)));
+}
+
+
+
 void testSessions(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 {
 	int rc;
@@ -2250,6 +2310,12 @@ int main(int argc, char *argv[])
 				// List public objects
 				memset(attr, 0, sizeof(attr));
 				listObjects(p11, session, attr, 0);
+
+				testDigest(p11, session, CKM_SHA_1);
+				testDigest(p11, session, CKM_SHA224);
+				testDigest(p11, session, CKM_SHA256);
+				testDigest(p11, session, CKM_SHA384);
+				testDigest(p11, session, CKM_SHA512);
 
 				testLogin(p11, session);
 
