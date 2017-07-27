@@ -1454,7 +1454,11 @@ void testDigest(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_MECHANIS
 	hashlen1 = 0;
 	rc = p11->C_Digest(session, message, msglen, NULL, &hashlen1);
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+	printf("Hashlen = %ld\n", hashlen1);
 
+	hashlen1--;
+	rc = p11->C_Digest(session, message, msglen, hash1, &hashlen1);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_BUFFER_TOO_SMALL));
 	printf("Hashlen = %ld\n", hashlen1);
 
 	printf("Calling C_Digest ");
@@ -1481,8 +1485,12 @@ void testDigest(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_MECHANIS
 	hashlen2 = 0;
 	rc = p11->C_DigestFinal(session, NULL, &hashlen2);
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+	printf("Hashlen = %ld - %s\n", hashlen2, verdict(hashlen1 == hashlen2));
 
-	printf("Hashlen = %ld - %s\n", hashlen1, verdict(hashlen1 == hashlen2));
+	hashlen2--;
+	rc = p11->C_DigestFinal(session, hash2, &hashlen2);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_BUFFER_TOO_SMALL));
+	printf("Hashlen = %ld - %s\n", hashlen2, verdict(hashlen1 == hashlen2));
 
 	rc = p11->C_DigestFinal(session, hash2, &hashlen2);
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));

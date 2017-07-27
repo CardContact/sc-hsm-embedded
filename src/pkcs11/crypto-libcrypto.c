@@ -66,12 +66,6 @@ void cryptoInitialize()
 {
 #ifdef DEBUG
 	ERR_load_crypto_strings();
-#endif
-
-	OPENSSL_no_config();
-	OpenSSL_add_all_algorithms();
-
-#ifdef DEBUG
 	CRYPTO_malloc_debug_init();
 	CRYPTO_dbg_set_options(V_CRYPTO_MDEBUG_ALL);
 	CRYPTO_mem_ctrl(CRYPTO_MEM_CHECK_ON);
@@ -88,12 +82,6 @@ void cryptoFinalize()
 	ERR_remove_state(0);
 	CRYPTO_mem_leaks_fp(stderr);
 #endif
-
-	EVP_cleanup();
-
-	CONF_modules_finish();
-	CONF_modules_unload(1);
-	CONF_modules_free();
 }
 
 
@@ -523,8 +511,10 @@ static CK_RV encryptRSA(struct p11Object_t *obj, int padding, CK_BYTE_PTR in, CK
 		FUNC_RETURNS(CKR_OK);
 	}
 
-	if (modulus->attrData.ulValueLen > *out_len)
+	if (modulus->attrData.ulValueLen > *out_len) {
+		*out_len = modulus->attrData.ulValueLen;
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Length of output buffer too small");
+	}
 
 	rc = findAttribute(obj, CKA_PUBLIC_EXPONENT, &public_exponent);
 
@@ -760,6 +750,7 @@ CK_RV cryptoDigest(struct p11Session_t * session, CK_BYTE_PTR pData, CK_ULONG ul
 	}
 
 	if (*pulDigestLen < (CK_ULONG)EVP_MD_CTX_size(md_ctx)) {
+		*pulDigestLen = (CK_ULONG)EVP_MD_CTX_size(md_ctx);
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Buffer too small");
 	}
 
@@ -813,6 +804,7 @@ CK_RV cryptoDigestFinal(struct p11Session_t * session, CK_BYTE_PTR pDigest, CK_U
 	}
 
 	if (*pulDigestLen < (CK_ULONG)EVP_MD_CTX_size(md_ctx)) {
+		*pulDigestLen = (CK_ULONG)EVP_MD_CTX_size(md_ctx);
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Buffer too small");
 	}
 
