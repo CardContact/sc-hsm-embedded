@@ -256,11 +256,9 @@ static int createDTrustToken(struct p11Slot_t *slot, struct p11Token_t **token, 
 
 	FUNC_CALLED();
 
-	ptoken = (struct p11Token_t *)calloc(sizeof(struct p11Token_t) + sizeof(struct starcosPrivateData), 1);
-
-	if (ptoken == NULL) {
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
-	}
+	rc = allocateToken(&ptoken, sizeof(struct starcosPrivateData));
+	if (rc != CKR_OK)
+		return rc;
 
 	ptoken->slot = slot;
 	ptoken->freeObjectNumber = 1;
@@ -278,13 +276,20 @@ static int createDTrustToken(struct p11Slot_t *slot, struct p11Token_t **token, 
 	ptoken->info.firmwareVersion.major = 3;
 	ptoken->info.firmwareVersion.minor = drv->version;
 
-	ptoken->info.flags = CKF_WRITE_PROTECTED;
+	ptoken->info.flags = CKF_WRITE_PROTECTED|CKF_RNG;
 	ptoken->user = INT_CKU_NO_USER;
 	ptoken->drv = drv;
 
 	sc = starcosGetPrivateData(ptoken);
 	sc->selectedApplication = 0;
 	sc->application = application;
+
+	rc = starcosReadICCSN(ptoken);
+
+	if (rc < 0) {
+		freeToken(ptoken);
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Can't read ICCSN");
+	}
 
 	strbpcpy(ptoken->info.label, sc->application->name, sizeof(ptoken->info.label));
 
@@ -307,10 +312,13 @@ static int createDTrustToken(struct p11Slot_t *slot, struct p11Token_t **token, 
 		if (lc == 0x23) {
 			ptoken->pinChangeRequired = TRUE;
 		}
-	}
 
-	if (ptoken->pinUseCounter != 1)
+		if (ptoken->pinUseCounter != 1)
+			ptoken->info.flags |= CKF_LOGIN_REQUIRED;
+	} else {
+		ptoken->pinUseCounter = 1;
 		ptoken->info.flags |= CKF_LOGIN_REQUIRED;
+	}
 
 	rc = loadObjects(ptoken);
 

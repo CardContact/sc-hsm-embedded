@@ -632,6 +632,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 	};
 	CK_OBJECT_HANDLE hnd,pubhnd;
 	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
+	CK_SESSION_INFO sessioninfo;
 	char *tbs = "Hello World";
 	CK_BYTE signature[256];
 	CK_ULONG len;
@@ -671,6 +672,9 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 			rc = CKR_OK;
 			break;
 		}
+		rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&puktemplate[1], 1);
+		printf("C_GetAttributeValue (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
 		rc = p11->C_SignInit(session, &mech, hnd);
 		printf("C_SignInit (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
@@ -698,8 +702,6 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 			printf("Signature:\n%s\n", scr);
 		}
 
-		rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&puktemplate[1], 1);
-		printf("C_GetAttributeValue (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&puktemplate, sizeof(puktemplate) / sizeof(CK_ATTRIBUTE), 0, &pubhnd);
 		printf("C_FindObject for public key (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
@@ -709,17 +711,17 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 			continue;
 		}
 
+#ifdef ENABLE_LIBCRYPTO
 		rc = p11->C_VerifyInit(session, &mech, pubhnd);
 		printf("C_VerifyInit (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		rc = p11->C_Verify(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), signature, len);
 		printf("C_Verify (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+#endif
 
-
-		rc = p11->C_SignInit(session, &mech, hnd);
-		printf("C_SignInit (Thread %i, Session %ld, Slot=%ld) - Multipart - %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf));
-
-		if (rc == CKR_OBJECT_HANDLE_INVALID) {
+		// Need to log in again ?
+		rc = p11->C_GetSessionInfo(session, &sessioninfo);
+		if (sessioninfo.state == CKS_RW_PUBLIC_SESSION) {
 			rc = p11->C_Login(session, CKU_USER, pin, pinlen);
 			printf("C_Login User - %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK || rc == CKR_USER_ALREADY_LOGGED_IN));
 
@@ -729,12 +731,11 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 				printf("Key %i not found (Thread %i, Session %ld, Slot=%ld)\n", keyno, id, session, slotid);
 				break;
 			}
-
-			rc = p11->C_SignInit(session, &mech, hnd);
-			printf("C_SignInit (Thread %i, Session %ld, Slot=%ld) - Multipart - %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf));
-		} else {
-			verdict(rc == CKR_OK);
 		}
+
+		rc = p11->C_SignInit(session, &mech, hnd);
+		printf("C_SignInit (Thread %i, Session %ld, Slot=%ld) - Multipart - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
 #if 1
 		rc = p11->C_SignUpdate(session, (CK_BYTE_PTR)tbs, 6);
 		printf("C_SignUpdate (Thread %i, Session %ld, Slot=%ld - Part #1) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
@@ -774,7 +775,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 			printf("Signature:\n%s\n", scr);
 		}
 
-
+#ifdef ENABLE_LIBCRYPTO
 		rc = p11->C_VerifyInit(session, &mech, pubhnd);
 		printf("C_VerifyInit (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
@@ -795,7 +796,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 
 		rc = p11->C_VerifyFinal(session, signature, len);
 		printf("C_VerifyFinal (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
+#endif
 		keyno++;
 	}
 
@@ -883,12 +884,13 @@ int testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHAN
 			continue;
 		}
 
+#ifdef ENABLE_LIBCRYPTO
 		rc = p11->C_VerifyInit(session, &mech, pubhnd);
 		printf("C_VerifyInit (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		rc = p11->C_Verify(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), signature, len);
 		printf("C_Verify (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
+#endif
 
 		keyno++;
 	}
@@ -1163,7 +1165,7 @@ void testRandom(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_GenerateRandom(4096) ");
-	rc = p11->C_GenerateRandom(session, scr, 4096);
+	rc = p11->C_GenerateRandom(session, scr, sizeof(scr));
 
 	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 }
@@ -2319,11 +2321,13 @@ int main(int argc, char *argv[])
 				memset(attr, 0, sizeof(attr));
 				listObjects(p11, session, attr, 0);
 
+#ifdef ENABLE_LIBCRYPTO
 				testDigest(p11, session, CKM_SHA_1);
 				testDigest(p11, session, CKM_SHA224);
 				testDigest(p11, session, CKM_SHA256);
 				testDigest(p11, session, CKM_SHA384);
 				testDigest(p11, session, CKM_SHA512);
+#endif
 
 				testLogin(p11, session);
 
@@ -2346,12 +2350,14 @@ int main(int argc, char *argv[])
 					testRSASigning(p11, slotid, 0, CKM_SC_HSM_PSS_SHA256);
 				}
 
+#ifdef ENABLE_LIBCRYPTO
 				testRSADecryption(p11, session, CKM_RSA_PKCS);
 				testRSADecryption(p11, session, CKM_RSA_PKCS_OAEP);
 
 				if (strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
 					testRSADecryption(p11, session, CKM_RSA_X_509);
 				}
+#endif
 
 				if (strncmp("3.5ID ECC C1 DGN", (char *)tokeninfo.model, 16)) {
 					testECSigning(p11, slotid, 0, CKM_ECDSA_SHA1);

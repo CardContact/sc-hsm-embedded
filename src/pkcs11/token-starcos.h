@@ -75,6 +75,7 @@ int starcosAddCertificateObject(struct p11Token_t *token, struct p15CertificateD
 int starcosAddPrivateKeyObject(struct p11Token_t *token, struct p15PrivateKeyDescription *p15);
 int starcosDigest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned char *data, size_t len);
 int starcosDeterminePinUseCounter(struct p11Token_t *token, unsigned char recref, int *useCounter, int *lifeCycle);
+int starcosReadICCSN(struct p11Token_t *token);
 int encodeF2B(unsigned char *pin, int pinlen, unsigned char *f2b);
 
 int createStarcosToken(struct p11Slot_t *slot, struct p11Token_t **token, struct p11TokenDriver *drv, struct starcosApplication *application);

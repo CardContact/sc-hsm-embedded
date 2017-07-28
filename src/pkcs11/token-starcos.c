@@ -798,6 +798,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 			FUNC_FAILS(CKR_KEY_FUNCTION_NOT_PERMITTED, "Signature operation not allowed for key");
 			break;
 		case 0x6982:
+			pObject->token->user = INT_CKU_NO_USER;
 			FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "User not logged in");
 			break;
 		}
@@ -941,7 +942,7 @@ static int starcos_C_GenerateRandom(struct p11Slot_t *slot, CK_BYTE_PTR rnd, CK_
 
 	FUNC_CALLED();
 
-	maxblk = 1024;			// Maximum block size
+	maxblk = slot->token->drv->maxRAPDU - 2;		// Maximum block size
 	while (rndlen > 0) {
 		if (rndlen < maxblk) {
 			maxblk = rndlen;
