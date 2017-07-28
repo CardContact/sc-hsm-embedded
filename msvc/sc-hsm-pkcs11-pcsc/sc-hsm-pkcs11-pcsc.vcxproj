@@ -196,8 +196,6 @@
     <ClCompile Include="..\..\src\pkcs11\slotpool.c" />
     <ClCompile Include="..\..\src\pkcs11\strbpcpy.c" />
     <ClCompile Include="..\..\src\pkcs11\token-sc-hsm.c" />
-    <ClCompile Include="..\..\src\pkcs11\token-starcos-32-signtrust.c" />
-    <ClCompile Include="..\..\src\pkcs11\token-starcos-35-signtrust.c" />
     <ClCompile Include="..\..\src\pkcs11\token-starcos-bnotk.c" />
     <ClCompile Include="..\..\src\pkcs11\token-starcos-dgn.c" />
     <ClCompile Include="..\..\src\pkcs11\token-starcos-dtrust.c" />
