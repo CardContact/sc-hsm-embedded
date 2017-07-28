@@ -97,12 +97,13 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;DEBUG;_WINDOWS;_USRDLL;SCHSMPKCS11PCSC_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ENABLE_LIBCRYPTO;DEBUG;_WINDOWS;_USRDLL;SCHSMPKCS11PCSC_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>winscard.lib;ws2_32.lib;gdi32.lib;advapi32.lib;crypt32.lib;user32.lib;..\..\libcrypto\lib\libeay32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -111,12 +112,13 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;DEBUG;_WINDOWS;_USRDLL;SCHSMPKCS11PCSC_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ENABLE_LIBCRYPTO;DEBUG;_WINDOWS;_USRDLL;SCHSMPKCS11PCSC_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>winscard.lib;ws2_32.lib;gdi32.lib;advapi32.lib;crypt32.lib;user32.lib;..\..\libcrypto\lib\libeay64.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -127,7 +129,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_WINDOWS;_USRDLL;SCHSMPKCS11PCSC_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ENABLE_LIBCRYPTO;NDEBUG;_WINDOWS;_USRDLL;SCHSMPKCS11PCSC_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -135,6 +137,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>winscard.lib;ws2_32.lib;gdi32.lib;advapi32.lib;crypt32.lib;user32.lib;..\..\libcrypto\lib\libeay32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -145,7 +148,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_WINDOWS;_USRDLL;SCHSMPKCS11PCSC_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ENABLE_LIBCRYPTO;NDEBUG;_WINDOWS;_USRDLL;SCHSMPKCS11PCSC_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -153,6 +156,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>winscard.lib;ws2_32.lib;gdi32.lib;advapi32.lib;crypt32.lib;user32.lib;..\..\libcrypto\lib\libeay64.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -165,6 +169,16 @@
     <ClCompile Include="..\..\src\common\pkcs15.c" />
     <ClCompile Include="..\..\src\pkcs11\certificateobject.c" />
     <ClCompile Include="..\..\src\pkcs11\crc32.c" />
+    <ClCompile Include="..\..\src\pkcs11\crypto-libcrypto.c">
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\src;..\..\libcrypto\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\src;..\..\libcrypto\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\src;..\..\libcrypto\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\src;..\..\libcrypto\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_CRT_SECURE_NO_WARNINGS;OPENSSL_SYSNAME_WIN32;ENABLE_LIBCRYPTO;DEBUG;_WINDOWS;_USRDLL;SCHSMPKCS11PCSC_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">_CRT_SECURE_NO_WARNINGS;OPENSSL_SYSNAME_WIN32;ENABLE_LIBCRYPTO;NDEBUG;_WINDOWS;_USRDLL;SCHSMPKCS11PCSC_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">_CRT_SECURE_NO_WARNINGS;OPENSSL_OPT_WINDLL;ENABLE_LIBCRYPTO;DEBUG;_WINDOWS;_USRDLL;SCHSMPKCS11PCSC_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">_CRT_SECURE_NO_WARNINGS;OPENSSL_OPT_WINDLL;ENABLE_LIBCRYPTO;NDEBUG;_WINDOWS;_USRDLL;SCHSMPKCS11PCSC_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="..\..\src\pkcs11\dataobject.c" />
     <ClCompile Include="..\..\src\pkcs11\object.c" />
     <ClCompile Include="..\..\src\pkcs11\p11generic.c" />

@@ -1080,7 +1080,7 @@ void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_M
 
 	mech.mechanism = mt;
 
-	secretlen = strlen(secretstr);
+	secretlen = (CK_ULONG)strlen(secretstr);
 	memcpy(secret, secretstr, secretlen);
 
 	keyno = 0;
@@ -1442,7 +1442,7 @@ void testDigest(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_MECHANIS
 	CK_RV rc;
 	char scr[1024];
 
-	msglen = strlen((char *)message);
+	msglen = (CK_ULONG)strlen((char *)message);
 
 	mech.mechanism = mt;
 
