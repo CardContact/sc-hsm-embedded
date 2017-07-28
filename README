@@ -42,7 +42,7 @@ Select the 32-Bit or 64-Bit version depending on your version of Windows.
 Installing the provided .msi file will make the sc-hsm-pkcs11.dll and sc-hsm-minidriver.dll
 available in windows/system32. Test tools are installed in %PROGRAMFILES%/CardContact/SmartCard-HSM.
 
-The 64-Bit version installs both, the 32-Bit and 64-Bit version of DLLs and test programms.
+The 64-Bit version installs both, the 32-Bit and 64-Bit version of DLLs and test programs.
 
 Firefox
 -------
@@ -99,6 +99,8 @@ Release 2.10
 Add write support for the SmartCard-HSM
 Add CSP-Minidriver for Windows based applications
 Add C_WaitForSlotEvent
+Add public key operation with C_Verify*(), C_Encrypt*() and C_Digest*() functions
+Removed support for obsolete Signtrust Cards.
 
 Release 2.9
 -----------
