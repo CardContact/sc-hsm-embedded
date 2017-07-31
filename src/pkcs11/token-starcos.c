@@ -1123,7 +1123,7 @@ int encodeF2B(unsigned char *pin, int pinlen, unsigned char *f2b)
  * @param pinLen    The length of the PIN supplied in pin
  * @return          CKR_OK or any other Cryptoki error code
  */
-static int login(struct p11Slot_t *slot, int userType, unsigned char *pin, int pinlen)
+static int login(struct p11Slot_t *slot, int userType, CK_UTF8CHAR_PTR pin, CK_ULONG pinlen)
 {
 	int rc = CKR_OK;
 	unsigned short SW1SW2;
@@ -1213,7 +1213,7 @@ static int login(struct p11Slot_t *slot, int userType, unsigned char *pin, int p
  * @param pinLen    The length of the PIN supplied in pin
  * @return          CKR_OK or any other Cryptoki error code
  */
-static int initpin(struct p11Slot_t *slot, unsigned char *pin, int pinlen)
+static int initpin(struct p11Slot_t *slot, CK_UTF8CHAR_PTR pin, CK_ULONG pinlen)
 {
 	int rc = CKR_OK;
 	unsigned short SW1SW2;
@@ -1297,7 +1297,7 @@ static int initpin(struct p11Slot_t *slot, unsigned char *pin, int pinlen)
  * @param newpinLen The length of the PIN supplied in newpin
  * @return          CKR_OK or any other Cryptoki error code
  */
-static int setpin(struct p11Slot_t *slot, unsigned char *oldpin, int oldpinlen, unsigned char *newpin, int newpinlen)
+static int setpin(struct p11Slot_t *slot, CK_UTF8CHAR_PTR oldpin, CK_ULONG oldpinlen, CK_UTF8CHAR_PTR newpin, CK_ULONG newpinlen)
 {
 	int rc = CKR_OK;
 	unsigned short SW1SW2;

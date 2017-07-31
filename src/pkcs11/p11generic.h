@@ -193,10 +193,11 @@ struct p11TokenDriver {
 	void (*freeToken)(struct p11Token_t *token);
 	int (*C_GetMechanismList)(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount);
 	int (*C_GetMechanismInfo)(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo);
-	int (*login)(struct p11Slot_t *slot, int userType, unsigned char *pin, int pinlen);
+
+	int (*login)(struct p11Slot_t *slot, int userType, CK_UTF8CHAR_PTR pin, CK_ULONG pinlen);
 	int (*logout)(struct p11Slot_t *slot);
-	int (*initpin)(struct p11Slot_t *slot, unsigned char *pin, int pinlen);
-	int (*setpin)(struct p11Slot_t *slot, unsigned char *oldpin, int oldpinlen, unsigned char *newpin, int newpinlen);
+	int (*initpin)(struct p11Slot_t *slot, CK_UTF8CHAR_PTR, CK_ULONG);
+	int (*setpin)(struct p11Slot_t *slot, CK_UTF8CHAR_PTR, CK_ULONG, CK_UTF8CHAR_PTR, CK_ULONG);
 
 	int (*C_DecryptInit)  (struct p11Object_t *, CK_MECHANISM_PTR);
 	int (*C_Decrypt)      (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);

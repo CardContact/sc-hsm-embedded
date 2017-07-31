@@ -41,7 +41,7 @@
 #include <pkcs11/slot-pcsc.h>
 
 
-#define MINIMUM_SUPPORTED_VERSION	4
+#define MINIMUM_SUPPORTED_VERSION	7
 #define MAXIMUM_SUPPORTED_VERSION	7
 
 // DigestInfo Header encoding in front of hash value
@@ -96,6 +96,10 @@ static DWORD mapError(int rc)
 		return SCARD_W_WRONG_CHV;
 	case CKR_PIN_LOCKED:
 		return SCARD_W_CHV_BLOCKED;
+	case CKR_PIN_LEN_RANGE:
+		return SCARD_E_INVALID_PARAMETER;
+	case CKR_USER_NOT_LOGGED_IN:
+		return SCARD_W_SECURITY_VIOLATION;
 	default:
 #ifdef DEBUG
 		debug("Unmapped error code %lx\n", rc);
@@ -444,16 +448,19 @@ static DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	if (dwFlags & ~(CARD_AUTHENTICATE_GENERATE_SESSION_PIN | CARD_AUTHENTICATE_SESSION_PIN | CARD_PIN_SILENT_CONTEXT))		// CMR_74
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "dwFlags validation failed");
 
+	if (cbPinData > 16)				// CMR_75
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "cbPinData exceeds range");
+
 	dwret = validateToken(pCardData, &token);
 	if (dwret != SCARD_S_SUCCESS)
 		FUNC_FAILS(dwret, "Could not obtain fresh token reference");
 
 	rc = logIn(token->slot, CKU_USER, pbPinData, cbPinData);
 
-	if (pcAttemptsRemaining != NULL)
-		*pcAttemptsRemaining = (DWORD)token->pinTriesLeft;
-
 	if (rc != CKR_OK) {
+		if (pcAttemptsRemaining != NULL)
+			*pcAttemptsRemaining = (DWORD)token->pinTriesLeft;
+
 		dwret = mapError(rc);
 		FUNC_FAILS(dwret, "PIN verification failed");
 	}
@@ -704,7 +711,7 @@ static DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 		if (dwret != SCARD_S_SUCCESS)
 			FUNC_FAILS(dwret, "pszDirectoryName validation failed");
 
-		if (strcmp(pszDirectoryName, szBASE_CSP_DIR))		// CMR_223
+		if (_stricmp(pszDirectoryName, szBASE_CSP_DIR))		// CMR_223
 			FUNC_FAILS(SCARD_E_DIR_NOT_FOUND, "pszDirectoryName unknown value");
 	}
 
@@ -718,7 +725,7 @@ static DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 	slot = (struct p11Slot_t *)pCardData->pvVendorSpecific;
 
 	if (pszDirectoryName == NULL) {			// ROOT
-		if (!strcmp(pszFileName, szCARD_IDENTIFIER_FILE)) {
+		if (!_stricmp(pszFileName, szCARD_IDENTIFIER_FILE)) {
 			*pcbData = 16;
 			*ppbData = (PBYTE)pCardData->pfnCspAlloc(*pcbData);
 
@@ -727,7 +734,7 @@ static DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 
 			memcpy(*ppbData, slot->token->info.serialNumber, *pcbData);
 
-		} else if (!strcmp(pszFileName, szCACHE_FILE)) {
+		} else if (!_stricmp(pszFileName, szCACHE_FILE)) {
 			CARD_CACHE_FILE_FORMAT cache;
 
 			memset(&cache, 0, sizeof(cache));
@@ -739,7 +746,7 @@ static DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 
 			memcpy(*ppbData, &cache, *pcbData);
 
-		} else if (!strcmp(pszFileName, "cardapps")) {
+		} else if (!_stricmp(pszFileName, "cardapps")) {
 			CHAR apps[8] = { 'm', 's', 'c', 'p', 0, 0, 0, 0 };
 
 			*pcbData = sizeof(apps);
@@ -754,7 +761,7 @@ static DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 			FUNC_FAILS(SCARD_E_FILE_NOT_FOUND, "pszFileName unknown value");
 		}
 	} else {								// MSCP
-		if (!strcmp(pszFileName, szCONTAINER_MAP_FILE)) {
+		if (!_stricmp(pszFileName, szCONTAINER_MAP_FILE)) {
 			containers = getNumberOfContainers(pCardData);
 			*pcbData = containers * sizeof(CONTAINER_MAP_RECORD);
 			*ppbData = (PBYTE)pCardData->pfnCspAlloc(*pcbData);
@@ -767,13 +774,13 @@ static DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 			if (dwret != SCARD_S_SUCCESS)
 				FUNC_FAILS(dwret, "Can't encode cmapfile");
 
-		} else if (!strcmp(pszFileName, szROOT_STORE_FILE)) {
+		} else if (!_stricmp(pszFileName, szROOT_STORE_FILE)) {
 			dwret = encodeMSROOTSFile(pCardData, ppbData, pcbData);
 
 			if (dwret != SCARD_S_SUCCESS)
 				FUNC_FAILS(dwret, "Can't encode cmapfile");
 
-		} else if (!strncmp(pszFileName, szUSER_KEYEXCHANGE_CERT_PREFIX, 3)) {
+		} else if (!_strnicmp(pszFileName, szUSER_KEYEXCHANGE_CERT_PREFIX, 3)) {
 			i = atoi(pszFileName + 3);
 			dwret = readCertificate(pCardData, i, ppbData, pcbData);
 
@@ -854,7 +861,7 @@ static DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData,
 		if (dwret != SCARD_S_SUCCESS)
 			FUNC_FAILS(dwret, "pszDirectoryName validation failed");
 
-		if (strcmp(pszDirectoryName, szBASE_CSP_DIR))		// CMR_305
+		if (_stricmp(pszDirectoryName, szBASE_CSP_DIR))		// CMR_305
 			FUNC_FAILS(SCARD_E_DIR_NOT_FOUND, "pszDirectoryName unknown value");
 	}
 
@@ -1113,8 +1120,11 @@ static DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	if (pInfo->pbData == NULL)			// CMR_418
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pInfo->pbData validation failed");
 
-	if ((pInfo->dwKeySpec != AT_SIGNATURE) && (pInfo->dwKeySpec != AT_KEYEXCHANGE))
+	if (pInfo->dwKeySpec != AT_KEYEXCHANGE)
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pInfo->dwKeySpec validation failed");		// CMR_417
+
+	if ((pInfo->cbData < 128) || (pInfo->cbData > sizeof(cryptogram)))
+		FUNC_FAILS(SCARD_E_INSUFFICIENT_BUFFER, "pInfo->cbData validation failed");
 
 	dwret = validateToken(pCardData, &token);
 	if (dwret != SCARD_S_SUCCESS)
@@ -1161,7 +1171,7 @@ static DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 
 	if (rc != CKR_OK) {
 		dwret = mapError(rc);
-		FUNC_FAILS(dwret, "C_SignInit failed");
+		FUNC_FAILS(dwret, "C_Decrypt failed");
 	}
 
 	copyInverted(pInfo->pbData, plain, plainlen);
@@ -1259,8 +1269,8 @@ static DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNIN
 	di = NULL;
 	dilen = 0;
 	if (!(pInfo->dwSigningFlags & CARD_PADDING_INFO_PRESENT)) {
-		if ((pInfo->aiHashAlg != 0) && (pInfo->dwVersion != CARD_SIGNING_INFO_BASIC_VERSION))
-			FUNC_FAILS(ERROR_REVISION_MISMATCH, "Version check failed");
+//		if ((pInfo->aiHashAlg != 0) && (pInfo->dwVersion != CARD_SIGNING_INFO_BASIC_VERSION))
+//			FUNC_FAILS(ERROR_REVISION_MISMATCH, "Version check failed");
 
 		switch(pInfo->aiHashAlg) {
 		case 0:
@@ -1290,7 +1300,7 @@ static DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNIN
 			dilen = 0;
 			break;
 		default:
-			FUNC_FAILS(SCARD_E_UNSUPPORTED_FEATURE, "aiHashAlg not supported");
+			FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "aiHashAlg not supported");
 		}
 	} else {
 		if (pInfo->dwPaddingType == CARD_PADDING_PKCS1) {
@@ -1347,6 +1357,14 @@ static DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNIN
 	if (rc != CKR_OK) {
 		dwret = mapError(rc);
 		FUNC_FAILS(dwret, "C_SignInit failed");
+	}
+
+	if (pInfo->dwSigningFlags & CARD_BUFFER_SIZE_ONLY) {
+		cklen = 0;
+		rc = p11prikey->C_Sign(p11prikey, mech.mechanism, signInput, dilen, NULL, &cklen);
+		pInfo->cbSignedData = cklen;
+		pInfo->pbSignedData = NULL;
+		FUNC_RETURNS(SCARD_S_SUCCESS);
 	}
 
 	cklen = sizeof(signature);
@@ -1648,8 +1666,415 @@ static DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 
 
 
-static DWORD WINAPI UnsupportedFeature(
-    __in PCARD_DATA  pCardData)
+DWORD WINAPI CardDeleteContainer(__in PCARD_DATA pCardData,
+	__in BYTE bContainerIndex,
+	__in DWORD dwReserved)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardCreateContainer(__in PCARD_DATA pCardData,
+	__in BYTE bContainerIndex,
+	__in DWORD dwFlags,
+	__in DWORD dwKeySpec,
+	__in DWORD dwKeySize,
+	__in PBYTE pbKeyData)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardGetChallenge(__in PCARD_DATA pCardData,
+	__deref_out_bcount(*pcbChallengeData) PBYTE *ppbChallengeData,
+	__out                                 PDWORD pcbChallengeData)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
+	__in_bcount(cbResponseData) PBYTE  pbResponseData,
+	__in DWORD  cbResponseData,
+	__out_opt PDWORD pcAttemptsRemaining)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardUnblockPin(__in PCARD_DATA  pCardData,
+	__in LPWSTR pwszUserId,
+	__in_bcount(cbAuthenticationData) PBYTE  pbAuthenticationData,
+	__in DWORD  cbAuthenticationData,
+	__in_bcount(cbNewPinData) PBYTE  pbNewPinData,
+	__in DWORD  cbNewPinData,
+	__in DWORD  cRetryCount,
+	__in DWORD  dwFlags)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardChangeAuthenticator(__in PCARD_DATA  pCardData,
+	__in LPWSTR pwszUserId,
+	__in_bcount(cbCurrentAuthenticator) PBYTE pbCurrentAuthenticator,
+	__in DWORD cbCurrentAuthenticator,
+	__in_bcount(cbNewAuthenticator) PBYTE pbNewAuthenticator,
+	__in DWORD cbNewAuthenticator,
+	__in DWORD cRetryCount,
+	__in DWORD dwFlags,
+	__out_opt PDWORD pcAttemptsRemaining)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardCreateDirectory(__in PCARD_DATA pCardData,
+	__in LPSTR pszDirectoryName,
+	__in CARD_DIRECTORY_ACCESS_CONDITION AccessCondition)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardDeleteDirectory(__in PCARD_DATA pCardData,
+	__in LPSTR pszDirectoryName)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardCreateFile(__in PCARD_DATA pCardData,
+	__in_opt LPSTR pszDirectoryName,
+	__in LPSTR pszFileName,
+	__in DWORD cbInitialCreationSize,
+	__in CARD_FILE_ACCESS_CONDITION AccessCondition)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardWriteFile(__in PCARD_DATA pCardData,
+	__in_opt LPSTR pszDirectoryName,
+	__in LPSTR pszFileName,
+	__in DWORD dwFlags,
+	__in_bcount(cbData) PBYTE pbData,
+	__in DWORD cbData)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardDeleteFile(__in PCARD_DATA pCardData,
+	__in_opt LPSTR pszDirectoryName,
+	__in LPSTR pszFileName,
+	__in DWORD dwFlags)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+	
+DWORD WINAPI CardGetChallengeEx(__in PCARD_DATA pCardData,
+	__in PIN_ID PinId,
+	__deref_out_bcount(*pcbChallengeData) PBYTE *ppbChallengeData,
+	__out PDWORD pcbChallengeData,
+	__in DWORD dwFlags)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
+	__in   DWORD dwFlags,
+	__in   PIN_ID dwAuthenticatingPinId,
+	__in_bcount(cbAuthenticatingPinData) PBYTE pbAuthenticatingPinData,
+	__in   DWORD cbAuthenticatingPinData,
+	__in   PIN_ID dwTargetPinId,
+	__in_bcount(cbTargetData) PBYTE pbTargetData,
+	__in   DWORD cbTargetData,
+	__in   DWORD cRetryCount,
+	__out_opt PDWORD pcAttemptsRemaining)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardSetContainerProperty(__in PCARD_DATA pCardData,
+	__in BYTE bContainerIndex,
+	__in LPCWSTR wszProperty,
+	__in_bcount(cbDataLen) PBYTE pbData,
+	__in DWORD cbDataLen,
+	__in DWORD dwFlags)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI MDImportSessionKey(
+    __in PCARD_DATA  pCardData,
+    __in LPCWSTR  pwszBlobType,
+    __in LPCWSTR  pwszAlgId,
+    __out PCARD_KEY_HANDLE  phKey,
+    __in_bcount(cbInput) PBYTE  pbInput,
+    __in DWORD  cbInput)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI MDEncryptData(
+    __in PCARD_DATA  pCardData,
+    __in CARD_KEY_HANDLE  hKey,
+    __in LPCWSTR  pwszSecureFunction,
+    __in_bcount(cbInput) PBYTE  pbInput,
+    __in DWORD  cbInput,
+    __in DWORD  dwFlags,
+    __deref_out_ecount(*pcEncryptedData)
+        PCARD_ENCRYPTED_DATA  *ppEncryptedData,
+    __out PDWORD  pcEncryptedData)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardImportSessionKey(
+    __in PCARD_DATA  pCardData,
+    __in BYTE  bContainerIndex,
+    __in VOID  *pPaddingInfo,
+    __in LPCWSTR  pwszBlobType,
+    __in LPCWSTR  pwszAlgId,
+    __out CARD_KEY_HANDLE  *phKey,
+    __in_bcount(cbInput) PBYTE  pbInput,
+    __in DWORD  cbInput,
+    __in DWORD  dwFlags)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardGetSharedKeyHandle(
+    __in PCARD_DATA  pCardData,
+    __in_bcount(cbInput) PBYTE  pbInput,
+    __in DWORD  cbInput,
+    __deref_opt_out_bcount(*pcbOutput)
+        PBYTE  *ppbOutput,
+    __out_opt PDWORD  pcbOutput,
+    __out PCARD_KEY_HANDLE  phKey)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardGetAlgorithmProperty (
+    __in PCARD_DATA  pCardData,
+    __in LPCWSTR   pwszAlgId,
+    __in LPCWSTR   pwszProperty,
+    __out_bcount_part_opt(cbData, *pdwDataLen)
+        PBYTE  pbData,
+    __in DWORD  cbData,
+    __out PDWORD  pdwDataLen,
+    __in DWORD  dwFlags)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardGetKeyProperty(
+    __in PCARD_DATA  pCardData,
+    __in CARD_KEY_HANDLE  hKey,
+    __in LPCWSTR  pwszProperty,
+    __out_bcount_part_opt(cbData, *pdwDataLen) PBYTE  pbData,
+    __in DWORD  cbData,
+    __out PDWORD  pdwDataLen,
+    __in DWORD  dwFlags)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardSetKeyProperty(
+    __in PCARD_DATA  pCardData,
+    __in CARD_KEY_HANDLE  hKey,
+    __in LPCWSTR  pwszProperty,
+    __in_bcount(cbInput) PBYTE  pbInput,
+    __in DWORD  cbInput,
+    __in DWORD  dwFlags)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardDestroyKey(
+    __in PCARD_DATA  pCardData,
+    __in CARD_KEY_HANDLE  hKey)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardProcessEncryptedData(
+    __in PCARD_DATA  pCardData,
+    __in CARD_KEY_HANDLE  hKey,
+    __in LPCWSTR  pwszSecureFunction,
+    __in_ecount(cEncryptedData)
+        PCARD_ENCRYPTED_DATA  pEncryptedData,
+    __in DWORD  cEncryptedData,
+    __out_bcount_part_opt(cbOutput, *pdwOutputLen)
+        PBYTE  pbOutput,
+    __in DWORD  cbOutput,
+    __out_opt PDWORD  pdwOutputLen,
+    __in DWORD  dwFlags)
+{
+	FUNC_CALLED();
+
+	if (pCardData == NULL)
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
+
+	FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+}
+
+
+
+DWORD WINAPI CardCreateContainerEx(
+    __in PCARD_DATA  pCardData,
+    __in BYTE  bContainerIndex,
+    __in DWORD  dwFlags,
+    __in DWORD  dwKeySpec,
+    __in DWORD  dwKeySize,
+    __in PBYTE  pbKeyData,
+    __in PIN_ID  PinId)
 {
 	FUNC_CALLED();
 
@@ -1665,6 +2090,7 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 {
 	struct p11Slot_t *slot;
 	struct p11Token_t *token;
+	DWORD version,dwret;
 	int rc;
 
 	FUNC_CALLED();
@@ -1684,14 +2110,24 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 	if (dwFlags != 0)			// CMR_36
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
 
-	if (pCardData->dwVersion < MINIMUM_SUPPORTED_VERSION)	// CMR_37
-		FUNC_FAILS(ERROR_REVISION_MISMATCH, "Requested version lower than minimum version " + MINIMUM_SUPPORTED_VERSION);
+	version = pCardData->dwVersion;
+
+	if (pCardData->dwVersion > MAXIMUM_SUPPORTED_VERSION) {
+		pCardData->dwVersion = MAXIMUM_SUPPORTED_VERSION;
+	}
+
+	if (version < MINIMUM_SUPPORTED_VERSION) {	// CMR_37
+		FUNC_FAILS(ERROR_REVISION_MISMATCH, "Requested version lower than minimum version");
+	}
 
 	if (pCardData->pbAtr == NULL)		// CMR_38
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData->pbAtr validation failed");
 
-	if (pCardData->cbAtr < 4)		// CMR_39
+	if ((pCardData->cbAtr < 4) || (pCardData->cbAtr > 33))		// CMR_39
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData->cbAtr validation failed");
+
+	if (pCardData->pbAtr[0] != 0x3B)		// CMR_41
+		FUNC_FAILS(SCARD_E_UNKNOWN_CARD, "pCardData->pbAtr validation failed");
 
 	if (pCardData->pwszCardName == NULL)		// CMR_40
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData->pwszCardName validation failed");
@@ -1709,25 +2145,15 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 	if (pCardData->dwVersion > MAXIMUM_SUPPORTED_VERSION)
 		pCardData->dwVersion = MAXIMUM_SUPPORTED_VERSION;
 
+	// Supported calls
     pCardData->pfnCardDeleteContext = CardDeleteContext;
     pCardData->pfnCardQueryCapabilities = CardQueryCapabilities;
-    pCardData->pfnCardDeleteContainer = (PFN_CARD_DELETE_CONTAINER)UnsupportedFeature;
-    pCardData->pfnCardCreateContainer = (PFN_CARD_CREATE_CONTAINER)UnsupportedFeature;
     pCardData->pfnCardGetContainerInfo = CardGetContainerInfo;
     pCardData->pfnCardAuthenticatePin = CardAuthenticatePin;
-    pCardData->pfnCardGetChallenge = (PFN_CARD_GET_CHALLENGE)UnsupportedFeature;
-    pCardData->pfnCardAuthenticateChallenge = (PFN_CARD_AUTHENTICATE_CHALLENGE)UnsupportedFeature;
-    pCardData->pfnCardUnblockPin = (PFN_CARD_UNBLOCK_PIN)UnsupportedFeature;
-    pCardData->pfnCardChangeAuthenticator = (PFN_CARD_CHANGE_AUTHENTICATOR)UnsupportedFeature;
     pCardData->pfnCardDeauthenticate = CardDeauthenticate;
-    pCardData->pfnCardCreateDirectory = (PFN_CARD_CREATE_DIRECTORY)UnsupportedFeature;
-    pCardData->pfnCardDeleteDirectory = (PFN_CARD_DELETE_DIRECTORY)UnsupportedFeature;
     pCardData->pvUnused3 = NULL;
     pCardData->pvUnused4 = NULL;
-    pCardData->pfnCardCreateFile = (PFN_CARD_CREATE_FILE)UnsupportedFeature;
     pCardData->pfnCardReadFile = CardReadFile;
-    pCardData->pfnCardWriteFile = (PFN_CARD_WRITE_FILE)UnsupportedFeature;
-    pCardData->pfnCardDeleteFile = (PFN_CARD_DELETE_FILE)UnsupportedFeature;
     pCardData->pfnCardEnumFiles = CardEnumFiles;
     pCardData->pfnCardGetFileInfo = CardGetFileInfo;
     pCardData->pfnCardQueryFreeSpace = CardQueryFreeSpace;
@@ -1735,36 +2161,52 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 
     pCardData->pfnCardSignData = CardSignData;
     pCardData->pfnCardRSADecrypt = CardRSADecrypt;
-    pCardData->pfnCardConstructDHAgreement = NULL;		// PFN_CARD_CONSTRUCT_DH_AGREEMENT
-	
+
+	// Unsupported calls
+    pCardData->pfnCardDeleteContainer = CardDeleteContainer;
+    pCardData->pfnCardCreateContainer = CardCreateContainer;
+    pCardData->pfnCardGetChallenge = CardGetChallenge;
+    pCardData->pfnCardAuthenticateChallenge = CardAuthenticateChallenge;
+    pCardData->pfnCardUnblockPin = CardUnblockPin;
+    pCardData->pfnCardChangeAuthenticator = CardChangeAuthenticator;
+    pCardData->pfnCardCreateDirectory = CardCreateDirectory;
+    pCardData->pfnCardDeleteDirectory = CardDeleteDirectory;
+    pCardData->pfnCardCreateFile = CardCreateFile;
+    pCardData->pfnCardWriteFile = CardWriteFile;
+    pCardData->pfnCardDeleteFile = CardDeleteFile;
+
+	pCardData->pfnCardConstructDHAgreement = NULL;		// PFN_CARD_CONSTRUCT_DH_AGREEMENT
+
 	if (pCardData->dwVersion >= CARD_DATA_VERSION_FIVE) {
 		pCardData->pfnCardDeriveKey = NULL;				// PFN_CARD_DERIVE_KEY
 		pCardData->pfnCardDestroyDHAgreement = NULL;	// PFN_CARD_DESTROY_DH_AGREEMENT
-		pCardData->pfnCspGetDHAgreement = NULL;			// PFN_CSP_GET_DH_AGREEMENT
 	}
 
 	if (pCardData->dwVersion >= CARD_DATA_VERSION_SIX) {
-		pCardData->pfnCardGetChallengeEx = (PFN_CARD_GET_CHALLENGE_EX)UnsupportedFeature;
+		// Supported calls
 		pCardData->pfnCardAuthenticateEx = CardAuthenticateEx;
-		pCardData->pfnCardChangeAuthenticatorEx = (PFN_CARD_CHANGE_AUTHENTICATOR_EX)UnsupportedFeature;
 		pCardData->pfnCardDeauthenticateEx = CardDeauthenticateEx;
 		pCardData->pfnCardGetContainerProperty = CardGetContainerProperty;
-		pCardData->pfnCardSetContainerProperty = (PFN_CARD_SET_CONTAINER_PROPERTY)UnsupportedFeature;
 		pCardData->pfnCardGetProperty = CardGetProperty;
 		pCardData->pfnCardSetProperty = CardSetProperty;
+
+		// Unsupported calls
+		pCardData->pfnCardGetChallengeEx = CardGetChallengeEx;
+		pCardData->pfnCardChangeAuthenticatorEx = CardChangeAuthenticatorEx;
+		pCardData->pfnCardSetContainerProperty = CardSetContainerProperty;
 	}
 
 	if (pCardData->dwVersion >= CARD_DATA_VERSION_SEVEN) {
-		pCardData->pfnMDImportSessionKey = (PFN_MD_IMPORT_SESSION_KEY)UnsupportedFeature;
-		pCardData->pfnMDEncryptData = (PFN_MD_ENCRYPT_DATA)UnsupportedFeature;
-		pCardData->pfnCardImportSessionKey = (PFN_CARD_IMPORT_SESSION_KEY)UnsupportedFeature;
-		pCardData->pfnCardGetSharedKeyHandle = (PFN_CARD_GET_SHARED_KEY_HANDLE)UnsupportedFeature;
-		pCardData->pfnCardGetAlgorithmProperty = (PFN_CARD_GET_ALGORITHM_PROPERTY)UnsupportedFeature;
-		pCardData->pfnCardGetKeyProperty = (PFN_CARD_GET_KEY_PROPERTY)UnsupportedFeature;
-		pCardData->pfnCardSetKeyProperty = (PFN_CARD_SET_KEY_PROPERTY)UnsupportedFeature ;
-		pCardData->pfnCardDestroyKey = (PFN_CARD_DESTROY_KEY)UnsupportedFeature;
-		pCardData->pfnCardProcessEncryptedData = (PFN_CARD_PROCESS_ENCRYPTED_DATA)UnsupportedFeature;
-		pCardData->pfnCardCreateContainerEx = (PFN_CARD_CREATE_CONTAINER_EX)UnsupportedFeature;
+		pCardData->pfnMDImportSessionKey = MDImportSessionKey;
+		pCardData->pfnMDEncryptData = MDEncryptData;
+		pCardData->pfnCardImportSessionKey = CardImportSessionKey;
+		pCardData->pfnCardGetSharedKeyHandle = CardGetSharedKeyHandle;
+		pCardData->pfnCardGetAlgorithmProperty = CardGetAlgorithmProperty;
+		pCardData->pfnCardGetKeyProperty = CardGetKeyProperty;
+		pCardData->pfnCardSetKeyProperty = CardSetKeyProperty;
+		pCardData->pfnCardDestroyKey = CardDestroyKey;
+		pCardData->pfnCardProcessEncryptedData = CardProcessEncryptedData;
+		pCardData->pfnCardCreateContainerEx = CardCreateContainerEx;
 	}
 
 	slot = pCardData->pvVendorSpecific = pCardData->pfnCspAlloc(sizeof(struct p11Slot_t));
@@ -1782,10 +2224,17 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 
 	rc = newToken(slot, pCardData->pbAtr, pCardData->cbAtr, &token);
 
+	if (rc == CKR_OK) {
+		dwret = SCARD_S_SUCCESS;
+	} else if (rc == CKR_TOKEN_NOT_RECOGNIZED) {
+		dwret = SCARD_E_UNKNOWN_CARD;
+	} else {
+		dwret = SCARD_E_UNEXPECTED;
+	}
+
 	if (rc != CKR_OK) {
 		pCardData->pfnCspFree(pCardData->pvVendorSpecific);
 		pCardData->pvVendorSpecific = NULL;
-		FUNC_FAILS(SCARD_E_UNEXPECTED, "newToken failed to create token instance");
 	}
 
 	FUNC_RETURNS(SCARD_S_SUCCESS);

@@ -525,8 +525,21 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
-	if (SW1SW2 != 0x9000) {
+	switch(SW1SW2) {
+	case 0x9000:
+		break;
+	case 0x6984:
+		FUNC_FAILS(CKR_KEY_FUNCTION_NOT_PERMITTED, "Key user counter expired");
+		break;
+	case 0x6A81:
+		FUNC_FAILS(CKR_KEY_FUNCTION_NOT_PERMITTED, "Decryption operation not allowed for key");
+		break;
+	case 0x6982:
+		FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "User not logged in");
+		break;
+	default:
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Signature operation failed");
+		break;
 	}
 
 	if ((algo == ALGO_EC_RAW) || (algo == ALGO_EC_SHA1) || (algo == ALGO_EC_SHA224) || (algo == ALGO_EC_SHA256)) {
@@ -616,8 +629,24 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
 	}
 
-	if (SW1SW2 != 0x9000) {
+	switch(SW1SW2) {
+	case 0x9000:
+		break;
+	case 0x6984:
+		FUNC_FAILS(CKR_KEY_FUNCTION_NOT_PERMITTED, "Key user counter expired");
+		break;
+	case 0x6A81:
+		FUNC_FAILS(CKR_KEY_FUNCTION_NOT_PERMITTED, "Decryption operation not allowed for key");
+		break;
+	case 0x6982:
+		FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "User not logged in");
+		break;
+	case 0x6A80:
 		FUNC_FAILS(CKR_ENCRYPTED_DATA_INVALID, "Decryption operation failed");
+		break;
+	default:
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Decryption operation failed");
+		break;
 	}
 
 	if (mech == CKM_RSA_X_509) {
@@ -1797,7 +1826,7 @@ static int parseSOPIN(unsigned char *pin, unsigned char *encodedPIN)
  * @param pinLen    The length of the PIN supplied in pin
  * @return          CKR_OK or any other Cryptoki error code
  */
-static int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin, int pinlen)
+static int sc_hsm_login(struct p11Slot_t *slot, int userType, CK_UTF8CHAR_PTR pin, CK_ULONG pinlen)
 {
 	int rc = CKR_OK;
 	unsigned short SW1SW2;
@@ -1832,6 +1861,10 @@ static int sc_hsm_login(struct p11Slot_t *slot, int userType, unsigned char *pin
 #ifdef DEBUG
 			debug("Verify PIN using provided PIN value\n");
 #endif
+			if (pinlen > 16) {
+				FUNC_FAILS(CKR_PIN_LEN_RANGE, "transmitAPDU failed");
+			}
+
 			rc = transmitAPDU(slot, 0x00, 0x20, 0x00, 0x81,
 				pinlen, pin,
 				0, NULL, 0, &SW1SW2);
@@ -1894,7 +1927,7 @@ static int sc_hsm_logout(struct p11Slot_t *slot)
  * @param pinLen    The length of the PIN supplied in pin
  * @return          CKR_OK or any other Cryptoki error code
  */
-static int sc_hsm_initpin(struct p11Slot_t *slot, unsigned char *pin, int pinlen)
+static int sc_hsm_initpin(struct p11Slot_t *slot, CK_UTF8CHAR_PTR pin, CK_ULONG pinlen)
 {
 	int rc = CKR_OK;
 	unsigned short SW1SW2;
@@ -1950,7 +1983,7 @@ static int sc_hsm_initpin(struct p11Slot_t *slot, unsigned char *pin, int pinlen
  * @param newpinLen The length of the PIN supplied in newpin
  * @return          CKR_OK or any other Cryptoki error code
  */
-static int sc_hsm_setpin(struct p11Slot_t *slot, unsigned char *oldpin, int oldpinlen, unsigned char *newpin, int newpinlen)
+static int sc_hsm_setpin(struct p11Slot_t *slot, CK_UTF8CHAR_PTR oldpin, CK_ULONG oldpinlen, CK_UTF8CHAR_PTR newpin, CK_ULONG newpinlen)
 {
 	int rc = CKR_OK, len;
 	unsigned short SW1SW2;
