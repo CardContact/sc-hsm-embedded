@@ -1828,7 +1828,7 @@ static int parseSOPIN(unsigned char *pin, unsigned char *encodedPIN)
  */
 static int sc_hsm_login(struct p11Slot_t *slot, int userType, CK_UTF8CHAR_PTR pin, CK_ULONG pinlen)
 {
-	int rc = CKR_OK;
+	int rc = CKR_OK, retry;
 	unsigned short SW1SW2;
 	struct token_sc_hsm *sc;
 
@@ -1844,12 +1844,13 @@ static int sc_hsm_login(struct p11Slot_t *slot, int userType, CK_UTF8CHAR_PTR pi
 			FUNC_FAILS(CKR_ARGUMENTS_BAD, "SO-PIN must contain only hexadecimal characters");
 		}
 	} else {
-
-		if ((slot->token->info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !pinlen && !pin) {
+		retry = 2;			// Retry PIN verification if applet selection was lost
+		while (retry--) {
+			if ((slot->token->info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !pinlen && !pin) {
 #ifdef DEBUG
-			debug("Verify PIN using CKF_PROTECTED_AUTHENTICATION_PATH\n");
+				debug("Verify PIN using CKF_PROTECTED_AUTHENTICATION_PATH\n");
 #endif
-			rc = transmitVerifyPinAPDU(slot, 0x00, 0x20, 0x00, 0x81,
+				rc = transmitVerifyPinAPDU(slot, 0x00, 0x20, 0x00, 0x81,
 					0, NULL,
 					&SW1SW2,
 					PIN_SYSTEM_UNIT_BYTES + PIN_POSITION_0 + PIN_LEFT_JUSTIFICATION + PIN_FORMAT_ASCII, /* bmFormatString */
@@ -1857,26 +1858,39 @@ static int sc_hsm_login(struct p11Slot_t *slot, int userType, CK_UTF8CHAR_PTR pi
 					0x00, /* bmPINBlockString: no inserted PIN length, no PIN block size*/
 					0x00 /* bmPINLengthFormat: no PIN length insertion - set to all zeros */
 					);
-		} else {
+			} else {
 #ifdef DEBUG
-			debug("Verify PIN using provided PIN value\n");
+				debug("Verify PIN using provided PIN value\n");
 #endif
-			if (pinlen > 16) {
-				FUNC_FAILS(CKR_PIN_LEN_RANGE, "transmitAPDU failed");
+				if (pinlen > 16) {
+					FUNC_FAILS(CKR_PIN_LEN_RANGE, "transmitAPDU failed");
+				}
+
+				rc = transmitAPDU(slot, 0x00, 0x20, 0x00, 0x81,
+					pinlen, pin,
+					0, NULL, 0, &SW1SW2);
 			}
 
-			rc = transmitAPDU(slot, 0x00, 0x20, 0x00, 0x81,
-				pinlen, pin,
-				0, NULL, 0, &SW1SW2);
-		}
+			if (rc < 0) {
+				FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+			}
 
-		if (rc < 0) {
-			FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+			// Reselect applet is selection was lost, e.g. due to reconnect in minidriver
+			if ((SW1SW2 == 0x6E00) || (SW1SW2 == 0x6D00)) {
+				rc = selectApplet(slot, NULL, NULL);
+				if (rc < 0) {
+					FUNC_FAILS(CKR_TOKEN_NOT_RECOGNIZED, "applet selection failed");
+				}
+
+				continue;
+			}
+			break;
 		}
 
 		rc = updatePinStatus(slot->token, SW1SW2);
 
 		if (rc != CKR_OK) {
+
 			FUNC_FAILS(rc, "sc_hsm_login failed");
 		}
 	}

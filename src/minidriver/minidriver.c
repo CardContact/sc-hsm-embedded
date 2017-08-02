@@ -119,6 +119,16 @@ static DWORD validateToken(PCARD_DATA pCardData, struct p11Token_t **token)
 	int rc;
 	DWORD dwret;
 
+#ifdef DEBUG
+	if (slot->card != pCardData->hScard) {
+		debug("hScard has changed.\n");
+	}
+
+	if (slot->context != pCardData->hSCardCtx) {
+		debug("hSCardCtx has changed.\n");
+	}
+#endif
+
 	slot->card = pCardData->hScard;
 	slot->context = pCardData->hSCardCtx;
 
@@ -451,6 +461,9 @@ static DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	if (cbPinData > 16)				// CMR_75
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "cbPinData exceeds range");
 
+	if (dwFlags & (CARD_AUTHENTICATE_GENERATE_SESSION_PIN | CARD_AUTHENTICATE_SESSION_PIN))		// CMR_66
+		FUNC_FAILS(SCARD_E_UNSUPPORTED_FEATURE, "Session PIN not supported");
+
 	dwret = validateToken(pCardData, &token);
 	if (dwret != SCARD_S_SUCCESS)
 		FUNC_FAILS(dwret, "Could not obtain fresh token reference");
@@ -526,6 +539,10 @@ static DWORD WINAPI CardDeauthenticateEx(__in PCARD_DATA pCardData,
 		FUNC_FAILS(dwret, "Could not obtain fresh token reference");
 
 	logOut(token->slot);
+
+	if (strncmp((char *)token->info.model, "SmartCard-HSM", 13)) {
+		FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+	}
 
 	FUNC_RETURNS(SCARD_S_SUCCESS);
 }
@@ -817,7 +834,12 @@ static DWORD WINAPI CardGetFileInfo(__in PCARD_DATA pCardData,
 
 	pCardFileInfo->dwVersion = CARD_FILE_INFO_CURRENT_VERSION;
 
+	bp = NULL;
 	dwret = CardReadFile(pCardData, pszDirectoryName, pszFileName, 0, &bp, &bplen);
+
+	if (bp != NULL)
+		pCardData->pfnCspFree(bp);
+
 	if (dwret != SCARD_S_SUCCESS)
 		FUNC_FAILS(dwret, "Could no acquire file content failed");
 
@@ -1260,7 +1282,7 @@ static DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNIN
 	mech.mechanism = CKM_RSA_PKCS;
 
 	keytype = CKK_RSA;
-	if (findAttribute(p11prikey, CKA_KEY_TYPE, &attr)) {
+	if (findAttribute(p11prikey, CKA_KEY_TYPE, &attr) >= 0) {
 		keytype = *(CK_KEY_TYPE *)attr->attrData.pValue;
 		if (keytype == CKK_ECDSA)
 			mech.mechanism = CKM_ECDSA;
@@ -1269,9 +1291,6 @@ static DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNIN
 	di = NULL;
 	dilen = 0;
 	if (!(pInfo->dwSigningFlags & CARD_PADDING_INFO_PRESENT)) {
-//		if ((pInfo->aiHashAlg != 0) && (pInfo->dwVersion != CARD_SIGNING_INFO_BASIC_VERSION))
-//			FUNC_FAILS(ERROR_REVISION_MISMATCH, "Version check failed");
-
 		switch(pInfo->aiHashAlg) {
 		case 0:
 			break;
@@ -1306,7 +1325,9 @@ static DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNIN
 		if (pInfo->dwPaddingType == CARD_PADDING_PKCS1) {
 			BCRYPT_PKCS1_PADDING_INFO *padinfo = (BCRYPT_PKCS1_PADDING_INFO *)pInfo->pPaddingInfo;
 
-			if (!wcscmp(padinfo->pszAlgId, BCRYPT_SHA1_ALGORITHM)) {
+			if (!padinfo->pszAlgId)	{		// CALG_SSL3_SHAMD5
+				dilen = 0;
+			} else if (!wcscmp(padinfo->pszAlgId, BCRYPT_SHA1_ALGORITHM)) {
 				di = di_sha1;
 				dilen = sizeof(di_sha1);
 			} else if (!wcscmp(padinfo->pszAlgId, BCRYPT_SHA256_ALGORITHM)) {
@@ -1455,11 +1476,12 @@ static DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData,
 	__out PDWORD pdwDataLen,
 	__in DWORD dwFlags)
 {
+	struct p11Object_t *p11prikey;
 	DWORD dwret;
 
 	FUNC_CALLED();
 
-	if (pCardData == NULL)		// CMR_382
+	if (pCardData == NULL)		// CMR_389
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pCardData validation failed");
 
 #ifdef DEBUG
@@ -1471,6 +1493,9 @@ static DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData,
 
 	if (pbData == NULL)			// CMR_392
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pbData validation failed");
+
+	if (dwFlags != 0)			// CMR_393
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "dwFlags validation failed");
 
 	if (pdwDataLen == NULL)		// CMR_328
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pdwDataLen validation failed");
@@ -1485,12 +1510,18 @@ static DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData,
 		dwret = CardGetContainerInfo(pCardData, bContainerIndex, dwFlags, (PCONTAINER_INFO)pbData);
 	
 	} else if (wcscmp(CCP_PIN_IDENTIFIER, wszProperty) == 0) {
+		p11prikey = NULL;
+		getKeyForIndex(pCardData, (int)bContainerIndex, &p11prikey);
+
+		if (p11prikey == NULL) // CMR_390
+			FUNC_FAILS(SCARD_E_NO_KEY_CONTAINER, "bContainerIndex invalid");
+
 		*pdwDataLen = sizeof(PIN_ID);
 		if (cbData < sizeof(PIN_ID))
 			FUNC_FAILS(SCARD_E_INSUFFICIENT_BUFFER, "Provided buffer too small for PIN_ID");
 		*(PPIN_ID)pbData = ROLE_USER;
 
-	} else {
+	} else { // CMR_391
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "Property unknown");
 	}
 
@@ -1527,6 +1558,14 @@ static DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 
 	if (pdwDataLen == NULL)		// CMR_328
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pdwDataLen validation failed");
+
+	if (wcscmp(CP_CARD_KEYSIZES, wszProperty) && 
+		wcscmp(CP_CARD_PIN_INFO, wszProperty) && 
+		wcscmp(CP_CARD_PIN_STRENGTH_VERIFY, wszProperty) && 
+		wcscmp(CP_CARD_PIN_STRENGTH_CHANGE, wszProperty) && 
+		wcscmp(CP_CARD_PIN_STRENGTH_UNBLOCK, wszProperty) && 
+		(dwFlags != 0))
+		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "dwFlags validation failed");		// CMR_329
 
 	slot = (struct p11Slot_t *)pCardData->pvVendorSpecific;
 	dwret = SCARD_S_SUCCESS;
@@ -1615,11 +1654,34 @@ static DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		}
 
 	} else if (wcscmp(CP_CARD_PIN_STRENGTH_VERIFY, wszProperty) == 0) {
+		if (dwFlags != 1)
+			FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "dwFlags validation failed");
+
 		*pdwDataLen = sizeof(DWORD);
 		if (cbData < sizeof(DWORD))
 			FUNC_FAILS(SCARD_E_INSUFFICIENT_BUFFER, "Provided buffer too small for CP_CARD_PIN_STRENGTH_VERIFY");
 
 		*(PDWORD)pbData = CARD_PIN_STRENGTH_PLAINTEXT;
+
+	} else if (wcscmp(CP_CARD_PIN_STRENGTH_CHANGE, wszProperty) == 0) {
+		if (dwFlags != 1)
+			FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "dwFlags validation failed");
+
+		*pdwDataLen = sizeof(DWORD);
+		if (cbData < sizeof(DWORD))
+			FUNC_FAILS(SCARD_E_INSUFFICIENT_BUFFER, "Provided buffer too small for CP_CARD_PIN_STRENGTH_VERIFY");
+
+		FUNC_FAILS(SCARD_E_UNSUPPORTED_FEATURE, "Not supported");
+
+	} else if (wcscmp(CP_CARD_PIN_STRENGTH_UNBLOCK, wszProperty) == 0) {
+		if (dwFlags != 1)
+			FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "dwFlags validation failed");
+
+		*pdwDataLen = sizeof(DWORD);
+		if (cbData < sizeof(DWORD))
+			FUNC_FAILS(SCARD_E_INSUFFICIENT_BUFFER, "Provided buffer too small for CP_CARD_PIN_STRENGTH_VERIFY");
+
+		FUNC_FAILS(SCARD_E_UNSUPPORTED_FEATURE, "Not supported");
 
 	} else if (wcscmp(CP_KEY_IMPORT_SUPPORT, wszProperty) == 0) {
 		*pdwDataLen = sizeof(DWORD);
@@ -1643,6 +1705,8 @@ static DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 	__in DWORD cbDataLen,
 	__in DWORD dwFlags)
 {
+	HWND hnd;
+
 	FUNC_CALLED();
 
 #ifdef DEBUG
@@ -1658,8 +1722,24 @@ static DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 	if ((wcscmp(CP_PIN_CONTEXT_STRING, wszProperty) != 0) && (pbData == NULL))			// CMR_334
 		FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "pbData validation failed");
 
-	if ((wcscmp(CP_PARENT_WINDOW, wszProperty) != 0) && (wcscmp(CP_PIN_CONTEXT_STRING, wszProperty) != 0))
+	if (wcscmp(CP_PARENT_WINDOW, wszProperty) == 0) {
+		if (dwFlags != 0)			// CMR_337
+			FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "dwFlags validation failed");
+		if (cbDataLen != sizeof(hnd)) 
+			FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "CP_PARENT_WINDOW cbDataLen failed");
+
+		hnd = *(HWND *)pbData;
+
+		if ((hnd != NULL) && !IsWindow(hnd))
+			FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "CP_PARENT_WINDOW is not a valid handle");
+
+	} else if (wcscmp(CP_PIN_CONTEXT_STRING, wszProperty) == 0) {
+		if (dwFlags != 0)			// CMR_337
+			FUNC_FAILS(SCARD_E_INVALID_PARAMETER, "dwFlags validation failed");
+
+	} else {
 		FUNC_FAILS(SCARD_E_UNSUPPORTED_FEATURE, "Unsupported wszProperty");
+	}
 
 	FUNC_RETURNS(SCARD_S_SUCCESS);
 }
@@ -2226,6 +2306,9 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 
 	if (rc == CKR_OK) {
 		dwret = SCARD_S_SUCCESS;
+		if (strncmp((char *)token->info.model, "SmartCard-HSM", 13)) {
+			pCardData->pfnCardDeauthenticate = NULL;
+		}
 	} else if (rc == CKR_TOKEN_NOT_RECOGNIZED) {
 		dwret = SCARD_E_UNKNOWN_CARD;
 	} else {

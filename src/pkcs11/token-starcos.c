@@ -1099,7 +1099,7 @@ int encodeF2B(unsigned char *pin, int pinlen, unsigned char *f2b)
 	po = f2b + 1;
 	for (i = 0; i < pinlen; i++) {
 		if ((*pin < '0') || (*pin > '9')) {
-			FUNC_FAILS(CKR_ARGUMENTS_BAD, "PIN must be numeric");
+			FUNC_FAILS(CKR_PIN_INCORRECT, "PIN must be numeric");
 		}
 		if (i & 1) {
 			*po = (*po & 0xF0) | (*pin & 0x0F);
@@ -1377,6 +1377,8 @@ static int logout(struct p11Slot_t *slot)
 
 	sc = starcosGetPrivateData(slot->token);
 	memset(sc->sopin, 0, sizeof(sc->sopin));
+
+	sc->selectedApplication = 0;
 
 	FUNC_RETURNS(CKR_OK);
 }
