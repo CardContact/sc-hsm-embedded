@@ -275,8 +275,15 @@ static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 
 	rsa = RSA_new();
 
+	#if (OPENSSL_VERSION_NUMBER < 0x10100000)
 	rsa->n = BN_bin2bn(modulus->attrData.pValue, modulus->attrData.ulValueLen, NULL);
 	rsa->e = BN_bin2bn(public_exponent->attrData.pValue, public_exponent->attrData.ulValueLen, NULL);
+	#else
+	BIGNUM *new_n = BN_bin2bn(modulus->attrData.pValue, modulus->attrData.ulValueLen, NULL);
+	BIGNUM *new_e = BN_bin2bn(public_exponent->attrData.pValue, public_exponent->attrData.ulValueLen, NULL);
+
+	RSA_set0_key(rsa, new_n, new_e, NULL);
+	#endif
 
 	pkey = EVP_PKEY_new();
 	EVP_PKEY_assign_RSA(pkey, rsa);
@@ -523,8 +530,16 @@ static CK_RV encryptRSA(struct p11Object_t *obj, int padding, CK_BYTE_PTR in, CK
 
 	rsa = RSA_new();
 
+	#if (OPENSSL_VERSION_NUMBER < 0x10100000)
 	rsa->n = BN_bin2bn(modulus->attrData.pValue, modulus->attrData.ulValueLen, NULL);
 	rsa->e = BN_bin2bn(public_exponent->attrData.pValue, public_exponent->attrData.ulValueLen, NULL);
+	#else
+	BIGNUM *new_n = BN_bin2bn(modulus->attrData.pValue, modulus->attrData.ulValueLen, NULL);
+	BIGNUM *new_e = BN_bin2bn(public_exponent->attrData.pValue, public_exponent->attrData.ulValueLen, NULL);
+
+	RSA_set0_key(rsa, new_n, new_e, NULL);
+	#endif
+
 
 	if (padding == RSA_PKCS1_OAEP_PADDING) {
 		rc = RSA_padding_add_PKCS1_OAEP_mgf1(raw, modulus->attrData.ulValueLen, in, in_len, NULL, 0, EVP_sha256(), NULL);
