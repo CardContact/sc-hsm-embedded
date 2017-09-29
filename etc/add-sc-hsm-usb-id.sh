@@ -51,4 +51,20 @@ n
 a \
 		\<string\>CardContact SmartCard-HSM\<\/string\>
 }' "$LOC"
+
+	sed -i.bak '/ifdVendorID/ {
+n
+a \
+		\<string\>0x04E6\<\/string\>
+}
+/ifdProductID/ {
+n
+a \
+		\<string\>0x5816\<\/string\>
+}
+/ifdFriendlyName/ {
+n
+a \
+		\<string\>CardContact SmartCard-HSM\<\/string\>
+}' "$LOC"
 fi
