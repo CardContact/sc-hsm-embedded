@@ -1,8 +1,10 @@
 #!/bin/bash
 
 #
-# SmartCard-HSM USB-Stick shipping from November 2014 has a new USB product ID
-# that might not be contained in libccid. This script add the proper product ID.
+# SmartCard-HSM USB-Token shipping from November 2014 and from September have a new USB product ID
+# that might not be contained in libccid. This script adds the proper product ID.
+#
+# You need to run this script as root
 #
 # Find Info.plist for libccid package
 # Check if the SmartCard-HSM product ID is contained
@@ -51,6 +53,12 @@ n
 a \
 		\<string\>CardContact SmartCard-HSM\<\/string\>
 }' "$LOC"
+fi
+
+if grep --quiet 0x5816 "$LOC"; then
+	echo "SmartCard-HSM product id already contained in libccid configuration."
+else
+	echo "Adding product id to libccid configuration"
 
 	sed -i.bak '/ifdVendorID/ {
 n
