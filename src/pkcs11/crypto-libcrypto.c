@@ -481,6 +481,7 @@ CK_RV stripOAEPPadding(unsigned char *raw, int rawlen, CK_BYTE_PTR pData, CK_ULO
 
 	FUNC_CALLED();
 
+#if (OPENSSL_VERSION_NUMBER >= 0x10002000)
 	rc = RSA_padding_check_PKCS1_OAEP_mgf1(pData, (int)*pulDataLen, raw, rawlen, rawlen, NULL, 0, EVP_sha256(), NULL);
 	if (rc < 0) {
 		rv = translateError();
@@ -488,7 +489,11 @@ CK_RV stripOAEPPadding(unsigned char *raw, int rawlen, CK_BYTE_PTR pData, CK_ULO
 	}
 
 	*pulDataLen = (CK_ULONG)rc;
-
+	rv = CKR_OK;
+#else
+	rv = CKR_FUNCTION_NOT_SUPPORTED;
+#endif
+	
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -542,8 +547,12 @@ static CK_RV encryptRSA(struct p11Object_t *obj, int padding, CK_BYTE_PTR in, CK
 
 
 	if (padding == RSA_PKCS1_OAEP_PADDING) {
+#if (OPENSSL_VERSION_NUMBER >= 0x10002000)
 		rc = RSA_padding_add_PKCS1_OAEP_mgf1(raw, modulus->attrData.ulValueLen, in, in_len, NULL, 0, EVP_sha256(), NULL);
 		rc = RSA_public_encrypt(modulus->attrData.ulValueLen, raw, out, rsa, RSA_NO_PADDING);
+#else
+		FUNC_RETURNS(CKR_FUNCTION_NOT_SUPPORTED);
+#endif
 	} else {
 		rc = RSA_public_encrypt(in_len, in, out, rsa, padding);
 	}
