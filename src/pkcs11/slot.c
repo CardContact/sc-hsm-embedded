@@ -51,7 +51,9 @@
 #include "slot-pcsc.h"
 #endif
 
-
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 #ifndef MINIDRIVER
 extern struct p11Context_t *context;

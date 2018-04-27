@@ -110,6 +110,25 @@ static int refcnt = 0;
 
 
 
+int isSupported(struct libusb_device_descriptor *desc)
+{
+	if ((desc->idVendor == SCM_VENDOR_ID) &&
+	    ((desc->idProduct == SCM_SCR_3310_DEVICE_ID) ||
+	     (desc->idProduct == SCM_SCR_35XX_DEVICE_ID) ||
+	     (desc->idProduct == UTRUST_JCOP2_DEVICE_ID) ||
+	     (desc->idProduct == UTRUST_SAM_DEVICE_ID))) {
+		return 1;
+	}
+
+	if ((desc->idVendor == NITROKEY_VENDOR_ID) && (desc->idProduct == NITROKEY_HSM)) {
+		return 1;
+	}
+
+	return 0;
+}
+
+
+
 int USB_Enumerate(unsigned char *readers, int *len, int options)
 {
 	int rc, cnt, i;
@@ -164,11 +183,7 @@ int USB_Enumerate(unsigned char *readers, int *len, int options)
 			continue;
 		}
 
-		if ((desc.idVendor == SCM_VENDOR_ID) &&
-		    ((desc.idProduct == SCM_SCR_3310_DEVICE_ID) ||
-		     (desc.idProduct == SCM_SCR_35XX_DEVICE_ID) ||
-		     (desc.idProduct == UTRUST_JCOP2_DEVICE_ID) ||
-		     (desc.idProduct == UTRUST_SAM_DEVICE_ID))) {
+		if (isSupported(&desc)) {
 			uint8_t bus = libusb_get_bus_number(dev);
 			uint8_t addr = libusb_get_device_address(dev);
 
@@ -289,11 +304,7 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 			continue;
 		}
 
-		if ((desc.idVendor == SCM_VENDOR_ID) &&
-		    ((desc.idProduct == SCM_SCR_3310_DEVICE_ID) ||
-		     (desc.idProduct == SCM_SCR_35XX_DEVICE_ID) ||
-		     (desc.idProduct == UTRUST_JCOP2_DEVICE_ID) ||
-		     (desc.idProduct == UTRUST_SAM_DEVICE_ID))) {
+		if (isSupported(&desc)) {
 			uint8_t bus = libusb_get_bus_number(dev);
 			uint8_t address = libusb_get_device_address(dev);
 			unsigned short port = bus << 8 | address;

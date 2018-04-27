@@ -4,3 +4,5 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5410", GROUP="schs
 SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5116", GROUP="schsm", MODE="664"
 # Identiv uTrust Token with SIM
 SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5117", GROUP="schsm", MODE="664"
+# Nitrokey HSM
+SUBSYSTEM=="usb", ATTRS{idVendor}=="20a0", ATTRS{idProduct}=="4230", GROUP="schsm", MODE="664"
