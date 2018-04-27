@@ -93,7 +93,7 @@ int transmitAPDUwithCTAPI(struct p11Slot_t *slot, int todad,
 			apdu, sizeof(apdu));
 
 	if (rc < 0) {
-		memset_s(apdu, 0, sizeof(apdu));
+		memset_s(apdu, sizeof(apdu), 0, sizeof(apdu));
 		FUNC_FAILS(rc, "Encoding APDU failed");
 	}
 
@@ -115,7 +115,7 @@ int transmitAPDUwithCTAPI(struct p11Slot_t *slot, int todad,
 		rc = -1;
 	}
 
-	memset_s(apdu, 0, sizeof(apdu));
+	memset_s(apdu, sizeof(apdu), 0, sizeof(apdu));
 	FUNC_RETURNS(rc);
 }
 

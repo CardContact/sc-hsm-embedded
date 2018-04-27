@@ -85,12 +85,11 @@ int setResponse(struct scr *ctx, unsigned char *cmd, unsigned int *lr,
 		*lr = ctx->NumOfHB + 2;
 		break;
 	default: /* nothing          */
-		memset(rsp, 0, sizeof(rsp));
-
 		if (*lr < 2) {
 			return ERR_MEMORY;
 		}
 
+		memset(rsp, 0, *lr);
 		rsp[0] = HIGH(SMARTCARD_SUCCESS);
 		rsp[1] = 0x01;
 		*lr = 2;

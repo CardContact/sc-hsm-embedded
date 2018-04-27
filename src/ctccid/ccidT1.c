@@ -153,7 +153,7 @@ int ccidT1ReceiveBlock(scr_t *ctx)
 	rc = RDR_to_PC_DataBlock(ctx, &len, buf, NULL, NULL, NULL);
 
 	if (rc < 0) {
-		memset_s(buf, 0, sizeof(buf));
+		memset_s(buf, sizeof(buf), 0, sizeof(buf));
 		return -1;
 	}
 
@@ -171,7 +171,7 @@ int ccidT1ReceiveBlock(scr_t *ctx)
 		}
 
 		if (lrc != buf[len - 1]) {
-			memset_s(buf, 0, sizeof(buf));
+			memset_s(buf, sizeof(buf), 0, sizeof(buf));
 			return ERR_EDC;
 		}
 	}
@@ -184,7 +184,7 @@ int ccidT1ReceiveBlock(scr_t *ctx)
 		memcpy(ctx->t1->InBuff, buf + 3, ctx->t1->InBuffLength);
 	}
 
-	memset_s(buf, 0, sizeof(buf));
+	memset_s(buf, sizeof(buf), 0, sizeof(buf));
 	return 0;
 }
 
@@ -231,7 +231,7 @@ int ccidT1SendBlock(scr_t *ctx,
 	rc = PC_to_RDR_XfrBlock(ctx, BuffLen + 4, sndbuf, 0);
 
 	if (rc < 0) {
-		memset_s(sndbuf, 0, sizeof(sndbuf));
+		memset_s(sndbuf, sizeof(sndbuf), 0, sizeof(sndbuf));
 		return -1;
 	}
 
@@ -240,7 +240,7 @@ int ccidT1SendBlock(scr_t *ctx,
 	ccidT1BlockInfo(Nad, Pcb, BuffLen, Buffer);
 #endif
 
-	memset_s(sndbuf, 0, sizeof(sndbuf));
+	memset_s(sndbuf, sizeof(sndbuf), 0, sizeof(sndbuf));
 	return 0;
 }
 

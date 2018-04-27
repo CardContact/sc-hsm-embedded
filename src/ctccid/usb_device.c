@@ -110,6 +110,128 @@ static int refcnt = 0;
 
 
 
+int USB_Enumerate(unsigned char *readers, int *len, int options)
+{
+	int rc, cnt, i;
+	unsigned char *po;
+	unsigned char param[128];
+	libusb_device **devs, *dev;
+
+	/*
+	 * We implement our own context handling to avoid a bug in the default context implementation
+	 * of the libusbx library version <= 1.0.15
+	 *
+	 * See https://github.com/libusbx/libusbx/commit/ce75e9af3f9242ec328b0dc2336b69ff24287a3c#libusb/core.c
+	 */
+	if (!context) {
+		rc = libusb_init(&context);
+
+		if (rc != LIBUSB_SUCCESS) {
+#ifdef DEBUG
+			ctccid_debug("libusb_init failed. rc = %i (%s)\n", rc, libusb_error_to_string(rc));
+#endif
+			return ERR_USB;
+		}
+	}
+
+	refcnt++;
+
+#ifdef DEBUG
+	libusb_set_debug(context, 3);
+#endif
+
+	cnt = libusb_get_device_list(context, &devs);
+
+	if (cnt < 0) {
+		refcnt--;
+		return ERR_NO_READER;
+	}
+
+	/* Iterate through all devices to find a reader */
+	i = 0;
+	cnt = 0;
+	po = readers;
+	rc = USB_OK;
+
+	while ((dev = devs[i++]) != NULL ) {
+		struct libusb_device_descriptor desc;
+		struct libusb_device_handle *handle;
+
+		rc = libusb_get_device_descriptor(dev, &desc);
+
+		if (rc < 0) {
+			/* error */
+			continue;
+		}
+
+		if ((desc.idVendor == SCM_VENDOR_ID) &&
+		    ((desc.idProduct == SCM_SCR_3310_DEVICE_ID) ||
+		     (desc.idProduct == SCM_SCR_35XX_DEVICE_ID) ||
+		     (desc.idProduct == UTRUST_JCOP2_DEVICE_ID) ||
+		     (desc.idProduct == UTRUST_SAM_DEVICE_ID))) {
+			uint8_t bus = libusb_get_bus_number(dev);
+			uint8_t addr = libusb_get_device_address(dev);
+
+			if (*len - cnt < 3) {
+				rc = ERR_ARG;
+				break;
+			}
+
+			*po++ = bus;
+			*po++ = addr;
+			cnt += 2;
+
+			if (!(options & NO_READER_NAME)) {
+				if (desc.iSerialNumber) {
+					rc = libusb_open(dev, &handle);
+
+					if (rc != LIBUSB_SUCCESS) {
+						rc = ERR_USB;
+						break;
+					}
+					rc = libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, param, sizeof(param));
+					libusb_close(handle);
+				} else {
+					rc = snprintf((char *)param, sizeof(param), "%04x", (bus << 8 | addr));
+				}
+
+				if (*len - cnt < (15 + rc + 1)) {	// "SmartCard-HSM (" + serial + ")"
+					rc = ERR_ARG;
+					break;
+				}
+
+				memcpy(po, "SmartCard-HSM (", 15);
+				po += 15;
+				cnt += 15;
+				memcpy(po, param, rc);
+				po += rc;
+				cnt += rc;
+				*po++ = ')';
+				cnt++;
+			}
+
+			*po++ = 0;
+			cnt++;
+		}
+	}
+
+	if (rc == USB_OK) {
+		*len = cnt;
+	}
+
+	libusb_free_device_list(devs, 1);
+
+	refcnt--;
+	if (refcnt == 0) {
+		libusb_exit(context);
+		context = NULL;
+	}
+
+	return rc;
+}
+
+
+
 /**
  * Open USB device at the specified port and allocate necessary resources
  *
@@ -167,26 +289,19 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 			continue;
 		}
 
-		if (desc.idVendor == SCM_VENDOR_ID) {
-
-#ifdef DEBUG
-
-			if ((desc.idProduct == SCM_SCR_35XX_DEVICE_ID_1) || (desc.idProduct == SCM_SCR_35XX_DEVICE_ID_2)) {
-				ctccid_debug("Found reader SCR_35XX (%04X:%04X)\n", desc.idVendor,
-					   desc.idProduct);
-			}
-
-			if (desc.idProduct == SCM_SCR_3310_DEVICE_ID) {
-				ctccid_debug("Found reader SCR_3310 (%04X:%04X)\n", desc.idVendor,
-					   desc.idProduct);
-			}
-
-#endif
+		if ((desc.idVendor == SCM_VENDOR_ID) &&
+		    ((desc.idProduct == SCM_SCR_3310_DEVICE_ID) ||
+		     (desc.idProduct == SCM_SCR_35XX_DEVICE_ID) ||
+		     (desc.idProduct == UTRUST_JCOP2_DEVICE_ID) ||
+		     (desc.idProduct == UTRUST_SAM_DEVICE_ID))) {
+			uint8_t bus = libusb_get_bus_number(dev);
+			uint8_t address = libusb_get_device_address(dev);
+			unsigned short port = bus << 8 | address;
 
 			/*
 			 * Found the desired reader?
 			 */
-			if (cnt == pn) {
+			if ((cnt == pn) || (port == pn)) {
 #ifdef DEBUG
 				ctccid_debug("Reader index (%i) and requested port number (%i) match.\n", cnt, pn);
 #endif

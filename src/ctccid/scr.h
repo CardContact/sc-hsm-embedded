@@ -37,6 +37,8 @@
 #ifdef _WIN32
 #include <windows.h>
 #define usleep(us) Sleep((us) / 1000)
+#else
+#include <unistd.h>
 #endif
 
 #include <common/mutex.h>
@@ -45,7 +47,7 @@
 /**
  * Maximum number of readers
  */
-#define MAX_READER  8
+#define MAX_READER  16
 
 /**
  * Maximum size of ATR

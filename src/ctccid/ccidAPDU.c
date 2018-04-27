@@ -85,7 +85,7 @@ static int ccidAPDUProcess (struct scr *ctx,
 
 		rc = PC_to_RDR_XfrBlock(ctx, len, po, level);
 		if (rc < 0) {
-			memset_s(buf, 0, sizeof(buf));
+			memset_s(buf, sizeof(buf), 0, sizeof(buf));
 			return -1;
 		}
 
@@ -95,7 +95,7 @@ static int ccidAPDUProcess (struct scr *ctx,
 		len = BUFFMAX;
 		rc = RDR_to_PC_DataBlock(ctx, &len, buf, &status, &error, &chain);
 		if (rc < 0) {
-			memset_s(buf, 0, sizeof(buf));
+			memset_s(buf, sizeof(buf), 0, sizeof(buf));
 			return -1;
 		}
 	}
@@ -115,13 +115,13 @@ static int ccidAPDUProcess (struct scr *ctx,
 		if ((chain == 1) || (chain == 3)) {
 			rc = PC_to_RDR_XfrBlock(ctx, 0, NULL, 0x10);
 			if (rc < 0) {
-				memset_s(buf, 0, sizeof(buf));
+				memset_s(buf, sizeof(buf), 0, sizeof(buf));
 				return -1;
 			}
 			len = BUFFMAX;
 			rc = RDR_to_PC_DataBlock(ctx, &len, buf, &status, &error, &chain);
 			if (rc < 0) {
-				memset_s(buf, 0, sizeof(buf));
+				memset_s(buf, sizeof(buf), 0, sizeof(buf));
 				return -1;
 			}
 			continue;
@@ -129,7 +129,7 @@ static int ccidAPDUProcess (struct scr *ctx,
 		break;
 	}
 
-	memset_s(buf, 0, sizeof(buf));
+	memset_s(buf, sizeof(buf), 0, sizeof(buf));
 	return r;
 }
 

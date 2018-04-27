@@ -42,15 +42,14 @@
 #define SCM_VENDOR_ID 0x04e6
 
 /**
- * Device ID for SCR 355
+ * Device IDs
  */
-#define SCM_SCR_35XX_DEVICE_ID_1 0x5410
-#define SCM_SCR_35XX_DEVICE_ID_2 0x5817
+#define SCM_SCR_3310_DEVICE_ID   0x5116		/* Contactreader */
+#define SCM_SCR_35XX_DEVICE_ID   0x5410		/* Old JCOP 2.4.1r3 Token */
+#define UTRUST_JCOP2_DEVICE_ID   0x5817		/* New JCOP 2.4.1r3 Token */
+#define UTRUST_SAM_DEVICE_ID     0x5816		/* SAM Slot Token */
 
-/**
- * Device ID for SCR 3310
- */
-#define SCM_SCR_3310_DEVICE_ID 0x5116
+#define NO_READER_NAME           0x0001		/* Do not return reader names in USB_Enumerate */
 
 /**
  * Timeout value for writing data
@@ -63,8 +62,9 @@
 #define USB_READ_TIMEOUT  (3 * 1000)
 
 #define USB_OK               0             /* Successful completion           */
-#define ERR_NO_READER       -1             /* Invalid parameter or value      */
+#define ERR_NO_READER       -1             /* Reader not found                */
 #define ERR_USB             -2             /* USB error                       */
+#define ERR_ARG             -3             /* Invalid parameter or value      */
 
 /**
  * Data structure encapsulating all information necessary
@@ -94,6 +94,7 @@ typedef struct usb_device {
 
 } usb_device_t;
 
+int USB_Enumerate(unsigned char *readers, int *len, int options);
 int USB_Open(unsigned short pn, usb_device_t **device);
 int USB_Close(usb_device_t **device);
 void USB_GetCCIDDescriptor(usb_device_t *device, unsigned char const **desc, int *length);

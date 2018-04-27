@@ -618,10 +618,30 @@ int main(int argc, char **argv)
 
 {
 	unsigned int i;
+	unsigned short lr;
 	int ctns[MAXPORT],rc;
+	unsigned char readers[4096],*po;
 
 	for (i = 0; i < MAXPORT; i++) {
 		ctns[i] = -1;
+	}
+
+	lr = sizeof(readers);
+	CT_list(readers, &lr, CTAPI_NO_READER_NAME);
+
+	lr = sizeof(readers);
+	CT_list(readers, &lr, 0);
+
+	po = readers;
+	while (po - readers < lr) {
+		unsigned short port = *po << 8 | *(po + 1);
+		po += 2;
+
+		printf("%04x : %s\n", port, po );
+		po += strlen((char *)po) + 1;
+
+		rc = CT_init(0, port);
+		CT_close(0);
 	}
 
 	for (i = 0; i < MAXPORT; i++) {

@@ -46,13 +46,12 @@ static int mutexInitialized = 0;
 
 /* Handle up to 8 USB CCID readers */
 
-scr_t *readerTable[MAX_READER] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+scr_t *readerTable[MAX_READER] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 
 /*
  * Locate matching card terminal number in table of active readers.
  *
  */
-
 static int LookupReader(unsigned short ctn)
 {
 	int i;
@@ -64,6 +63,37 @@ static int LookupReader(unsigned short ctn)
 	}
 
 	return -1;
+}
+
+
+
+/**
+ * Determine a list of port number and reader names
+ *
+ * The reader buffer is filled with port / name tupels, with the port encoded on two bytes (MSB/LSB), followed
+ * by the zero terminated reader string.
+ *
+ * @param readers a buffer that receives port numbers and associated reader names
+ * @param lr Pointer to buffer size with maximum size on input and actual size on output
+ * @return Status code \ref OK, \ref ERR_INVALID, \ref ERR_MEMORY
+ */
+signed char CT_list(unsigned char *readers, unsigned short *lr, unsigned short options)
+{
+	int rc,len;
+
+	if ((readers == NULL) || (lr == NULL)) {
+		return ERR_INVALID;
+	}
+	len = *lr;
+
+	rc = USB_Enumerate(readers, &len, options);
+
+	if (rc == ERR_ARG) {
+		return ERR_MEMORY;
+	}
+
+	*lr = (unsigned short)len;
+	return OK;
 }
 
 
@@ -88,7 +118,7 @@ signed char CT_init(unsigned short ctn, unsigned short pn)
 	}
 
 	mutexInitialized++;
-	
+
 	if (mutex_lock(&globalmutex) != 0) {
 		return ERR_CT;
 	}
@@ -211,7 +241,7 @@ signed char CT_close(unsigned short ctn)
 	readerTable[rc] = NULL;
 
 	if (mutex_unlock(&globalmutex) != 0) {
-		return ERR_CT;	
+		return ERR_CT;
 	}
 
 	mutexInitialized--;
@@ -341,4 +371,3 @@ signed char CT_data(unsigned short ctn, unsigned char *dad, unsigned char *sad,
 
 	return rc;
 }
-

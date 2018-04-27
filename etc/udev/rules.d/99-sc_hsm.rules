@@ -1,4 +1,6 @@
 # SCM SCR 355
-ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{device}=="5410", GROUP="schsm", MODE="664"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5410", GROUP="schsm", MODE="664"
 # SCM SCR 3310
-ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{device}=="5116", GROUP="schsm", MODE="664"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5116", GROUP="schsm", MODE="664"
+# Identiv uTrust Token with SIM
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5117", GROUP="schsm", MODE="664"
