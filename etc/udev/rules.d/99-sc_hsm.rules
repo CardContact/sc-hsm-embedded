@@ -1,8 +1,10 @@
-# SCM SCR 355
-SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5410", GROUP="schsm", MODE="664"
 # SCM SCR 3310
 SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5116", GROUP="schsm", MODE="664"
-# Identiv uTrust Token with SIM
-SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5117", GROUP="schsm", MODE="664"
+# SCM SCR 35XX (JCOP 2.4.1r3)
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5410", GROUP="schsm", MODE="664"
+# Identiv uTrust Token Pro (JCOP 2.4.1r3)
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5817", GROUP="schsm", MODE="664"
+# Identiv uTrust Token Standard
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5816", GROUP="schsm", MODE="664"
 # Nitrokey HSM
 SUBSYSTEM=="usb", ATTRS{idVendor}=="20a0", ATTRS{idProduct}=="4230", GROUP="schsm", MODE="664"
