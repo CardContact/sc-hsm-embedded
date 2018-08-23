@@ -1435,6 +1435,101 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 
 
+void testKeyDerivation(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
+{
+	int rc;
+	CK_CHAR labelBase[] = "TestBaseKey", labelDerived[] = "TestDerivedKey";
+	CK_BBOOL _true = TRUE;
+	CK_OBJECT_CLASS publicKeyClass = CKO_PUBLIC_KEY;
+	CK_OBJECT_CLASS privateKeyClass = CKO_PRIVATE_KEY;
+	CK_OBJECT_CLASS deriveClass = CKO_PRIVATE_KEY;
+
+	CK_ATTRIBUTE publicKeyTemplate[5] = {
+			{ CKA_CLASS, &publicKeyClass, sizeof(publicKeyClass) },
+			{ CKA_TOKEN, &_true, sizeof(_true)},
+			{ CKA_LABEL, &labelBase, (CK_ULONG)strlen((char *)labelBase) }
+	};
+	int publicKeyAttributes = 3;
+
+	CK_ATTRIBUTE privateKeyTemplate[7] = {
+			{ CKA_CLASS, &privateKeyClass, sizeof(privateKeyClass) },
+			{ CKA_TOKEN, &_true, sizeof(_true) },
+			{ CKA_PRIVATE, &_true, sizeof(_true) },
+			{ CKA_SENSITIVE, &_true, sizeof(_true) },
+			{ CKA_LABEL, &labelBase, (CK_ULONG)strlen((char *)labelBase) },
+			{ CKA_SIGN, &_true, sizeof(_true) },
+			{ CKA_DERIVE, &_true, sizeof(_true) }
+	};
+	int privateKeyAttributes = 7;
+
+	CK_KEY_TYPE keyType = CKK_EC;
+	CK_ATTRIBUTE deriveTemplate[5] = {
+			{ CKA_CLASS, &deriveClass, sizeof(deriveClass) },
+			{ CKA_KEY_TYPE, &keyType, sizeof(keyType)},
+			{ CKA_SIGN, &_true, sizeof(_true)},
+			{ CKA_LABEL, &labelDerived, (CK_ULONG)strlen((char *)labelDerived) },
+	};
+	int derivedAttributes = 5;
+
+	CK_OBJECT_HANDLE hndPrivateKey, hndPublicKey, hndDerivedKey;
+	CK_MECHANISM mech_genecc = { CKM_EC_KEY_PAIR_GEN, 0, 0 };
+	unsigned char offset[32] = {0xA9,0xFB,0x57,0xDB,0xA1,0xEE,0xA9,0xBC,0x3E,0x66,0x0A,0x90,0x9D,0x83,0x8D,0x72,0x6E,0x3B,0xF6,0x23,0xD5,0x26,0x20,0x28,0x20,0x13,0x48,0x1D,0x1F,0x6E,0x53,0x76};
+	CK_MECHANISM mech_derive = { CKM_SC_HSM_EC_DERIVE, &offset, sizeof(offset) };
+	CK_MECHANISM signMech = { CKM_SC_HSM_ECDSA_SHA256, 0, 0 };
+	char *tbs = "----Hello World-----";
+	CK_BYTE signature[256];
+	CK_ULONG signatureLen;
+	char scr[1024];
+
+	publicKeyTemplate[publicKeyAttributes].type = CKA_EC_PARAMS;
+	publicKeyTemplate[publicKeyAttributes].pValue = "\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07";
+	publicKeyTemplate[publicKeyAttributes].ulValueLen = 10;
+	publicKeyAttributes++;
+
+	publicKeyTemplate[publicKeyAttributes].type = CKA_SC_HSM_ALGORITHM_LIST;
+	publicKeyTemplate[publicKeyAttributes].pValue = "\xA0\x73\x98";
+	publicKeyTemplate[publicKeyAttributes].ulValueLen = 3;
+	publicKeyAttributes++;
+
+	printf("Calling C_GenerateKeyPair(EC, prime256v1) ");
+	rc = p11->C_GenerateKeyPair(session, &mech_genecc,
+		publicKeyTemplate, publicKeyAttributes,
+		privateKeyTemplate, privateKeyAttributes,
+		&hndPublicKey, &hndPrivateKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DeriveKey ");
+	rc = p11->C_DeriveKey(session, &mech_derive, hndPrivateKey, deriveTemplate, derivedAttributes, &hndDerivedKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc == CKR_OK) {
+		printf("Derived Private Key:\n");
+		dumpObject(p11, session, hndDerivedKey);
+	}
+
+	printf("Calling C_SignInit()");
+	rc = p11->C_SignInit(session, &signMech, hndDerivedKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_Sign()");
+	signatureLen = sizeof(signature);
+	rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), signature, &signatureLen);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	bin2str(scr, sizeof(scr), signature, signatureLen);
+	printf("Signature:\n%s\n", scr);
+
+	printf("Calling C_DestroyObject(DerivedKey) ");
+	rc = p11->C_DestroyObject(session, hndDerivedKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DestroyObject(BaseKey) ");
+	rc = p11->C_DestroyObject(session, hndPrivateKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+}
+
+
+
 void testDigest(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_MECHANISM_TYPE mt)
 {
 	CK_BYTE hash1[64],hash2[64];
@@ -2339,6 +2434,8 @@ int main(int argc, char *argv[])
 
 				if (strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
 					testKeyGeneration(p11, session);
+
+					testKeyDerivation(p11, session);
 				}
 
 				testRSASigning(p11, slotid, 0, CKM_RSA_PKCS);

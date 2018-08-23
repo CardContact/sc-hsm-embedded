@@ -67,6 +67,9 @@ extern "C" {
 #define CKM_SC_HSM_ECDSA_SHA224 		CKC_VENDOR_DEFINED + 0x00000010
 #define CKM_SC_HSM_ECDSA_SHA256			CKC_VENDOR_DEFINED + 0x00000011
 
+/* Derive EC private key from EC private key */
+#define CKM_SC_HSM_EC_DERIVE			CKC_VENDOR_DEFINED + 0x00000012
+
 /* Support for C++ compiler ----------------------------------------------- */
 
 #ifdef __cplusplus

@@ -120,15 +120,17 @@ int createPrivateKeyObjectFromP15(struct p15PrivateKeyDescription *p15, struct p
 			{ 0, NULL, 0 }
 	};
 	struct p11Object_t *p11o;
-	unsigned char *spki;
+	unsigned char *spki = NULL;
 	int rc, attributes;
 
 	FUNC_CALLED();
 
-	rc = getSubjectPublicKeyInfo(cert, &spki);
+	if (cert) {
+		rc = getSubjectPublicKeyInfo(cert, &spki);
 
-	if (rc != CKR_OK){
-		FUNC_FAILS(rc, "Could not create public key in certificate");
+		if (rc != CKR_OK){
+			FUNC_FAILS(rc, "Could not create public key in certificate");
+		}
 	}
 
 	p11o = calloc(sizeof(struct p11Object_t), 1);
@@ -157,13 +159,17 @@ int createPrivateKeyObjectFromP15(struct p15PrivateKeyDescription *p15, struct p
 	switch(p15->keytype) {
 	case P15_KEYTYPE_RSA:
 		keyType = CKK_RSA;
-		decodeModulusExponentFromSPKI(spki, &template[attributes], &template[attributes + 1]);
-		attributes += 2;
+		if (spki) {
+			decodeModulusExponentFromSPKI(spki, &template[attributes], &template[attributes + 1]);
+			attributes += 2;
+		}
 		break;
 	case P15_KEYTYPE_ECC:
 		keyType = CKK_ECDSA;
-		decodeECParamsFromSPKI(spki, &template[attributes]);
-		attributes += 1;
+		if (spki) {
+			decodeECParamsFromSPKI(spki, &template[attributes]);
+			attributes += 1;
+		}
 		break;
 	default:
 		free(p11o);
@@ -179,7 +185,11 @@ int createPrivateKeyObjectFromP15(struct p15PrivateKeyDescription *p15, struct p
 
 	*pObject = p11o;
 
-	p11o->keysize = cert->keysize;
+	if (cert) {
+		p11o->keysize = cert->keysize;
+	} else {
+		p11o->keysize = p15->keysize;
+	}
 
 	FUNC_RETURNS(CKR_OK);
 }

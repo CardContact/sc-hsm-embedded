@@ -67,6 +67,8 @@
 #define ALGO_EC_SHA256		0x73		/* ECDSA signature with SHA-256 hash */
 #define ALGO_EC_DH		0x80		/* ECDH key derivation */
 
+#define ALGO_EC_DERIVE		0x98		/* Derive EC key from EC key */
+
 #define ID_USER_PIN		0x81		/* User PIN identifier */
 #define ID_SO_PIN		0x88		/* Security officer PIN identifier */
 
@@ -75,5 +77,7 @@ struct token_sc_hsm {
 };
 
 struct p11TokenDriver *sc_hsm_getDriver();
+
+static int sc_hsm_C_DeriveKey(struct p11Object_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_OBJECT_HANDLE_PTR );
 
 #endif /* ___TOKEN_SC_HSM_H_INC___ */

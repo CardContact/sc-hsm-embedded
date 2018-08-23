@@ -937,10 +937,40 @@ static int decodeDevAutCert(struct p11Token_t *token)
 
 
 
+/**
+ * Determine a free key identifier by enumerating all files and locating a free id in the range CC01-CCFF
+ */
+static int determineFreeKeyId(struct p11Slot_t *slot, unsigned char prefix) {
+	unsigned char filelist[MAX_FILES * 2];
+	int listlen,i,id;
+
+	FUNC_CALLED();
+
+	listlen = enumerateObjects(slot, filelist, sizeof(filelist));
+	if (listlen < 0) {
+		FUNC_FAILS(listlen, "enumerateObjects failed");
+	}
+
+	for (id = 1; id <= 255; id++) {
+		for (i = 0; i < listlen; i += 2) {
+			if ((filelist[i] == prefix) && (filelist[i + 1] == id)) {
+				break;
+			}
+		}
+		if (i >= listlen) {
+			break;
+		}
+	}
+
+	FUNC_RETURNS(id <= 255 ? id : -1);
+}
+
+
+
 static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char id, struct p11Object_t **priKey, struct p11Object_t **pubKey, struct p11Object_t **cert)
 {
 	unsigned char certValue[MAX_CERTIFICATE_SIZE];
-	struct p11Object_t *p11cert = NULL, *p11pubkey, *p11prikey;
+	struct p11Object_t *p11cert = NULL, *p11pubkey = NULL, *p11prikey;
 	struct p15PrivateKeyDescription *p15key = NULL;
 	struct p15CertificateDescription p15cert;
 	unsigned char prkd[MAX_P15_SIZE];
@@ -962,10 +992,7 @@ static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char
 
 	rc = readEF(token->slot, (EE_CERTIFICATE_PREFIX << 8) | id, certValue, sizeof(certValue));
 
-	if (rc < 0) {
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate");
-	}
-
+	if (rc > 0) {
 	certLen = rc;
 
 	if ((certValue[0] != 0x30) && (certValue[0] != 0x7F) && (certValue[0] != 0x67))
@@ -1044,11 +1071,19 @@ static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char
 			}
 		}
 	}
+	} else {
+		rc = createPrivateKeyObjectFromP15(p15key, NULL, FALSE, &p11prikey);
+
+		if (rc != CKR_OK) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Could not create private key object");
+		}
+	}
 
 	p11prikey->C_SignInit = sc_hsm_C_SignInit;
 	p11prikey->C_Sign = sc_hsm_C_Sign;
 	p11prikey->C_DecryptInit = sc_hsm_C_DecryptInit;
 	p11prikey->C_Decrypt = sc_hsm_C_Decrypt;
+	p11prikey->C_DeriveKey = sc_hsm_C_DeriveKey;
 
 	p11prikey->tokenid = (int)id;
 
@@ -1059,7 +1094,7 @@ static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char
 	if (priKey != NULL)
 		*priKey = p11prikey;
 
-	if (pubKey != NULL)
+	if ((pubKey != NULL) && (p11pubkey != NULL))
 		*pubKey = p11pubkey;
 
 	if ((p11cert != NULL) && (cert != NULL))
@@ -1119,36 +1154,6 @@ static int addCACertificateObject(struct p11Token_t *token, unsigned char id)
 
 
 
-/**
- * Determine a free key identifier by enumerating all files and locating a free id in the range CC01-CCFF
- */
-static int determineFreeKeyId(struct p11Slot_t *slot, unsigned char prefix) {
-	unsigned char filelist[MAX_FILES * 2];
-	int listlen,i,id;
-
-	FUNC_CALLED();
-
-	listlen = enumerateObjects(slot, filelist, sizeof(filelist));
-	if (listlen < 0) {
-		FUNC_FAILS(listlen, "enumerateObjects failed");
-	}
-
-	for (id = 1; id <= 255; id++) {
-		for (i = 0; i < listlen; i += 2) {
-			if ((filelist[i] == prefix) && (filelist[i + 1] == id)) {
-				break;
-			}
-		}
-		if (i >= listlen) {
-			break;
-		}
-	}
-
-	FUNC_RETURNS(id <= 255 ? id : -1);
-}
-
-
-
 static int createCertDescription(struct p11Slot_t *slot,
 		CK_ATTRIBUTE_PTR pTemplate,
 		CK_ULONG ulCount,
@@ -1195,6 +1200,153 @@ static int createCertDescription(struct p11Slot_t *slot,
 	memcpy(p15cert->id.val, id, idlen);
 
 	FUNC_RETURNS(CKR_OK);
+}
+
+
+static int createPrivateKeyDescription(
+		struct p11Slot_t *slot,
+		CK_MECHANISM_PTR pMechanism,
+		CK_ATTRIBUTE_PTR pPrivateKeyTemplate,
+		CK_ULONG ulPrivateKeyAttributeCount,
+		int id,
+		int keysize)
+{
+	int rc, len;
+	unsigned char buff[512], *po;
+	struct bytebuffer_s bb = { buff, 0, sizeof(buff) };
+	struct p11Object_t *priKey;
+	struct p15PrivateKeyDescription *p15key = NULL;
+
+	p15key = calloc(1, sizeof(struct p15PrivateKeyDescription));
+	if (p15key == NULL)
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+
+	if ((pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN) ||
+		(pMechanism->mechanism == CKM_SC_HSM_EC_DERIVE)) {
+		p15key->keytype = P15_KEYTYPE_ECC;
+	} else {
+		p15key->keytype = P15_KEYTYPE_RSA;
+	}
+	p15key->keyReference = id;
+	p15key->keysize = keysize;
+
+	rc = findAttributeInTemplate(CKA_SIGN, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	if ((rc >= 0) && *(unsigned char *)pPrivateKeyTemplate[rc].pValue) {
+		p15key->usage |= P15_SIGN;
+	}
+
+	rc = findAttributeInTemplate(CKA_SIGN_RECOVER, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	if ((rc >= 0) && *(unsigned char *)pPrivateKeyTemplate[rc].pValue) {
+		p15key->usage |= P15_SIGNRECOVER;
+	}
+
+	rc = findAttributeInTemplate(CKA_DECRYPT, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	if ((rc >= 0) && *(unsigned char *)pPrivateKeyTemplate[rc].pValue) {
+		p15key->usage |= P15_DECIPHER;
+	}
+
+	rc = findAttributeInTemplate(CKA_DERIVE, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	if ((rc >= 0) && *(unsigned char *)pPrivateKeyTemplate[rc].pValue) {
+		p15key->usage |= P15_DERIVE;
+	}
+
+	rc = findAttributeInTemplate(CKA_LABEL, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	if (rc >= 0) {
+		p15key->coa.label = calloc(1, pPrivateKeyTemplate[rc].ulValueLen + 1);
+		if (p15key->coa.label == NULL) {
+			freePrivateKeyDescription(&p15key);
+			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+		}
+		memcpy(p15key->coa.label, pPrivateKeyTemplate[rc].pValue, pPrivateKeyTemplate[rc].ulValueLen);
+	}
+
+	rc = findAttributeInTemplate(CKA_ID, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	if (rc >= 0) {
+		po = pPrivateKeyTemplate[rc].pValue;
+		len = pPrivateKeyTemplate[rc].ulValueLen;
+	} else {
+		buff[0] = id;
+		po = buff;
+		len = 1;
+	}
+	p15key->id.val = calloc(1, len);
+	if (p15key->id.val == NULL) {
+		freePrivateKeyDescription(&p15key);
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+	}
+	memcpy(p15key->id.val, po, len);
+	p15key->id.len = len;
+
+	rc = encodePrivateKeyDescription(&bb, p15key);
+
+	freePrivateKeyDescription(&p15key);
+
+	if (rc < 0)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Encoding PRKD failed");
+
+	rc = writeEF(slot, (PRKD_PREFIX << 8) | id, bb.val, bb.len);
+
+	if (rc < 0)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Writing PRKD failed");
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+static int sc_hsm_C_DeriveKey(
+		struct p11Object_t *pObject,
+		CK_MECHANISM_PTR pMechanism,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulAttributeCount,
+		CK_OBJECT_HANDLE_PTR phKey)
+{
+	int rc, id, len, idpos;
+	unsigned short SW1SW2;
+	unsigned char *pDerivationParam;
+	struct p11Object_t *derivedKey;
+
+	if (pMechanism->mechanism != CKM_SC_HSM_EC_DERIVE) {
+		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism must be CKM_SC_HSM_EC_DERIVE");
+	}
+
+	idpos = findAttributeInTemplate(CKA_ID, pTemplate, ulAttributeCount);
+	if (idpos >= 0) {
+		rc = validateAttribute(&pTemplate[idpos], 0);
+		if (rc != CKR_OK)
+			FUNC_FAILS(rc, "CKA_ID");
+
+		rc = findMatchingTokenObjectById(pObject->token->slot->token, CKO_PRIVATE_KEY, pTemplate[idpos].pValue, pTemplate[idpos].ulValueLen, &derivedKey);
+		if (rc == CKR_OK)
+			FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "A private key with that CKA_ID does already exist");
+	}
+
+	len = pMechanism->ulParameterLen + 1;
+	pDerivationParam = malloc(len);
+	pDerivationParam[0] = ALGO_EC_DERIVE;
+	memcpy(pDerivationParam + 1, pMechanism->pParameter, pMechanism->ulParameterLen);
+
+	id = determineFreeKeyId(pObject->token->slot, KEY_PREFIX);
+
+	if (id < 0)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Determine free id failed");
+
+	rc = transmitAPDU(pObject->token->slot, 0x80, 0x76, (unsigned char)pObject->tokenid, id,
+			len, pDerivationParam, 0, NULL, 0, &SW1SW2);
+
+	if (rc < 0)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+
+	if (SW1SW2 != 0x9000)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Key derivation failed");
+
+	createPrivateKeyDescription(pObject->token->slot, pMechanism, pTemplate, ulAttributeCount, id, pObject->keysize);
+
+	rc = addEECertificateAndKeyObjects(pObject->token->slot->token, id, &derivedKey, NULL, NULL);
+
+	*phKey = derivedKey->handle;
+
+	FUNC_RETURNS(rc);
 }
 
 
@@ -1422,71 +1574,7 @@ static int sc_hsm_C_GenerateKeyPair(
 	if (SW1SW2 != 0x9000)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Signature operation failed");
 
-	p15key = calloc(1, sizeof(struct p15PrivateKeyDescription));
-	if (p15key == NULL)
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
-
-	p15key->keytype = pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN ? P15_KEYTYPE_ECC : P15_KEYTYPE_RSA;
-	p15key->keyReference = id;
-	p15key->keysize = keysize;
-
-	rc = findAttributeInTemplate(CKA_SIGN, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
-	if ((rc >= 0) && *(unsigned char *)pPrivateKeyTemplate[rc].pValue) {
-		p15key->usage |= P15_SIGN;
-	}
-
-	rc = findAttributeInTemplate(CKA_SIGN_RECOVER, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
-	if ((rc >= 0) && *(unsigned char *)pPrivateKeyTemplate[rc].pValue) {
-		p15key->usage |= P15_SIGNRECOVER;
-	}
-
-	rc = findAttributeInTemplate(CKA_DECRYPT, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
-	if ((rc >= 0) && *(unsigned char *)pPrivateKeyTemplate[rc].pValue) {
-		p15key->usage |= P15_DECIPHER;
-	}
-
-	rc = findAttributeInTemplate(CKA_DERIVE, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
-	if ((rc >= 0) && *(unsigned char *)pPrivateKeyTemplate[rc].pValue) {
-		p15key->usage |= P15_DERIVE;
-	}
-
-	rc = findAttributeInTemplate(CKA_LABEL, pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
-	if (rc >= 0) {
-		p15key->coa.label = calloc(1, pPrivateKeyTemplate[rc].ulValueLen + 1);
-		if (p15key->coa.label == NULL) {
-			freePrivateKeyDescription(&p15key);
-			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
-		}
-		memcpy(p15key->coa.label, pPrivateKeyTemplate[rc].pValue, pPrivateKeyTemplate[rc].ulValueLen);
-	}
-
-	if (idpos >= 0) {
-		po = pPrivateKeyTemplate[idpos].pValue;
-		len = pPrivateKeyTemplate[idpos].ulValueLen;
-	} else {
-		buff[0] = id;
-		po = buff;
-		len = 1;
-	}
-	p15key->id.val = calloc(1, len);
-	if (p15key->id.val == NULL) {
-		freePrivateKeyDescription(&p15key);
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
-	}
-	memcpy(p15key->id.val, po, len);
-	p15key->id.len = len;
-
-	rc = encodePrivateKeyDescription(&bb, p15key);
-
-	freePrivateKeyDescription(&p15key);
-
-	if (rc < 0)
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Encoding PRKD failed");
-
-	rc = writeEF(slot, (PRKD_PREFIX << 8) | id, bb.val, bb.len);
-
-	if (rc < 0)
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Writing PRKD failed");
+	createPrivateKeyDescription(slot,pMechanism, pPrivateKeyTemplate, ulPrivateKeyAttributeCount, id, keysize);
 
 	rc = addEECertificateAndKeyObjects(slot->token, id, &priKey, &pubKey, NULL);
 
