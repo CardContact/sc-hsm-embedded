@@ -95,7 +95,7 @@ struct p11Object_t {
     CK_RV (*C_VerifyUpdate) (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
     CK_RV (*C_VerifyFinal)  (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
 
-    CK_RV (*C_DeriveKey)  (struct p11Object_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_OBJECT_HANDLE_PTR);
+    int (*C_DeriveKey)  (struct p11Object_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_OBJECT_HANDLE_PTR);
 
     struct p11Attribute_t *attrList;    /**< The list of attributes              */
     struct p11Object_t *next;       /**< Pointer to next object              */
