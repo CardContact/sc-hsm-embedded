@@ -78,6 +78,4 @@ struct token_sc_hsm {
 
 struct p11TokenDriver *sc_hsm_getDriver();
 
-static int sc_hsm_C_DeriveKey(struct p11Object_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_OBJECT_HANDLE_PTR );
-
 #endif /* ___TOKEN_SC_HSM_H_INC___ */

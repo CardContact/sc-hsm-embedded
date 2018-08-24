@@ -971,6 +971,8 @@ static int determineFreeKeyId(struct p11Slot_t *slot, unsigned char prefix) {
 
 
 
+static int sc_hsm_C_DeriveKey(struct p11Object_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_OBJECT_HANDLE_PTR );
+
 static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char id, struct p11Object_t **priKey, struct p11Object_t **pubKey, struct p11Object_t **cert)
 {
 	unsigned char certValue[MAX_CERTIFICATE_SIZE];
