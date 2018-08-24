@@ -128,6 +128,7 @@ int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, s
 	};
 	struct p11Object_t *p11o;
 	unsigned char *spki;
+	unsigned char eccpoint[136];		// Tag + 2Len + '04' + 2 * 66
 	int rc, attributes;
 
 	FUNC_CALLED();
@@ -179,7 +180,7 @@ int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, s
 			FUNC_FAILS(CKR_KEY_TYPE_INCONSISTENT, "Can't decode EC parameter - Private key type does not match public key type in certificate");
 		}
 		attributes++;
-		if (decodeECPointFromSPKI(spki, &template[attributes])) {
+		if (decodeECPointFromSPKI(spki, &template[attributes], eccpoint, sizeof(eccpoint))) {
 			free(p11o);
 			FUNC_FAILS(CKR_KEY_TYPE_INCONSISTENT, "Private key type does not match public key type in certificate");
 		}

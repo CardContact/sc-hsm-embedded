@@ -387,8 +387,12 @@ static int decodeECDSASignature(unsigned char *data, int datalen,
 		fieldsizebytes = 32;
 	} else if (datalen <= 90) {		// 320 bit curve = 40 * 2 + 10 byte maximum DER signature
 		fieldsizebytes = 40;
-	} else {
+	} else if (datalen <= 106) {		// 384 bit curve = 48 * 2 + 10 byte maximum DER signature
+		fieldsizebytes = 48;
+	} else if (datalen <= 138) {		// 512 bit curve = 64 * 2 + 10 byte maximum DER signature
 		fieldsizebytes = 64;
+	} else {
+		fieldsizebytes = 66;
 	}
 
 #ifdef DEBUG
@@ -474,7 +478,7 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 {
 	int rc, algo, signaturelen;
 	unsigned short SW1SW2;
-	unsigned char scr[256];
+	unsigned char scr[512];
 	FUNC_CALLED();
 
 	rc = getSignatureSize(mech, pObject);
@@ -612,7 +616,7 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 {
 	int rc, algo;
 	unsigned short SW1SW2;
-	unsigned char scr[256];
+	unsigned char scr[512];
 
 	FUNC_CALLED();
 
@@ -1214,7 +1218,6 @@ static int createPrivateKeyDescription(
 	int rc, len;
 	unsigned char buff[512], *po;
 	struct bytebuffer_s bb = { buff, 0, sizeof(buff) };
-	struct p11Object_t *priKey;
 	struct p15PrivateKeyDescription *p15key = NULL;
 
 	p15key = calloc(1, sizeof(struct p15PrivateKeyDescription));
@@ -1530,12 +1533,11 @@ static int sc_hsm_C_GenerateKeyPair(
 		struct p11Object_t **phPublicKey,
 		struct p11Object_t **phPrivateKey)
 {
-	unsigned char buff[512], *po;
+	unsigned char buff[512];
 	struct bytebuffer_s bb = { buff, 0, sizeof(buff) };
-	struct p15PrivateKeyDescription *p15key = NULL;
 	struct p11Object_t *priKey, *pubKey;
 	unsigned short SW1SW2;
-	int rc,id,keysize,idpos,len;
+	int rc,id,keysize,idpos;
 
 	FUNC_CALLED();
 

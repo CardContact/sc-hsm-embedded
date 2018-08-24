@@ -47,7 +47,7 @@ int populateCVCAttributes(struct p11Object_t *pObject);
 int getSubjectPublicKeyInfo(struct p11Object_t *pObject, unsigned char **spki);
 int decodeModulusExponentFromSPKI(unsigned char *spki, CK_ATTRIBUTE_PTR modulus, CK_ATTRIBUTE_PTR exponent);
 int decodeECParamsFromSPKI(unsigned char *spki, CK_ATTRIBUTE_PTR ecparams);
-int decodeECPointFromSPKI(unsigned char *spki, CK_ATTRIBUTE_PTR point);
+int decodeECPointFromSPKI(unsigned char *spki, CK_ATTRIBUTE_PTR point, unsigned char *encappuk, size_t encappuklen);
 int createCertificateObjectFromP15(struct p15CertificateDescription *p15, unsigned char *cert, size_t certlen, struct p11Object_t **pObject);
 
 #endif /* ___SECRETKEYOBJECT_H_INC___ */

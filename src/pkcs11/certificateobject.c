@@ -482,12 +482,10 @@ int decodeECParamsFromSPKI(unsigned char *spki,
 
 
 
-int decodeECPointFromSPKI(unsigned char *spki,
-                                 CK_ATTRIBUTE_PTR point)
+int decodeECPointFromSPKI(unsigned char *spki, CK_ATTRIBUTE_PTR point, unsigned char *encappuk, size_t encappuklen)
 {
 	int tag, length, buflen;
 	unsigned char *value, *cursor;
-	static unsigned char encappuk[83];
 
 	cursor = spki;				// spk is ASN.1 validated before, not need to check again
 
@@ -518,16 +516,20 @@ int decodeECPointFromSPKI(unsigned char *spki,
 		return -1;
 	}
 
-	if ((length < 6) || (length > 82)) {
+	// Length is bitlen + '04' + public point
+	// encappuklen is tag + 3 byte tag + '04' + public point
+	if ((length < 6) || (length > encappuklen - 2)) {
 		return -1;
 	}
 
-	encappuk[0] = ASN1_OCTET_STRING;
-	encappuk[1] = length - 1;
-	memcpy(encappuk + 2, value + 1, length - 1);
+	cursor = encappuk;
+	asn1StoreTag(&cursor, ASN1_OCTET_STRING);
+	asn1StoreLength(&cursor, length - 1);
+	memcpy(cursor, value + 1, length - 1);
+
 	point->type = CKA_EC_POINT;
 	point->pValue = encappuk;
-	point->ulValueLen = length + 1;
+	point->ulValueLen = cursor - encappuk + length - 1;
 
 	return 0;
 }

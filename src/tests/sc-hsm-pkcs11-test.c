@@ -634,7 +634,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
 	CK_SESSION_INFO sessioninfo;
 	char *tbs = "Hello World";
-	CK_BYTE signature[256];
+	CK_BYTE signature[512];
 	CK_ULONG len;
 	char scr[1024];
 	int rc, keyno;
@@ -826,7 +826,7 @@ int testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHAN
 	CK_OBJECT_HANDLE hnd,pubhnd;
 	CK_MECHANISM mech = { CKM_ECDSA_SHA1, 0, 0 };
 	char *tbs = "----Hello World-----";
-	CK_BYTE signature[256];
+	CK_BYTE signature[512];
 	CK_ULONG len;
 	char scr[1024];
 	int rc,keyno;
@@ -1477,7 +1477,7 @@ void testKeyDerivation(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	CK_MECHANISM mech_derive = { CKM_SC_HSM_EC_DERIVE, &offset, sizeof(offset) };
 	CK_MECHANISM signMech = { CKM_SC_HSM_ECDSA_SHA256, 0, 0 };
 	char *tbs = "----Hello World-----";
-	CK_BYTE signature[256];
+	CK_BYTE signature[512];
 	CK_ULONG signatureLen;
 	char scr[1024];
 
