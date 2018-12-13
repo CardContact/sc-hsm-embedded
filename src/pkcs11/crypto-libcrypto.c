@@ -38,6 +38,7 @@
 // #include <openssl/conf.h>
 #include <openssl/err.h>
 
+#include <common/asn1.h>
 #include <common/cvc.h>
 #include <pkcs11/session.h>
 #include <pkcs11/crypto.h>
@@ -370,6 +371,7 @@ static CK_RV verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYT
 	struct p11Attribute_t *ecparam;
 	struct p11Attribute_t *ecpoint;
 	const unsigned char *po;
+	unsigned char *ppo;
 	unsigned char wrappedSig[140];
 	EC_GROUP *ecg = NULL;
 	EC_POINT *ecp = NULL;
@@ -410,7 +412,10 @@ static CK_RV verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYT
 		FUNC_FAILVIAOUT(CKR_HOST_MEMORY, "Out of memory");
 	}
 
-	if (!EC_POINT_oct2point(ecg, ecp, (CK_BYTE_PTR)ecpoint->attrData.pValue + 2, ecpoint->attrData.ulValueLen - 2, NULL)) {
+	ppo = (CK_BYTE_PTR)ecpoint->attrData.pValue + 1;	// Skip tag 04
+	len = asn1Length(&ppo);
+
+	if (!EC_POINT_oct2point(ecg, ecp, ppo, len, NULL)) {
 		FUNC_FAILVIAOUT(CKR_ATTRIBUTE_VALUE_INVALID, "EC_POINT_oct2point() could not decode point");
 	}
 

@@ -1105,6 +1105,7 @@ void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_M
 		}
 
 		if (mt == CKM_RSA_X_509) {
+			modulus.ulValueLen = sizeof(plain);
 			rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&modulus, 1);
 			printf("C_GetAttributeValue (Session %ld) - %s : %s\n", session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 

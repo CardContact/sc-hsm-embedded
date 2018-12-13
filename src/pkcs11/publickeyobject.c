@@ -127,9 +127,9 @@ int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, s
 			{ 0, NULL, 0 }
 	};
 	struct p11Object_t *p11o;
-	unsigned char *spki;
+	unsigned char *spki,*po;
 	unsigned char eccpoint[136];		// Tag + 2Len + '04' + 2 * 66
-	int rc, attributes;
+	int len, rc, attributes;
 
 	FUNC_CALLED();
 
@@ -184,7 +184,9 @@ int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, s
 			free(p11o);
 			FUNC_FAILS(CKR_KEY_TYPE_INCONSISTENT, "Private key type does not match public key type in certificate");
 		}
-		cert->keysize = (template[attributes].ulValueLen - 3) << 2;
+		po = (unsigned char *)template[attributes].pValue + 1;
+		len = asn1Length(&po);		// Includes '04'
+		cert->keysize = (len - 1) << 2;
 		attributes++;
 		break;
 	default:
