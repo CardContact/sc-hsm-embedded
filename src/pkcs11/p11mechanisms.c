@@ -82,12 +82,18 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 		FUNC_RETURNS(rv);
 	}
 
-	if ((findSessionObject(pSession, hKey, &pObject) < 0) && (findObject(pSlot->token, hKey, &pObject, TRUE) < 0)) {
-		FUNC_FAILS(CKR_KEY_HANDLE_INVALID, "Can not find key for handle");
+	rv = findSlotKey(pSlot, hKey, &pObject);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
 	}
 
 	if (pObject->C_EncryptInit != NULL) {
 		rv = pObject->C_EncryptInit(pObject, pMechanism);
+		if (rv == CKR_DEVICE_ERROR) {
+			rv = handleDeviceError(hSession);
+			FUNC_FAILS(rv, "Device error reported");
+		}
 	} else {
 		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported");
 	}
@@ -150,8 +156,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
 		FUNC_RETURNS(rv);
 	}
 
-	if ((findSessionObject(pSession, pSession->activeObjectHandle, &pObject) < 0) && (findObject(pSlot->token, pSession->activeObjectHandle, &pObject, TRUE) < 0)) {
-		FUNC_FAILS(CKR_KEY_HANDLE_INVALID, "Can not find key for handle");
+	rv = findSlotKey(pSlot, pSession->activeObjectHandle, &pObject);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
 	}
 
 	if (pObject->C_Encrypt != NULL) {

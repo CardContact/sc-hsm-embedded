@@ -46,6 +46,7 @@ extern "C" {
 
 #define P15_KEYTYPE_RSA     0x30
 #define P15_KEYTYPE_ECC     0xA0
+#define P15_KEYTYPE_AES     0xA8
 
 #define P15_ENCIPHER        0x80000000
 #define P15_DECIPHER        0x40000000
@@ -89,6 +90,20 @@ struct p15PrivateKeyDescription {
 
 
 
+struct p15SecretKeyDescription {
+	int             keytype;            /**< the key type encoded as the tag value*/
+	struct p15CommonObjectAttributes
+	                coa;                /**< CommonObjectAttributes               */
+	size_t          _idlen;             /**< Length of key id (Deprecated         */
+	struct bytestring_s
+	                id;                 /**< The key id as visible at PKCS#11     */
+	unsigned long   usage;              /**< Key usage flags                      */
+	int             keysize;            /**< Key size in bits                     */
+	int             keyReference;       /**< The key reference used by the card   */
+};
+
+
+
 #define P15_CT_X509                     0x30
 #define P15_CT_X509_ATTRIBUTE           0xA0
 #define P15_CT_CVC                      0xA5
@@ -111,10 +126,12 @@ struct p15CertificateDescription {
 
 int decodePrivateKeyDescription(unsigned char *prkd, size_t prkdlen, struct p15PrivateKeyDescription **p15);
 int decodeCertificateDescription(unsigned char *cd, size_t cdlen, struct p15CertificateDescription **p15);
+int decodeSecretKeyDescription(unsigned char *skd, size_t skdlen, struct p15SecretKeyDescription **p15);
 int encodePrivateKeyDescription(bytebuffer bb, struct p15PrivateKeyDescription *p15);
 int encodeCertificateDescription(bytebuffer bb, struct p15CertificateDescription *p15);
 void freePrivateKeyDescription(struct p15PrivateKeyDescription **p15);
 void freeCertificateDescription(struct p15CertificateDescription **p15);
+void freeSecretKeyDescription(struct p15SecretKeyDescription **p15);
 
 /* Support for C++ compiler ----------------------------------------------- */
 

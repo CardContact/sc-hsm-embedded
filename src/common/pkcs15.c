@@ -199,6 +199,34 @@ static int encodeKeyAttributes(bytebuffer bb, struct p15PrivateKeyDescription *p
 
 
 
+static int decodeCommonSecretKeyAttributes(unsigned char *ska, int skalen, struct p15SecretKeyDescription *p15)
+{
+	int tag,len;
+	unsigned char *po;
+
+	po = ska;
+
+	if (skalen <= 0) {
+		return 0;
+	}
+
+	tag = asn1Tag(&po);
+
+	if (tag != ASN1_INTEGER) {
+		return -1;
+	}
+
+	len = asn1Length(&po);
+
+	if (len <= 0) {
+		return 0;
+	}
+
+	return asn1DecodeInteger(po, len, &p15->keysize);
+}
+
+
+
 static int decodePrivateKeyAttributes(unsigned char *prkd, int prkdlen, struct p15PrivateKeyDescription *p15)
 {
 	int rc,tag,len;
@@ -278,6 +306,116 @@ static int decodePrivateKeyAttributes(unsigned char *prkd, int prkdlen, struct p
 	}
 
 	return 0;
+}
+
+
+
+static int decodeSecretKeyAttributes(unsigned char *prkd, int prkdlen, struct p15SecretKeyDescription *p15)
+{
+	int rc,tag,len;
+	unsigned char *po, *obj;
+
+	if (prkdlen <= 0) {				// Nothing to decode
+		return 0;
+	}
+
+	po = obj = prkd;
+
+	tag = asn1Tag(&po);
+	if (tag != ASN1_SEQUENCE) {
+		return -1;
+	}
+
+	len = asn1Length(&po);
+
+	rc = decodeCommonObjectAttributes(po, len, &p15->coa);
+	if (rc < 0) {
+		return rc;
+	}
+
+	po += len;
+
+	if ((po - prkd) >= prkdlen) {
+		return 0;
+	}
+
+	obj = po;
+	tag = asn1Tag(&po);
+	if (tag != ASN1_SEQUENCE) {
+		return -1;
+	}
+
+	len = asn1Length(&po);
+
+	rc = decodeCommonKeyAttributes(po, len, (struct p15PrivateKeyDescription *)p15);
+	if (rc < 0) {
+		return rc;
+	}
+
+	po += len;
+
+	if ((po - prkd) >= prkdlen) {
+		return 0;
+	}
+
+	obj = po;
+	tag = asn1Tag(&po);
+	if (tag != 0xA0) {
+		return -1;
+	}
+
+	len = asn1Length(&po);
+
+	rc = decodeCommonSecretKeyAttributes(po, len, p15);
+	if (rc < 0) {
+		return rc;
+	}
+
+	return 0;
+}
+
+
+
+/**
+ * Decode a TLV encoded PKCS#15 secret key description into a structure
+ *
+ * The caller must use freeSecretKeyDescription() to free the allocated structure
+ *
+ * @param prkd      The first byte of the encoded structure
+ * @param prkdlen   The length of the encoded structure
+ * @param p15       Pointer to pointer updated with the newly allocated structure
+ * @return          0 if successful, -1 for structural errors
+ */
+int decodeSecretKeyDescription(unsigned char *skd, size_t skdlen, struct p15SecretKeyDescription **p15)
+{
+	int rc,tag,len;
+	unsigned char *po;
+
+	rc = (int)asn1Validate(skd, skdlen);
+
+	if (rc != 0) {
+		return -1;
+	}
+
+	*p15 = calloc(1, sizeof(struct p15SecretKeyDescription));
+	if (*p15 == NULL) {
+		return -1;
+	}
+
+	po = skd;
+
+	tag = asn1Tag(&po);
+	if (tag != 0xA8) {
+		return -1;
+	}
+
+	(*p15)->keytype = (int)tag;
+
+	len = asn1Length(&po);
+
+	rc = decodeSecretKeyAttributes(po, len, *p15);
+
+	return rc;
 }
 
 
@@ -528,6 +666,27 @@ static void freeCommonObjectAttributes(struct p15CommonObjectAttributes *coa)
  * @param p15       Pointer to pointer to structure. Pointer is cleared with NULL
  */
 void freePrivateKeyDescription(struct p15PrivateKeyDescription **p15)
+{
+	if (*p15 != NULL) {
+		freeCommonObjectAttributes(&(*p15)->coa);
+		if ((*p15)->id.val) {
+			free((*p15)->id.val);
+			(*p15)->id.val = NULL;
+			(*p15)->id.len = 0;
+		}
+		free(*p15);
+	}
+	*p15 = NULL;
+}
+
+
+
+/**
+ * Free structure allocated in decodeSecretKeyDescription()
+ *
+ * @param p15       Pointer to pointer to structure. Pointer is cleared with NULL
+ */
+void freeSecretKeyDescription(struct p15SecretKeyDescription **p15)
 {
 	if (*p15 != NULL) {
 		freeCommonObjectAttributes(&(*p15)->coa);

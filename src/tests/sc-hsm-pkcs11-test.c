@@ -2246,6 +2246,110 @@ void decodeArgs(int argc, char **argv)
 
 
 
+int testAES(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
+{
+	CK_SESSION_HANDLE session;
+	CK_OBJECT_CLASS class = CKO_SECRET_KEY;
+	CK_KEY_TYPE keyType = CKK_AES;
+	CK_ATTRIBUTE template[] = {
+			{ CKA_CLASS, &class, sizeof(class) },
+			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) }
+	};
+
+	CK_OBJECT_HANDLE hnd;
+	CK_MECHANISM mech = { CKM_ECDSA_SHA1, 0, 0 };
+	char *tbs = "Hello World.....";
+
+	CK_BYTE signature[512];
+	CK_BYTE ciphertext[64];
+	CK_ULONG len;
+	char scr[1024];
+	int rc,keyno;
+
+	keyno = 0;
+
+	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
+	printf("C_OpenSession (Thread %i, Slot=%ld) - %s : %s\n", id, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc != CKR_OK)
+		return rc;
+
+	rc = p11->C_Login(session, CKU_USER, pin, pinlen);
+	printf("C_Login User (Thread %i, Slot=%ld) - %s : %s\n", id, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK || rc == CKR_USER_ALREADY_LOGGED_IN));
+
+	if (rc != CKR_OK && rc != CKR_USER_ALREADY_LOGGED_IN)
+		goto out;
+
+	while (1) {
+		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
+
+		if (rc != CKR_OK) {
+			rc = CKR_OK;
+			break;
+		}
+
+		mech.mechanism = CKM_AES_CBC;
+
+		printf("Calling C_EncryptInit()");
+		rc = p11->C_EncryptInit(session, &mech, hnd);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Calling C_Encrypt()");
+
+		len = sizeof(ciphertext);
+		rc = p11->C_Encrypt(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), ciphertext, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Ciphertext size = %lu\n", len);
+
+		bin2str(scr, sizeof(scr), ciphertext, len);
+		printf("Ciphertext:\n%s\n", scr);
+
+		printf("Calling C_DecryptInit()");
+
+		rc = p11->C_DecryptInit(session, &mech, hnd);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Calling C_Decrypt()");
+
+		rc = p11->C_Decrypt(session, (CK_BYTE_PTR)ciphertext, len, ciphertext, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		bin2str(scr, sizeof(scr), ciphertext, len);
+		printf("Plain:\n%s\n", scr);
+		printf("Verify plaintext... %s\n", verdict(memcmp(ciphertext, tbs, len) == 0));
+
+		mech.mechanism = CKM_AES_CMAC;
+
+		printf("Calling C_SignInit()");
+		rc = p11->C_SignInit(session, &mech, hnd);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Calling C_Sign()");
+
+		len = 0;
+		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), NULL, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Signature size = %lu\n", len);
+
+		len = sizeof(signature);
+		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), signature, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		bin2str(scr, sizeof(scr), signature, len);
+		printf("Signature:\n%s\n", scr);
+
+		keyno++;
+	}
+
+	out:
+		p11->C_CloseSession(session);
+	return rc;
+}
+
+
+
 int main(int argc, char *argv[])
 {
 	int i;
@@ -2403,6 +2507,8 @@ int main(int argc, char *argv[])
 					unlockPIN(p11, slotid);
 					break;
 				}
+
+				testAES(p11, slotid, 0);
 
 				testSessions(p11, slotid);
 

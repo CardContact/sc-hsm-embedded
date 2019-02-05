@@ -11,6 +11,7 @@ lib_LTLIBRARIES = libsc-hsm-pkcs11.la
 libsc_hsm_pkcs11_la_SOURCES = crc32.c dataobject.c object.c p11generic.c p11mechanisms.c p11objects.c \
 			p11session.c p11slots.c session.c slot.c slot-ctapi.c slot-pcsc.c slot-pcsc-event.c slotpool.c strbpcpy.c \
 			token.c token-sc-hsm.c certificateobject.c privatekeyobject.c publickeyobject.c \
+			secretkeyobject.c \
 			token-starcos.c token-starcos-bnotk.c token-starcos-dtrust.c token-starcos-dgn.c
 
 if ENABLE_CTAPI
