@@ -69,6 +69,10 @@
 
 #define ALGO_EC_DERIVE		0x98		/* Derive EC key from EC key */
 
+#define ALGO_AES_CBC_ENCRYPT	0x10
+#define ALGO_AES_CBC_DECRYPT	0x11
+#define ALGO_AES_CMAC		0x18
+
 #define ID_USER_PIN		0x81		/* User PIN identifier */
 #define ID_SO_PIN		0x88		/* Security officer PIN identifier */
 
