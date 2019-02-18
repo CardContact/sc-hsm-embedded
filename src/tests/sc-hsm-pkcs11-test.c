@@ -1436,6 +1436,78 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 
 
+void testAESKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
+{
+	int rc;
+	CK_CHAR label[] = "TestAESKey";
+	CK_BBOOL _false = FALSE;
+	CK_BBOOL _true = TRUE;
+
+	CK_OBJECT_CLASS secretKeyClass = CKO_SECRET_KEY;
+	CK_ULONG len = 16;
+	CK_BYTE algoList[] = {0x10, 0x11, 0x18, 0x99};
+	CK_ATTRIBUTE secretKeyTemplate[20] = {
+			{ CKA_CLASS, &secretKeyClass, sizeof(secretKeyClass) },
+			{ CKA_TOKEN, &_true, sizeof(_true)},
+			{ CKA_PRIVATE, &_true, sizeof(_true)},
+			{ CKA_SENSITIVE, &_true, sizeof(_true)},
+			{ CKA_LABEL, &label, (CK_ULONG)strlen((char *)label) },
+			{ CKA_VALUE_LEN, &len, sizeof(len) },
+			{ CKA_SC_HSM_ALGORITHM_LIST, &algoList, sizeof(algoList)},
+			{ CKA_SIGN, &_true, sizeof(_true)},
+			{ CKA_DERIVE, &_true, sizeof(_true)},
+			{ CKA_ENCRYPT, &_true, sizeof(_true)},
+			{ CKA_DECRYPT, &_true, sizeof(_true)}
+	};
+	int secretKeyAttributes = 11;
+
+	CK_OBJECT_HANDLE hndSecretKey;
+	CK_MECHANISM mech_genaes = { CKM_AES_KEY_GEN, 0, 0 };
+
+	printf("Calling C_GenerateKey(AES 128) ");
+	rc = p11->C_GenerateKey(session, &mech_genaes, secretKeyTemplate, secretKeyAttributes, &hndSecretKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc == CKR_OK) {
+		printf("Secret Key:\n");
+		dumpObject(p11, session, hndSecretKey);
+	}
+
+	printf("Calling C_DestroyObject(AES Key) ");
+	rc = p11->C_DestroyObject(session, hndSecretKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_GenerateKey(AES 192) ");
+	len = 24;
+	rc = p11->C_GenerateKey(session, &mech_genaes, secretKeyTemplate, secretKeyAttributes, &hndSecretKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc == CKR_OK) {
+		printf("Secret Key:\n");
+		dumpObject(p11, session, hndSecretKey);
+	}
+
+	printf("Calling C_DestroyObject(AES Key) ");
+	rc = p11->C_DestroyObject(session, hndSecretKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_GenerateKey(AES 256) ");
+	len = 32;
+	rc = p11->C_GenerateKey(session, &mech_genaes, secretKeyTemplate, secretKeyAttributes, &hndSecretKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc == CKR_OK) {
+		printf("Secret Key:\n");
+		dumpObject(p11, session, hndSecretKey);
+	}
+
+	printf("Calling C_DestroyObject(AES Key) ");
+	rc = p11->C_DestroyObject(session, hndSecretKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+}
+
+
+
 void testKeyDerivation(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
 	int rc;
@@ -2543,6 +2615,8 @@ int main(int argc, char *argv[])
 					testKeyGeneration(p11, session);
 
 					testKeyDerivation(p11, session);
+
+					testAESKeyGeneration(p11, session);
 				}
 
 				testRSASigning(p11, slotid, 0, CKM_RSA_PKCS);

@@ -129,6 +129,7 @@ int decodeCertificateDescription(unsigned char *cd, size_t cdlen, struct p15Cert
 int decodeSecretKeyDescription(unsigned char *skd, size_t skdlen, struct p15SecretKeyDescription **p15);
 int encodePrivateKeyDescription(bytebuffer bb, struct p15PrivateKeyDescription *p15);
 int encodeCertificateDescription(bytebuffer bb, struct p15CertificateDescription *p15);
+int encodeSecretKeyDescription(bytebuffer bb, struct p15SecretKeyDescription *p15);
 void freePrivateKeyDescription(struct p15PrivateKeyDescription **p15);
 void freeCertificateDescription(struct p15CertificateDescription **p15);
 void freeSecretKeyDescription(struct p15SecretKeyDescription **p15);

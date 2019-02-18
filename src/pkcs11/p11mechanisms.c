@@ -1459,13 +1459,83 @@ CK_DECLARE_FUNCTION(CK_RV, C_GenerateKey)(
 		CK_OBJECT_HANDLE_PTR phKey
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	int pos;
+	struct p11Slot_t *slot;
+	struct p11Session_t *pSession;
+	struct p11Token_t *token;
+	struct p11Object_t *p11SecretKey;
 
 	FUNC_CALLED();
 
 	if (context == NULL) {
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
+
+	if (!isValidPtr(pMechanism)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pTemplate)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(phKey)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	rv = findSlot(&context->slotPool, pSession->slotID, &slot);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+#ifdef DEBUG
+	debug("Secret Key Template\n");
+	dumpAttributes(pTemplate, ulCount);
+#endif
+
+	pos = findAttributeInTemplate(CKA_TOKEN, pTemplate, ulCount);
+	if (pos < 0) {
+		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_TOKEN not found in secret key template");
+	}
+
+	rv = validateAttribute(&pTemplate[pos], sizeof(CK_BBOOL));
+	if (rv != CKR_OK)
+		FUNC_FAILS(rv, "CKA_TOKEN has invalid value");
+
+	if (*(CK_BBOOL *)pTemplate[pos].pValue == 0) {
+		FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "Generating session key not supported");
+	}
+
+	rv = getValidatedToken(slot, &token);
+
+	if (rv != CKR_OK) {
+		return rv;
+	}
+
+	if (getSessionState(pSession, token) != CKS_RW_USER_FUNCTIONS) {
+		FUNC_FAILS(CKR_SESSION_READ_ONLY, "Session is read/only");
+	}
+
+	rv = generateTokenKey(slot, pMechanism, pTemplate, ulCount, &p11SecretKey);
+
+	if (rv == CKR_DEVICE_ERROR) {
+		rv = handleDeviceError(hSession);
+		FUNC_FAILS(rv, "Device error reported");
+	}
+
+	if (rv != CKR_OK) {
+		FUNC_FAILS(rv, "Generating key pair on token failed");
+	}
+
+	*phKey = p11SecretKey->handle;
 
 	FUNC_RETURNS(rv);
 }

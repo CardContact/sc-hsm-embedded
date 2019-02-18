@@ -818,6 +818,47 @@ static int sc_hsm_C_GenerateRandom(struct p11Slot_t *slot, CK_BYTE_PTR rnd, CK_U
 
 
 
+static int encodeGSK(bytebuffer bb, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulPublicKeyAttributeCount)
+{
+	int rc;
+
+	FUNC_CALLED();
+
+	bbClear(bb);
+
+	rc = findAttributeInTemplate(CKA_SC_HSM_ALGORITHM_LIST, pTemplate, ulPublicKeyAttributeCount);
+	if (rc < 0) {
+		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_SC_HSM_ALGORITHM_LIST not found in template");
+	}
+	asn1AppendBytes(bb, 0x91, pTemplate[rc].pValue, pTemplate[rc].ulValueLen);
+
+	rc = findAttributeInTemplate(CKA_SC_HSM_KEY_USE_COUNTER, pTemplate, ulPublicKeyAttributeCount);
+	if (rc >= 0) {
+		if (pTemplate[rc].ulValueLen == 0 || pTemplate[rc].ulValueLen > 4) {
+			FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "CKA_SC_HSM_KEY_USE_COUNTER is not in the range between 1 and 2^32");
+		}
+		asn1AppendBytes(bb, 0x90, pTemplate[rc].pValue, pTemplate[rc].ulValueLen);
+	}
+
+	rc = findAttributeInTemplate(CKA_SC_HSM_KEY_DOMAIN, pTemplate, ulPublicKeyAttributeCount);
+	if (rc >= 0) {
+		asn1AppendBytes(bb, 0x92, pTemplate[rc].pValue, pTemplate[rc].ulValueLen);
+	}
+
+	rc = findAttributeInTemplate(CKA_SC_HSM_WRAPPING_KEY_ID, pTemplate, ulPublicKeyAttributeCount);
+	if (rc >= 0) {
+		asn1AppendBytes(bb, 0x93, pTemplate[rc].pValue, pTemplate[rc].ulValueLen);
+	}
+
+	if (bbHasFailed(bb)) {
+		FUNC_FAILS(CKR_DEVICE_MEMORY, "Buffer to encode GSK buffer too small");
+	}
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
 static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pPublicKeyTemplate, CK_ULONG ulPublicKeyAttributeCount, int *keysize)
 {
 	int rc,pos,ofs;
@@ -1330,6 +1371,92 @@ static int createCertDescription(struct p11Slot_t *slot,
 }
 
 
+
+static int createSecretKeyDescription(
+		struct p11Slot_t *slot,
+		CK_ATTRIBUTE_PTR pSecretKeyTemplate,
+		CK_ULONG ulSecretKeyAttributeCount,
+		int id,
+		int keysize)
+{
+	int rc, len;
+	unsigned char buff[512], *po;
+	struct bytebuffer_s bb = { buff, 0, sizeof(buff) };
+	struct p15SecretKeyDescription *p15key = NULL;
+
+	p15key = calloc(1, sizeof(struct p15SecretKeyDescription));
+	if (p15key == NULL)
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+
+
+	p15key->keytype = P15_KEYTYPE_AES;
+	p15key->keyReference = id;
+	p15key->keysize = keysize;
+
+	rc = findAttributeInTemplate(CKA_SIGN, pSecretKeyTemplate, ulSecretKeyAttributeCount);
+	if ((rc >= 0) && *(unsigned char *)pSecretKeyTemplate[rc].pValue) {
+		p15key->usage |= P15_SIGN;
+	}
+
+	rc = findAttributeInTemplate(CKA_ENCRYPT, pSecretKeyTemplate, ulSecretKeyAttributeCount);
+	if ((rc >= 0) && *(unsigned char *)pSecretKeyTemplate[rc].pValue) {
+		p15key->usage |= P15_ENCIPHER;
+	}
+
+	rc = findAttributeInTemplate(CKA_DECRYPT, pSecretKeyTemplate, ulSecretKeyAttributeCount);
+	if ((rc >= 0) && *(unsigned char *)pSecretKeyTemplate[rc].pValue) {
+		p15key->usage |= P15_DECIPHER;
+	}
+
+	rc = findAttributeInTemplate(CKA_DERIVE, pSecretKeyTemplate, ulSecretKeyAttributeCount);
+	if ((rc >= 0) && *(unsigned char *)pSecretKeyTemplate[rc].pValue) {
+		p15key->usage |= P15_DERIVE;
+	}
+
+	rc = findAttributeInTemplate(CKA_LABEL, pSecretKeyTemplate, ulSecretKeyAttributeCount);
+	if (rc >= 0) {
+		p15key->coa.label = calloc(1, pSecretKeyTemplate[rc].ulValueLen + 1);
+		if (p15key->coa.label == NULL) {
+			freeSecretKeyDescription(&p15key);
+			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+		}
+		memcpy(p15key->coa.label, pSecretKeyTemplate[rc].pValue, pSecretKeyTemplate[rc].ulValueLen);
+	}
+
+	rc = findAttributeInTemplate(CKA_ID, pSecretKeyTemplate, ulSecretKeyAttributeCount);
+	if (rc >= 0) {
+		po = pSecretKeyTemplate[rc].pValue;
+		len = pSecretKeyTemplate[rc].ulValueLen;
+	} else {
+		buff[0] = id;
+		po = buff;
+		len = 1;
+	}
+	p15key->id.val = calloc(1, len);
+	if (p15key->id.val == NULL) {
+		freeSecretKeyDescription(&p15key);
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+	}
+	memcpy(p15key->id.val, po, len);
+	p15key->id.len = len;
+
+	rc = encodeSecretKeyDescription(&bb, p15key);
+
+	freeSecretKeyDescription(&p15key);
+
+	if (rc < 0)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Encoding PRKD failed");
+
+	rc = writeEF(slot, (PRKD_PREFIX << 8) | id, bb.val, bb.len);
+
+	if (rc < 0)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Writing PRKD failed");
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
 static int createPrivateKeyDescription(
 		struct p11Slot_t *slot,
 		CK_MECHANISM_PTR pMechanism,
@@ -1644,6 +1771,91 @@ static int sc_hsm_C_CreateObject(
 
 
 /**
+ * Generate AES key
+ */
+static int sc_hsm_C_GenerateKey(
+		struct p11Slot_t *slot,
+		CK_MECHANISM_PTR pMechanism,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulCount,
+		struct p11Object_t **phKey)
+{
+	unsigned char buff[128];
+	struct bytebuffer_s bb = { buff, 0, sizeof(buff) };
+	int rc, idpos, id, algo, length;
+	unsigned short SW1SW2;
+	struct p11Object_t *priKey
+
+	FUNC_CALLED();
+
+	if (pMechanism->mechanism != CKM_AES_KEY_GEN) {
+		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
+	}
+
+	rc = findAttributeInTemplate(CKA_VALUE_LEN, pTemplate, ulCount);
+	if (rc < 0) {
+		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_VALUE_LEN not found in template");
+	}
+	length = *(CK_ULONG *)pTemplate[rc].pValue;
+
+	switch(length) {
+	case 16:
+		algo = 0xB0;
+		break;
+	case 24:
+		algo = 0xB1;
+		break;
+	case 32:
+		algo = 0xB2;
+		break;
+	default:
+		FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "CKA_VALUE_LEN must be either 16, 24 or 32");
+	}
+
+	rc = encodeGSK(&bb, pTemplate, ulCount);
+	if (rc != CKR_OK)
+		FUNC_FAILS(rc, "Encoding GAKP failed");
+
+	idpos = findAttributeInTemplate(CKA_ID, pTemplate, ulCount);
+	if (idpos >= 0) {
+		rc = validateAttribute(&pTemplate[idpos], 0);
+		if (rc != CKR_OK)
+			FUNC_FAILS(rc, "CKA_ID");
+
+		rc = findMatchingTokenObjectById(slot->token, CKO_PRIVATE_KEY, pTemplate[idpos].pValue, pTemplate[idpos].ulValueLen, &priKey);
+		if (rc == CKR_OK)
+			FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "A key with that CKA_ID does already exist");
+
+		id = *(CK_BYTE *)pTemplate[idpos].pValue;
+	} else {
+		id = determineFreeKeyId(slot, KEY_PREFIX);
+	}
+
+	if (id < 0)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Determine free id failed");
+
+	rc = transmitAPDU(slot, 0x00, 0x48, id, algo,
+			(int)bbGetLength(&bb), buff,
+			0, NULL, 0, &SW1SW2);
+
+	if (rc < 0)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+
+	if (SW1SW2 != 0x9000)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Generate Symmetric Key operation failed");
+
+	createSecretKeyDescription(slot,pTemplate, ulCount, id, length * 8);
+
+	rc = addEECertificateAndKeyObjects(slot->token, id, &priKey, NULL, NULL);
+
+	*phKey = priKey;
+
+	FUNC_RETURNS(rc);
+}
+
+
+
+/**
  * Generate EC or RSA key pair
  */
 static int sc_hsm_C_GenerateKeyPair(
@@ -1877,6 +2089,7 @@ static int sc_hsm_destroyObject(struct p11Slot_t *slot, struct p11Object_t *pObj
 
 	switch(*(CK_OBJECT_CLASS *)attribute->attrData.pValue) {
 	case CKO_PRIVATE_KEY:
+	case CKO_SECRET_KEY:
 		fid = (KEY_PREFIX << 8) | pObject->tokenid;
 		rc = deleteEF(slot, fid);
 		if (rc < 0)
@@ -2567,6 +2780,7 @@ struct p11TokenDriver *getSmartCardHSMTokenDriver()
 		NULL,				// int (*C_SignUpdate)   (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
 		NULL,				// int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
 
+		sc_hsm_C_GenerateKey,
 		sc_hsm_C_GenerateKeyPair,	// int (*C_GenerateKeyPair)  (struct p11Slot_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG, struct p11Object_t **, struct p11Object_t **);
 		sc_hsm_C_CreateObject,		// int (*C_CreateObject)     (struct p11Slot_t *, CK_ATTRIBUTE_PTR, CK_ULONG ulCount, struct p11Object_t **);
 		sc_hsm_destroyObject,		// int (*destroyObject)       (struct p11Slot_t *, struct p11Object_t *);
