@@ -227,6 +227,19 @@ static int decodeCommonSecretKeyAttributes(unsigned char *ska, int skalen, struc
 
 
 
+static int encodeCommonSecretKeyAttributes(bytebuffer bb, struct p15SecretKeyDescription *p15)
+{
+	size_t ofs = bbGetLength(bb);
+	int rc;
+	unsigned char scr[sizeof(int) + 1];
+
+	rc = asn1EncodeInteger(p15->keysize, scr, sizeof(scr));
+	asn1AppendBytes(bb, ASN1_INTEGER, scr, rc);
+	return asn1EncapBuffer(0xA0, bb, ofs);
+}
+
+
+
 static int decodePrivateKeyAttributes(unsigned char *prkd, int prkdlen, struct p15PrivateKeyDescription *p15)
 {
 	int rc,tag,len;
@@ -416,6 +429,24 @@ int decodeSecretKeyDescription(unsigned char *skd, size_t skdlen, struct p15Secr
 	rc = decodeSecretKeyAttributes(po, len, *p15);
 
 	return rc;
+}
+
+
+
+/**
+ * Encode secret key description into a PKCS#15 structure
+ *
+ * @param bb        The bytebuffer receiving the resulting PKCS#15 structure
+ * @param p15       The secret key description
+ * @return          0 if successful, -1 for error
+ */
+int encodeSecretKeyDescription(bytebuffer bb, struct p15SecretKeyDescription *p15)
+{
+	bbClear(bb);
+	encodeCommonObjectAttributes(bb, &p15->coa);
+	encodeCommonKeyAttributes(bb, (struct p15PrivateKeyDescription *)p15);
+	encodeCommonSecretKeyAttributes(bb, p15);
+	return asn1EncapBuffer(p15->keytype, bb, 0);
 }
 
 

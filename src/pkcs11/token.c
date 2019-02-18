@@ -453,6 +453,34 @@ int generateTokenKeypair(struct p11Slot_t *slot,
 
 
 /**
+ * Create a new key on the token object
+ *
+ * @param slot                          The slot in which the token is inserted
+ * @param pMechanism                    The key generation mechanism
+ * @param pPublicKeyTemplate            The template for the public key
+ * @param ulPublicKeyAttributeCount     The length of the template for the public key
+ * @param pPrivateKeyTemplate           The template for the private key
+ * @param ulPrivateKeyAttributeCount    The length of the template for the private key
+ * @param p11PublicKey                  The variable receiving the newly created PKCS11 public key object
+ * @param p11PrivateKey                 The variable receiving the newly created PKCS11 private key object
+ *
+ * @return          CKR_OK or any other Cryptoki error code
+ */
+int generateTokenKey(struct p11Slot_t *slot,
+		CK_MECHANISM_PTR pMechanism,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulCount,
+		struct p11Object_t **phKey)
+{
+	if (slot->token->drv->C_GenerateKey == NULL) {
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+	return slot->token->drv->C_GenerateKey(slot, pMechanism, pTemplate, ulCount, phKey);
+}
+
+
+
+/**
  * Create random data using token
  *
  * @param slot                          The slot in which the token is inserted
