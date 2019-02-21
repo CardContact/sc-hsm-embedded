@@ -95,6 +95,7 @@ int saveObjects(struct p11Slot_t *slot, struct p11Token_t *token, int publicObje
 int destroyObject(struct p11Slot_t *slot, struct p11Object_t *object);
 int generateTokenKeypair(struct p11Slot_t *slot, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pPublicKeyTemplate, CK_ULONG ulPublicKeyAttributeCount,
 		CK_ATTRIBUTE_PTR pPrivateKeyTemplate, CK_ULONG ulPrivateKeyAttributeCount, struct p11Object_t **p11PublicKey, struct p11Object_t **p11PrivateKey);
+int generateTokenKey(struct p11Slot_t *slot, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t **phKey);
 int generateTokenRandom(struct p11Slot_t *slot, CK_BYTE_PTR pRandomData, CK_ULONG ulRandomLen);
 int createTokenObject(struct p11Slot_t *slot, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, struct p11Object_t **phObject);
 int setTokenObjectAttributes(struct p11Slot_t *slot, struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
