@@ -110,6 +110,7 @@ int createSecretKeyObjectFromP15(struct p15SecretKeyDescription *p15, struct p11
 			{ CKA_VERIFY, &true, sizeof(true) },
 			{ CKA_WRAP, &false, sizeof(false) },
 			{ CKA_UNWRAP, &false, sizeof(false) },
+			{ CKA_DERIVE, &false, sizeof(false) },
 			{ CKA_EXTRACTABLE, &false, sizeof(false) },
 			{ CKA_ALWAYS_SENSITIVE, &true, sizeof(true) },
 			{ CKA_NEVER_EXTRACTABLE, &true, sizeof(true) }
@@ -141,6 +142,7 @@ int createSecretKeyObjectFromP15(struct p15SecretKeyDescription *p15, struct p11
 	template[12].pValue = p15->usage & P15_VERIFY ? &true : &false;
 	template[13].pValue = p15->usage & P15_KEYENCIPHER ? &true : &false;
 	template[14].pValue = p15->usage & P15_KEYDECIPHER ? &true : &false;
+	template[15].pValue = p15->usage & P15_DERIVE ? &true : &false;
 
 	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE);
 
