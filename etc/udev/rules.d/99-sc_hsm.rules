@@ -6,5 +6,7 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5410", GROUP="schs
 SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5817", GROUP="schsm", MODE="664"
 # Identiv uTrust Token Standard
 SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5816", GROUP="schsm", MODE="664"
+# Identiv uTrust 2700 R
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04e6", ATTRS{idProduct}=="5810", GROUP="schsm", MODE="664"
 # Nitrokey HSM
 SUBSYSTEM=="usb", ATTRS{idVendor}=="20a0", ATTRS{idProduct}=="4230", GROUP="schsm", MODE="664"

@@ -116,6 +116,7 @@ int isSupported(struct libusb_device_descriptor *desc)
 	    ((desc->idProduct == SCM_SCR_3310_DEVICE_ID) ||
 	     (desc->idProduct == SCM_SCR_35XX_DEVICE_ID) ||
 	     (desc->idProduct == UTRUST_JCOP2_DEVICE_ID) ||
+	     (desc->idProduct == UTRUST_2700R_DEVICE_ID) ||
 	     (desc->idProduct == UTRUST_SAM_DEVICE_ID))) {
 		return 1;
 	}
