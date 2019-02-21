@@ -457,12 +457,9 @@ int generateTokenKeypair(struct p11Slot_t *slot,
  *
  * @param slot                          The slot in which the token is inserted
  * @param pMechanism                    The key generation mechanism
- * @param pPublicKeyTemplate            The template for the public key
- * @param ulPublicKeyAttributeCount     The length of the template for the public key
- * @param pPrivateKeyTemplate           The template for the private key
- * @param ulPrivateKeyAttributeCount    The length of the template for the private key
- * @param p11PublicKey                  The variable receiving the newly created PKCS11 public key object
- * @param p11PrivateKey                 The variable receiving the newly created PKCS11 private key object
+ * @param pTemplate                     The template for the secret key
+ * @param ulCount                       The length of the template for the secret key
+ * @param phKey                         The variable receiving the newly created PKCS11 secret key object
  *
  * @return          CKR_OK or any other Cryptoki error code
  */
