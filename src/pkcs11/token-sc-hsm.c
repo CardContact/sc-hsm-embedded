@@ -1113,7 +1113,21 @@ static int determineFreeKeyId(struct p11Slot_t *slot, unsigned char prefix) {
 
 
 
-static int sc_hsm_C_DeriveKey(struct p11Object_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_OBJECT_HANDLE_PTR );
+static int sc_hsm_C_DeriveSymmetricKey(
+		struct p11Object_t *pObject,
+		CK_MECHANISM_PTR pMechanism,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulAttributeCount,
+		struct p11Session_t *pSession,
+		CK_OBJECT_HANDLE_PTR phKey);
+
+static int sc_hsm_C_DeriveKey(
+		struct p11Object_t *pObject,
+		CK_MECHANISM_PTR pMechanism,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulAttributeCount,
+		struct p11Session_t *pSession,
+		CK_OBJECT_HANDLE_PTR phKey);
 
 static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char id, struct p11Object_t **priKey, struct p11Object_t **pubKey, struct p11Object_t **cert)
 {
@@ -1150,6 +1164,7 @@ static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char
 
 		p11prikey->C_EncryptInit = sc_hsm_C_EncryptInit;
 		p11prikey->C_Encrypt = sc_hsm_C_Encrypt;
+		p11prikey->C_DeriveKey = sc_hsm_C_DeriveSymmetricKey;
 	} else {
 		rc = decodePrivateKeyDescription(prkd, rc, &p15key);
 
@@ -1247,13 +1262,14 @@ static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char
 		}
 
 		freePrivateKeyDescription(&p15key);
+
+		p11prikey->C_DeriveKey = sc_hsm_C_DeriveKey;
 	}
 
 	p11prikey->C_SignInit = sc_hsm_C_SignInit;
 	p11prikey->C_Sign = sc_hsm_C_Sign;
 	p11prikey->C_DecryptInit = sc_hsm_C_DecryptInit;
 	p11prikey->C_Decrypt = sc_hsm_C_Decrypt;
-	p11prikey->C_DeriveKey = sc_hsm_C_DeriveKey;
 
 	p11prikey->tokenid = (int)id;
 
@@ -1547,13 +1563,75 @@ static int createPrivateKeyDescription(
 
 
 
+static int sc_hsm_C_DeriveSymmetricKey(
+		struct p11Object_t *pObject,
+		CK_MECHANISM_PTR pMechanism,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulAttributeCount,
+		struct p11Session_t *pSession,
+		CK_OBJECT_HANDLE_PTR phKey)
+{
+	int rc;
+	unsigned short SW1SW2;
+	unsigned char *pDerivationParam;
+	unsigned char derivedKeyValue[32];
+	struct p11Object_t *derivedKey;
+
+	if (pMechanism->mechanism != CKM_SC_HSM_SP80056C_DERIVE) {
+		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism must be CKM_SC_HSM_SP80056C_DERIVE");
+	}
+
+	pDerivationParam = malloc(pMechanism->ulParameterLen);
+	memcpy(pDerivationParam, pMechanism->pParameter, pMechanism->ulParameterLen);
+
+	rc = transmitAPDU(pObject->token->slot, 0x80, 0x78, (unsigned char)pObject->tokenid, 0x99,
+			pMechanism->ulParameterLen, pDerivationParam, 0, derivedKeyValue, sizeof(derivedKeyValue), &SW1SW2);
+
+	free(pDerivationParam);
+
+	if (rc < 0)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+
+	if (SW1SW2 != 0x9000)
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Key derivation failed");
+
+	derivedKey = calloc(sizeof(struct p11Object_t), 1);
+
+	if (derivedKey == NULL) {
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+	}
+
+	rc = findAttributeInTemplate(CKA_VALUE, pTemplate, ulAttributeCount);
+	if (rc < 0) {
+		free(derivedKey);
+		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_VALUE not found in template");
+	}
+	memcpy(pTemplate[rc].pValue, derivedKeyValue, pTemplate[rc].ulValueLen);
+
+	rc = createSecretKeyObject(pTemplate, ulAttributeCount, derivedKey);
+	if (rc != CKR_OK) {
+		free(derivedKey);
+		FUNC_FAILS(rc, "Could not create secret key object");
+	}
+
+	addSessionObject(pSession, derivedKey);
+
+	*phKey = derivedKey->handle;
+
+	FUNC_RETURNS(rc);
+}
+
+
+
 static int sc_hsm_C_DeriveKey(
 		struct p11Object_t *pObject,
 		CK_MECHANISM_PTR pMechanism,
 		CK_ATTRIBUTE_PTR pTemplate,
 		CK_ULONG ulAttributeCount,
+		struct p11Session_t *pSession,
 		CK_OBJECT_HANDLE_PTR phKey)
 {
+
 	int rc, id, len, idpos;
 	unsigned short SW1SW2;
 	unsigned char *pDerivationParam;
@@ -1572,20 +1650,26 @@ static int sc_hsm_C_DeriveKey(
 		rc = findMatchingTokenObjectById(pObject->token->slot->token, CKO_PRIVATE_KEY, pTemplate[idpos].pValue, pTemplate[idpos].ulValueLen, &derivedKey);
 		if (rc == CKR_OK)
 			FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "A private key with that CKA_ID does already exist");
-	}
 
-	len = pMechanism->ulParameterLen + 1;
-	pDerivationParam = malloc(len);
-	pDerivationParam[0] = ALGO_EC_DERIVE;
-	memcpy(pDerivationParam + 1, pMechanism->pParameter, pMechanism->ulParameterLen);
+		rc = findMatchingTokenObjectById(pObject->token->slot->token, CKO_SECRET_KEY, pTemplate[idpos].pValue, pTemplate[idpos].ulValueLen, &derivedKey);
+		if (rc == CKR_OK)
+			FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "A secret key with that CKA_ID does already exist");
+	}
 
 	id = determineFreeKeyId(pObject->token->slot, KEY_PREFIX);
 
 	if (id < 0)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Determine free id failed");
 
+	len = pMechanism->ulParameterLen + 1;
+	pDerivationParam = malloc(len);
+	pDerivationParam[0] = ALGO_EC_DERIVE;
+	memcpy(pDerivationParam + 1, pMechanism->pParameter, pMechanism->ulParameterLen);
+
 	rc = transmitAPDU(pObject->token->slot, 0x80, 0x76, (unsigned char)pObject->tokenid, id,
 			len, pDerivationParam, 0, NULL, 0, &SW1SW2);
+
+	free(pDerivationParam);
 
 	if (rc < 0)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");

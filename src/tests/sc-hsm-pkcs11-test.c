@@ -1560,6 +1560,76 @@ void testAESKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 
 
+void testSymmetricKeyDerivation(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
+{
+	int rc;
+	CK_CHAR labelBase[] = "TestBaseAESKey", labelDerived[] = "TestDerivedKey";
+	CK_BBOOL _false = FALSE;
+	CK_BBOOL _true = TRUE;
+
+	CK_OBJECT_CLASS secretKeyClass = CKO_SECRET_KEY;
+	CK_ULONG len = 16;
+	CK_BYTE algoList[] = {0x10, 0x11, 0x18, 0x99};
+	CK_ATTRIBUTE secretKeyTemplate[20] = {
+			{ CKA_CLASS, &secretKeyClass, sizeof(secretKeyClass) },
+			{ CKA_TOKEN, &_true, sizeof(_true)},
+			{ CKA_PRIVATE, &_true, sizeof(_true)},
+			{ CKA_SENSITIVE, &_true, sizeof(_true)},
+			{ CKA_LABEL, &labelBase, (CK_ULONG)strlen((char *)labelBase) },
+			{ CKA_VALUE_LEN, &len, sizeof(len) },
+			{ CKA_SC_HSM_ALGORITHM_LIST, &algoList, sizeof(algoList)},
+			{ CKA_SIGN, &_true, sizeof(_true)},
+			{ CKA_DERIVE, &_true, sizeof(_true)},
+			{ CKA_ENCRYPT, &_true, sizeof(_true)},
+			{ CKA_DECRYPT, &_true, sizeof(_true)}
+	};
+	int secretKeyAttributes = 11;
+
+	CK_OBJECT_HANDLE hndBaseKey, hndDerivedKey;
+	CK_MECHANISM mech_genaes = { CKM_AES_KEY_GEN, 0, 0 };
+
+	CK_KEY_TYPE keyType = CKK_GENERIC_SECRET;
+	CK_BYTE keyValue[32];
+	CK_ATTRIBUTE deriveTemplate[5] = {
+			{ CKA_CLASS, &secretKeyClass, sizeof(secretKeyClass) },
+			{ CKA_KEY_TYPE, &keyType, sizeof(keyType)},
+			{ CKA_SIGN, &_true, sizeof(_true)},
+			{ CKA_LABEL, &labelDerived, (CK_ULONG)strlen((char *)labelDerived) },
+			{ CKA_VALUE, &keyValue, 32 },
+	};
+	int derivedAttributes = 5;
+
+	unsigned char param[32] = {
+			0xCA, 0xFE, 0xBA, 0xBE, 0xCA, 0xFE, 0xBA, 0xBE, 0xCA, 0xFE, 0xBA, 0xBE, 0xCA, 0xFE, 0xBA, 0xBE,
+			0xCA, 0xFE, 0xBA, 0xBE, 0xCA, 0xFE, 0xBA, 0xBE, 0xCA, 0xFE, 0xBA, 0xBE, 0xCA, 0xFE, 0xBA, 0xBE
+	};
+	CK_MECHANISM mech_derive = { CKM_SC_HSM_SP80056C_DERIVE, &param, sizeof(param) };
+
+	printf("Calling C_GenerateKey(AES 128) ");
+	rc = p11->C_GenerateKey(session, &mech_genaes, secretKeyTemplate, secretKeyAttributes, &hndBaseKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	rc = p11->C_DeriveKey(session, &mech_derive, hndBaseKey, deriveTemplate, derivedAttributes, &hndDerivedKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc == CKR_OK) {
+		printf("Derived Secret Key:\n");
+		dumpObject(p11, session, hndDerivedKey);
+	}
+
+	hndDerivedKey = CK_INVALID_HANDLE;
+	rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&deriveTemplate, (sizeof(deriveTemplate) / sizeof(CK_ATTRIBUTE)) - 1, 0, &hndDerivedKey);
+
+	printf("Calling C_DestroyObject(DerivedKey) ");
+	rc = p11->C_DestroyObject(session, hndDerivedKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DestroyObject(BaseKey) ");
+	rc = p11->C_DestroyObject(session, hndBaseKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+}
+
+
 void testKeyDerivation(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
 	int rc;
@@ -2672,6 +2742,8 @@ int main(int argc, char *argv[])
 					testKeyDerivation(p11, session);
 
 					testAESKeyGeneration(p11, session);
+
+					testSymmetricKeyDerivation(p11, session);
 				}
 
 				testRSASigning(p11, slotid, 0, CKM_RSA_PKCS);
