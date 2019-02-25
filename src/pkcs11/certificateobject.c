@@ -529,7 +529,7 @@ int decodeECPointFromSPKI(unsigned char *spki, CK_ATTRIBUTE_PTR point, unsigned 
 
 	point->type = CKA_EC_POINT;
 	point->pValue = encappuk;
-	point->ulValueLen = cursor - encappuk + length - 1;
+	point->ulValueLen = (CK_ULONG)(cursor - encappuk + length - 1);
 
 	return 0;
 }

@@ -90,7 +90,9 @@ void cryptoFinalize()
 static CK_RV translateError()
 {
 	unsigned long err;
+#ifdef DEBUG
 	char scr[120];
+#endif
 	CK_RV rv;
 
 	err = ERR_get_error();
