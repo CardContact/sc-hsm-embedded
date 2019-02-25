@@ -32,6 +32,7 @@
  */
 
 #include <pkcs11/p11generic.h>
+#include <pkcs11/object.h>
 #include <common/pkcs15.h>
 
 #ifdef DEBUG
@@ -150,7 +151,7 @@ int createSecretKeyObjectFromP15(struct p15SecretKeyDescription *p15, struct p11
 
 	if (rc != CKR_OK) {
 		free(p11o);
-		FUNC_FAILS(rc, "Could not create private key object");
+		FUNC_FAILS(rc, "Could not create secret key object");
 	}
 
 	*pObject = p11o;

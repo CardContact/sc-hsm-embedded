@@ -72,6 +72,9 @@ extern "C" {
 /* Derive EC private key from EC private key */
 #define CKM_SC_HSM_EC_DERIVE			CKC_VENDOR_DEFINED + 0x00000012
 
+/* Derive key value using the Extraction-then-Expansion key derivation algorithm */
+#define CKM_SC_HSM_SP80056C_DERIVE		CKC_VENDOR_DEFINED + 0x00000013
+
 /* Support for C++ compiler ----------------------------------------------- */
 
 #ifdef __cplusplus

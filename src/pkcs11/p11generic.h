@@ -38,7 +38,7 @@
 #include <stdlib.h>
 
 #include <pkcs11/cryptoki.h>
-#include <pkcs11/object.h>
+// #include <pkcs11/object.h>
 #include <sc-hsm/sc-hsm-pkcs11.h>
 
 #ifndef VERSION_MAJOR

@@ -1749,7 +1749,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DeriveKey)(
 	}
 
 	if (pObject->C_DeriveKey != NULL) {
-		rv = pObject->C_DeriveKey(pObject, pMechanism, pTemplate, ulAttributeCount, phKey);
+		rv = pObject->C_DeriveKey(pObject, pMechanism, pTemplate, ulAttributeCount, pSession, phKey);
 	} else {
 		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
