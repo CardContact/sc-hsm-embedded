@@ -1589,16 +1589,18 @@ void testSymmetricKeyDerivation(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE sess
 	CK_MECHANISM mech_genaes = { CKM_AES_KEY_GEN, 0, 0 };
 
 	CK_KEY_TYPE keyType = CKK_GENERIC_SECRET;
-	CK_BYTE keyValue[32];
 	CK_ATTRIBUTE deriveTemplate[5] = {
 			{ CKA_CLASS, &secretKeyClass, sizeof(secretKeyClass) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType)},
 			{ CKA_SIGN, &_true, sizeof(_true)},
-			{ CKA_LABEL, &labelDerived, (CK_ULONG)strlen((char *)labelDerived) },
-			{ CKA_VALUE, &keyValue, 32 },
+			{ CKA_LABEL, &labelDerived, (CK_ULONG)strlen((char *)labelDerived) }
 	};
-	int derivedAttributes = 5;
+	int derivedAttributes = 4;
 
+	CK_BYTE keyValue[32];
+	CK_ATTRIBUTE keyValueTemplate[1] = {
+			{ CKA_VALUE, &keyValue, 32 }
+	};
 	unsigned char param[32] = {
 			0xCA, 0xFE, 0xBA, 0xBE, 0xCA, 0xFE, 0xBA, 0xBE, 0xCA, 0xFE, 0xBA, 0xBE, 0xCA, 0xFE, 0xBA, 0xBE,
 			0xCA, 0xFE, 0xBA, 0xBE, 0xCA, 0xFE, 0xBA, 0xBE, 0xCA, 0xFE, 0xBA, 0xBE, 0xCA, 0xFE, 0xBA, 0xBE
@@ -1618,7 +1620,11 @@ void testSymmetricKeyDerivation(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE sess
 	}
 
 	hndDerivedKey = CK_INVALID_HANDLE;
-	rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&deriveTemplate, (sizeof(deriveTemplate) / sizeof(CK_ATTRIBUTE)) - 1, 0, &hndDerivedKey);
+	rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&deriveTemplate, derivedAttributes, 0, &hndDerivedKey);
+
+	printf("Calling C_GetAttributeValue ");
+	rc = p11->C_GetAttributeValue(session, hndDerivedKey, (CK_ATTRIBUTE_PTR)&keyValueTemplate, 1);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	printf("Calling C_DestroyObject(DerivedKey) ");
 	rc = p11->C_DestroyObject(session, hndDerivedKey);
@@ -2442,10 +2448,8 @@ void decodeArgs(int argc, char **argv)
 }
 
 
-
-int testAES(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
+int testAES(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
-	CK_SESSION_HANDLE session;
 	CK_OBJECT_CLASS class = CKO_SECRET_KEY;
 	CK_KEY_TYPE keyType = CKK_AES;
 	CK_ATTRIBUTE template[] = {
@@ -2464,18 +2468,6 @@ int testAES(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 	int rc,keyno;
 
 	keyno = 0;
-
-	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
-	printf("C_OpenSession (Thread %i, Slot=%ld) - %s : %s\n", id, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-	if (rc != CKR_OK)
-		return rc;
-
-	rc = p11->C_Login(session, CKU_USER, pin, pinlen);
-	printf("C_Login User (Thread %i, Slot=%ld) - %s : %s\n", id, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK || rc == CKR_USER_ALREADY_LOGGED_IN));
-
-	if (rc != CKR_OK && rc != CKR_USER_ALREADY_LOGGED_IN)
-		goto out;
 
 	while (1) {
 		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
@@ -2540,8 +2532,6 @@ int testAES(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 		keyno++;
 	}
 
-	out:
-		p11->C_CloseSession(session);
 	return rc;
 }
 
@@ -2705,8 +2695,6 @@ int main(int argc, char *argv[])
 					break;
 				}
 
-				testAES(p11, slotid, 0);
-
 				testSessions(p11, slotid);
 
 				rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
@@ -2742,6 +2730,8 @@ int main(int argc, char *argv[])
 					testKeyDerivation(p11, session);
 
 					testAESKeyGeneration(p11, session);
+
+					testAES(p11, session);
 
 					testSymmetricKeyDerivation(p11, session);
 				}

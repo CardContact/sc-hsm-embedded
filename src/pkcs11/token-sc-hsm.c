@@ -1573,6 +1573,7 @@ static int sc_hsm_C_DeriveSymmetricKey(
 	unsigned char *pDerivationParam;
 	unsigned char derivedKeyValue[32];
 	struct p11Object_t *derivedKey;
+	CK_ATTRIBUTE kva = { CKA_VALUE, &derivedKeyValue, sizeof(derivedKeyValue) };
 
 	if (pMechanism->mechanism != CKM_SC_HSM_SP80056C_DERIVE) {
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism must be CKM_SC_HSM_SP80056C_DERIVE");
@@ -1592,24 +1593,28 @@ static int sc_hsm_C_DeriveSymmetricKey(
 	if (SW1SW2 != 0x9000)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Key derivation failed");
 
-	*pKey = calloc(sizeof(struct p11Object_t), 1);
+	derivedKey = calloc(sizeof(struct p11Object_t), 1);
 
-	if (*pKey == NULL) {
+	if (derivedKey == NULL) {
 		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
 	rc = findAttributeInTemplate(CKA_VALUE, pTemplate, ulAttributeCount);
-	if (rc < 0) {
-		free(*pKey);
-		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_VALUE not found in template");
-	}
-	memcpy(pTemplate[rc].pValue, derivedKeyValue, pTemplate[rc].ulValueLen);
 
-	rc = createSecretKeyObject(pTemplate, ulAttributeCount, *pKey);
+
+	rc = createSecretKeyObject(pTemplate, ulAttributeCount, derivedKey);
 	if (rc != CKR_OK) {
-		free(*pKey);
+		free(derivedKey);
 		FUNC_FAILS(rc, "Could not create secret key object");
 	}
+
+	rc = addAttribute(derivedKey, &kva);
+	if (rc != CKR_OK) {
+		free(derivedKey);
+		FUNC_FAILS(rc, "Could not create secret key object");
+	}
+
+	*pKey = derivedKey;
 
 	FUNC_RETURNS(rc);
 }
@@ -1671,7 +1676,11 @@ static int sc_hsm_C_DeriveKey(
 
 	createPrivateKeyDescription(pObject->token->slot, pMechanism, pTemplate, ulAttributeCount, id, pObject->keysize);
 
-	rc = addEECertificateAndKeyObjects(pObject->token->slot->token, id, pKey, NULL, NULL);
+	rc = addEECertificateAndKeyObjects(pObject->token->slot->token, id, &key, NULL, NULL);
+	if (rc != CKR_OK)
+		FUNC_FAILS(rc, "Could not create secret key object");
+
+	*pKey = key;
 
 	FUNC_RETURNS(rc);
 }
