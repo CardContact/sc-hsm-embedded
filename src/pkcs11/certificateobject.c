@@ -518,7 +518,7 @@ int decodeECPointFromSPKI(unsigned char *spki, CK_ATTRIBUTE_PTR point, unsigned 
 
 	// Length is bitlen + '04' + public point
 	// encappuklen is tag + 3 byte tag + '04' + public point
-	if ((length < 6) || (length > encappuklen - 2)) {
+	if ((length < 6) || (length > (int)(encappuklen - 2))) {
 		return -1;
 	}
 

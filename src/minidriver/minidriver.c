@@ -39,6 +39,7 @@
 #include <pkcs11/slot.h>
 #include <pkcs11/token.h>
 #include <pkcs11/slot-pcsc.h>
+#include <pkcs11/object.h>
 
 
 #define MINIMUM_SUPPORTED_VERSION	7
