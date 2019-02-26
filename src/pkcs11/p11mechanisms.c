@@ -1708,7 +1708,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DeriveKey)(
 )
 {
 	CK_RV rv;
-	struct p11Object_t *pObject;
+	struct p11Object_t *pObject, *derivedKey;
 	struct p11Slot_t *pSlot;
 	struct p11Session_t *pSession;
 
@@ -1749,10 +1749,16 @@ CK_DECLARE_FUNCTION(CK_RV, C_DeriveKey)(
 	}
 
 	if (pObject->C_DeriveKey != NULL) {
-		rv = pObject->C_DeriveKey(pObject, pMechanism, pTemplate, ulAttributeCount, pSession, phKey);
+		rv = pObject->C_DeriveKey(pObject, pMechanism, pTemplate, ulAttributeCount, &derivedKey);
 	} else {
 		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported by token");
 	}
+
+	if (!derivedKey->tokenObj) {
+		addSessionObject(pSession, derivedKey);
+	}
+
+	*phKey = derivedKey->handle;
 
 	FUNC_RETURNS(rv);
 }
