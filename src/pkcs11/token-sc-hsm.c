@@ -1118,16 +1118,14 @@ static int sc_hsm_C_DeriveSymmetricKey(
 		CK_MECHANISM_PTR pMechanism,
 		CK_ATTRIBUTE_PTR pTemplate,
 		CK_ULONG ulAttributeCount,
-		struct p11Session_t *pSession,
-		CK_OBJECT_HANDLE_PTR phKey);
+		struct p11Object_t **pKey);
 
 static int sc_hsm_C_DeriveKey(
 		struct p11Object_t *pObject,
 		CK_MECHANISM_PTR pMechanism,
 		CK_ATTRIBUTE_PTR pTemplate,
 		CK_ULONG ulAttributeCount,
-		struct p11Session_t *pSession,
-		CK_OBJECT_HANDLE_PTR phKey);
+		struct p11Object_t **pKey);
 
 static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char id, struct p11Object_t **priKey, struct p11Object_t **pubKey, struct p11Object_t **cert)
 {
@@ -1568,8 +1566,7 @@ static int sc_hsm_C_DeriveSymmetricKey(
 		CK_MECHANISM_PTR pMechanism,
 		CK_ATTRIBUTE_PTR pTemplate,
 		CK_ULONG ulAttributeCount,
-		struct p11Session_t *pSession,
-		CK_OBJECT_HANDLE_PTR phKey)
+		struct p11Object_t **pKey)
 {
 	int rc;
 	unsigned short SW1SW2;
@@ -1595,28 +1592,24 @@ static int sc_hsm_C_DeriveSymmetricKey(
 	if (SW1SW2 != 0x9000)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Key derivation failed");
 
-	derivedKey = calloc(sizeof(struct p11Object_t), 1);
+	*pKey = calloc(sizeof(struct p11Object_t), 1);
 
-	if (derivedKey == NULL) {
+	if (*pKey == NULL) {
 		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
 	rc = findAttributeInTemplate(CKA_VALUE, pTemplate, ulAttributeCount);
 	if (rc < 0) {
-		free(derivedKey);
+		free(*pKey);
 		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_VALUE not found in template");
 	}
 	memcpy(pTemplate[rc].pValue, derivedKeyValue, pTemplate[rc].ulValueLen);
 
-	rc = createSecretKeyObject(pTemplate, ulAttributeCount, derivedKey);
+	rc = createSecretKeyObject(pTemplate, ulAttributeCount, *pKey);
 	if (rc != CKR_OK) {
-		free(derivedKey);
+		free(*pKey);
 		FUNC_FAILS(rc, "Could not create secret key object");
 	}
-
-	addSessionObject(pSession, derivedKey);
-
-	*phKey = derivedKey->handle;
 
 	FUNC_RETURNS(rc);
 }
@@ -1628,14 +1621,13 @@ static int sc_hsm_C_DeriveKey(
 		CK_MECHANISM_PTR pMechanism,
 		CK_ATTRIBUTE_PTR pTemplate,
 		CK_ULONG ulAttributeCount,
-		struct p11Session_t *pSession,
-		CK_OBJECT_HANDLE_PTR phKey)
+		struct p11Object_t **pKey)
 {
 
 	int rc, id, len, idpos;
 	unsigned short SW1SW2;
 	unsigned char *pDerivationParam;
-	struct p11Object_t *derivedKey;
+	struct p11Object_t *key;
 
 	if (pMechanism->mechanism != CKM_SC_HSM_EC_DERIVE) {
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism must be CKM_SC_HSM_EC_DERIVE");
@@ -1647,11 +1639,11 @@ static int sc_hsm_C_DeriveKey(
 		if (rc != CKR_OK)
 			FUNC_FAILS(rc, "CKA_ID");
 
-		rc = findMatchingTokenObjectById(pObject->token->slot->token, CKO_PRIVATE_KEY, pTemplate[idpos].pValue, pTemplate[idpos].ulValueLen, &derivedKey);
+		rc = findMatchingTokenObjectById(pObject->token->slot->token, CKO_PRIVATE_KEY, pTemplate[idpos].pValue, pTemplate[idpos].ulValueLen, &key);
 		if (rc == CKR_OK)
 			FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "A private key with that CKA_ID does already exist");
 
-		rc = findMatchingTokenObjectById(pObject->token->slot->token, CKO_SECRET_KEY, pTemplate[idpos].pValue, pTemplate[idpos].ulValueLen, &derivedKey);
+		rc = findMatchingTokenObjectById(pObject->token->slot->token, CKO_SECRET_KEY, pTemplate[idpos].pValue, pTemplate[idpos].ulValueLen, &key);
 		if (rc == CKR_OK)
 			FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "A secret key with that CKA_ID does already exist");
 	}
@@ -1679,9 +1671,7 @@ static int sc_hsm_C_DeriveKey(
 
 	createPrivateKeyDescription(pObject->token->slot, pMechanism, pTemplate, ulAttributeCount, id, pObject->keysize);
 
-	rc = addEECertificateAndKeyObjects(pObject->token->slot->token, id, &derivedKey, NULL, NULL);
-
-	*phKey = derivedKey->handle;
+	rc = addEECertificateAndKeyObjects(pObject->token->slot->token, id, pKey, NULL, NULL);
 
 	FUNC_RETURNS(rc);
 }
