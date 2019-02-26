@@ -188,6 +188,7 @@
     <ClCompile Include="..\..\src\pkcs11\p11slots.c" />
     <ClCompile Include="..\..\src\pkcs11\privatekeyobject.c" />
     <ClCompile Include="..\..\src\pkcs11\publickeyobject.c" />
+    <ClCompile Include="..\..\src\pkcs11\secretkeyobject.c" />
     <ClCompile Include="..\..\src\pkcs11\session.c" />
     <ClCompile Include="..\..\src\pkcs11\slot-ctapi.c" />
     <ClCompile Include="..\..\src\pkcs11\slot-pcsc-event.c" />

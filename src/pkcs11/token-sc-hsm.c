@@ -1867,7 +1867,7 @@ static int sc_hsm_C_GenerateKey(
 	struct bytebuffer_s bb = { buff, 0, sizeof(buff) };
 	int rc, idpos, id, algo, length;
 	unsigned short SW1SW2;
-	struct p11Object_t *priKey
+	struct p11Object_t *priKey;
 
 	FUNC_CALLED();
 
