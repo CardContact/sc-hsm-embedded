@@ -258,12 +258,14 @@ int createPrivateKeyObjectFromP15AndPublicKey(struct p15PrivateKeyDescription *p
 		keyType = CKK_RSA;
 
 		if (findAttribute(puk, CKA_MODULUS, &pattr) < 0) {
+			free(p11o);
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Can't find CKA_MODULUS in public key object");
 		}
 
 		template[attributes++] = pattr->attrData;
 
 		if (findAttribute(puk, CKA_PUBLIC_EXPONENT, &pattr) < 0) {
+			free(p11o);
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Can't find CKA_PUBLIC_EXPONENT in public key object");
 		}
 
