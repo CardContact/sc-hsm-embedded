@@ -229,6 +229,7 @@ static int writeEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *co
 
 	maxblk = slot->maxCAPDU - 15;			// Maximum block size
 	ofs = 0;
+	rc = CKR_OK;
 
 	while (len > 0) {
 		blen = (int)(len > maxblk ? maxblk : len);
@@ -1754,6 +1755,7 @@ static int sc_hsm_C_CreateObject(
 	id = NULL;
 	p11Key = NULL;
 	p11o = NULL;
+	idlen = 0;
 
 	pos = findAttributeInTemplate(CKA_ID, pTemplate, ulCount);
 	if (pos >= 0) {
