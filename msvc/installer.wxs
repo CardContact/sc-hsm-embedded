@@ -77,6 +77,13 @@
 <?endif ?>
 
 			<Component Id="RegistryEntries" Guid="*">
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\SmartCard-HSM3">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3bde18ff8191fe1fc38031815448534d317380214081071c"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
 				<RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\SmartCard-HSM">
 					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
 					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
@@ -141,6 +148,13 @@
 					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffff"/>
 				</RegistryKey>
 <?if $(var.Platform) = x64 ?>
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\SmartCard-HSM (JCOP3)">
+					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
+					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
+					<RegistryValue Type="string" Name="Smart Card Key Storage Provider" Value="Microsoft Smart Card Key Storage Provider"/>
+					<RegistryValue Type="binary" Name="ATR"     Value="3bde18ff8191fe1fc38031815448534d317380214081071c"/>
+					<RegistryValue Type="binary" Name="ATRMask" Value="ffffffffffffffffffffffffffffffffffffffffffffffff"/>
+				</RegistryKey>
 				<RegistryKey Root="HKLM" Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\SmartCard-HSM (JCOP241r3)">
 					<RegistryValue Type="string" Name="80000001" Value="sc-hsm-minidriver.dll"/>
 					<RegistryValue Type="string" Name="Crypto Provider" Value="Microsoft Base Smart Card Crypto Provider"/>
