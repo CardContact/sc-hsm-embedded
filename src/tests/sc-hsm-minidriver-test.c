@@ -152,7 +152,7 @@ int testSignRSA(NCRYPT_KEY_HANDLE hKey, DWORD padding, LPCWSTR hashAlg )
 	void *paddingInfo;
 	PCCERT_CONTEXT certctx;
 	NTSTATUS ntstat;
-	unsigned char cert[4096],hash[64],signature[256],pubkeyblob[1024];
+	unsigned char cert[4096],hash[64],signature[512],pubkeyblob[1024];
 	DWORD dwrc,dwlen,hashlen;
 
 	printf(" RSA signing with %S and %s padding", hashAlg, (padding == BCRYPT_PAD_PKCS1 ? "V1.5" : "PSS"));
@@ -271,9 +271,8 @@ int testSignECDSA(NCRYPT_KEY_HANDLE hKey, LPCWSTR hashAlg )
 	BCRYPT_KEY_HANDLE hPubKey;
 	SECURITY_STATUS secstat;
 	PCCERT_CONTEXT certctx;
-//	BCRYPT_ALG_HANDLE hSignAlg;
 	NTSTATUS ntstat;
-	unsigned char cert[4096],hash[64],signature[256];	// ,pubkeyblob[1024];
+	unsigned char cert[4096],hash[64],signature[256];
 	DWORD dwrc,dwlen,hashlen;
 
 	printf(" ECDSA with %S", hashAlg);
@@ -383,7 +382,7 @@ int testDecryptRSA(NCRYPT_KEY_HANDLE hKey, DWORD padding )
 	BCRYPT_ALG_HANDLE hSignAlg;
 	void *paddingInfo;
 	NTSTATUS ntstat;
-	unsigned char secret[48],plain[256],cryptogram[256],pubkeyblob[1024];
+	unsigned char secret[48],plain[512],cryptogram[512],pubkeyblob[1024];
 	DWORD dwlen,secretlen;
 
 	printf(" RSA decryption with %s padding", (padding == BCRYPT_PAD_PKCS1 ? "V1.5" : "OAEP"));

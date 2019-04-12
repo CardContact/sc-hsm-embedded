@@ -1447,7 +1447,7 @@ static DWORD WINAPI CardQueryKeySizes(__in PCARD_DATA pCardData,
 	case AT_KEYEXCHANGE:
 	case AT_SIGNATURE:
 		pKeySizes->dwMinimumBitlen = 1024;
-		pKeySizes->dwMaximumBitlen = 2048;
+		pKeySizes->dwMaximumBitlen = 4096;
 		pKeySizes->dwDefaultBitlen = 2048;
 		pKeySizes->dwIncrementalBitlen = 8;
 		break;
