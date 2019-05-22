@@ -465,7 +465,7 @@ int cryptoTests()
 		return -1;
 	}
 
-	secstat = NCryptEnumAlgorithms(hProvider, NCRYPT_CIPHER_OPERATION|NCRYPT_HASH_OPERATION|NCRYPT_ASYMMETRIC_ENCRYPTION_OPERATION|NCRYPT_SECRET_AGREEMENT_OPERATION, &dwlen, &algos, 0);
+	secstat = NCryptEnumAlgorithms(hProvider, NCRYPT_CIPHER_OPERATION|NCRYPT_HASH_OPERATION|NCRYPT_ASYMMETRIC_ENCRYPTION_OPERATION|NCRYPT_SECRET_AGREEMENT_OPERATION|NCRYPT_SIGNATURE_OPERATION, &dwlen, &algos, 0);
 
 	if (secstat != ERROR_SUCCESS) {
 		printf("NCryptEnumAlgorithms failed: %08lx %s\n", secstat, SECURITY_STATUSErrorMsg(secstat));
