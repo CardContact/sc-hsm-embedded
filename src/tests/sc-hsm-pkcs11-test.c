@@ -362,6 +362,7 @@ static int optMultiThreadingTests = 0;
 static int optThreadsPerToken = 1;
 static int optIteration = 1;
 static int optUnlockPIN = 0;
+static int optFailFast = 0;
 static long optSlotId = -1;
 static char *optTokenFilter = "";
 
@@ -382,6 +383,9 @@ static char *verdict(int condition) {
 	} else {
 		testsfailed++;
 		mutex_unlock(&verdictMutex);
+		if (optFailFast) {
+			exit(1);
+		}
 		return "Failed";
 	}
 }
@@ -902,6 +906,125 @@ int testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHAN
 
 
 
+int testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHANISM_TYPE mt)
+{
+	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
+	CK_KEY_TYPE keyType = CKK_RSA;
+	CK_BBOOL _true = CK_TRUE;
+	CK_ATTRIBUTE template[] = {
+			{ CKA_CLASS, &class, sizeof(class) },
+			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
+			{ CKA_DECRYPT, &_true, sizeof(_true) }
+	};
+	CK_OBJECT_CLASS classpuk = CKO_PUBLIC_KEY;
+	CK_BYTE keyid[256];
+	CK_ATTRIBUTE puktemplate[] = {
+			{ CKA_CLASS, &classpuk, sizeof(classpuk) },
+			{ CKA_ID, keyid, sizeof(keyid) }
+	};
+	CK_BYTE plain[512];
+	CK_ATTRIBUTE modulus = { CKA_MODULUS, &plain, sizeof(plain) };
+	CK_OBJECT_HANDLE hnd,pubhnd;
+	CK_MECHANISM mech = { CKM_RSA_PKCS, 0, 0 };
+	CK_BYTE cipher[512];
+	CK_BYTE secret[512];
+	CK_ULONG len, cipherlen,secretlen;
+	char scr[2048];
+	char *secretstr = "*SECRET*";
+	int rc, keyno;
+	CK_SESSION_HANDLE session;
+
+	mech.mechanism = mt;
+
+	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
+	printf("C_OpenSession (Thread %i, Slot=%ld) - %s : %s\n", id, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc != CKR_OK)
+		return rc;
+
+	rc = p11->C_Login(session, CKU_USER, pin, pinlen);
+	printf("C_Login User (Thread %i, Slot=%ld) - %s : %s\n", id, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK || rc == CKR_USER_ALREADY_LOGGED_IN));
+
+	if (rc != CKR_OK && rc != CKR_USER_ALREADY_LOGGED_IN)
+		goto out;
+
+	secretlen = (CK_ULONG)strlen(secretstr);
+	memcpy(secret, secretstr, secretlen);
+
+	keyno = 0;
+	while (1) {
+		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
+
+		if (rc != CKR_OK) {
+			printf("No more keys for decryption found\n");
+			return rc;
+		}
+
+		rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&puktemplate[1], 1);
+		printf("C_GetAttributeValue (Session %ld) - %s : %s\n", session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&puktemplate, sizeof(puktemplate) / sizeof(CK_ATTRIBUTE), 0, &pubhnd);
+		printf("C_FindObject for public key (Session %ld) - %s : %s\n", session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		if (rc != CKR_OK) {
+			return rc;
+		}
+
+		if (mt == CKM_RSA_X_509) {
+			modulus.ulValueLen = sizeof(plain);
+			rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&modulus, 1);
+			printf("C_GetAttributeValue (Session %ld) - %s : %s\n", session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+			memset(secret, 0, sizeof(secret));
+			strcpy((char *)secret + 1, secretstr);
+			secretlen = modulus.ulValueLen;
+		}
+
+		printf("Calling C_EncryptInit()");
+		rc = p11->C_EncryptInit(session, &mech, pubhnd);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Calling C_Encrypt()");
+		cipherlen = sizeof(cipher);
+		rc = p11->C_Encrypt(session, secret, secretlen, NULL, &cipherlen);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Cipher size = %lu\n", cipherlen);
+
+		printf("Calling C_Encrypt()");
+		cipherlen = sizeof(cipher);
+		rc = p11->C_Encrypt(session, secret, secretlen, cipher, &cipherlen);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Calling C_DecryptInit()");
+		rc = p11->C_DecryptInit(session, &mech, hnd);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Calling C_Decrypt()");
+
+		len = 0;
+		rc = p11->C_Decrypt(session, cipher, cipherlen, NULL, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Plain size = %lu\n", len);
+
+		len = sizeof(plain);
+		rc = p11->C_Decrypt(session, cipher, cipherlen, plain, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		bin2str(scr, sizeof(scr), plain, len);
+		printf("Plain:\n%s\n%s\n", scr, verdict(!memcmp(plain, secret, len)));
+
+		keyno++;
+	}
+
+	out:
+		p11->C_CloseSession(session);
+	return rc;
+}
+
+
+
 #ifndef _WIN32
 void*
 #else
@@ -918,7 +1041,30 @@ SignThread(void *arg) {
 	while (d->iterations && rc == CKR_OK) {
 		rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SHA1_RSA_PKCS);
 		if (rc == CKR_OK)
+			testRSASigning(d->p11, d->slotid, 0, CKM_RSA_PKCS);
+		if (rc == CKR_OK)
+			testRSASigning(d->p11, d->slotid, 0, CKM_SHA256_RSA_PKCS_PSS);
+		if (rc == CKR_OK)
+			testRSASigning(d->p11, d->slotid, 0, CKM_SC_HSM_PSS_SHA1);
+		if (rc == CKR_OK)
+			testRSASigning(d->p11, d->slotid, 0, CKM_SC_HSM_PSS_SHA256);
+		if (rc == CKR_OK)
 			rc = testECSigning(d->p11, d->slotid, d->thread_id, CKM_ECDSA_SHA1);
+
+		if (rc == CKR_OK)
+			testECSigning(d->p11, d->slotid, 0, CKM_ECDSA);
+		if (rc == CKR_OK)
+			testECSigning(d->p11, d->slotid, 0, CKM_SC_HSM_ECDSA_SHA224);
+		if (rc == CKR_OK)
+			testECSigning(d->p11, d->slotid, 0, CKM_SC_HSM_ECDSA_SHA256);
+
+		if (rc == CKR_OK)
+			testRSADecryption(d->p11, d->slotid, 0, CKM_RSA_PKCS);
+		if (rc == CKR_OK)
+			testRSADecryption(d->p11, d->slotid, 0, CKM_RSA_PKCS_OAEP);
+		if (rc == CKR_OK)
+			testRSADecryption(d->p11, d->slotid, 0, CKM_RSA_X_509);
+
 		d->iterations--;
 	}
 
@@ -1049,108 +1195,6 @@ void testSigningMultiThreading(CK_FUNCTION_LIST_PTR p11)
 	printf("Multithreading test started at %s\n", asctime(localtime(&start)));
 	printf("Multithreading test stopped at %s\n", asctime(localtime(&stop)));
 	printf("Elapsed time is %.2lf seconds.\n", difftime (stop, start) );
-}
-
-
-
-void testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_MECHANISM_TYPE mt)
-{
-	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
-	CK_KEY_TYPE keyType = CKK_RSA;
-	CK_BBOOL _true = CK_TRUE;
-	CK_ATTRIBUTE template[] = {
-			{ CKA_CLASS, &class, sizeof(class) },
-			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
-			{ CKA_DECRYPT, &_true, sizeof(_true) }
-	};
-	CK_OBJECT_CLASS classpuk = CKO_PUBLIC_KEY;
-	CK_BYTE keyid[256];
-	CK_ATTRIBUTE puktemplate[] = {
-			{ CKA_CLASS, &classpuk, sizeof(classpuk) },
-			{ CKA_ID, keyid, sizeof(keyid) }
-	};
-	CK_BYTE plain[512];
-	CK_ATTRIBUTE modulus = { CKA_MODULUS, &plain, sizeof(plain) };
-	CK_OBJECT_HANDLE hnd,pubhnd;
-	CK_MECHANISM mech = { CKM_RSA_PKCS, 0, 0 };
-	CK_BYTE cipher[512];
-	CK_BYTE secret[512];
-	CK_ULONG len, cipherlen,secretlen;
-	char scr[2048];
-	char *secretstr = "*SECRET*";
-	int rc, keyno;
-
-	mech.mechanism = mt;
-
-	secretlen = (CK_ULONG)strlen(secretstr);
-	memcpy(secret, secretstr, secretlen);
-
-	keyno = 0;
-	while (1) {
-		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
-
-		if (rc != CKR_OK) {
-			printf("No more keys for decryption found\n");
-			return;
-		}
-
-		rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&puktemplate[1], 1);
-		printf("C_GetAttributeValue (Session %ld) - %s : %s\n", session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&puktemplate, sizeof(puktemplate) / sizeof(CK_ATTRIBUTE), 0, &pubhnd);
-		printf("C_FindObject for public key (Session %ld) - %s : %s\n", session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		if (rc != CKR_OK) {
-			return;
-		}
-
-		if (mt == CKM_RSA_X_509) {
-			modulus.ulValueLen = sizeof(plain);
-			rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&modulus, 1);
-			printf("C_GetAttributeValue (Session %ld) - %s : %s\n", session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-			memset(secret, 0, sizeof(secret));
-			strcpy((char *)secret + 1, secretstr);
-			secretlen = modulus.ulValueLen;
-		}
-
-		printf("Calling C_EncryptInit()");
-		rc = p11->C_EncryptInit(session, &mech, pubhnd);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		printf("Calling C_Encrypt()");
-		cipherlen = sizeof(cipher);
-		rc = p11->C_Encrypt(session, secret, secretlen, NULL, &cipherlen);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		printf("Cipher size = %lu\n", cipherlen);
-
-		printf("Calling C_Encrypt()");
-		cipherlen = sizeof(cipher);
-		rc = p11->C_Encrypt(session, secret, secretlen, cipher, &cipherlen);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		printf("Calling C_DecryptInit()");
-		rc = p11->C_DecryptInit(session, &mech, hnd);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		printf("Calling C_Decrypt()");
-
-		len = 0;
-		rc = p11->C_Decrypt(session, cipher, cipherlen, NULL, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		printf("Plain size = %lu\n", len);
-
-		len = sizeof(plain);
-		rc = p11->C_Decrypt(session, cipher, cipherlen, plain, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		bin2str(scr, sizeof(scr), plain, len);
-		printf("Plain:\n%s\n%s\n", scr, verdict(!memcmp(plain, secret, len)));
-
-		keyno++;
-	}
 }
 
 
@@ -2140,7 +2184,7 @@ void unlockPIN(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 
 void usage()
 {
-	printf("sc-hsm-tool [--module <p11-file>] [--pin <user-pin>] [--token <tokenname>] [--optThreadsPerToken <count>] [--iterations <count>]\n");
+	printf("sc-hsm-tool [--module <p11-file>] [--pin <user-pin>] [--token <tokenname>] [--threads <count>] [--iterations <count>]\n");
 	printf("  --test-insert-remove       Enable insert / remove test\n");
 	printf("  --test-pin-block           Enable PIN blocking test\n");
 	printf("  --test-multithreading-only Perform multithreading tests only\n");
@@ -2148,6 +2192,7 @@ void usage()
 	printf("  --one-thread-per-token     Create a single thread per token rather than distributing %d\n", NUM_THREADS);
 	printf("  --no-class3-tests          No PIN tests with attached class 3 PIN PAD\n");
 	printf("  --multithreading-tests     Perform multithreading tests\n");
+	printf("  --fail-fast                Abort at first failed test\n");
 	printf("  --unlock-pin               Unlock PIN without setting a new value\n");
 }
 
@@ -2233,6 +2278,8 @@ void decodeArgs(int argc, char **argv)
 			optNoClass3Tests = 1;
 		} else if (!strcmp(*argv, "--multithreading-tests")) {
 			optMultiThreadingTests = 1;
+		} else if (!strcmp(*argv, "--fail-fast")) {
+			optFailFast = 1;
 		} else if (!strcmp(*argv, "--unlock-pin")) {
 			optUnlockPIN = 1;
 		} else {
@@ -2449,11 +2496,11 @@ int main(int argc, char *argv[])
 				}
 
 #ifdef ENABLE_LIBCRYPTO
-				testRSADecryption(p11, session, CKM_RSA_PKCS);
-				testRSADecryption(p11, session, CKM_RSA_PKCS_OAEP);
+				testRSADecryption(p11, slotid, 0, CKM_RSA_PKCS);
+				testRSADecryption(p11, slotid, 0, CKM_RSA_PKCS_OAEP);
 
 				if (strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
-					testRSADecryption(p11, session, CKM_RSA_X_509);
+					testRSADecryption(p11, slotid, 0, CKM_RSA_X_509);
 				}
 #endif
 
