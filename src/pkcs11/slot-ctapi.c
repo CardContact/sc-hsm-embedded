@@ -57,7 +57,7 @@
 
 extern struct p11Context_t *context;
 
-#define MAX_READERS 8
+#define MAX_READERS 16
 static unsigned short numberOfReaders = 0;
 
 
