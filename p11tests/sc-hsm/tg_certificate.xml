@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="doctg.xsl" ?>
-<testgroup 
+<testgroup
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="http://www.openscdp.org/schema/testframework-1.0.xsd"
 	id="tg_certificate" arrayElement="testcase,function" arrayIndex="id,Name">
@@ -16,7 +16,7 @@
 
 
 	<constructor Param="name, parameter">
-		<Script><![CDATA[		
+		<Script><![CDATA[
 		//Call constructor of super class TestGroup and define name of test group
 		TestGroup.call(this, name, parameter);
 		]]></Script>
@@ -27,7 +27,7 @@
 <!-- Setup method called before each test case is executed -->
 	<setup>
 		<Script><![CDATA[
-			
+
 		]]></Script>
 	</setup>
 
@@ -36,8 +36,8 @@
 <!-- Teardown method called after each test case is executed -->
 	<teardown>
 		<Script><![CDATA[
-		
-	
+
+
 		]]></Script>
 	</teardown>
 
@@ -141,6 +141,78 @@ try	{
 	s.login(this.parameter.pin);
 
 	issueCertificate(this.parameter.ca, s, "Joe Doe (RSA2048)", 2048, "EmailAndTLSClient");
+
+	s.close();
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="004_Store_Certificate_for_RSA3072_Key">
+		<name>Generate RSA key and store matching certificate</name>
+		<description>
+			<p></p>
+		</description>
+		<requirement>
+			<p></p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p);
+
+	log("Using slot: " + slot);
+
+	// Open R/W session
+	var s = new PKCS11Session(p, slot, true);
+
+	log("Login");
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+
+	issueCertificate(this.parameter.ca, s, "Joe Doe (RSA3072)", 3072, "EmailAndTLSClient");
+
+	s.close();
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="005_Store_Certificate_for_RSA4096_Key">
+		<name>Generate RSA key and store matching certificate</name>
+		<description>
+			<p></p>
+		</description>
+		<requirement>
+			<p></p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p);
+
+	log("Using slot: " + slot);
+
+	// Open R/W session
+	var s = new PKCS11Session(p, slot, true);
+
+	log("Login");
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+
+	issueCertificate(this.parameter.ca, s, "Joe Doe (RSA4096)", 4096, "EmailAndTLSClient");
 
 	s.close();
 } finally {
@@ -295,6 +367,114 @@ try	{
 
 
 
+	<testcase id="105_Store_Certificate_for_ECC384_Key">
+		<name>Generate ECC key and store matching certificate</name>
+		<description>
+			<p></p>
+		</description>
+		<requirement>
+			<p></p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p);
+
+	log("Using slot: " + slot);
+
+	// Open R/W session
+	var s = new PKCS11Session(p, slot, true);
+
+	log("Login");
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+
+	issueCertificate(this.parameter.ca, s, "Joe Doe (ECC-BP384)", "brainpoolP384r1", "TLSClient");
+
+	s.close();
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="106_Store_Certificate_for_ECC512_Key">
+		<name>Generate ECC key and store matching certificate</name>
+		<description>
+			<p></p>
+		</description>
+		<requirement>
+			<p></p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p);
+
+	log("Using slot: " + slot);
+
+	// Open R/W session
+	var s = new PKCS11Session(p, slot, true);
+
+	log("Login");
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+
+	issueCertificate(this.parameter.ca, s, "Joe Doe (ECC-BP512)", "brainpoolP512r1", "TLSClient");
+
+	s.close();
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
+	<testcase id="107_Store_Certificate_for_ECC521_Key">
+		<name>Generate ECC key and store matching certificate</name>
+		<description>
+			<p></p>
+		</description>
+		<requirement>
+			<p></p>
+		</requirement>
+		<reference>
+			<p></p>
+		</reference>
+		<Script><![CDATA[
+var p = new PKCS11Provider(this.parameter.provider);
+try	{
+	var slot = getSlot(p);
+
+	log("Using slot: " + slot);
+
+	// Open R/W session
+	var s = new PKCS11Session(p, slot, true);
+
+	log("Login");
+	// Login with USER PIN
+	s.login(this.parameter.pin);
+
+	issueCertificate(this.parameter.ca, s, "Joe Doe (ECC-SECP521)", "secp521r1", "TLSClient");
+
+	s.close();
+} finally {
+	p.cleanup();
+}
+		]]></Script>
+	</testcase>
+
+
+
 	<testcase id="201_Store_CA_Certificate">
 		<name>Store CA certificate</name>
 		<description>
@@ -321,7 +501,7 @@ try	{
 	s.login(this.parameter.pin);
 
 	var cert = this.parameter.ca.getSignerCertificate();
-	
+
 	storeCertificate(s, "OpenSCDP Demo CA", cert);
 
 	s.close();
