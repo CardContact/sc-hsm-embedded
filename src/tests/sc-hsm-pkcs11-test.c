@@ -383,6 +383,10 @@ static char *verdict(int condition) {
 	} else {
 		testsfailed++;
 		mutex_unlock(&verdictMutex);
+		if (optFailFast) {
+			printf("Failed after %d tests.\n", testscompleted);
+			exit(1);
+		}
 		return "Failed";
 	}
 }
@@ -1037,36 +1041,35 @@ SignThread(void *arg) {
 	rc = CKR_OK;
 	while (d->iterations && rc == CKR_OK) {
 		rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SHA1_RSA_PKCS);
-		if (rc == CKR_OK)
+		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testRSASigning(d->p11, d->slotid, 0, CKM_RSA_PKCS);
-		if (rc == CKR_OK)
+		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testRSASigning(d->p11, d->slotid, 0, CKM_SHA256_RSA_PKCS_PSS);
-		if (rc == CKR_OK)
+		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testRSASigning(d->p11, d->slotid, 0, CKM_SC_HSM_PSS_SHA1);
-		if (rc == CKR_OK)
+		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testRSASigning(d->p11, d->slotid, 0, CKM_SC_HSM_PSS_SHA256);
-		if (rc == CKR_OK)
+		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = rc = testECSigning(d->p11, d->slotid, d->thread_id, CKM_ECDSA_SHA1);
 
-		if (rc == CKR_OK)
+		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testECSigning(d->p11, d->slotid, 0, CKM_ECDSA);
-		if (rc == CKR_OK)
+		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testECSigning(d->p11, d->slotid, 0, CKM_SC_HSM_ECDSA_SHA224);
-		if (rc == CKR_OK)
+		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testECSigning(d->p11, d->slotid, 0, CKM_SC_HSM_ECDSA_SHA256);
 
-		if (rc == CKR_OK)
+		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testRSADecryption(d->p11, d->slotid, 0, CKM_RSA_PKCS);
-		if (rc == CKR_OK)
+		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testRSADecryption(d->p11, d->slotid, 0, CKM_RSA_PKCS_OAEP);
-		if (rc == CKR_OK)
+		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testRSADecryption(d->p11, d->slotid, 0, CKM_RSA_X_509);
 
 		d->iterations--;
 
-		if (optFailFast && (testsfailed > 0)) {
-			d->iterations = 0;
-			return 0;
+		if (testsfailed > 0) {
+			rc = CKR_CANCEL;
 		}
 	}
 
