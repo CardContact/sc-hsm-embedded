@@ -103,17 +103,17 @@ size_t getline(char** pp, size_t* pl, FILE* f)
 	return *pl - 1;
 }
 
-void usleep(unsigned int usec) 
-{ 
-    HANDLE timer; 
-    LARGE_INTEGER ft; 
-  
-    ft.QuadPart = -(10 * (__int64)usec); 
-  
-    timer = CreateWaitableTimer(NULL, TRUE, NULL); 
-    SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0); 
-    WaitForSingleObject(timer, INFINITE); 
-    CloseHandle(timer); 
+void usleep(unsigned int usec)
+{
+    HANDLE timer;
+    LARGE_INTEGER ft;
+
+    ft.QuadPart = -(10 * (__int64)usec);
+
+    timer = CreateWaitableTimer(NULL, TRUE, NULL);
+    SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
+    WaitForSingleObject(timer, INFINITE);
+    CloseHandle(timer);
 }
 
 #endif /* _WIN32 */
@@ -383,9 +383,6 @@ static char *verdict(int condition) {
 	} else {
 		testsfailed++;
 		mutex_unlock(&verdictMutex);
-		if (optFailFast) {
-			exit(1);
-		}
 		return "Failed";
 	}
 }
@@ -956,8 +953,8 @@ int testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_ME
 		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
 
 		if (rc != CKR_OK) {
-			printf("No more keys for decryption found\n");
-			return rc;
+			rc = CKR_OK;
+			break;
 		}
 
 		rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&puktemplate[1], 1);
@@ -967,7 +964,7 @@ int testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_ME
 		printf("C_FindObject for public key (Session %ld) - %s : %s\n", session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		if (rc != CKR_OK) {
-			return rc;
+			break;
 		}
 
 		if (mt == CKM_RSA_X_509) {
@@ -1041,31 +1038,36 @@ SignThread(void *arg) {
 	while (d->iterations && rc == CKR_OK) {
 		rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SHA1_RSA_PKCS);
 		if (rc == CKR_OK)
-			testRSASigning(d->p11, d->slotid, 0, CKM_RSA_PKCS);
+			rc = testRSASigning(d->p11, d->slotid, 0, CKM_RSA_PKCS);
 		if (rc == CKR_OK)
-			testRSASigning(d->p11, d->slotid, 0, CKM_SHA256_RSA_PKCS_PSS);
+			rc = testRSASigning(d->p11, d->slotid, 0, CKM_SHA256_RSA_PKCS_PSS);
 		if (rc == CKR_OK)
-			testRSASigning(d->p11, d->slotid, 0, CKM_SC_HSM_PSS_SHA1);
+			rc = testRSASigning(d->p11, d->slotid, 0, CKM_SC_HSM_PSS_SHA1);
 		if (rc == CKR_OK)
-			testRSASigning(d->p11, d->slotid, 0, CKM_SC_HSM_PSS_SHA256);
+			rc = testRSASigning(d->p11, d->slotid, 0, CKM_SC_HSM_PSS_SHA256);
 		if (rc == CKR_OK)
-			rc = testECSigning(d->p11, d->slotid, d->thread_id, CKM_ECDSA_SHA1);
+			rc = rc = testECSigning(d->p11, d->slotid, d->thread_id, CKM_ECDSA_SHA1);
 
 		if (rc == CKR_OK)
-			testECSigning(d->p11, d->slotid, 0, CKM_ECDSA);
+			rc = testECSigning(d->p11, d->slotid, 0, CKM_ECDSA);
 		if (rc == CKR_OK)
-			testECSigning(d->p11, d->slotid, 0, CKM_SC_HSM_ECDSA_SHA224);
+			rc = testECSigning(d->p11, d->slotid, 0, CKM_SC_HSM_ECDSA_SHA224);
 		if (rc == CKR_OK)
-			testECSigning(d->p11, d->slotid, 0, CKM_SC_HSM_ECDSA_SHA256);
+			rc = testECSigning(d->p11, d->slotid, 0, CKM_SC_HSM_ECDSA_SHA256);
 
 		if (rc == CKR_OK)
-			testRSADecryption(d->p11, d->slotid, 0, CKM_RSA_PKCS);
+			rc = testRSADecryption(d->p11, d->slotid, 0, CKM_RSA_PKCS);
 		if (rc == CKR_OK)
-			testRSADecryption(d->p11, d->slotid, 0, CKM_RSA_PKCS_OAEP);
+			rc = testRSADecryption(d->p11, d->slotid, 0, CKM_RSA_PKCS_OAEP);
 		if (rc == CKR_OK)
-			testRSADecryption(d->p11, d->slotid, 0, CKM_RSA_X_509);
+			rc = testRSADecryption(d->p11, d->slotid, 0, CKM_RSA_X_509);
 
 		d->iterations--;
+
+		if (optFailFast && (testsfailed > 0)) {
+			d->iterations = 0;
+			return 0;
+		}
 	}
 
 	d->iterations = 0;
