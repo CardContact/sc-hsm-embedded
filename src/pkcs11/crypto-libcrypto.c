@@ -558,11 +558,14 @@ static CK_RV encryptRSA(struct p11Object_t *obj, int padding, CK_BYTE_PTR in, CK
 		rc = RSA_padding_add_PKCS1_OAEP_mgf1(raw, modulus->attrData.ulValueLen, in, in_len, NULL, 0, EVP_sha256(), NULL);
 		rc = RSA_public_encrypt(modulus->attrData.ulValueLen, raw, out, rsa, RSA_NO_PADDING);
 #else
+		RSA_free(rsa);
 		FUNC_RETURNS(CKR_FUNCTION_NOT_SUPPORTED);
 #endif
 	} else {
 		rc = RSA_public_encrypt(in_len, in, out, rsa, padding);
 	}
+
+	RSA_free(rsa);
 
 	if (rc < 0) {
 		rv = translateError();
