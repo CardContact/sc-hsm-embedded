@@ -649,7 +649,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 	mech.mechanism = mt;
 
 	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
-	printf("C_OpenSession (Thread %i, Slot=%ld) - %s : %s\n", id, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+	printf("C_OpenSession (Thread %i, Slot=%ld) %ld - %s : %s\n", id, slotid, session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (rc != CKR_OK)
 		return rc;
@@ -806,6 +806,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 	}
 
 out:
+	printf("Closing Session %ld\n", session);
 	p11->C_CloseSession(session);
 
 	return rc;
@@ -840,7 +841,7 @@ int testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHAN
 	keyno = 0;
 
 	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
-	printf("C_OpenSession (Thread %i, Slot=%ld) - %s : %s\n", id, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+	printf("C_OpenSession (Thread %i, Slot=%ld) %ld - %s : %s\n", id, slotid, session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (rc != CKR_OK)
 		return rc;
@@ -900,8 +901,9 @@ int testECSigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHAN
 		keyno++;
 	}
 
-	out:
-		p11->C_CloseSession(session);
+out:
+	printf("Closing Session %ld\n", session);
+	p11->C_CloseSession(session);
 	return rc;
 }
 
@@ -938,7 +940,7 @@ int testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_ME
 	mech.mechanism = mt;
 
 	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
-	printf("C_OpenSession (Thread %i, Slot=%ld) - %s : %s\n", id, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+	printf("C_OpenSession (Thread %i, Slot=%ld) %ld - %s : %s\n", id, slotid, session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 	if (rc != CKR_OK)
 		return rc;
@@ -1019,8 +1021,9 @@ int testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_ME
 		keyno++;
 	}
 
-	out:
-		p11->C_CloseSession(session);
+out:
+	printf("Closing Session %ld\n", session);
+	p11->C_CloseSession(session);
 	return rc;
 }
 
