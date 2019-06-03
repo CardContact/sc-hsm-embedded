@@ -1052,9 +1052,9 @@ SignThread(void *arg) {
 			rc = testRSASigning(d->p11, d->slotid, 0, CKM_SC_HSM_PSS_SHA1);
 		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testRSASigning(d->p11, d->slotid, 0, CKM_SC_HSM_PSS_SHA256);
+
 		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = rc = testECSigning(d->p11, d->slotid, d->thread_id, CKM_ECDSA_SHA1);
-
 		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testECSigning(d->p11, d->slotid, 0, CKM_ECDSA);
 		if ((rc == CKR_OK) && (testsfailed == 0))
