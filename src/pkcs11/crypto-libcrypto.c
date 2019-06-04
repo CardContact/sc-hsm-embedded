@@ -67,8 +67,6 @@ void cryptoInitialize()
 {
 #ifdef DEBUG
 	ERR_load_crypto_strings();
-	CRYPTO_malloc_debug_init();
-	CRYPTO_dbg_set_options(V_CRYPTO_MDEBUG_ALL);
 	CRYPTO_mem_ctrl(CRYPTO_MEM_CHECK_ON);
 #endif
 }
