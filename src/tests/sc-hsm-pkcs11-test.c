@@ -1045,29 +1045,29 @@ SignThread(void *arg) {
 	while (d->iterations && rc == CKR_OK) {
 		rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SHA1_RSA_PKCS);
 		if ((rc == CKR_OK) && (testsfailed == 0))
-			rc = testRSASigning(d->p11, d->slotid, 0, CKM_RSA_PKCS);
+			rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_RSA_PKCS);
 		if ((rc == CKR_OK) && (testsfailed == 0))
-			rc = testRSASigning(d->p11, d->slotid, 0, CKM_SHA256_RSA_PKCS_PSS);
+			rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SHA256_RSA_PKCS_PSS);
 		if ((rc == CKR_OK) && (testsfailed == 0))
-			rc = testRSASigning(d->p11, d->slotid, 0, CKM_SC_HSM_PSS_SHA1);
+			rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SC_HSM_PSS_SHA1);
 		if ((rc == CKR_OK) && (testsfailed == 0))
-			rc = testRSASigning(d->p11, d->slotid, 0, CKM_SC_HSM_PSS_SHA256);
+			rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SC_HSM_PSS_SHA256);
 
 		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = rc = testECSigning(d->p11, d->slotid, d->thread_id, CKM_ECDSA_SHA1);
 		if ((rc == CKR_OK) && (testsfailed == 0))
-			rc = testECSigning(d->p11, d->slotid, 0, CKM_ECDSA);
+			rc = testECSigning(d->p11, d->slotid, d->thread_id, CKM_ECDSA);
 		if ((rc == CKR_OK) && (testsfailed == 0))
-			rc = testECSigning(d->p11, d->slotid, 0, CKM_SC_HSM_ECDSA_SHA224);
+			rc = testECSigning(d->p11, d->slotid, d->thread_id, CKM_SC_HSM_ECDSA_SHA224);
 		if ((rc == CKR_OK) && (testsfailed == 0))
-			rc = testECSigning(d->p11, d->slotid, 0, CKM_SC_HSM_ECDSA_SHA256);
+			rc = testECSigning(d->p11, d->slotid, d->thread_id, CKM_SC_HSM_ECDSA_SHA256);
 
 		if ((rc == CKR_OK) && (testsfailed == 0))
-			rc = testRSADecryption(d->p11, d->slotid, 0, CKM_RSA_PKCS);
+			rc = testRSADecryption(d->p11, d->slotid, d->thread_id, CKM_RSA_PKCS);
 		if ((rc == CKR_OK) && (testsfailed == 0))
-			rc = testRSADecryption(d->p11, d->slotid, 0, CKM_RSA_PKCS_OAEP);
+			rc = testRSADecryption(d->p11, d->slotid, d->thread_id, CKM_RSA_PKCS_OAEP);
 		if ((rc == CKR_OK) && (testsfailed == 0))
-			rc = testRSADecryption(d->p11, d->slotid, 0, CKM_RSA_X_509);
+			rc = testRSADecryption(d->p11, d->slotid, d->thread_id, CKM_RSA_X_509);
 
 		d->iterations--;
 
