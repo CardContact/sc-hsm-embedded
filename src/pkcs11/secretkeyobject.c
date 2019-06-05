@@ -47,6 +47,7 @@ extern CK_BBOOL ckFalse;
 
 
 static struct attributesForObject_t attributesSecretKeyObject[] = {
+	{{CKA_VALUE_LEN, 0, 0}, AC_OPTIONAL},
 	{{CKA_SENSITIVE, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
 	{{CKA_ENCRYPT, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
 	{{CKA_DECRYPT, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
@@ -93,6 +94,7 @@ int createSecretKeyObjectFromP15(struct p15SecretKeyDescription *p15, struct p11
 	CK_OBJECT_CLASS class = CKO_SECRET_KEY;
 	CK_KEY_TYPE keyType = CKK_AES;
 	CK_MECHANISM_TYPE genMechType = CKM_AES_KEY_GEN;
+	CK_ULONG keylen = 0;
 	CK_BBOOL true = CK_TRUE;
 	CK_BBOOL false = CK_FALSE;
 	CK_ATTRIBUTE template[] = {
@@ -104,6 +106,7 @@ int createSecretKeyObjectFromP15(struct p15SecretKeyDescription *p15, struct p11
 			{ CKA_ID, NULL, 0 },
 			{ CKA_LOCAL, &true, sizeof(true) },
 			{ CKA_KEY_GEN_MECHANISM, &genMechType, sizeof(genMechType) },
+			{ CKA_VALUE_LEN, &keylen, sizeof(keylen) },
 			{ CKA_SENSITIVE, &true, sizeof(true) },
 			{ CKA_ENCRYPT, &true, sizeof(true) },
 			{ CKA_DECRYPT, &true, sizeof(true) },
@@ -137,13 +140,15 @@ int createSecretKeyObjectFromP15(struct p15SecretKeyDescription *p15, struct p11
 		template[5].ulValueLen = (CK_ULONG)p15->id.len;
 	}
 
-	template[9].pValue = p15->usage & P15_ENCIPHER ? &true : &false;
-	template[10].pValue = p15->usage & P15_DECIPHER ? &true : &false;
-	template[11].pValue = p15->usage & P15_SIGN ? &true : &false;
-	template[12].pValue = p15->usage & P15_VERIFY ? &true : &false;
-	template[13].pValue = p15->usage & P15_KEYENCIPHER ? &true : &false;
-	template[14].pValue = p15->usage & P15_KEYDECIPHER ? &true : &false;
-	template[15].pValue = p15->usage & P15_DERIVE ? &true : &false;
+	keylen = p15->keysize >> 3;
+
+	template[10].pValue = p15->usage & P15_ENCIPHER ? &true : &false;
+	template[11].pValue = p15->usage & P15_DECIPHER ? &true : &false;
+	template[12].pValue = p15->usage & P15_SIGN ? &true : &false;
+	template[13].pValue = p15->usage & P15_VERIFY ? &true : &false;
+	template[14].pValue = p15->usage & P15_KEYENCIPHER ? &true : &false;
+	template[15].pValue = p15->usage & P15_KEYDECIPHER ? &true : &false;
+	template[16].pValue = p15->usage & P15_DERIVE ? &true : &false;
 
 	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE);
 
