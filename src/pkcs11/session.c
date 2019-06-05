@@ -85,11 +85,13 @@ void addSession(struct p11SessionPool_t *pool, struct p11Session_t *session)
 
 	session->next = NULL;
 
+	p11LockMutex(context->mutex);
 	pSession = &pool->list;
 	while(*pSession)
 		pSession = &(*pSession)->next;
 
 	*pSession = session;
+	p11UnlockMutex(context->mutex);
 
 	session->handle = pool->nextSessionHandle++;
 	pool->numberOfSessions++;
@@ -111,6 +113,7 @@ int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle,
 {
 	struct p11Session_t *psession;
 
+	p11LockMutex(context->mutex);
 	psession = pool->list;
 	*session = NULL;
 
@@ -118,13 +121,16 @@ int findSessionByHandle(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle,
 		if (psession->handle == handle) {
 			*session = psession;
 			if (psession->isRemoved) {
+				p11UnlockMutex(context->mutex);
 				return CKR_DEVICE_REMOVED;
 			}
+			p11UnlockMutex(context->mutex);
 			return CKR_OK;
 		}
 
 		psession = psession->next;
 	}
+	p11UnlockMutex(context->mutex);
 
 	return CKR_SESSION_HANDLE_INVALID;
 }
@@ -157,12 +163,14 @@ int findSessionBySlotID(struct p11SessionPool_t *pool, CK_SLOT_ID slotID, struct
 	struct p11Session_t *psession;
 	int pos;
 
+	p11LockMutex(context->mutex);
 	psession = pool->list;
 	pos = 0;
 
 	while (psession != NULL) {
 		if (psession->slotID == slotID) {
 			*session = psession;
+			p11UnlockMutex(context->mutex);
 			return pos;
 		}
 
@@ -170,6 +178,7 @@ int findSessionBySlotID(struct p11SessionPool_t *pool, CK_SLOT_ID slotID, struct
 		pos++;
 	}
 
+	p11UnlockMutex(context->mutex);
 	return -1;
 }
 
@@ -190,6 +199,7 @@ int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle)
 	struct p11Session_t **pSession;
 	struct p11Slot_t *slot;
 
+	p11LockMutex(context->mutex);
 	pSession = &pool->list;
 	while (*pSession && (*pSession)->handle != handle) {
 		pSession = &((*pSession)->next);
@@ -198,10 +208,12 @@ int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle)
 	session = *pSession;
 
 	if (!session) {
+		p11UnlockMutex(context->mutex);
 		return CKR_SESSION_HANDLE_INVALID;
 	}
 
 	*pSession = session->next;
+	p11UnlockMutex(context->mutex);
 
 	rc = findSlot(&context->slotPool, session->slotID, &slot);
 
@@ -269,6 +281,7 @@ void tokenRemovedForSessionsOnSlot(struct p11SessionPool_t *pool, CK_SLOT_ID slo
 {
 	struct p11Session_t *session;
 
+	p11LockMutex(context->mutex);
 	session = pool->list;
 
 	while (session != NULL) {
@@ -277,6 +290,7 @@ void tokenRemovedForSessionsOnSlot(struct p11SessionPool_t *pool, CK_SLOT_ID slo
 		}
 		session = session->next;
 	}
+	p11UnlockMutex(context->mutex);
 }
 
 

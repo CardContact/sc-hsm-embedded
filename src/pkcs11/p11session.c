@@ -115,8 +115,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 	session->flags = flags;
 	session->activeObjectHandle = CK_INVALID_HANDLE;
 
-	p11LockMutex(context->mutex);
-
 	addSession(&context->sessionPool, session);
 
 	*phSession = session->handle;               /* we got a valid handle by calling addSession() */
@@ -124,8 +122,6 @@ CK_DECLARE_FUNCTION(CK_RV, C_OpenSession)(
 	if (!(flags & CKF_RW_SESSION)) {
 		token->rosessions++;
 	}
-
-	p11UnlockMutex(context->mutex);
 
 	FUNC_RETURNS(CKR_OK);
 }
@@ -152,11 +148,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseSession)(
 		FUNC_RETURNS(rv);
 	}
 
-	p11LockMutex(context->mutex);
-
 	rv = removeSession(&context->sessionPool, hSession);
-
-	p11UnlockMutex(context->mutex);
 
 	if (rv < 0) {
 		FUNC_RETURNS(rv);
@@ -178,11 +170,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_CloseAllSessions)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
-	p11LockMutex(context->mutex);
-
 	closeSessionsForSlot(&context->sessionPool, slotID);
-
-	p11UnlockMutex(context->mutex);
 
 	FUNC_RETURNS(CKR_OK);
 }
