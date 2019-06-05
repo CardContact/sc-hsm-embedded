@@ -65,6 +65,7 @@ static struct bytestring_s defaultAlgorithmRSA = { (unsigned char *)"\x04\x00\x7
 static struct bytestring_s defaultAlgorithmEC = { (unsigned char *)"\x04\x00\x7F\x00\x07\x02\x02\x02\x02\x03", 10 };
 static struct bytestring_s defaultCHR = { (unsigned char *)"UTDUMMY00000", 12 };
 static struct bytestring_s defaultPublicExponent = { (unsigned char *)"\x01\x00\x01", 3 };
+static struct bytestring_s defaultAESAlgorithms = { (unsigned char *)"\x10\x11\x18\x99", 4 };
 
 
 
@@ -87,6 +88,7 @@ static const CK_MECHANISM_TYPE p11MechanismList[] = {
 #endif
 		CKM_EC_KEY_PAIR_GEN,
 		CKM_RSA_PKCS_KEY_PAIR_GEN,
+		CKM_AES_KEY_GEN,
 		CKM_SC_HSM_PSS_SHA1,
 		CKM_SC_HSM_PSS_SHA256,
 		CKM_SC_HSM_ECDSA_SHA224,
@@ -828,10 +830,11 @@ static int encodeGSK(bytebuffer bb, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulPubli
 	bbClear(bb);
 
 	rc = findAttributeInTemplate(CKA_SC_HSM_ALGORITHM_LIST, pTemplate, ulPublicKeyAttributeCount);
-	if (rc < 0) {
-		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_SC_HSM_ALGORITHM_LIST not found in template");
+	if (rc >= 0) {
+		asn1AppendBytes(bb, 0x91, pTemplate[rc].pValue, pTemplate[rc].ulValueLen);
+	} else {
+		asn1AppendBytes(bb, 0x91, defaultAESAlgorithms.val, defaultAESAlgorithms.len);
 	}
-	asn1AppendBytes(bb, 0x91, pTemplate[rc].pValue, pTemplate[rc].ulValueLen);
 
 	rc = findAttributeInTemplate(CKA_SC_HSM_KEY_USE_COUNTER, pTemplate, ulPublicKeyAttributeCount);
 	if (rc >= 0) {
@@ -1460,12 +1463,12 @@ static int createSecretKeyDescription(
 	freeSecretKeyDescription(&p15key);
 
 	if (rc < 0)
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Encoding PRKD failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Encoding SKD failed");
 
 	rc = writeEF(slot, (PRKD_PREFIX << 8) | id, bb.val, bb.len);
 
 	if (rc < 0)
-		FUNC_FAILS(CKR_DEVICE_ERROR, "Writing PRKD failed");
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Writing SKD failed");
 
 	FUNC_RETURNS(CKR_OK);
 }
@@ -1929,7 +1932,7 @@ static int sc_hsm_C_GenerateKey(
 	if (SW1SW2 != 0x9000)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Generate Symmetric Key operation failed");
 
-	createSecretKeyDescription(slot,pTemplate, ulCount, id, length * 8);
+	createSecretKeyDescription(slot, pTemplate, ulCount, id, length * 8);
 
 	rc = addEECertificateAndKeyObjects(slot->token, id, &priKey, NULL, NULL);
 
@@ -2756,6 +2759,11 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 		pInfo->ulMaxKeySize = 320;
 		break;
 
+	case CKM_AES_KEY_GEN:
+		pInfo->ulMinKeySize = 128;
+		pInfo->ulMaxKeySize = 256;
+		break;
+
 #ifdef ENABLE_LIBCRYPTO
 	case CKM_SHA_1:
 	case CKM_SHA224:
@@ -2823,6 +2831,9 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 	case CKM_SHA384:
 	case CKM_SHA512:
 		pInfo->flags = CKF_DIGEST;
+		break;
+	case CKM_AES_KEY_GEN:
+		pInfo->flags = CKF_HW|CKF_GENERATE|CKF_DECRYPT|CKF_ENCRYPT|CKF_DERIVE;
 		break;
 
 #endif
