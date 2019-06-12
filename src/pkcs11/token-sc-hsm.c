@@ -80,6 +80,7 @@ static const CK_MECHANISM_TYPE p11MechanismList[] = {
 		CKM_ECDSA_SHA1,
 #ifdef ENABLE_LIBCRYPTO
 		CKM_RSA_PKCS_OAEP,
+                CKM_RSA_PKCS_OAEP_SHA1,
 		CKM_SHA_1,
 		CKM_SHA224,
 		CKM_SHA256,
@@ -375,6 +376,7 @@ static int getAlgorithmIdForDecryption(CK_MECHANISM_TYPE mech)
 		return ALGO_RSA_DECRYPT;
 #ifdef ENABLE_LIBCRYPTO
 	case CKM_RSA_PKCS_OAEP:
+        case CKM_RSA_PKCS_OAEP_SHA1:
 		return ALGO_RSA_DECRYPT;
 #endif
 	case CKM_AES_CBC:
@@ -776,7 +778,11 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 		}
 	} else {
 #ifdef ENABLE_LIBCRYPTO
-		rc = stripOAEPPadding(scr, rc, pData, pulDataLen);
+		if (mech == CKM_RSA_PKCS_OAEP_SHA1)
+                    rc = stripOAEPPadding(scr, rc, pData, pulDataLen, CKG_MGF1_SHA1);
+                else
+                    rc = stripOAEPPadding(scr, rc, pData, pulDataLen, CKG_MGF1_SHA256);
+                
 		if (rc != CKR_OK) {
 			FUNC_FAILS(rc, "Invalid OAEP padding");
 		}
@@ -2744,6 +2750,7 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 	case CKM_SC_HSM_PSS_SHA256:
 #ifdef ENABLE_LIBCRYPTO
 	case CKM_RSA_PKCS_OAEP:
+        case CKM_RSA_PKCS_OAEP_SHA1:
 #endif
 
 		pInfo->ulMinKeySize = 1024;
@@ -2794,6 +2801,7 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 		break;
 #ifdef ENABLE_LIBCRYPTO
 	case CKM_RSA_PKCS_OAEP:
+        case CKM_RSA_PKCS_OAEP_SHA1:
 		pInfo->flags = CKF_HW|CKF_DECRYPT|CKF_ENCRYPT;
 		break;
 #endif

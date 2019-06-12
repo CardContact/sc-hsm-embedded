@@ -1066,6 +1066,8 @@ SignThread(void *arg) {
 			rc = testRSADecryption(d->p11, d->slotid, d->thread_id, CKM_RSA_PKCS);
 		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testRSADecryption(d->p11, d->slotid, d->thread_id, CKM_RSA_PKCS_OAEP);
+                if ((rc == CKR_OK) && (testsfailed == 0))
+			rc = testRSADecryption(d->p11, d->slotid, d->thread_id, CKM_RSA_PKCS_OAEP_SHA1);
 		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testRSADecryption(d->p11, d->slotid, d->thread_id, CKM_RSA_X_509);
 
@@ -2748,6 +2750,7 @@ int main(int argc, char *argv[])
 #ifdef ENABLE_LIBCRYPTO
 				testRSADecryption(p11, slotid, 0, CKM_RSA_PKCS);
 				testRSADecryption(p11, slotid, 0, CKM_RSA_PKCS_OAEP);
+                                testRSADecryption(p11, slotid, 0, CKM_RSA_PKCS_OAEP_SHA1);
 
 				if (strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
 					testRSADecryption(p11, slotid, 0, CKM_RSA_X_509);
