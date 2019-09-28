@@ -281,7 +281,6 @@ void tokenRemovedForSessionsOnSlot(struct p11SessionPool_t *pool, CK_SLOT_ID slo
 {
 	struct p11Session_t *session;
 
-	p11LockMutex(context->mutex);
 	session = pool->list;
 
 	while (session != NULL) {
@@ -290,7 +289,6 @@ void tokenRemovedForSessionsOnSlot(struct p11SessionPool_t *pool, CK_SLOT_ID slo
 		}
 		session = session->next;
 	}
-	p11UnlockMutex(context->mutex);
 }
 
 
