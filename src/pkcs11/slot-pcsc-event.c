@@ -284,6 +284,13 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 			}
 			slot->maxRAPDU = 1000;
 			slot->maxCAPDU = 1000;
+		} else if (!strncmp((char *)p, "Secure Flash Card", 17)) {
+#ifdef DEBUG
+			debug("Detected a MicroSD card\n");
+#endif
+			slot->noExtLengthReadAll = 1;
+			slot->maxRAPDU = 506;
+			slot->maxCAPDU = 478;
 		}
 
 		if (context->caller != CALLER_FIREFOX) {

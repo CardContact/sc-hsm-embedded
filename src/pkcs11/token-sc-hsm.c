@@ -199,23 +199,52 @@ static int enumerateObjects(struct p11Slot_t *slot, unsigned char *filelist, siz
 
 static int readEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *content, size_t len)
 {
-	int rc;
+	int rc,blk,rlen;
 	unsigned short SW1SW2;
+	unsigned char t54[] = { 0x54, 0x02, 0x00, 0x00 };
+
 	FUNC_CALLED();
 
-	rc = transmitAPDU(slot, 0x00, 0xB1, fid >> 8, fid & 0xFF,
-			4, (unsigned char*)"\x54\x02\x00\x00",
-			65536, content, (int)len, &SW1SW2);
+	blk = 65536;
+	rlen = 0;
 
-	if (rc < 0) {
-		FUNC_FAILS(rc, "transmitAPDU failed");
+	if (slot->noExtLengthReadAll) {
+		blk = slot->maxRAPDU - 2;
+		if (blk > len) {
+			blk = len;
+		}
 	}
+	do	{
+		t54[2] = rlen >> 8;
+		t54[3] = rlen & 0xFF;
 
-	if (SW1SW2 != 0x9000) {
-		FUNC_FAILS(-1, "Read EF failed");
-	}
+		rc = transmitAPDU(slot, 0x00, 0xB1, fid >> 8, fid & 0xFF,
+				sizeof(t54), t54,
+				blk, content, (int)len, &SW1SW2);
 
-	FUNC_RETURNS(rc);
+		if (rc < 0) {
+			FUNC_FAILS(rc, "transmitAPDU failed");
+		}
+
+		if ((SW1SW2 != 0x9000) && (SW1SW2 != 0x6282)) {
+			FUNC_FAILS(-1, "Read EF failed");
+		}
+
+		rlen += rc;
+
+		if ((rc == 0) || (blk == 65536) || (SW1SW2 == 0x6282)) {
+			FUNC_RETURNS(rlen);
+		}
+
+		content += rc;
+		len -= rc;
+
+		if (blk > len) {
+			blk = len;
+		}
+	} while ((rc > 0) && (len > 0));
+
+	FUNC_RETURNS(rlen);
 }
 
 
@@ -797,6 +826,10 @@ static int sc_hsm_C_GenerateRandom(struct p11Slot_t *slot, CK_BYTE_PTR rnd, CK_U
 	FUNC_CALLED();
 
 	maxblk = 1024;			// Maximum block size
+
+	if (maxblk + 2 > slot->maxRAPDU) {
+		maxblk = slot->maxRAPDU - 2;
+	}
 	while (rndlen > 0) {
 		if (rndlen < maxblk) {
 			maxblk = rndlen;
