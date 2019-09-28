@@ -459,7 +459,7 @@ int checkForNewPCSCToken(struct p11Slot_t *slot)
 	debug("SCardConnect (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rv));
 #endif
 
-	if (rv == SCARD_E_NO_SMARTCARD || rv == SCARD_W_REMOVED_CARD || rv == SCARD_E_SHARING_VIOLATION) {
+	if (rv == SCARD_E_NO_SMARTCARD || rv == SCARD_W_REMOVED_CARD || rv == SCARD_E_SHARING_VIOLATION || rv == SCARD_W_UNPOWERED_CARD) {
 		FUNC_RETURNS(CKR_TOKEN_NOT_PRESENT);
 	}
 
