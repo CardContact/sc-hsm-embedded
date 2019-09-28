@@ -356,6 +356,7 @@ static int optTestPINBlock = 0;
 static int optTestMultiOnly = 0;
 static int optTestHotplug = 0;
 static int optTestEvent = 0;
+static int optTestInvasive = 0;
 static int optOneThreadPerToken = 0;
 static int optNoClass3Tests = 0;
 static int optMultiThreadingTests = 0;
@@ -2228,6 +2229,17 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 
 	memset(&data, 0, sizeof(data));
 
+	if (pin == NULL) {
+		if (!strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
+			pin = (CK_UTF8CHAR_PTR)PIN_STARCOS;
+			pinlen = (CK_ULONG)strlen(PIN_STARCOS);
+		} else {
+			pin = (CK_UTF8CHAR_PTR)PIN_SC_HSM;
+			pinlen = (CK_ULONG)strlen(PIN_SC_HSM);
+		}
+		printf("Using PIN %s\n", pin);
+	}
+
 	do	{
 		rc = p11->C_GetSlotList(FALSE, NULL, &slots);
 
@@ -2349,6 +2361,7 @@ void usage()
 	printf("  --no-class3-tests          No PIN tests with attached class 3 PIN PAD\n");
 	printf("  --multithreading-tests     Perform multithreading tests\n");
 	printf("  --fail-fast                Abort at first failed test\n");
+	printf("  --invasive                 Enable tests that chnages keys on the device\n");
 	printf("  --unlock-pin               Unlock PIN without setting a new value\n");
 }
 
@@ -2438,6 +2451,8 @@ void decodeArgs(int argc, char **argv)
 			optFailFast = 1;
 		} else if (!strcmp(*argv, "--unlock-pin")) {
 			optUnlockPIN = 1;
+		} else if (!strcmp(*argv, "--invasive")) {
+			optTestInvasive = 1;
 		} else {
 			printf("Unknown argument %s\n", *argv);
 			usage();
@@ -2631,8 +2646,10 @@ int main(int argc, char *argv[])
 			if ((optSlotId != -1) && (optSlotId != slotid))
 				continue;
 
-			if (optTestInsertRemove)
+			if (optTestInsertRemove) {
 				testInsertRemove(p11, slotid);
+				continue;
+			}
 
 			printf("Calling C_GetSlotInfo for slot %lu ", slotid);
 
@@ -2724,7 +2741,7 @@ int main(int argc, char *argv[])
 
 				testRandom(p11, session);
 
-				if (strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
+				if (optTestInvasive && strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
 					testKeyGeneration(p11, session);
 
 					testKeyDerivation(p11, session);
