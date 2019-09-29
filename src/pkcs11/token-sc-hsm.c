@@ -896,7 +896,7 @@ static int encodeGSK(bytebuffer bb, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulPubli
 
 
 
-static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pPublicKeyTemplate, CK_ULONG ulPublicKeyAttributeCount, int *keysize)
+static int encodeGAKP(bytebuffer bb, struct p11Token_t *token, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pPublicKeyTemplate, CK_ULONG ulPublicKeyAttributeCount, int *keysize)
 {
 	int rc,pos,ofs;
 	CK_ULONG keybits;
@@ -914,6 +914,10 @@ static int encodeGAKP(bytebuffer bb, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_P
 	rc = findAttributeInTemplate(CKA_CVC_INNER_CAR, pPublicKeyTemplate, ulPublicKeyAttributeCount);
 	if (rc >= 0) {
 		asn1AppendBytes(bb, 0x42, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
+	} else {
+		if (token->info.firmwareVersion.major < 2) {
+			asn1Append(bb, 0x42, &defaultCHR);
+		}
 	}
 
 	ofs = (int)bbGetLength(bb);
@@ -2012,7 +2016,7 @@ static int sc_hsm_C_GenerateKeyPair(
 			FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "A private key with that CKA_ID does already exist");
 	}
 
-	rc = encodeGAKP(&bb, pMechanism, pPublicKeyTemplate, ulPublicKeyAttributeCount, &keysize);
+	rc = encodeGAKP(&bb, slot->token, pMechanism, pPublicKeyTemplate, ulPublicKeyAttributeCount, &keysize);
 
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Encoding GAKP failed");
@@ -2687,9 +2691,14 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 		ptoken->info.firmwareVersion.major = tag85[tag85len - 2];
 		ptoken->info.firmwareVersion.minor = tag85[tag85len - 1];
 
-		if (tag85len > 0) {
+		if (tag85len > 2) {
 			ptoken->info.hardwareVersion.major = tag85[tag85len - 3];
+		} else {
+			ptoken->info.hardwareVersion.major = 2;
 		}
+	} else {
+		ptoken->info.firmwareVersion.major = 3;		// Assume 3.0 as default
+		ptoken->info.firmwareVersion.minor = 0;
 	}
 
 	ptoken->info.flags = CKF_LOGIN_REQUIRED|CKF_RNG;
@@ -2780,7 +2789,7 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 #endif
 
 		pInfo->ulMinKeySize = 1024;
-		pInfo->ulMaxKeySize = 2048;
+		pInfo->ulMaxKeySize = 4096;
 		break;
 
 	case CKM_EC_KEY_PAIR_GEN:
@@ -2789,7 +2798,7 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 	case CKM_SC_HSM_ECDSA_SHA224:
 	case CKM_SC_HSM_ECDSA_SHA256:
 		pInfo->ulMinKeySize = 192;
-		pInfo->ulMaxKeySize = 320;
+		pInfo->ulMaxKeySize = 521;
 		break;
 
 	case CKM_AES_KEY_GEN:
