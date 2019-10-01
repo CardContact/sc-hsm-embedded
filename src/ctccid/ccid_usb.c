@@ -201,6 +201,7 @@ int DecodeATRValues(scr_t *ctx)
         unsigned char i;
         unsigned char temp;
         unsigned char help;
+        unsigned char prot;
 
         ctx->FI = 1;
         ctx->DI = 1;
@@ -225,6 +226,7 @@ int DecodeATRValues(scr_t *ctx)
         i = 1;
 
         do {
+                prot = (temp & 0x0F);
                 help = (temp >> 4);
 
                 if (help & 1) { /* Get TAx                          */
@@ -234,7 +236,7 @@ int DecodeATRValues(scr_t *ctx)
                                 ctx->DI = temp & 0xF;
                         }
 
-                        if (i > 2) {
+                        if ((i > 2) && (prot != 0x0F)) {
                                 temp = ctx->ATR[atrp++];
                                 ctx->IFSC = temp;
                         }
@@ -243,7 +245,7 @@ int DecodeATRValues(scr_t *ctx)
                 if (help & 2) { /* Get TBx                          */
                         temp = ctx->ATR[atrp++];
 
-                        if (i > 2) {
+                        if ((i > 2) && (prot != 0x0F)) {
                                 ctx->CWI = temp & 0x0F;
                                 ctx->BWI = temp >> 4;
                         }
