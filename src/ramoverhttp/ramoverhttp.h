@@ -57,6 +57,7 @@ extern "C" {
 #define RAME_INVALID_URL	-10			/** URL is malformed or not found on server */
 #define RAME_CONNECT_FAILED	-11			/** Connection to server failed */
 #define RAME_HTTP_CODE		-12			/** Unexpected HTTP code */
+#define RAME_TIMEOUT		-13			/** Connection timeout */
 
 
 /* TLV tags */

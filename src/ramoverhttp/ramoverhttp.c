@@ -557,7 +557,7 @@ int ramConnect(struct ramContext *ctx) {
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, ctx);
 	curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
-	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 40L);
 
 	clearByteBuffer(&ctx->writebuffer);
 	makeInitiationRequest(ctx);
@@ -582,6 +582,9 @@ int ramConnect(struct ramContext *ctx) {
 		case CURLE_COULDNT_CONNECT:
 			rc = RAME_CONNECT_FAILED;
 			break;
+		case CURLE_OPERATION_TIMEDOUT:
+			rc = RAME_TIMEOUT;
+			break;
 		default:
 			rc = RAME_CURL_ERROR;
 			break;
@@ -600,6 +603,8 @@ int ramConnect(struct ramContext *ctx) {
 	} while (httpcode == 200);
 
 	switch(httpcode) {
+	case 0:
+		break;
 	case 504:			// Gateway timeout
 		if (excnt)
 			rc = RAME_SERVER_ABORT;
