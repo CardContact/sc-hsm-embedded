@@ -373,6 +373,9 @@ int updateCTAPISlots(struct p11SlotPool_t *pool)
 		slot->info.firmwareVersion.minor = VERSION_MAJOR;
 		slot->info.firmwareVersion.major = VERSION_MINOR;
 
+		slot->maxRAPDU = MAX_RAPDU;
+		slot->maxCAPDU = MAX_CAPDU;
+
 		slot->info.flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
 		addSlot(&context->slotPool, slot);
 		numberOfReaders++;
