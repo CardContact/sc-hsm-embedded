@@ -48,7 +48,13 @@
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
+#else
+#ifdef _WIN32
+#else
+#include <unistd.h>
 #endif
+#endif
+
 
 /*
  * Set up the global context structure.
