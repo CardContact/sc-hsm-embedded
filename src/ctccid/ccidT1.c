@@ -322,6 +322,41 @@ int ccidT1AbortChain(scr_t *ctx, int SrcNode, int DestNode)
 
 
 /**
+ * Select IFSD
+ *
+ * @param ctx Reader context
+ * @param SrcNode Source node
+ * @param DestNode Destination node
+ * @return 0 on success, -1 on error
+ */
+int ccidT1SetIFSD(scr_t *ctx, int SrcNode, int DestNode)
+{
+	int ret;
+	unsigned char blk[1];
+
+	blk[0] = 252;
+
+	ret = ccidT1SendBlock(ctx,
+						  CODENAD(SrcNode, DestNode),
+						  CODESBLOCK(IFSREQ),
+						  blk, sizeof(blk));
+
+	if (ret < 0) {
+		return -1;
+	}
+
+	ret = ccidT1ReceiveBlock(ctx);
+
+	if (!ret && ISSBLOCK(ctx->t1->Pcb) && (SBLOCKFUNC(ctx->t1->Pcb) == IFSREQ)) {
+		return 0;
+	}
+
+	return -1;
+}
+
+
+
+/**
  * Receive a transmission block and handle all S-block requests
  *
  * @param ctx Reader context
@@ -699,12 +734,13 @@ int ccidT1Process (struct scr *ctx,
  */
 int ccidT1Init (struct scr *ctx)
 {
-
+	int rc;
 	ctx->t1 = calloc(1, sizeof(ccidT1_t));
 
 	ctx->CTModFunc = (CTModFunc_t) ccidT1Process;
 
 	ccidT1InitProtocol(ctx);
+	rc = ccidT1SetIFSD(ctx, 0, 0);
 
-	return 0;
+	return rc;
 }
