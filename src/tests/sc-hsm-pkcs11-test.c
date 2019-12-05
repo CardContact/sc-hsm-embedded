@@ -2477,12 +2477,17 @@ int testAES(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	char *tbs = "Hello World.....";
 
 	CK_BYTE signature[512];
-	CK_BYTE ciphertext[64];
+	CK_BYTE plain[1216];
+	CK_BYTE ciphertext[1216];
 	CK_ULONG len;
 	char scr[1024];
-	int rc,keyno;
+	int rc,keyno,i;
 
 	keyno = 0;
+
+	for (i = 0; i < sizeof(plain); i++) {
+		plain[i] = i & 0xFF;
+	}
 
 	while (1) {
 		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
@@ -2498,13 +2503,18 @@ int testAES(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		rc = p11->C_EncryptInit(session, &mech, hnd);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
-		printf("Calling C_Encrypt()");
+		printf("Calling C_Encrypt() to query cipher size");
 
-		len = sizeof(ciphertext);
-		rc = p11->C_Encrypt(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), ciphertext, &len);
+		len = 0;
+		rc = p11->C_Encrypt(session, plain, sizeof(plain), NULL, &len);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
-		printf("Ciphertext size = %lu\n", len);
+		printf("Ciphertext size = %lu : %s\n", len, verdict(len == sizeof(plain)));
+
+		printf("Calling C_Encrypt()");
+
+		rc = p11->C_Encrypt(session, plain, sizeof(plain), ciphertext, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		bin2str(scr, sizeof(scr), ciphertext, len);
 		printf("Ciphertext:\n%s\n", scr);
@@ -2514,6 +2524,13 @@ int testAES(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 		rc = p11->C_DecryptInit(session, &mech, hnd);
 		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
+		printf("Calling C_Decrypt() to query plaintext size");
+
+		rc = p11->C_Decrypt(session, (CK_BYTE_PTR)ciphertext, len, NULL, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Plaintext size = %lu : %s\n", len, verdict(len == sizeof(plain)));
+
 		printf("Calling C_Decrypt()");
 
 		rc = p11->C_Decrypt(session, (CK_BYTE_PTR)ciphertext, len, ciphertext, &len);
@@ -2521,7 +2538,7 @@ int testAES(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 		bin2str(scr, sizeof(scr), ciphertext, len);
 		printf("Plain:\n%s\n", scr);
-		printf("Verify plaintext... %s\n", verdict(memcmp(ciphertext, tbs, len) == 0));
+		printf("Verify plaintext... %s\n", verdict(memcmp(ciphertext, plain, len) == 0));
 
 		mech.mechanism = CKM_AES_CMAC;
 
@@ -2748,10 +2765,10 @@ int main(int argc, char *argv[])
 
 					testAESKeyGeneration(p11, session);
 
-					testAES(p11, session);
-
 					testSymmetricKeyDerivation(p11, session);
 				}
+
+				testAES(p11, session);
 
 				testRSASigning(p11, slotid, 0, CKM_RSA_PKCS);
 

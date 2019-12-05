@@ -659,12 +659,12 @@ static CK_RV sc_hsm_C_Encrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mec
 {
 	int rc, algo;
 	unsigned short SW1SW2;
-	unsigned char scr[512];
+	unsigned char scr[2048];
 
 	FUNC_CALLED();
 
 	if (pEncryptedData == NULL) {
-		*ulEncryptedDataLen = pObject->keysize >> 3;
+		*ulEncryptedDataLen = pulDataLen;
 		FUNC_RETURNS(CKR_OK);
 	}
 
@@ -746,12 +746,16 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 {
 	int rc, algo, ins;
 	unsigned short SW1SW2;
-	unsigned char scr[512];
+	unsigned char scr[2048];
 
 	FUNC_CALLED();
 
 	if (pData == NULL) {
-		*pulDataLen = pObject->keysize >> 3;
+		if (mech == CKM_AES_CBC) {
+			*pulDataLen = ulEncryptedDataLen;
+		} else {
+			*pulDataLen = pObject->keysize >> 3;
+		}
 		FUNC_RETURNS(CKR_OK);
 	}
 
