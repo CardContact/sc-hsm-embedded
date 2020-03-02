@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="doctg.xsl" ?>
-<testgroup 
+<testgroup
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="http://www.openscdp.org/schema/testframework-1.0.xsd"
 	id="tg_delete" arrayElement="testcase,function" arrayIndex="id,Name">
@@ -16,7 +16,7 @@
 
 
 	<constructor Param="name, parameter">
-		<Script><![CDATA[		
+		<Script><![CDATA[
 		//Call constructor of super class TestGroup and define name of test group
 		TestGroup.call(this, name, parameter);
 		]]></Script>
@@ -27,7 +27,7 @@
 <!-- Setup method called before each test case is executed -->
 	<setup>
 		<Script><![CDATA[
-			
+
 		]]></Script>
 	</setup>
 
@@ -36,8 +36,8 @@
 <!-- Teardown method called after each test case is executed -->
 	<teardown>
 		<Script><![CDATA[
-		
-	
+
+
 		]]></Script>
 	</teardown>
 
@@ -60,13 +60,13 @@ try	{
 	var slot = getSlot(p);
 
 	this.log("Using slot: " + slot);
-	
+
 	// Open R/W session
 	var s = new PKCS11Session(p, slot, true);
-	
+
 	// Login with USER PIN
 	s.login(this.parameter.pin);
-	
+
 	this.log("Delete Joe Doe (RSA2048)");
 	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (RSA2048)");
 
@@ -118,7 +118,41 @@ try	{
 	if (privateKey != null) {
 		privateKey.destroy();
 	}
-	
+
+	this.log("Delete Joe Doe (RSA3072)");
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (RSA3072)");
+
+	var publicKey = getObjectByLabel(s, PKCS11Object.CKO_PUBLIC_KEY, "Joe Doe (RSA3072)");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (RSA3072)");
+
+	if (publicKey != null) {
+		publicKey.destroy();
+	}
+	if (certificate != null) {
+		certificate.destroy();
+	}
+	if (privateKey != null) {
+		privateKey.destroy();
+	}
+
+	this.log("Delete Joe Doe (RSA3072)");
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (RSA4096) with a very long common name to make sure we need to write a lot of bytes into the elementary file containing the certificate");
+
+	var publicKey = getObjectByLabel(s, PKCS11Object.CKO_PUBLIC_KEY, "Joe Doe (RSA4096) with a very long common name to make sure we need to write a lot of bytes into the elementary file containing the certificate");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (RSA4096) with a very long common name to make sure we need to write a lot of bytes into the elementary file containing the certificate");
+
+	if (publicKey != null) {
+		publicKey.destroy();
+	}
+	if (certificate != null) {
+		certificate.destroy();
+	}
+	if (privateKey != null) {
+		privateKey.destroy();
+	}
+
 	this.log("Delete Joe Doe (ECC-BP320)");
 	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (ECC-BP320)");
 
@@ -135,7 +169,7 @@ try	{
 	if (privateKey != null) {
 		privateKey.destroy();
 	}
-	
+
 	this.log("Delete Joe Doe (ECC-BP224)");
 	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (ECC-BP224)");
 
@@ -152,7 +186,7 @@ try	{
 	if (privateKey != null) {
 		privateKey.destroy();
 	}
-	
+
 	this.log("Delete Joe Doe (ECC-SECP256)");
 	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (ECC-SECP256)");
 
@@ -169,13 +203,64 @@ try	{
 	if (privateKey != null) {
 		privateKey.destroy();
 	}
-	
+
 	this.log("Delete Joe Doe (ECC-SECP192)");
 	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (ECC-SECP192)");
 
 	var publicKey = getObjectByLabel(s, PKCS11Object.CKO_PUBLIC_KEY, "Joe Doe (ECC-SECP192)");
 
 	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (ECC-SECP192)");
+
+	if (publicKey != null) {
+		publicKey.destroy();
+	}
+	if (certificate != null) {
+		certificate.destroy();
+	}
+	if (privateKey != null) {
+		privateKey.destroy();
+	}
+
+	this.log("Delete Joe Doe (ECC-BP384)");
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (ECC-BP384)");
+
+	var publicKey = getObjectByLabel(s, PKCS11Object.CKO_PUBLIC_KEY, "Joe Doe (ECC-BP384)");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (ECC-BP384)");
+
+	if (publicKey != null) {
+		publicKey.destroy();
+	}
+	if (certificate != null) {
+		certificate.destroy();
+	}
+	if (privateKey != null) {
+		privateKey.destroy();
+	}
+
+	this.log("Delete Joe Doe (ECC-BP512)");
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (ECC-BP512)");
+
+	var publicKey = getObjectByLabel(s, PKCS11Object.CKO_PUBLIC_KEY, "Joe Doe (ECC-BP512)");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (ECC-BP512)");
+
+	if (publicKey != null) {
+		publicKey.destroy();
+	}
+	if (certificate != null) {
+		certificate.destroy();
+	}
+	if (privateKey != null) {
+		privateKey.destroy();
+	}
+
+	this.log("Delete Joe Doe (ECC-SECP521)");
+	var privateKey = getObjectByLabel(s, PKCS11Object.CKO_PRIVATE_KEY, "Joe Doe (ECC-SECP521)");
+
+	var publicKey = getObjectByLabel(s, PKCS11Object.CKO_PUBLIC_KEY, "Joe Doe (ECC-SECP521)");
+
+	var certificate = getObjectByLabel(s, PKCS11Object.CKO_CERTIFICATE, "Joe Doe (ECC-SECP521)");
 
 	if (publicKey != null) {
 		publicKey.destroy();

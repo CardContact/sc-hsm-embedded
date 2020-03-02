@@ -212,7 +212,7 @@ try	{
 	// Login with USER PIN
 	s.login(this.parameter.pin);
 
-	issueCertificate(this.parameter.ca, s, "Joe Doe (RSA4096)", 4096, "EmailAndTLSClient");
+	issueCertificate(this.parameter.ca, s, "Joe Doe (RSA4096) with a very long common name to make sure we need to write a lot of bytes into the elementary file containing the certificate", 4096, "EmailAndTLSClient");
 
 	s.close();
 } finally {
@@ -502,7 +502,7 @@ try	{
 
 	var cert = this.parameter.ca.getSignerCertificate();
 
-	storeCertificate(s, "OpenSCDP Demo CA", cert);
+	storeCertificate(s, null, "OpenSCDP Demo CA", cert);
 
 	s.close();
 } finally {

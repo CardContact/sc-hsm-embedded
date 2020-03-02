@@ -26,9 +26,9 @@ param["pin"] = "648219";
 param["sopin"] = "3537363231383830";
 
 
-param["provider"] = "/usr/local/lib/pkcs11-spy.so";
+// param["provider"] = "/usr/local/lib/pkcs11-spy.so";
 // param["provider"] = "/usr/local/lib/opensc-pkcs11.so";
-// param["provider"] = "/home/asc/projects/sc-hsm-embedded/src/pkcs11/.libs/libsc-hsm-pkcs11.so";
+param["provider"] = "/home/asc/share/projects/sc-hsm-embedded/src/pkcs11/.libs/libsc-hsm-pkcs11.so";
 // param["provider"] = "c:\\windows\\system32\\opensc-pkcs11.dll";
 // param["provider"] = "C:\\Programme\\OpenSC Project\\PKCS11-Spy\\pkcs11-spy.dll";
 
@@ -184,6 +184,8 @@ function generateRSAKeyPair(s, label, keysize) {
 	var value = pub.getAttribute(PKCS11Object.CKA_PUBLIC_EXPONENT);
 	log(" Public Exponent : " + value.toString(HEX));
 	key.setComponent(Key.EXPONENT, value);
+
+	key.id = kid;
 	return key;
 }
 
@@ -234,16 +236,20 @@ function generateECCKeyPair(s, label, curve) {
 	key.setComponent(Key.ECC_CURVE_OID, curveoid);
 	key.setComponent(Key.ECC_QX, point.left(point.length >> 1));
 	key.setComponent(Key.ECC_QY, point.right(point.length >> 1));
+	key.id = kid;
 	return key;
 }
 
 
 
-function storeCertificate(s, label, cert) {
+function storeCertificate(s, id, label, cert) {
 	var attr = new Array();
 	attr[PKCS11Object.CKA_CLASS] = PKCS11Object.CKO_CERTIFICATE;
 	attr[PKCS11Object.CKA_CERTIFICATE_TYPE] = 0;  // CKC_X_509
 	attr[PKCS11Object.CKA_TOKEN] = true;
+	if (id) {
+		attr[PKCS11Object.CKA_ID] = id;
+	}
 	attr[PKCS11Object.CKA_LABEL] = label;
 	attr[PKCS11Object.CKA_VALUE] = cert.getBytes();
 
@@ -274,7 +280,7 @@ function issueCertificate(ca, s, cn, keysizeOrCurve, profile) {
 	var cert = ca.issueCertificate(publicKey, subject, profile, extvalues);
 	log(cert);
 
-	storeCertificate(s, label, cert);
+	storeCertificate(s, publicKey.id, label, cert);
 }
 
 
