@@ -262,7 +262,12 @@ static int writeEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *co
 
 	FUNC_CALLED();
 
-	maxblk = slot->maxCAPDU - 15;			// Maximum block size
+	maxblk = slot->token->drv->maxCAPDU;	// Limit defined by token
+	if (maxblk > slot->maxCAPDU) {
+		maxblk = slot->maxCAPDU;			// Limit defined by slot
+	}
+
+	maxblk -= 15;			// Maximum block size
 	ofs = 0;
 	rc = CKR_OK;
 
@@ -280,6 +285,7 @@ static int writeEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *co
 
 		memcpy(p, content, blen);
 		content += blen;
+		ofs += blen;
 		len -= blen;
 		blen += (int)(p - buff);
 
@@ -501,6 +507,7 @@ static int sc_hsm_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 
 	algo = getAlgorithmIdForSigning(mech->mechanism);
 	if (algo < 0) {
+		debug("Mechanism %lx unknown\n", mech->mechanism);
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
 	}
 
@@ -647,6 +654,7 @@ static int sc_hsm_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR me
 
 	algo = getAlgorithmIdForDecryption(mech->mechanism);
 	if (algo < 0) {
+		debug("Mechanism %lx unknown\n", mech->mechanism);
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
 	}
 
