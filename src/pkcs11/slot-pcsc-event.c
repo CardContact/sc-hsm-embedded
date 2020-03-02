@@ -290,7 +290,7 @@ int updatePCSCSlots(struct p11SlotPool_t *pool)
 #endif
 			slot->noExtLengthReadAll = 1;
 			slot->maxRAPDU = 506;
-			slot->maxCAPDU = 478;
+			slot->maxCAPDU = 476;
 		}
 
 		if (context->caller != CALLER_FIREFOX) {
