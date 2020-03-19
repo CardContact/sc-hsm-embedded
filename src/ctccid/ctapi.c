@@ -44,9 +44,10 @@ extern int ccidT1Term (struct scr *ctx);
 static MUTEX globalmutex;
 static int mutexInitialized = 0;
 
-/* Handle up to 8 USB CCID readers */
+/* Handle up to 32 USB CCID readers */
 
-scr_t *readerTable[MAX_READER] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+scr_t *readerTable[MAX_READER] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 
 /*
  * Locate matching card terminal number in table of active readers.

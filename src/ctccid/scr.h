@@ -47,7 +47,7 @@
 /**
  * Maximum number of readers
  */
-#define MAX_READER  16
+#define MAX_READER  32
 
 /**
  * Maximum size of ATR
