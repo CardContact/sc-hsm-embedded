@@ -12,4 +12,4 @@ if ENABLE_RAM
 SUBDIRS += ramoverhttp
 endif
 
-SUBDIRS += pkcs11 tests
+SUBDIRS += pkcs11 tests examples

@@ -76,6 +76,8 @@ AC_CONFIG_FILES([
     src/pkcs11/Makefile
     src/tests/Makefile
     src/ramoverhttp/Makefile
+    src/examples/Makefile
+    src/examples/key-generator/Makefile
 ])
 
 AC_OUTPUT
