@@ -470,6 +470,7 @@ static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 {
 	switch(mech) {
 	case CKM_RSA_PKCS:
+	case CKM_RSA_PKCS_PSS:
 	case CKM_SHA1_RSA_PKCS:
 	case CKM_SHA224_RSA_PKCS:
 	case CKM_SHA256_RSA_PKCS:
@@ -515,6 +516,7 @@ static int getAlgorithmIdForSigning(struct p11Token_t *token, CK_MECHANISM_TYPE 
 	case CKM_SC_HSM_PSS_SHA224:
 		*algotlv = algo_PSS_SHA224;
 		break;
+	case CKM_RSA_PKCS_PSS:
 	case CKM_SHA256_RSA_PKCS_PSS:
 	case CKM_SC_HSM_PSS_SHA256:
 		*algotlv = algo_PSS_SHA256;
@@ -553,6 +555,7 @@ static int getAlgorithmIdForDigest(struct p11Token_t *token, CK_MECHANISM_TYPE m
 		break;
 	case CKM_SHA256_RSA_PKCS:
 	case CKM_SHA256_RSA_PKCS_PSS:
+	case CKM_RSA_PKCS_PSS:
 		*algotlv = algo_SHA256;
 		break;
 	case CKM_SHA384_RSA_PKCS:
@@ -739,7 +742,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 		FUNC_FAILS(CKR_DEVICE_ERROR, "selecting application failed");
 	}
 
-	if ((mech != CKM_RSA_PKCS) && (mech != CKM_ECDSA) && (mech != CKM_ECDSA_SHA1) &&
+	if ((mech != CKM_RSA_PKCS) && (mech != CKM_RSA_PKCS_PSS) && (mech != CKM_ECDSA) && (mech != CKM_ECDSA_SHA1) &&
 		(mech != CKM_SC_HSM_PSS_SHA1) && (mech != CKM_SC_HSM_PSS_SHA224) &&
 		(mech != CKM_SC_HSM_PSS_SHA256) && (mech != CKM_SC_HSM_PSS_SHA384)  && (mech != CKM_SC_HSM_PSS_SHA512)) {
 		rc = starcosDigest(pObject->token, mech, pData, ulDataLen);
@@ -1561,6 +1564,7 @@ static int starcos_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_
 	case CKM_SC_HSM_PSS_SHA256:
 	case CKM_SC_HSM_PSS_SHA384:
 	case CKM_SC_HSM_PSS_SHA512:
+	case CKM_RSA_PKCS_PSS:
 	case CKM_ECDSA:
 #ifdef ENABLE_LIBCRYPTO
 		pInfo->flags = CKF_HW|CKF_SIGN|CKF_VERIFY;

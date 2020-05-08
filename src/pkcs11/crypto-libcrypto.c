@@ -329,6 +329,7 @@ static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 		case CKM_SC_HSM_PSS_SHA224:
 			rv = verifyHash(pkey, EVP_sha224(), RSA_PKCS1_PSS_PADDING, in, in_len, signature, signature_len);
 			break;
+		case CKM_RSA_PKCS_PSS:
 		case CKM_SC_HSM_PSS_SHA256:
 			rv = verifyHash(pkey, EVP_sha256(), RSA_PKCS1_PSS_PADDING, in, in_len, signature, signature_len);
 			break;
@@ -603,6 +604,7 @@ CK_RV cryptoVerifyInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 		case CKM_SHA384_RSA_PKCS_PSS:
 		case CKM_SHA512_RSA_PKCS_PSS:
 		case CKM_RSA_PKCS:
+		case CKM_RSA_PKCS_PSS:
 		case CKM_SC_HSM_PSS_SHA1:
 		case CKM_SC_HSM_PSS_SHA224:
 		case CKM_SC_HSM_PSS_SHA256:

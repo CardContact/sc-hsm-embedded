@@ -73,6 +73,7 @@ static struct bytestring_s defaultAESAlgorithms = { (unsigned char *)"\x10\x11\x
 static const CK_MECHANISM_TYPE p11MechanismList[] = {
 		CKM_RSA_X_509,
 		CKM_RSA_PKCS,
+		CKM_RSA_PKCS_PSS,
 		CKM_SHA1_RSA_PKCS,
 		CKM_SHA256_RSA_PKCS,
 		CKM_SHA1_RSA_PKCS_PSS,
@@ -339,6 +340,7 @@ static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 	switch(mech) {
 	case CKM_RSA_X_509:
 	case CKM_RSA_PKCS:
+	case CKM_RSA_PKCS_PSS:
 	case CKM_SHA1_RSA_PKCS:
 	case CKM_SHA256_RSA_PKCS:
 	case CKM_SC_HSM_PSS_SHA1:
@@ -382,6 +384,7 @@ static int getAlgorithmIdForSigning(CK_MECHANISM_TYPE mech)
 		return ALGO_EC_SHA224;
 	case CKM_SC_HSM_ECDSA_SHA256:
 		return ALGO_EC_SHA256;
+	case CKM_RSA_PKCS_PSS:
 	case CKM_SC_HSM_PSS_SHA1:
 	case CKM_SC_HSM_PSS_SHA256:
 		return ALGO_RSA_PSS;
@@ -2794,6 +2797,7 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 	case CKM_RSA_PKCS_KEY_PAIR_GEN:
 	case CKM_RSA_X_509:
 	case CKM_RSA_PKCS:
+	case CKM_RSA_PKCS_PSS:
 	case CKM_SHA1_RSA_PKCS:
 	case CKM_SHA256_RSA_PKCS:
 	case CKM_SHA1_RSA_PKCS_PSS:

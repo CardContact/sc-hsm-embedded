@@ -638,6 +638,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 	};
 	CK_OBJECT_HANDLE hnd,pubhnd;
 	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
+	CK_RSA_PKCS_PSS_PARAMS pssparams = { CKM_SHA256, CKG_MGF1_SHA256, 32 };
 	CK_SESSION_INFO sessioninfo;
 	char *tbs = "Hello World";
 	CK_BYTE signature[512];
@@ -667,6 +668,11 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 		tbs = "ThisIsA160BitHashStr"; break;
 	case CKM_SC_HSM_PSS_SHA256:
 		tbs = "ThisIsA256BitHashStringTestValue"; break;
+	case CKM_RSA_PKCS_PSS:
+		mech.pParameter = (void *)&pssparams;
+		mech.ulParameterLen  = sizeof(CK_RSA_PKCS_PSS_PARAMS);
+		tbs = "ThisIsA256BitHashStringTestValue";
+		break;
 	}
 
 	while (1) {
@@ -2771,6 +2777,9 @@ int main(int argc, char *argv[])
 				testAES(p11, session);
 
 				testRSASigning(p11, slotid, 0, CKM_RSA_PKCS);
+				if (strncmp("3.5ID ECC C1 DGN", (char *)tokeninfo.model, 16)) {
+					testRSASigning(p11, slotid, 0, CKM_RSA_PKCS_PSS);
+				}
 
 				if (strncmp("STARCOS", (char *)tokeninfo.label, 7) || !strncmp("3.5ID ECC C1 BNK", (char *)tokeninfo.model, 16)) {
 					testRSASigning(p11, slotid, 0, CKM_SHA1_RSA_PKCS);
