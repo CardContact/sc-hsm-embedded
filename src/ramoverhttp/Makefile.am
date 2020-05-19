@@ -12,6 +12,5 @@ bin_PROGRAMS = ram-client
 
 ram_client_SOURCES = ram-client.c
 
-ram_client_LDFLAGS = libramoverhttp.la
-ram_client_LDADD = $(PCSC_LIBS)
+ram_client_LDADD = $(PCSC_LIBS) libramoverhttp.la
 

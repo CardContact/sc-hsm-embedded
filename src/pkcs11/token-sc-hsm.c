@@ -510,7 +510,9 @@ static int sc_hsm_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 
 	algo = getAlgorithmIdForSigning(mech->mechanism);
 	if (algo < 0) {
+#ifdef DEBUG
 		debug("Mechanism %lx unknown\n", mech->mechanism);
+#endif
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
 	}
 
@@ -657,7 +659,9 @@ static int sc_hsm_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR me
 
 	algo = getAlgorithmIdForDecryption(mech->mechanism);
 	if (algo < 0) {
+#ifdef DEBUG
 		debug("Mechanism %lx unknown\n", mech->mechanism);
+#endif
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
 	}
 
