@@ -69,6 +69,7 @@ static unsigned char algo_ECDSA[] =            { 0x89, 0x02, 0x13, 0x35 };
 static const CK_MECHANISM_TYPE p11MechanismList[] = {
 		CKM_RSA_PKCS,
 		CKM_RSA_PKCS_OAEP,
+                CKM_RSA_PKCS_OAEP_SHA1,
 		CKM_SHA1_RSA_PKCS,
 		CKM_SHA224_RSA_PKCS,
 		CKM_SHA256_RSA_PKCS,
@@ -583,6 +584,7 @@ static int getAlgorithmIdForDecryption(struct p11Token_t *token, CK_MECHANISM_TY
 			*algotlv = algo_PKCS15_DECRYPT;
 			break;
 		case CKM_RSA_PKCS_OAEP:
+                case CKM_RSA_PKCS_OAEP_SHA1:
 			*algotlv = algo_OAEP_DECRYPT;
 			break;
 		default:
@@ -1543,6 +1545,7 @@ static int starcos_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_
 #endif
 		break;
 	case CKM_RSA_PKCS_OAEP:
+        case CKM_RSA_PKCS_OAEP_SHA1:
 #ifdef ENABLE_LIBCRYPTO
 		pInfo->flags = CKF_HW|CKF_DECRYPT|CKF_ENCRYPT;
 #else

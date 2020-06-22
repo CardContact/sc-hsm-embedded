@@ -480,7 +480,7 @@ out:
 
 
 
-CK_RV stripOAEPPadding(unsigned char *raw, int rawlen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+CK_RV stripOAEPPadding(unsigned char *raw, int rawlen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen, CK_RSA_PKCS_MGF_TYPE mgf1Type)
 {
 	CK_RV rv;
 	int rc;
@@ -488,8 +488,16 @@ CK_RV stripOAEPPadding(unsigned char *raw, int rawlen, CK_BYTE_PTR pData, CK_ULO
 	FUNC_CALLED();
 
 #if (OPENSSL_VERSION_NUMBER >= 0x10002000)
-	rc = RSA_padding_check_PKCS1_OAEP_mgf1(pData, (int)*pulDataLen, raw, rawlen, rawlen, NULL, 0, EVP_sha256(), NULL);
-	if (rc < 0) {
+	switch(mgf1Type) {
+            case CKG_MGF1_SHA1:
+                rc = RSA_padding_check_PKCS1_OAEP_mgf1(pData, (int)*pulDataLen, raw, rawlen, rawlen, NULL, 0, EVP_sha1(), NULL);break;
+            case CKG_MGF1_SHA256:
+                rc = RSA_padding_check_PKCS1_OAEP_mgf1(pData, (int)*pulDataLen, raw, rawlen, rawlen, NULL, 0, EVP_sha256(), NULL);break;
+            default:
+                rc = -1;
+        }
+        
+        if (rc < 0) {
 		rv = translateError();
 		FUNC_FAILS(rv, "RSA_padding_check_PKCS1_OAEP_mgf1() failed");
 	}
@@ -508,7 +516,7 @@ CK_RV stripOAEPPadding(unsigned char *raw, int rawlen, CK_BYTE_PTR pData, CK_ULO
 /**
  * Encrypt with RSA
  */
-static CK_RV encryptRSA(struct p11Object_t *obj, int padding, CK_BYTE_PTR in, CK_ULONG in_len, CK_BYTE_PTR out, CK_ULONG_PTR out_len)
+static CK_RV encryptRSA(struct p11Object_t *obj, int padding, CK_BYTE_PTR in, CK_ULONG in_len, CK_BYTE_PTR out, CK_ULONG_PTR out_len, CK_RSA_PKCS_MGF_TYPE mgf1Type)
 {
 	struct p11Attribute_t *modulus;
 	struct p11Attribute_t *public_exponent;
@@ -554,7 +562,17 @@ static CK_RV encryptRSA(struct p11Object_t *obj, int padding, CK_BYTE_PTR in, CK
 
 	if (padding == RSA_PKCS1_OAEP_PADDING) {
 #if (OPENSSL_VERSION_NUMBER >= 0x10002000)
-		rc = RSA_padding_add_PKCS1_OAEP_mgf1(raw, modulus->attrData.ulValueLen, in, in_len, NULL, 0, EVP_sha256(), NULL);
+            switch(mgf1Type) {
+                case CKG_MGF1_SHA1:
+                    rc = RSA_padding_add_PKCS1_OAEP_mgf1(raw, modulus->attrData.ulValueLen, in, in_len, NULL, 0, EVP_sha1(), NULL); break;
+                case CKG_MGF1_SHA256:
+                    rc = RSA_padding_add_PKCS1_OAEP_mgf1(raw, modulus->attrData.ulValueLen, in, in_len, NULL, 0, EVP_sha256(), NULL); break;
+                default:
+                    RSA_free(rsa);
+                    FUNC_RETURNS(CKR_FUNCTION_NOT_SUPPORTED);
+            
+            }
+            
 		rc = RSA_public_encrypt(modulus->attrData.ulValueLen, raw, out, rsa, RSA_NO_PADDING);
 #else
 		RSA_free(rsa);
@@ -683,6 +701,7 @@ CK_RV cryptoEncryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 	case CKM_RSA_X_509:
 	case CKM_RSA_PKCS:
 	case CKM_RSA_PKCS_OAEP:
+        case CKM_RSA_PKCS_OAEP_SHA1:
 		break;
 	default:
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Invalid mechanism for RSA");
@@ -711,13 +730,16 @@ CK_RV cryptoEncrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE
 
 	switch(mech) {
 	case CKM_RSA_X_509:
-		rv = encryptRSA(pObject, RSA_NO_PADDING, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
+		rv = encryptRSA(pObject, RSA_NO_PADDING, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen, 0);
 		break;
 	case CKM_RSA_PKCS:
-		rv = encryptRSA(pObject, RSA_PKCS1_PADDING, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
+		rv = encryptRSA(pObject, RSA_PKCS1_PADDING, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen, 0);
 		break;
 	case CKM_RSA_PKCS_OAEP:
-		rv = encryptRSA(pObject, RSA_PKCS1_OAEP_PADDING, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
+                rv = encryptRSA(pObject, RSA_PKCS1_OAEP_PADDING, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen, CKG_MGF1_SHA256);
+		break;
+        case CKM_RSA_PKCS_OAEP_SHA1:
+		rv = encryptRSA(pObject, RSA_PKCS1_OAEP_PADDING, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen, CKG_MGF1_SHA1);
 		break;
 	default:
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Invalid mechanism for RSA");

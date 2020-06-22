@@ -76,6 +76,7 @@ struct id2name_t p11CKMName[] = {
 { CKM_RIPEMD128_RSA_PKCS        , "RIPEMD128_RSA_PKCS", 0 },
 { CKM_RIPEMD160_RSA_PKCS        , "RIPEMD160_RSA_PKCS", 0 },
 { CKM_RSA_PKCS_OAEP             , "RSA_PKCS_OAEP", 0 },
+{ CKM_RSA_PKCS_OAEP_SHA1        , "RSA_PKCS_OAEP_SHA1", 0 },
 { CKM_RSA_X9_31_KEY_PAIR_GEN    , "RSA_X9_31_KEY_PAIR_GEN", 0 },
 { CKM_RSA_X9_31                 , "RSA_X9_31", 0 },
 { CKM_SHA1_RSA_X9_31            , "SHA1_RSA_X9_31", 0 },
