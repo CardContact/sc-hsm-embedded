@@ -2863,6 +2863,7 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 		pInfo->flags = CKF_HW|CKF_DECRYPT|CKF_ENCRYPT;
 		break;
 #endif
+	case CKM_RSA_PKCS_PSS:
 	case CKM_SHA1_RSA_PKCS:
 	case CKM_SHA256_RSA_PKCS:
 	case CKM_SHA1_RSA_PKCS_PSS:

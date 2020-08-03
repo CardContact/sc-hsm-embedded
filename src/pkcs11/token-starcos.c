@@ -69,6 +69,7 @@ static unsigned char algo_ECDSA[] =            { 0x89, 0x02, 0x13, 0x35 };
 static const CK_MECHANISM_TYPE p11MechanismList[] = {
 		CKM_RSA_PKCS,
 		CKM_RSA_PKCS_OAEP,
+		CKM_RSA_PKCS_PSS,
 		CKM_SHA1_RSA_PKCS,
 		CKM_SHA224_RSA_PKCS,
 		CKM_SHA256_RSA_PKCS,
