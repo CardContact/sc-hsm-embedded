@@ -265,6 +265,7 @@ static void dumpRAPDU(unsigned char *rapdu, size_t len) {
 	strcpy(msg, "R: ");
 	decodeBCDString(rapdu, len, msg + strlen(msg));
 	puts(msg);
+	fflush(stdout);
 }
 
 
@@ -278,6 +279,7 @@ static void dumpATR(unsigned char *atr, size_t len) {
 	strcpy(msg, "ATR: ");
 	decodeBCDString(atr, len, msg + strlen(msg));
 	puts(msg);
+	fflush(stdout);
 }
 
 
@@ -312,6 +314,7 @@ static int sendApdu(struct ramContext *ctx, unsigned char *capdu, size_t clen, u
 
 static int notify(struct ramContext *ctx, int msgid, char *msg) {
 	printf("(%d) %s\n", msgid, msg);
+	fflush(stdout);
 	return 0;
 }
 
