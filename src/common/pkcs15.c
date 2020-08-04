@@ -212,6 +212,16 @@ static int decodeCommonSecretKeyAttributes(unsigned char *ska, int skalen, struc
 
 	tag = asn1Tag(&po);
 
+	// Older versions encode the INTEGER directly and not in a SEQUENCE object
+	if (tag == ASN1_SEQUENCE) {
+		len = asn1Length(&po);
+
+		if (len <= 0) {
+			return 0;
+		}
+		tag = asn1Tag(&po);
+	}
+
 	if (tag != ASN1_INTEGER) {
 		return -1;
 	}
@@ -235,6 +245,7 @@ static int encodeCommonSecretKeyAttributes(bytebuffer bb, struct p15SecretKeyDes
 
 	rc = asn1EncodeInteger(p15->keysize, scr, sizeof(scr));
 	asn1AppendBytes(bb, ASN1_INTEGER, scr, rc);
+	asn1EncapBuffer(ASN1_SEQUENCE, bb, ofs);
 	return asn1EncapBuffer(0xA0, bb, ofs);
 }
 
