@@ -4,13 +4,13 @@ BUILDDIR="build/target/sc-hsm-pkcs11"
 
 mkdir -p ${BUILDDIR}/lib
 mkdir -p ${BUILDDIR}/bin
-./configure
+./configure --enable-libcrypto=no
 make clean
 make
 cp src/pkcs11/.libs/libsc-hsm-pkcs11.so ${BUILDDIR}/lib/sc-hsm-pkcs11.dylib
-./configure --enable-debug
+./configure --enable-libcrypto=no --enable-debug
 make clean
 make
 cp src/pkcs11/.libs/libsc-hsm-pkcs11.so ${BUILDDIR}/lib/sc-hsm-pkcs11-debug.dylib
 cp src/tests/sc-hsm-pkcs11-test ${BUILDDIR}/bin
-pkgbuild --root build/target --identifier de.cardcontact.sc-hsm-pkcs11 --version 2.10 --install-location /Library sc-hsm-pkcs11.pkg
+pkgbuild --root build/target --identifier de.cardcontact.sc-hsm-pkcs11 --version 2.11 --install-location /Library sc-hsm-pkcs11.pkg
