@@ -103,7 +103,12 @@ int initSlotPool(struct p11SlotPool_t *pool)
 
 
 
-int terminateSlotPool(struct p11SlotPool_t *pool)
+/**
+ * Terminate all slots in the pool.
+ *
+ * @param detach Detach external resources without touching them (used during fork())
+ */
+int terminateSlotPool(struct p11SlotPool_t *pool, int detach)
 {
 	struct p11Slot_t *pSlot, *pFreeSlot;
 
@@ -124,7 +129,11 @@ int terminateSlotPool(struct p11SlotPool_t *pool)
 			pSlot->removedToken = NULL;
 		}
 
-		closeSlot(pSlot);
+		if (detach) {
+			detachSlot(pSlot);
+		} else {
+			closeSlot(pSlot);
+		}
 
 		pFreeSlot = pSlot;
 		pSlot = pSlot->next;

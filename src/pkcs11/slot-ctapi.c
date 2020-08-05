@@ -407,4 +407,20 @@ int closeCTAPISlot(struct p11Slot_t *slot)
 	FUNC_RETURNS(CKR_OK);
 }
 
+
+
+int detachCTAPISlot(struct p11Slot_t *slot)
+{
+	int rc;
+
+	FUNC_CALLED();
+
+	if (numberOfReaders > 0) {
+		numberOfReaders--;
+	}
+
+	slot->closed = TRUE;
+
+	FUNC_RETURNS(CKR_OK);
+}
 #endif

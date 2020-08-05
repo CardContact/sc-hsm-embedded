@@ -231,6 +231,9 @@ struct p11Context_t {
 	CK_INFO info;                           /**< General information about cryptoki       */
 	CK_HW_FEATURE_TYPE hw_feature;          /**< Hardware feature type of device          */
 
+#ifndef _WIN32
+	pid_t pid;                              /**< Process Id                               */
+#endif
 	int caller;                             /**< Calling application                      */
 
 	FILE *debugFileHandle;

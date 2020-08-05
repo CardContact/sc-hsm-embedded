@@ -39,7 +39,7 @@
 #include <pkcs11/cryptoki.h>
 
 int initSlotPool(struct p11SlotPool_t *pool);
-int terminateSlotPool(struct p11SlotPool_t *pool);
+int terminateSlotPool(struct p11SlotPool_t *pool, int detach);
 int addSlot(struct p11SlotPool_t *pool, struct p11Slot_t *slot);
 int findSlot(struct p11SlotPool_t *pool, CK_SLOT_ID slotID, struct p11Slot_t **slot);
 int removeSlot(struct p11SlotPool_t *pool, CK_SLOT_ID slotID);

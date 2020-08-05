@@ -538,13 +538,13 @@ static int checkForRemovedPCSCToken(struct p11Slot_t *slot)
 
 	if (rv == SCARD_S_SUCCESS) {
 		FUNC_RETURNS(CKR_OK);
-	} else if ((rv == SCARD_W_REMOVED_CARD) || (rv == SCARD_E_INVALID_HANDLE) || (rv == SCARD_E_READER_UNAVAILABLE)) {
+	} else if ((rv == SCARD_W_RESET_CARD) || (rv == SCARD_W_REMOVED_CARD) || (rv == SCARD_E_INVALID_HANDLE) || (rv == SCARD_E_READER_UNAVAILABLE)) {
 		rc = removeToken(slot);
 		if (rc != CKR_OK) {
 			FUNC_RETURNS(rc);
 		}
 
-		rc = SCardDisconnect(slot->card, SCARD_UNPOWER_CARD);
+		rc = SCardDisconnect(slot->card, SCARD_LEAVE_CARD);
 
 #ifdef DEBUG
 		debug("SCardDisconnect (%i, %s): %s\n", slot->id, slot->readername, pcsc_error_to_string(rc));

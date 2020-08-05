@@ -62,6 +62,7 @@ int lockSlot(struct p11Slot_t *slot);
 int unlockSlot(struct p11Slot_t *slot);
 int updateSlots(struct p11SlotPool_t *pool);
 int closeSlot(struct p11Slot_t *slot);
+int detachSlot(struct p11Slot_t *slot);
 int addToken(struct p11Slot_t *slot, struct p11Token_t *token);
 int removeToken(struct p11Slot_t *slot);
 int getVirtualSlot(struct p11Slot_t *slot, int index, struct p11Slot_t **vslot);

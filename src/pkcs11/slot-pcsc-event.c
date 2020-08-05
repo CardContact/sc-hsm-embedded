@@ -502,4 +502,47 @@ int closePCSCSlot(struct p11Slot_t *slot)
 
 	FUNC_RETURNS(CKR_OK);
 }
+
+
+
+int detachPCSCSlot(struct p11Slot_t *slot)
+{
+	LONG rc;
+
+	FUNC_CALLED();
+
+#ifdef DEBUG
+	debug("Trying to detach slot (%i, %s)\n", slot->id, slot->readername);
+#endif
+
+	slotCounter--;
+
+	if (slotCounter == 0) {
+		if (globalBlockingContext != -1) {
+#ifdef DEBUG
+			debug("Global PC/SC blocking context cleared");
+#endif
+			globalBlockingContext = -1;
+		}
+
+		if (globalContext != -1) {
+#ifdef DEBUG
+			debug("Releasing global PC/SC context\n");
+#endif
+			globalContext = -1;
+		}
+	}
+
+	/* No token in slot */
+	if (!slot->card) {
+		slot->closed = TRUE;
+		FUNC_RETURNS(CKR_OK);
+	}
+
+	slot->context = 0;
+	slot->card = 0;
+	slot->closed = TRUE;
+
+	FUNC_RETURNS(CKR_OK);
+}
 #endif /* CTAPI */

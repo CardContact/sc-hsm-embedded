@@ -124,6 +124,7 @@ int unlockPCSCSlot(struct p11Slot_t *slot);
 int updatePCSCSlots(struct p11SlotPool_t *pool);
 int waitForPCSCEvent(struct p11SlotPool_t *pool, int timeout);
 int closePCSCSlot(struct p11Slot_t *slot);
+int detachPCSCSlot(struct p11Slot_t *slot);
 
 #endif
 

@@ -295,6 +295,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 )
 {
 	int rv = CKR_OK;
+#ifndef _WIN32
+	int pid;
+#endif
 
 	memset(&initArgs, 0 , sizeof(initArgs));
 
@@ -311,9 +314,26 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 		initArgs.UnlockMutex = osUnlockMutex;
 	}
 
+#ifndef _WIN32
+	pid = getpid();
+#endif
+
 	/* Make sure the cryptoki has not been initialized */
 	if (context != NULL) {
+
+#ifndef _WIN32
+		if (pid != context->pid) {
+			terminateSessionPool(&context->sessionPool);
+			terminateSlotPool(&context->slotPool, 1);
+			p11DestroyMutex(context->mutex);
+			free(context);
+			context = NULL;
+		} else {
+			return CKR_CRYPTOKI_ALREADY_INITIALIZED;
+		}
+#else
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
+#endif
 	}
 
 	context = (struct p11Context_t *) calloc (1, sizeof(struct p11Context_t));
@@ -321,6 +341,10 @@ CK_DECLARE_FUNCTION(CK_RV, C_Initialize)
 	if (context == NULL) {
 		return CKR_HOST_MEMORY;
 	}
+
+#ifndef _WIN32
+	context->pid = pid;
+#endif
 
 	rv = p11CreateMutex(&context->mutex);
 	if (rv != CKR_OK)
@@ -370,7 +394,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Finalize)
 		p11LockMutex(context->mutex);
 
 		terminateSessionPool(&context->sessionPool);
-		terminateSlotPool(&context->slotPool);
+		terminateSlotPool(&context->slotPool, 0);
 
 		p11UnlockMutex(context->mutex);
 

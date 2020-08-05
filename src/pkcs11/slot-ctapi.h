@@ -43,5 +43,6 @@ int transmitAPDUviaCTAPI(struct p11Slot_t *slot, int todad,
 int getCTAPIToken(struct p11Slot_t *slot, struct p11Token_t **token);
 int updateCTAPISlots(struct p11SlotPool_t *pool);
 int closeCTAPISlot(struct p11Slot_t *slot);
+int detachCTAPISlot(struct p11Slot_t *slot);
 
 #endif /* ___SLOT_CTAPI_H_INC___ */

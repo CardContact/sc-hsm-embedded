@@ -56,6 +56,7 @@
 #ifndef _WIN32
 
 #include <unistd.h>
+#include <wait.h>
 #include <dlfcn.h>
 #define LIB_HANDLE void*
 #define P11LIBNAME "/usr/local/lib/libsc-hsm-pkcs11.so"
@@ -356,6 +357,7 @@ static int optTestPINBlock = 0;
 static int optTestMultiOnly = 0;
 static int optTestHotplug = 0;
 static int optTestEvent = 0;
+static int optTestFork = 0;
 static int optTestInvasive = 0;
 static int optOneThreadPerToken = 0;
 static int optNoClass3Tests = 0;
@@ -2336,6 +2338,58 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 
 
 
+void testFork(CK_FUNCTION_LIST_PTR p11)
+{
+	CK_RV rc;
+	CK_ULONG slots;
+	CK_C_INITIALIZE_ARGS initArgs;
+	CK_SLOT_ID_PTR slotlist = NULL;
+
+	memset(&initArgs, 0, sizeof(initArgs));
+	initArgs.flags = CKF_OS_LOCKING_OK;
+
+	printf("Calling C_Initialize ");
+
+	rc = p11->C_Initialize(&initArgs);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_CRYPTOKI_ALREADY_INITIALIZED));
+
+#ifndef _WIN32
+	pid_t pid = fork();
+
+	if (!pid) {
+		printf("Calling C_Initialize after fork ");
+		rc = p11->C_Initialize(NULL);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		rc = p11->C_GetSlotList(FALSE, NULL, &slots);
+
+		if (rc != CKR_OK) {
+			printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+			exit(1);
+		}
+
+		slotlist = (CK_SLOT_ID_PTR) malloc(sizeof(CK_SLOT_ID) * slots);
+
+		rc = p11->C_GetSlotList(FALSE, slotlist, &slots);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		if (rc != CKR_OK) {
+			exit(1);
+		}
+
+		p11->C_Finalize(NULL);
+		exit(0);
+	} else {
+		int wstatus;
+		waitpid(pid, &wstatus, 0);
+		if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus))
+			printf("Forked process exited with %d", wstatus);
+	}
+#endif
+}
+
+
+
 void unlockPIN(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 {
 	CK_RV rc;
@@ -2363,6 +2417,7 @@ void usage()
 	printf("  --test-pin-block           Enable PIN blocking test\n");
 	printf("  --test-multithreading-only Perform multithreading tests only\n");
 	printf("  --test-hotplug-only        Perform hotplug tests only\n");
+	printf("  --test-fork                Test behaviour during fork()\n");
 	printf("  --one-thread-per-token     Create a single thread per token rather than distributing %d\n", NUM_THREADS);
 	printf("  --no-class3-tests          No PIN tests with attached class 3 PIN PAD\n");
 	printf("  --multithreading-tests     Perform multithreading tests\n");
@@ -2447,6 +2502,8 @@ void decodeArgs(int argc, char **argv)
 			optTestHotplug = 1;
 		} else if (!strcmp(*argv, "--test-event-only")) {
 			optTestEvent = 1;
+		} else if (!strcmp(*argv, "--test-fork")) {
+			optTestFork = 1;
 		} else if (!strcmp(*argv, "--one-thread-per-token")) {
 			optOneThreadPerToken = 1;
 		} else if (!strcmp(*argv, "--no-class3-tests")) {
@@ -2658,6 +2715,10 @@ int main(int argc, char *argv[])
 
 		if (rc != CKR_OK) {
 			exit(1);
+		}
+
+		if (optTestFork) {
+			testFork(p11);
 		}
 
 		i = 0;

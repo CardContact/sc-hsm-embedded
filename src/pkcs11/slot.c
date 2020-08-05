@@ -670,3 +670,32 @@ int closeSlot(struct p11Slot_t *slot)
 
 	FUNC_RETURNS(rc);
 }
+
+
+
+/*
+ * Detach slot without touching external resources like PC/SC or CT-API
+ * handles.
+ *
+ * This function is used if a forked process is reinitialized. Care must be
+ * taken not to release or touch resources in use by the parent process
+ */
+int detachSlot(struct p11Slot_t *slot)
+{
+	int rc = CKR_OK;
+
+	FUNC_CALLED();
+
+	if (slot->primarySlot)
+		FUNC_RETURNS(CKR_OK);
+
+#ifndef MINIDRIVER
+#ifdef CTAPI
+	rc = detachCTAPISlot(slot);
+#else
+	rc = detachPCSCSlot(slot);
+#endif
+#endif
+
+	FUNC_RETURNS(rc);
+}
