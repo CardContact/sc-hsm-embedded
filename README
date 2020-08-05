@@ -29,7 +29,7 @@ https://github.com/CardContact/sc-hsm-embedded/wiki
 
 Installation (Linux)
 --------------------
-Download source and run 
+Download source and run
 
 * autoreconf -fi
 * configure
@@ -46,24 +46,20 @@ The 64-Bit version installs both, the 32-Bit and 64-Bit version of DLLs and test
 
 Firefox
 -------
-Open Firefox and the Add-ons-Manager.
-Select "Install Add-ons From File"
-Select the file "sc-hsm-pkcs11.xpi"
-
-Note: Mozilla recently introduced mandatory signing of XPI installers. We are working to get our
-XPI included in that process. In the meantime you need to register the sc-hsm-pkcs11.dll manually
-using Preferences/Advanced/Security Devices.
+Open Firefox and Preferences/Privacy & Security, scroll down and press "Security Devices"
+In the Device Manager press Load and enter "SmartCard-HSM" as module name
+Select "sc-hsm-pkcs.dll" (Windows), "/usr/local/lib/sc-hsm-pkcs11.so" (Linux) or
+/Library/sc-hsm-pkcs11/lib/sc-hsm-pkcs11.dylib" (Mac) as module filename.
 
 Thunderbird
 -----------
 Open Thunderbird and the Security Devices Manager
 Select Load and enter "SmartCard-HSM" as Module Name
-Select "sc-hsm-pkcs.dll" or "/usr/local/lib/sc-hsm-pkcs11.so" as module filename.
+Select "sc-hsm-pkcs.dll" (Windows), "/usr/local/lib/sc-hsm-pkcs11.so" (Linux) or
+/Library/sc-hsm-pkcs11/lib/sc-hsm-pkcs11.dylib" (Mac) as module filename.
 
 Uninstall
 ---------
-Open Firefox and the Add-ons-Manager.
-Uninstall the "SmartCard-HSM PKCS#11 Installer"
 Open the "Security Devices Manager"
 Unload the entry under "SmartCard-HSM"
 
@@ -78,9 +74,8 @@ For a STARCOS card you will need to define the token that shall be used for test
 
 sc-hsm-pkcs11-test --module lib\sc-hsm-pkcs11.dll --token STARCOS.eUserPKI
 
-The test program uses the default PINs (648219 for SmartCard-HSM or 123456 for STARCOS card).
-
-Please use --pin <pin> if you need to define a different PIN.
+Without a PIN given with the --pin parameter only tests are performed for which
+no PIN is required.
 
 Debugging
 ---------
@@ -93,6 +88,12 @@ Please install the debug version and create a sc-hsm-embedded directory under
 System applications running under root will write logfiles to /var/tmp/sc-hsm-embedded.
 
 On Linux you will need to use configure with --enable-debug.
+
+Release 2.11
+------------
+Add support for 4K version of the SmartCard-HSM (V3.x)
+Add support for AES
+Add support for TLS1.3
 
 Release 2.10
 ------------

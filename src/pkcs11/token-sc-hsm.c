@@ -215,7 +215,7 @@ static int readEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *con
 
 	if (slot->noExtLengthReadAll) {
 		blk = slot->maxRAPDU - 2;
-		if (blk > len) {
+		if (blk > (int)len) {
 			blk = len;
 		}
 	}
@@ -244,7 +244,7 @@ static int readEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *con
 		content += rc;
 		len -= rc;
 
-		if (blk > len) {
+		if (blk > (int)len) {
 			blk = len;
 		}
 	} while ((rc > 0) && (len > 0));
@@ -264,7 +264,7 @@ static int writeEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *co
 	FUNC_CALLED();
 
 	maxblk = slot->token->drv->maxCAPDU;	// Limit defined by token
-	if (maxblk > slot->maxCAPDU) {
+	if ((int)maxblk > slot->maxCAPDU) {
 		maxblk = slot->maxCAPDU;			// Limit defined by slot
 	}
 
@@ -850,7 +850,7 @@ static int sc_hsm_C_GenerateRandom(struct p11Slot_t *slot, CK_BYTE_PTR rnd, CK_U
 
 	maxblk = 1024;			// Maximum block size
 
-	if (maxblk + 2 > slot->maxRAPDU) {
+	if ((int)maxblk + 2 > slot->maxRAPDU) {
 		maxblk = slot->maxRAPDU - 2;
 	}
 	while (rndlen > 0) {

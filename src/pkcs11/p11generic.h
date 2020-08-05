@@ -43,7 +43,7 @@
 
 #ifndef VERSION_MAJOR
 #define VERSION_MAJOR     2
-#define VERSION_MINOR     10
+#define VERSION_MINOR     11
 #endif
 
 #ifndef _MAX_PATH
