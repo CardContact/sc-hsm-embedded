@@ -507,8 +507,6 @@ int closePCSCSlot(struct p11Slot_t *slot)
 
 int detachPCSCSlot(struct p11Slot_t *slot)
 {
-	LONG rc;
-
 	FUNC_CALLED();
 
 #ifdef DEBUG
