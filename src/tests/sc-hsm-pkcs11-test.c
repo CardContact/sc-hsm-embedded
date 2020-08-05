@@ -45,10 +45,6 @@
 /* Number of threads used for multi-threading test */
 #define NUM_THREADS		30
 
-/* Default PIN unless --pin is defined */
-#define PIN_SC_HSM "648219"
-#define PIN_STARCOS "123456"
-
 /* Default SO-PIN unless --so-pin is defined */
 #define SOPIN "3537363231383830"
 
@@ -1569,6 +1565,112 @@ void testAESKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 
 
+int testAES(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
+{
+	CK_OBJECT_CLASS class = CKO_SECRET_KEY;
+	CK_KEY_TYPE keyType = CKK_AES;
+	CK_ATTRIBUTE template[] = {
+			{ CKA_CLASS, &class, sizeof(class) },
+			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) }
+	};
+
+	CK_OBJECT_HANDLE hnd;
+	CK_MECHANISM mech = { CKM_ECDSA_SHA1, 0, 0 };
+	char *tbs = "Hello World.....";
+
+	CK_BYTE signature[512];
+	CK_BYTE plain[1216];
+	CK_BYTE ciphertext[1216];
+	CK_ULONG len;
+	char scr[1024];
+	int rc,keyno,i;
+
+	keyno = 0;
+
+	for (i = 0; i < sizeof(plain); i++) {
+		plain[i] = i & 0xFF;
+	}
+
+	while (1) {
+		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
+
+		if (rc != CKR_OK) {
+			rc = CKR_OK;
+			break;
+		}
+
+		mech.mechanism = CKM_AES_CBC;
+
+		printf("Calling C_EncryptInit()");
+		rc = p11->C_EncryptInit(session, &mech, hnd);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Calling C_Encrypt() to query cipher size");
+
+		len = 0;
+		rc = p11->C_Encrypt(session, plain, sizeof(plain), NULL, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Ciphertext size = %lu : %s\n", len, verdict(len == sizeof(plain)));
+
+		printf("Calling C_Encrypt()");
+
+		rc = p11->C_Encrypt(session, plain, sizeof(plain), ciphertext, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		bin2str(scr, sizeof(scr), ciphertext, len);
+		printf("Ciphertext:\n%s\n", scr);
+
+		printf("Calling C_DecryptInit()");
+
+		rc = p11->C_DecryptInit(session, &mech, hnd);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Calling C_Decrypt() to query plaintext size");
+
+		rc = p11->C_Decrypt(session, (CK_BYTE_PTR)ciphertext, len, NULL, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Plaintext size = %lu : %s\n", len, verdict(len == sizeof(plain)));
+
+		printf("Calling C_Decrypt()");
+
+		rc = p11->C_Decrypt(session, (CK_BYTE_PTR)ciphertext, len, ciphertext, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		bin2str(scr, sizeof(scr), ciphertext, len);
+		printf("Plain:\n%s\n", scr);
+		printf("Verify plaintext... %s\n", verdict(memcmp(ciphertext, plain, len) == 0));
+
+		mech.mechanism = CKM_AES_CMAC;
+
+		printf("Calling C_SignInit()");
+		rc = p11->C_SignInit(session, &mech, hnd);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Calling C_Sign()");
+
+		len = 0;
+		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), NULL, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		printf("Signature size = %lu\n", len);
+
+		len = sizeof(signature);
+		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), signature, &len);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		bin2str(scr, sizeof(scr), signature, len);
+		printf("Signature:\n%s\n", scr);
+
+		keyno++;
+	}
+
+	return rc;
+}
+
+
+
 void testSymmetricKeyDerivation(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
 	int rc;
@@ -2238,14 +2340,8 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 	memset(&data, 0, sizeof(data));
 
 	if (pin == NULL) {
-		if (!strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
-			pin = (CK_UTF8CHAR_PTR)PIN_STARCOS;
-			pinlen = (CK_ULONG)strlen(PIN_STARCOS);
-		} else {
-			pin = (CK_UTF8CHAR_PTR)PIN_SC_HSM;
-			pinlen = (CK_ULONG)strlen(PIN_SC_HSM);
-		}
-		printf("Using PIN %s\n", pin);
+		printf("PIN required for hotplug test. Please set with --pin.\n");
+		return;
 	}
 
 	do	{
@@ -2415,14 +2511,14 @@ void usage()
 	printf("sc-hsm-tool [--module <p11-file>] [--pin <user-pin>] [--token <tokenname>] [--threads <count>] [--iterations <count>]\n");
 	printf("  --test-insert-remove       Enable insert / remove test\n");
 	printf("  --test-pin-block           Enable PIN blocking test\n");
-	printf("  --test-multithreading-only Perform multithreading tests only\n");
-	printf("  --test-hotplug-only        Perform hotplug tests only\n");
-	printf("  --test-fork                Test behaviour during fork()\n");
+	printf("  --test-multithreading-only Perform multi-threading tests only\n");
+	printf("  --test-hotplug-only        Perform hot-plug tests only\n");
+	printf("  --test-fork                Test behavior during fork()\n");
 	printf("  --one-thread-per-token     Create a single thread per token rather than distributing %d\n", NUM_THREADS);
 	printf("  --no-class3-tests          No PIN tests with attached class 3 PIN PAD\n");
-	printf("  --multithreading-tests     Perform multithreading tests\n");
+	printf("  --multithreading-tests     Perform multi-threading tests\n");
 	printf("  --fail-fast                Abort at first failed test\n");
-	printf("  --invasive                 Enable tests that chnages keys on the device\n");
+	printf("  --invasive                 Enable tests that change keys on the device\n");
 	printf("  --unlock-pin               Unlock PIN without setting a new value\n");
 }
 
@@ -2526,111 +2622,6 @@ void decodeArgs(int argc, char **argv)
 }
 
 
-int testAES(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
-{
-	CK_OBJECT_CLASS class = CKO_SECRET_KEY;
-	CK_KEY_TYPE keyType = CKK_AES;
-	CK_ATTRIBUTE template[] = {
-			{ CKA_CLASS, &class, sizeof(class) },
-			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) }
-	};
-
-	CK_OBJECT_HANDLE hnd;
-	CK_MECHANISM mech = { CKM_ECDSA_SHA1, 0, 0 };
-	char *tbs = "Hello World.....";
-
-	CK_BYTE signature[512];
-	CK_BYTE plain[1216];
-	CK_BYTE ciphertext[1216];
-	CK_ULONG len;
-	char scr[1024];
-	int rc,keyno,i;
-
-	keyno = 0;
-
-	for (i = 0; i < sizeof(plain); i++) {
-		plain[i] = i & 0xFF;
-	}
-
-	while (1) {
-		rc = findObject(p11, session, (CK_ATTRIBUTE_PTR)&template, sizeof(template) / sizeof(CK_ATTRIBUTE), keyno, &hnd);
-
-		if (rc != CKR_OK) {
-			rc = CKR_OK;
-			break;
-		}
-
-		mech.mechanism = CKM_AES_CBC;
-
-		printf("Calling C_EncryptInit()");
-		rc = p11->C_EncryptInit(session, &mech, hnd);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		printf("Calling C_Encrypt() to query cipher size");
-
-		len = 0;
-		rc = p11->C_Encrypt(session, plain, sizeof(plain), NULL, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		printf("Ciphertext size = %lu : %s\n", len, verdict(len == sizeof(plain)));
-
-		printf("Calling C_Encrypt()");
-
-		rc = p11->C_Encrypt(session, plain, sizeof(plain), ciphertext, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		bin2str(scr, sizeof(scr), ciphertext, len);
-		printf("Ciphertext:\n%s\n", scr);
-
-		printf("Calling C_DecryptInit()");
-
-		rc = p11->C_DecryptInit(session, &mech, hnd);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		printf("Calling C_Decrypt() to query plaintext size");
-
-		rc = p11->C_Decrypt(session, (CK_BYTE_PTR)ciphertext, len, NULL, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		printf("Plaintext size = %lu : %s\n", len, verdict(len == sizeof(plain)));
-
-		printf("Calling C_Decrypt()");
-
-		rc = p11->C_Decrypt(session, (CK_BYTE_PTR)ciphertext, len, ciphertext, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		bin2str(scr, sizeof(scr), ciphertext, len);
-		printf("Plain:\n%s\n", scr);
-		printf("Verify plaintext... %s\n", verdict(memcmp(ciphertext, plain, len) == 0));
-
-		mech.mechanism = CKM_AES_CMAC;
-
-		printf("Calling C_SignInit()");
-		rc = p11->C_SignInit(session, &mech, hnd);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		printf("Calling C_Sign()");
-
-		len = 0;
-		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), NULL, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		printf("Signature size = %lu\n", len);
-
-		len = sizeof(signature);
-		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), signature, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
-
-		bin2str(scr, sizeof(scr), signature, len);
-		printf("Signature:\n%s\n", scr);
-
-		keyno++;
-	}
-
-	return rc;
-}
-
-
 
 int main(int argc, char *argv[])
 {
@@ -2651,7 +2642,7 @@ int main(int argc, char *argv[])
 
 	decodeArgs(argc, argv);
 
-	printf("PKCS11 unittest running.\n");
+	printf("PKCS11 unit test running.\n");
 
 	dlhandle = dlopen(p11libname, RTLD_NOW);
 
@@ -2768,14 +2759,8 @@ int main(int argc, char *argv[])
 				printf("Token flags       : %lx\n", tokeninfo.flags);
 
 				if (pin == NULL) {
-					if (!strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
-						pin = (CK_UTF8CHAR_PTR)PIN_STARCOS;
-						pinlen = (CK_ULONG)strlen(PIN_STARCOS);
-					} else {
-						pin = (CK_UTF8CHAR_PTR)PIN_SC_HSM;
-						pinlen = (CK_ULONG)strlen(PIN_SC_HSM);
-					}
-					printf("Using PIN %s\n", pin);
+					printf("Skipping tests that require a PIN. PIN can be set with --pin\n");
+					continue;
 				}
 
 				if (optTestMultiOnly)
