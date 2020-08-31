@@ -93,6 +93,10 @@ signed char CT_list(unsigned char *readers, unsigned short *lr, unsigned short o
 		return ERR_MEMORY;
 	}
 
+	if (rc == ERR_USB) {
+		return ERR_TRANS;
+	}
+
 	*lr = (unsigned short)len;
 	return OK;
 }

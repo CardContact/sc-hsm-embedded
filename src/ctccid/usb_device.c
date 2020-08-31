@@ -180,6 +180,9 @@ int USB_Enumerate(unsigned char *readers, int *len, int options)
 		rc = libusb_get_device_descriptor(dev, &desc);
 
 		if (rc < 0) {
+#ifdef DEBUG
+			ctccid_debug("libusb_get_device_descriptor failed. rc = %i (%s)\n", rc, libusb_error_to_string(rc));
+#endif
 			/* error */
 			continue;
 		}
@@ -202,16 +205,26 @@ int USB_Enumerate(unsigned char *readers, int *len, int options)
 					rc = libusb_open(dev, &handle);
 
 					if (rc != LIBUSB_SUCCESS) {
+#ifdef DEBUG
+						ctccid_debug("libusb_open failed. rc = %i (%s)\n", rc, libusb_error_to_string(rc));
+#endif
 						rc = ERR_USB;
 						break;
 					}
 					rc = libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, param, sizeof(param));
+					if (rc < 0) {
+#ifdef DEBUG
+						ctccid_debug("libusb_get_string_descriptor_ascii failed. rc = %i (%s)\n", rc, libusb_error_to_string(rc));
+#endif
+						rc = ERR_USB;
+						break;
+					}
 					libusb_close(handle);
 				} else {
 					rc = snprintf((char *)param, sizeof(param), "%04x", (bus << 8 | addr));
 				}
 
-				if (*len - cnt < (15 + rc + 1)) {	// "SmartCard-HSM (" + serial + ")"
+				if (*len - cnt < (15 + rc + 1 + 1)) {	// "SmartCard-HSM (" + serial + ")"
 					rc = ERR_ARG;
 					break;
 				}
