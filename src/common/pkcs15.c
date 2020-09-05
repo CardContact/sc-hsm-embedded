@@ -212,6 +212,18 @@ static int decodeCommonSecretKeyAttributes(unsigned char *ska, int skalen, struc
 
 	tag = asn1Tag(&po);
 
+	if (tag != ASN1_SEQUENCE) {
+		return -1;
+	}
+
+	len = asn1Length(&po);
+
+	if (len <= 0) {
+		return 0;
+	}
+
+	tag = asn1Tag(&po);
+
 	if (tag != ASN1_INTEGER) {
 		return -1;
 	}
