@@ -2172,6 +2172,12 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 	struct p11Slot_t *slot;
 	struct p11Token_t *token;
 	DWORD version,dwret;
+	CHAR reader[200];
+	DWORD readerlen = sizeof(reader);
+	BYTE bAttr[32];
+	DWORD cByte = sizeof(bAttr);
+	DWORD dwState, dwProtocol;
+
 	int rc;
 
 	FUNC_CALLED();
@@ -2300,6 +2306,19 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 	slot->context = pCardData->hSCardCtx;
 	slot->maxCAPDU = MAX_CAPDU;
 	slot->maxRAPDU = MAX_RAPDU;
+
+	if (SCardStatus(pCardData->hScard,
+					reader, &readerlen,
+					&dwState,
+					&dwProtocol,
+					(LPBYTE)&bAttr,
+					&cByte) == SCARD_S_SUCCESS) {
+		if (!strncmp(reader, "Secure Flash Card", 17)) {
+			slot->maxCAPDU = 478;
+			slot->maxRAPDU = 506;
+			slot->noExtLengthReadAll = TRUE;
+		}
+	}
 
 	checkPCSCPinPad(slot);
 
