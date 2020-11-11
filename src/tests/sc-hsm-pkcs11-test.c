@@ -1049,8 +1049,10 @@ int testAES(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 	char *tbs = "Hello World.....";
 
 	CK_BYTE signature[512];
-	CK_BYTE plain[1216];
-	CK_BYTE ciphertext[1216];
+//	CK_BYTE plain[1216];
+	CK_BYTE plain[16];
+//	CK_BYTE ciphertext[1216];
+	CK_BYTE ciphertext[16];
 	CK_ULONG len;
 	char scr[1024];
 	int rc,keyno,i;
@@ -1124,6 +1126,9 @@ int testAES(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 		printf("Plain:\n%s\n", scr);
 		printf("Verify plaintext... %s\n", verdict(memcmp(ciphertext, plain, len) == 0));
 
+		keyno++;
+		continue;
+
 		mech.mechanism = CKM_AES_CMAC;
 
 		printf("Calling C_SignInit()");
@@ -1171,6 +1176,7 @@ SignThread(void *arg) {
 
 	rc = CKR_OK;
 	while (d->iterations && rc == CKR_OK) {
+		/*
 		rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SHA1_RSA_PKCS);
 		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_RSA_PKCS);
@@ -1196,7 +1202,7 @@ SignThread(void *arg) {
 			rc = testRSADecryption(d->p11, d->slotid, d->thread_id, CKM_RSA_PKCS_OAEP);
 		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testRSADecryption(d->p11, d->slotid, d->thread_id, CKM_RSA_X_509);
-
+*/
 		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testAES(d->p11, d->slotid, d->thread_id);
 
@@ -1628,6 +1634,7 @@ void testAESKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	CK_OBJECT_CLASS secretKeyClass = CKO_SECRET_KEY;
 	CK_ULONG len = 16;
+	CK_ULONG kuc = 10;
 	CK_BYTE algoList[] = {0x10, 0x11, 0x18, 0x99};
 	CK_ATTRIBUTE secretKeyTemplate[20] = {
 			{ CKA_CLASS, &secretKeyClass, sizeof(secretKeyClass) },
@@ -1637,6 +1644,7 @@ void testAESKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 			{ CKA_LABEL, &label, (CK_ULONG)strlen((char *)label) },
 			{ CKA_VALUE_LEN, &len, sizeof(len) },
 			{ CKA_SC_HSM_ALGORITHM_LIST, &algoList, sizeof(algoList)},
+			{ CKA_SC_HSM_KEY_USE_COUNTER, &kuc, sizeof(kuc) },
 			{ CKA_SIGN, &_true, sizeof(_true)},
 			{ CKA_DERIVE, &_true, sizeof(_true)},
 			{ CKA_ENCRYPT, &_true, sizeof(_true)},

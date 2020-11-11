@@ -877,36 +877,56 @@ static int sc_hsm_C_GenerateRandom(struct p11Slot_t *slot, CK_BYTE_PTR rnd, CK_U
 
 
 
-static int encodeGSK(bytebuffer bb, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulPublicKeyAttributeCount)
+static int encodeGSK(bytebuffer bb, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulKeyAttributeCount)
 {
 	int rc;
-
+	CK_ULONG kuc;
+	unsigned char scr[4];
 	FUNC_CALLED();
 
 	bbClear(bb);
 
-	rc = findAttributeInTemplate(CKA_SC_HSM_ALGORITHM_LIST, pTemplate, ulPublicKeyAttributeCount);
+	rc = findAttributeInTemplate(CKA_SC_HSM_ALGORITHM_LIST, pTemplate, ulKeyAttributeCount);
 	if (rc >= 0) {
+		if (pTemplate[rc].pValue == NULL || pTemplate[rc].ulValueLen > 16) {
+			FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "CKA_SC_HSM_ALGORITHM_LIST must not be longer that 16 bytes");
+		}
 		asn1AppendBytes(bb, 0x91, pTemplate[rc].pValue, pTemplate[rc].ulValueLen);
 	} else {
 		asn1AppendBytes(bb, 0x91, defaultAESAlgorithms.val, defaultAESAlgorithms.len);
 	}
 
-	rc = findAttributeInTemplate(CKA_SC_HSM_KEY_USE_COUNTER, pTemplate, ulPublicKeyAttributeCount);
+	rc = findAttributeInTemplate(CKA_SC_HSM_KEY_USE_COUNTER, pTemplate, ulKeyAttributeCount);
 	if (rc >= 0) {
-		if (pTemplate[rc].ulValueLen == 0 || pTemplate[rc].ulValueLen > 4) {
+		if (pTemplate[rc].pValue == NULL || pTemplate[rc].ulValueLen != sizeof(CK_ULONG)) {
+			FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "CKA_SC_HSM_KEY_USE_COUNTER must be CK_ULONG");
+		}
+		kuc = *(CK_ULONG *)pTemplate[rc].pValue;
+
+		if ((kuc < 1) || (kuc > 0xFFFFFFFF)) {
 			FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "CKA_SC_HSM_KEY_USE_COUNTER is not in the range between 1 and 2^32");
 		}
-		asn1AppendBytes(bb, 0x90, pTemplate[rc].pValue, pTemplate[rc].ulValueLen);
+
+		scr[0] = (unsigned char)((kuc >> 24) & 0xFF);
+		scr[1] = (unsigned char)((kuc >> 16) & 0xFF);
+		scr[2] = (unsigned char)((kuc >>  8) & 0xFF);
+		scr[3] = (unsigned char)( kuc & 0xFF);
+		asn1AppendBytes(bb, 0x90, scr, 4);
 	}
 
-	rc = findAttributeInTemplate(CKA_SC_HSM_KEY_DOMAIN, pTemplate, ulPublicKeyAttributeCount);
+	rc = findAttributeInTemplate(CKA_SC_HSM_KEY_DOMAIN, pTemplate, ulKeyAttributeCount);
 	if (rc >= 0) {
+		if (pTemplate[rc].pValue == NULL || pTemplate[rc].ulValueLen != 1) {
+			FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "CKA_SC_HSM_KEY_DOMAIN must be a single CK_BYTE");
+		}
 		asn1AppendBytes(bb, 0x92, pTemplate[rc].pValue, pTemplate[rc].ulValueLen);
 	}
 
-	rc = findAttributeInTemplate(CKA_SC_HSM_WRAPPING_KEY_ID, pTemplate, ulPublicKeyAttributeCount);
+	rc = findAttributeInTemplate(CKA_SC_HSM_WRAPPING_KEY_ID, pTemplate, ulKeyAttributeCount);
 	if (rc >= 0) {
+		if (pTemplate[rc].pValue == NULL || pTemplate[rc].ulValueLen != 1) {
+			FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "CKA_SC_HSM_WRAPPING_KEY_ID must be a single CK_BYTE");
+		}
 		asn1AppendBytes(bb, 0x93, pTemplate[rc].pValue, pTemplate[rc].ulValueLen);
 	}
 
@@ -922,12 +942,12 @@ static int encodeGSK(bytebuffer bb, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulPubli
 static int encodeGAKP(bytebuffer bb, struct p11Token_t *token, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pPublicKeyTemplate, CK_ULONG ulPublicKeyAttributeCount, int *keysize)
 {
 	int rc,pos,ofs;
-	CK_ULONG keybits;
+	CK_ULONG keybits,kuc;
 	struct bytestring_s publicKeyAlgorithm;
 	struct bytestring_s oid;
 	struct bytestring_s publicExponent;
 	struct ec_curve *curve, crve;
-	unsigned char scr[2];
+	unsigned char scr[4];
 
 	FUNC_CALLED();
 
@@ -1035,12 +1055,36 @@ static int encodeGAKP(bytebuffer bb, struct p11Token_t *token, CK_MECHANISM_PTR 
 
 	rc = findAttributeInTemplate(CKA_SC_HSM_KEY_USE_COUNTER, pPublicKeyTemplate, ulPublicKeyAttributeCount);
 	if (rc >= 0) {
-		asn1AppendBytes(bb, 0x90, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
+		if (pPublicKeyTemplate[rc].pValue == NULL || pPublicKeyTemplate[rc].ulValueLen != sizeof(CK_ULONG)) {
+			FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "CKA_SC_HSM_KEY_USE_COUNTER must be CK_ULONG");
+		}
+		kuc = *(CK_ULONG *)pPublicKeyTemplate[rc].pValue;
+
+		if ((kuc < 1) || (kuc > 0xFFFFFFFF)) {
+			FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "CKA_SC_HSM_KEY_USE_COUNTER is not in the range between 1 and 2^32");
+		}
+
+		scr[0] = (unsigned char)((kuc >> 24) & 0xFF);
+		scr[1] = (unsigned char)((kuc >> 16) & 0xFF);
+		scr[2] = (unsigned char)((kuc >>  8) & 0xFF);
+		scr[3] = (unsigned char)( kuc & 0xFF);
+		asn1AppendBytes(bb, 0x90, scr, 4);
 	}
 
 	rc = findAttributeInTemplate(CKA_SC_HSM_ALGORITHM_LIST, pPublicKeyTemplate, ulPublicKeyAttributeCount);
 	if (rc >= 0) {
+		if (pPublicKeyTemplate[rc].pValue == NULL || pPublicKeyTemplate[rc].ulValueLen > 16) {
+			FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "CKA_SC_HSM_ALGORITHM_LIST must not be longer that 16 bytes");
+		}
 		asn1AppendBytes(bb, 0x91, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
+	}
+
+	rc = findAttributeInTemplate(CKA_SC_HSM_KEY_DOMAIN, pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	if (rc >= 0) {
+		if (pPublicKeyTemplate[rc].pValue == NULL || pPublicKeyTemplate[rc].ulValueLen != 1) {
+			FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "CKA_SC_HSM_KEY_DOMAIN must be a single CK_BYTE");
+		}
+		asn1AppendBytes(bb, 0x92, pPublicKeyTemplate[rc].pValue, pPublicKeyTemplate[rc].ulValueLen);
 	}
 
 	if (bbHasFailed(bb)) {
