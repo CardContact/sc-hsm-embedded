@@ -13,7 +13,7 @@
  * @ingroup FEPKCS11
  */
 
-#ifndef __APPLE__
+#if !defined(HAVE_MEMSET_S)
 
 #ifdef _WIN32
 static _inline void *memset_s(void *v, size_t vmax, int c, size_t n)

@@ -60,6 +60,7 @@ AS_IF([test "${enable_libcrypto}" = "detect"],
 AS_IF([test "${enable_libcrypto}" = "yes"],
 	[ PKG_CHECK_MODULES(LIBCRYPTO, [libcrypto >= 1.0.1], AC_DEFINE(ENABLE_LIBCRYPTO)) ])
 
+AC_CHECK_FUNCS([memset_s])
 AM_CONDITIONAL([ENABLE_PCSC], [test "${enable_pcsc}" = "yes"])
 AM_CONDITIONAL([ENABLE_CTAPI], [test "${enable_pcsc}" != "yes"])
 AM_CONDITIONAL([ENABLE_RAM], [test "${enable_ram}" = "yes"])
