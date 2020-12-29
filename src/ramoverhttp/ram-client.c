@@ -51,6 +51,7 @@
 static int optListReaders = 0;
 static char *optReader = NULL;
 static char *optURL = NULL;
+static char *optPin = NULL;
 static int optVerbose = 0;
 
 
@@ -211,6 +212,18 @@ void decodeArgs(int argc, char **argv)
 			argv++;
 			optReader = *argv;
 			argc--;
+		} else if (!strcmp(*argv, "--pin") || !strcmp(*argv, "-p")) {
+			if (argc < 0) {
+				printf("Argument for --pin missing\n");
+				exit(1);
+			}
+			argv++;
+			optPin = *argv;
+			if (strlen(optPin) > 16) {
+				printf("PIN length must not exceed 16 digits\n");
+				exit(1);
+			}
+			argc--;
 		} else if (!strcmp(*argv, "--list-readers") || !strcmp(*argv, "-l")) {
 			optListReaders = 1;
 		} else if (!strcmp(*argv, "--verbose") || !strcmp(*argv, "-v")) {
@@ -345,6 +358,50 @@ static int reset(struct ramContext *ctx, unsigned char *atr, size_t *alen) {
 
 
 
+static unsigned char select_apdu[] = { 0x00, 0xA4, 0x04, 0x0C, 0x0B, 0xE8, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x81, 0xC3, 0x1F, 0x02, 0x01 };
+
+static void verifyPIN(SCARDHANDLE card) {
+	LONG scrc;
+	DWORD lenr;
+	unsigned char capdu[32];
+	unsigned char rapdu[16];
+
+	lenr = sizeof(rapdu);
+	scrc = SCardTransmit(card, SCARD_PCI_T1, select_apdu, sizeof(select_apdu), NULL, rapdu, &lenr);
+
+	if (scrc != SCARD_S_SUCCESS) {
+		printf("Error during card communication (%s)\n", pcsc_error_to_string(scrc));
+		exit(1);
+	}
+
+	if ((lenr != 2) || (rapdu[0] != 0x90) || (rapdu[1] != 0x00)) {
+		printf("Not a SmartCard-HSM. Skipping PIN verification.\n");
+		return;
+	}
+
+	capdu[0] = 0x00;
+	capdu[1] = 0x20;
+	capdu[2] = 0x00;
+	capdu[3] = 0x81;
+	capdu[4] = strlen(optPin);
+	memcpy(capdu + 5, optPin, capdu[4]);
+
+	lenr = sizeof(rapdu);
+	scrc = SCardTransmit(card, SCARD_PCI_T1, capdu, capdu[4] + 5, NULL, rapdu, &lenr);
+
+	if (scrc != SCARD_S_SUCCESS) {
+		printf("Error during card communication (%s)\n", pcsc_error_to_string(scrc));
+		exit(1);
+	}
+
+	if ((lenr != 2) || (rapdu[0] != 0x90) || (rapdu[1] != 0x00)) {
+		printf("PIN verification failed with SW1/SW2 = %02X%02X.\n", rapdu[0], rapdu[1]);
+		exit(1);
+	}
+}
+
+
+
 int main(int argc, char **argv)
 {
 	struct ramContext *ctx;
@@ -410,6 +467,10 @@ int main(int argc, char **argv)
 	if (scrc != SCARD_S_SUCCESS) {
 		printf("Could not query card status (%s)\n", pcsc_error_to_string(scrc));
 		exit(1);
+	}
+
+	if (optPin != NULL) {
+		verifyPIN(lctx.card);
 	}
 
 	if (optURL != NULL) {

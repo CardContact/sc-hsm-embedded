@@ -579,6 +579,7 @@ int ramConnect(struct ramContext *ctx) {
 		case CURLE_URL_MALFORMAT:
 			rc = RAME_INVALID_URL;
 			break;
+		case CURLE_SSL_CONNECT_ERROR:
 		case CURLE_COULDNT_CONNECT:
 			rc = RAME_CONNECT_FAILED;
 			break;
