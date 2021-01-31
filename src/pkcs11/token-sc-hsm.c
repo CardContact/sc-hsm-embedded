@@ -2352,6 +2352,7 @@ static int sc_hsm_login(struct p11Slot_t *slot, int userType, CK_UTF8CHAR_PTR pi
 	struct token_sc_hsm *sc;
 
 	FUNC_CALLED();
+	FUNC_RETURNS(CKR_OK);
 
 	if (userType == CKU_SO) {
 		sc = getPrivateData(slot->token);
