@@ -632,7 +632,7 @@ static CK_RV sc_hsm_C_Encrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mec
 	FUNC_CALLED();
 
 	if (pEncryptedData == NULL) {
-		*ulEncryptedDataLen = pObject->keysize >> 3;
+		*ulEncryptedDataLen = pulDataLen + (pObject->keysize >> 3);
 		FUNC_RETURNS(CKR_OK);
 	}
 
@@ -719,7 +719,7 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 	FUNC_CALLED();
 
 	if (pData == NULL) {
-		*pulDataLen = pObject->keysize >> 3;
+		*pulDataLen = ulEncryptedDataLen + (pObject->keysize >> 3);
 		FUNC_RETURNS(CKR_OK);
 	}
 
