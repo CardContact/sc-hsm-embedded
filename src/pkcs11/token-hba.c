@@ -194,7 +194,6 @@ static int hba_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 
 	FUNC_CALLED();
 
-	debug("Mechanism %lx\n", mech->mechanism);
 	FUNC_RETURNS(getAlgorithmIdForSigning(pObject->token, mech->mechanism, &algo));
 }
 
