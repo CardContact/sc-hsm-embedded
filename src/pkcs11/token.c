@@ -55,6 +55,7 @@ extern struct p11TokenDriver *getSmartCardHSMTokenDriver();
 extern struct p11TokenDriver *getBNotKTokenDriver();
 extern struct p11TokenDriver *getDTrustTokenDriver();
 extern struct p11TokenDriver *getDGNTokenDriver();
+extern struct p11TokenDriver *getHBATokenDriver();
 
 typedef struct p11TokenDriver *(*tokenDriver_t)();
 
@@ -63,6 +64,7 @@ static tokenDriver_t tokenDriver[] = {
 		getBNotKTokenDriver,
 		getDTrustTokenDriver,
 		getDGNTokenDriver,
+		getHBATokenDriver,
 		NULL
 };
 

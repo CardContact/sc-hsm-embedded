@@ -1,0 +1,29 @@
+<!doctype html public "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<style type="text/css">
+	h2 { margin-top:1cm; background-color: #e8e8e8; }
+	h1 { margin-top:0.5cm; }
+</style>
+<title>HBA PKCS#11 Tests</title>
+</head>
+<body>
+<h1>HBA PKCS#11 Tests</h1>
+<h2>Installation</h2>
+<p>To use the test suite, you must first install the <a href="http://www.openscdp.org/scsh3/index.html">Smart Card Shell</a>.</p>
+<h2>Usage</h2>
+<p>You can start the test suite using</p>
+<pre>
+>load("p11-tests/hba/loadtests.js");
+</pre>
+<p>Tests can be selected using the right mouse button on the test suite, test group or test case node.</p>
+<p>Before running the tests you may want to change the location of the PKCS#11 module in the loadtest.js file.</p>
+<h2>Use Cases</h2>
+<p>The following tests are defined</p>
+<ul>
+<li><a href="tg_enumerate.xml">Enumerate Objects</a></li>
+<li><a href="tg_signing.xml">Signing</a></li>
+<li><a href="tg_decryption.xml">Decryption</a></li>
+</ul>
+</body>
+</html>
