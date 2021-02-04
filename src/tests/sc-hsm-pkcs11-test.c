@@ -2798,7 +2798,7 @@ int main(int argc, char *argv[])
 					continue;
 
 
-				if (strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
+				if (!strncmp("SmartCard-HSM", (char *)tokeninfo.label, 13)) {
 					if (tokeninfo.flags & CKF_USER_PIN_TO_BE_CHANGED) {
 						testTransportPIN(p11, slotid);
 					}
@@ -2838,7 +2838,7 @@ int main(int argc, char *argv[])
 
 				testRandom(p11, session);
 
-				if (optTestInvasive && strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
+				if (optTestInvasive && !strncmp("SmartCard-HSM", (char *)tokeninfo.label, 13)) {
 					testKeyGeneration(p11, session);
 
 					testKeyDerivation(p11, session);
@@ -2855,7 +2855,7 @@ int main(int argc, char *argv[])
 					testRSASigning(p11, slotid, 0, CKM_RSA_PKCS_PSS);
 				}
 
-				if (strncmp("STARCOS", (char *)tokeninfo.label, 7) || !strncmp("3.5ID ECC C1 BNK", (char *)tokeninfo.model, 16)) {
+				if (!strncmp("SmartCard-HSM", (char *)tokeninfo.label, 13)) {
 					testRSASigning(p11, slotid, 0, CKM_SHA1_RSA_PKCS);
 					testRSASigning(p11, slotid, 0, CKM_SHA256_RSA_PKCS_PSS);
 					testRSASigning(p11, slotid, 0, CKM_SC_HSM_PSS_SHA1);
@@ -2866,7 +2866,7 @@ int main(int argc, char *argv[])
 				testRSADecryption(p11, slotid, 0, CKM_RSA_PKCS);
 				testRSADecryption(p11, slotid, 0, CKM_RSA_PKCS_OAEP);
 
-				if (strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
+				if (!strncmp("SmartCard-HSM", (char *)tokeninfo.label, 13)) {
 					testRSADecryption(p11, slotid, 0, CKM_RSA_X_509);
 				}
 #endif
@@ -2876,7 +2876,7 @@ int main(int argc, char *argv[])
 				}
 				testECSigning(p11, slotid, 0, CKM_ECDSA);
 
-				if (strncmp("STARCOS", (char *)tokeninfo.label, 7)) {
+				if (!strncmp("SmartCard-HSM", (char *)tokeninfo.label, 13)) {
 					testECSigning(p11, slotid, 0, CKM_SC_HSM_ECDSA_SHA224);
 					testECSigning(p11, slotid, 0, CKM_SC_HSM_ECDSA_SHA256);
 				}
