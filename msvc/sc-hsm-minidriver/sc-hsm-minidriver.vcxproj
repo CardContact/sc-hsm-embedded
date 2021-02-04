@@ -144,6 +144,7 @@
     <ClCompile Include="..\..\src\pkcs11\slot-pcsc.c" />
     <ClCompile Include="..\..\src\pkcs11\slot.c" />
     <ClCompile Include="..\..\src\pkcs11\strbpcpy.c" />
+    <ClCompile Include="..\..\src\pkcs11\token-hba.c" />
     <ClCompile Include="..\..\src\pkcs11\token-sc-hsm.c" />
     <ClCompile Include="..\..\src\pkcs11\token-starcos-bnotk.c" />
     <ClCompile Include="..\..\src\pkcs11\token-starcos-dgn.c" />

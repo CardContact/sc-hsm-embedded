@@ -93,7 +93,7 @@ size_t getline(char** pp, size_t* pl, FILE* f)
 		free(*pp);
 	*pp = (char*)malloc(*pl);
 	if (*pp == 0) {
-		printf("malloc(%d) failed.", *pl);
+		printf("malloc(%zd) failed.", *pl);
 		exit(1);
 	}
 	memcpy(*pp, buf, *pl);
@@ -2465,7 +2465,6 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 void testFork(CK_FUNCTION_LIST_PTR p11)
 {
 	CK_RV rc;
-	CK_ULONG slots;
 	CK_C_INITIALIZE_ARGS initArgs;
 	CK_SLOT_ID_PTR slotlist = NULL;
 

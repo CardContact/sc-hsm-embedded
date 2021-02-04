@@ -6,7 +6,7 @@ msbuild /t:clean,build /property:Configuration=Release;Platform=x64
 
 set WIXBIN="c:\Program Files (x86)\WiX Toolset v3.11\bin"
 
-set VERSION=2.11.0
+set VERSION=2.11.1
 set DEBREL=Debug
 
 %WIXBIN%\candle -arch x86 installer.wxs -dPlatform=x86 -dDebRel=Release -dVersion=%VERSION%

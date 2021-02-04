@@ -143,6 +143,7 @@ static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 	switch(mech) {
 	case CKM_RSA_PKCS:
 	case CKM_RSA_PKCS_PSS:
+	case CKM_SC_HSM_PSS_SHA256:
 		return pObject->keysize >> 3;
 	default:
 		return -1;
@@ -158,6 +159,7 @@ static int getAlgorithmIdForSigning(struct p11Token_t *token, CK_MECHANISM_TYPE 
 		*algo = ALG_SIGN_PKCS1_V15;
 		break;
 	case CKM_RSA_PKCS_PSS:
+	case CKM_SC_HSM_PSS_SHA256:
 		*algo = ALG_SIGN_PSS;
 		break;
 	default:
@@ -192,6 +194,7 @@ static int hba_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 
 	FUNC_CALLED();
 
+	debug("Mechanism %lx\n", mech->mechanism);
 	FUNC_RETURNS(getAlgorithmIdForSigning(pObject->token, mech->mechanism, &algo));
 }
 
@@ -199,7 +202,7 @@ static int hba_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 
 static int hba_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
 {
-	int rc, len, signaturelen;
+	int rc, signaturelen;
 	unsigned short SW1SW2;
 	unsigned char scr[256], *d;
 	unsigned char algo;
@@ -311,8 +314,8 @@ static int hba_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 
 static int hba_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
-	int rc, len;
-	unsigned char *d,*s,algo;
+	int rc;
+	unsigned char *d,algo;
 	unsigned short SW1SW2;
 	unsigned char scr[257];
 	struct p11Slot_t *slot;
