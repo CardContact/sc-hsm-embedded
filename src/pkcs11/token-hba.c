@@ -262,6 +262,9 @@ static int hba_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BY
 
 	if (SW1SW2 != 0x9000) {
 		starcosUnlock(pObject->token);
+		if (SW1SW2 == 0x6A81) {
+			FUNC_FAILS(CKR_KEY_FUNCTION_NOT_PERMITTED, "Signature operation not allowed for key");
+		}
 		FUNC_FAILS(CKR_DEVICE_ERROR, "MANAGE SE failed");
 	}
 
@@ -366,7 +369,10 @@ static int hba_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 
 	if (SW1SW2 != 0x9000) {
 		starcosUnlock(pObject->token);
-		FUNC_FAILS(CKR_DEVICE_ERROR, "MANAGE SE failed");
+		if (SW1SW2 == 0x6A81) {
+			FUNC_FAILS(CKR_KEY_FUNCTION_NOT_PERMITTED, "Decryption operation not allowed for key");
+		}
+	FUNC_FAILS(CKR_DEVICE_ERROR, "MANAGE SE failed");
 	}
 
 	scr[0] = 0x81;

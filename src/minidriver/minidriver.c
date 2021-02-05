@@ -93,6 +93,9 @@ static DWORD mapError(int rc)
 	switch(rc) {
 	case CKR_DEVICE_ERROR:
 		return SCARD_E_UNEXPECTED;
+	case CKR_MECHANISM_INVALID:
+	case CKR_KEY_FUNCTION_NOT_PERMITTED:
+		return SCARD_E_UNSUPPORTED_FEATURE;
 	case CKR_PIN_INCORRECT:
 		return SCARD_W_WRONG_CHV;
 	case CKR_PIN_LOCKED:
@@ -541,9 +544,17 @@ static DWORD WINAPI CardDeauthenticateEx(__in PCARD_DATA pCardData,
 
 	logOut(token->slot);
 
-	if (strncmp((char *)token->info.model, "SmartCard-HSM", 13)) {
-		FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
-	}
+// Returning SCARD_E_UNSUPPORTED_FEATURE causes a card reset, which is not correctly
+// reflected if multitple CardAcquireContexts are in use. Each context maintains it's
+// own state of selected application, but is not notified of the reset.
+// Disabling the card reset leaves the card in an authenticated state until
+// it is powered down.
+//
+// This is not an issue for the SmartCard-HSM which supports a logout mechanism
+//
+//	if (strncmp((char *)token->info.model, "SmartCard-HSM", 13)) {
+//		FUNC_RETURNS(SCARD_E_UNSUPPORTED_FEATURE);
+//	}
 
 	FUNC_RETURNS(SCARD_S_SUCCESS);
 }
