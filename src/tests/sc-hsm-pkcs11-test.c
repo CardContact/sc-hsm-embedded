@@ -2465,6 +2465,7 @@ void testHotplug(CK_FUNCTION_LIST_PTR p11)
 void testFork(CK_FUNCTION_LIST_PTR p11)
 {
 	CK_RV rc;
+	CK_ULONG slots;
 	CK_C_INITIALIZE_ARGS initArgs;
 	CK_SLOT_ID_PTR slotlist = NULL;
 
