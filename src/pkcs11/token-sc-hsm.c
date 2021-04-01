@@ -428,10 +428,10 @@ static int getAlgorithmIdForDecryption(CK_MECHANISM_TYPE mech)
 
 
 
-static int decodeECDSASignature(unsigned char *data, int datalen,
+static int decodeECDSASignature(int fieldsizebytes, unsigned char *data, int datalen,
 								unsigned char *out, int outlen)
 {
-	int fieldsizebytes, i, r, taglen;
+	int i, r, taglen;
 	unsigned char *po, *value;
 
 	FUNC_CALLED();
@@ -441,27 +441,6 @@ static int decodeECDSASignature(unsigned char *data, int datalen,
 	if (r != 0) {
 		FUNC_FAILS(-1, "Signature is not a valid TLV structure");
 	}
-
-	// Determine field size from length of signature
-	if (datalen <= 58) {			// 192 bit curve = 24 * 2 + 10 byte maximum DER signature
-		fieldsizebytes = 24;
-	} else if (datalen <= 66) {		// 224 bit curve = 28 * 2 + 10 byte maximum DER signature
-		fieldsizebytes = 28;
-	} else if (datalen <= 74) {		// 256 bit curve = 32 * 2 + 10 byte maximum DER signature
-		fieldsizebytes = 32;
-	} else if (datalen <= 90) {		// 320 bit curve = 40 * 2 + 10 byte maximum DER signature
-		fieldsizebytes = 40;
-	} else if (datalen <= 106) {		// 384 bit curve = 48 * 2 + 10 byte maximum DER signature
-		fieldsizebytes = 48;
-	} else if (datalen <= 138) {		// 512 bit curve = 64 * 2 + 10 byte maximum DER signature
-		fieldsizebytes = 64;
-	} else {
-		fieldsizebytes = 66;
-	}
-
-#ifdef DEBUG
-	debug("Field size %d, signature buffer size %d\n", fieldsizebytes, outlen);
-#endif
 
 	if (outlen < (fieldsizebytes * 2)) {
 		FUNC_FAILS(-1, "output too small for EC signature");
@@ -593,11 +572,11 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 			applyPKCSPadding(pData, ulDataLen, scr, signaturelen);
 			rc = transmitAPDU(pObject->token->slot, 0x80, 0x68, (unsigned char)pObject->tokenid, (unsigned char)algo,
 				signaturelen, scr,
-				0, pSignature, *pulSignatureLen, &SW1SW2);
+				0x10000, pSignature, *pulSignatureLen, &SW1SW2);
 		} else {
 			rc = transmitAPDU(pObject->token->slot, 0x80, 0x68, (unsigned char)pObject->tokenid, (unsigned char)algo,
 				ulDataLen, pData,
-				0, pSignature, *pulSignatureLen, &SW1SW2);
+				0x10000, pSignature, *pulSignatureLen, &SW1SW2);
 		}
 	}
 
@@ -623,7 +602,7 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 	}
 
 	if ((algo == ALGO_EC_RAW) || (algo == ALGO_EC_SHA1) || (algo == ALGO_EC_SHA224) || (algo == ALGO_EC_SHA256)) {
-		rc = decodeECDSASignature(scr, rc, pSignature, *pulSignatureLen);
+		rc = decodeECDSASignature(pObject->keysize >> 3, scr, rc, pSignature, *pulSignatureLen);
 		if (rc < 0) {
 			FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "supplied buffer too small");
 		}

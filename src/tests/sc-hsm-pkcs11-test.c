@@ -1176,7 +1176,7 @@ SignThread(void *arg) {
 
 	rc = CKR_OK;
 	while (d->iterations && rc == CKR_OK) {
-		/*
+
 		rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SHA1_RSA_PKCS);
 		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_RSA_PKCS);
@@ -1202,7 +1202,7 @@ SignThread(void *arg) {
 			rc = testRSADecryption(d->p11, d->slotid, d->thread_id, CKM_RSA_PKCS_OAEP);
 		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testRSADecryption(d->p11, d->slotid, d->thread_id, CKM_RSA_X_509);
-*/
+
 		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testAES(d->p11, d->slotid, d->thread_id);
 
