@@ -1201,7 +1201,7 @@ static DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	copyInverted(cryptogram, pInfo->pbData, pInfo->cbData);
 	plainlen = sizeof(plain);
 
-	rc = p11prikey->C_Decrypt(p11prikey, mech.mechanism, cryptogram, pInfo->cbData, plain, &plainlen);
+	rc = p11prikey->C_Decrypt(p11prikey, &mech, cryptogram, pInfo->cbData, plain, &plainlen);
 
 	if (rc != CKR_OK) {
 		dwret = mapError(rc);
@@ -1394,14 +1394,14 @@ static DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNIN
 
 	if (pInfo->dwSigningFlags & CARD_BUFFER_SIZE_ONLY) {
 		cklen = 0;
-		rc = p11prikey->C_Sign(p11prikey, mech.mechanism, signInput, dilen, NULL, &cklen);
+		rc = p11prikey->C_Sign(p11prikey, &mech, signInput, dilen, NULL, &cklen);
 		pInfo->cbSignedData = cklen;
 		pInfo->pbSignedData = NULL;
 		FUNC_RETURNS(SCARD_S_SUCCESS);
 	}
 
 	cklen = sizeof(signature);
-	rc = p11prikey->C_Sign(p11prikey, mech.mechanism, signInput, dilen, signature, &cklen);
+	rc = p11prikey->C_Sign(p11prikey, &mech, signInput, dilen, signature, &cklen);
 
 	if (rc != CKR_OK) {
 		dwret = mapError(rc);

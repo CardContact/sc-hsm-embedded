@@ -216,7 +216,7 @@ static int readEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *con
 	if (slot->noExtLengthReadAll) {
 		blk = slot->maxRAPDU - 2;
 		if (blk > (int)len) {
-			blk = len;
+			blk = (int)len;
 		}
 	}
 	do	{
@@ -245,7 +245,7 @@ static int readEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *con
 		len -= rc;
 
 		if (blk > (int)len) {
-			blk = len;
+			blk = (int)len;
 		}
 	} while ((rc > 0) && (len > 0));
 
