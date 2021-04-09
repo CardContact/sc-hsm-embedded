@@ -1049,10 +1049,9 @@ int testAES(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 	char *tbs = "Hello World.....";
 
 	CK_BYTE signature[512];
-//	CK_BYTE plain[1216];
-	CK_BYTE plain[16];
-//	CK_BYTE ciphertext[1216];
-	CK_BYTE ciphertext[16];
+	CK_BYTE plain[1216];
+	CK_BYTE ciphertext[1216];
+	CK_BYTE iv[16];
 	CK_ULONG len;
 	char scr[1024];
 	int rc,keyno,i;
@@ -1083,7 +1082,10 @@ int testAES(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 			break;
 		}
 
+		memset(iv, 0xA5, sizeof(iv));
 		mech.mechanism = CKM_AES_CBC;
+		mech.pParameter = iv;
+		mech.ulParameterLen = sizeof(iv);
 
 		printf("Calling C_EncryptInit()");
 		rc = p11->C_EncryptInit(session, &mech, hnd);
@@ -1125,9 +1127,6 @@ int testAES(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id)
 		bin2str(scr, sizeof(scr), ciphertext, len);
 		printf("Plain:\n%s\n", scr);
 		printf("Verify plaintext... %s\n", verdict(memcmp(ciphertext, plain, len) == 0));
-
-		keyno++;
-		continue;
 
 		mech.mechanism = CKM_AES_CMAC;
 

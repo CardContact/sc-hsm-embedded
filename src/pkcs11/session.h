@@ -58,7 +58,7 @@ struct p11Session_t {
 	CK_SESSION_HANDLE handle;           /**< The handle of the session                          */
 	int isRemoved;                      /**< The token has been removed                         */
 	int activeObjectHandle;             /**< The handle of the active object, -1 if no object   */
-	CK_MECHANISM_TYPE activeMechanism;  /**< The currently active mechanism                     */
+	CK_MECHANISM activeMechanism;       /**< The currently active mechanism                     */
 	CK_BYTE_PTR cryptoBuffer;           /**< Buffer storing intermediate results                */
 	CK_ULONG cryptoBufferSize;          /**< Current content of crypto buffer                   */
 	CK_ULONG cryptoBufferMax;           /**< Current size of crypto buffer                      */
@@ -90,6 +90,7 @@ int findSessionObject(struct p11Session_t *session, CK_OBJECT_HANDLE handle, str
 int removeSessionObject(struct p11Session_t *session, CK_OBJECT_HANDLE handle);
 int addObjectToSearchList(struct p11Session_t *session, struct p11Object_t *object);
 void clearSearchList(struct p11Session_t *session);
+int copyMechanismParameter(struct p11Session_t *session, CK_MECHANISM_PTR pMechanism);
 int appendToCryptoBuffer(struct p11Session_t *session, CK_BYTE_PTR data, CK_ULONG length);
 void clearCryptoBuffer(struct p11Session_t *session);
 

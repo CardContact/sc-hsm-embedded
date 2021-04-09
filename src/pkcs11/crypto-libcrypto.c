@@ -635,7 +635,7 @@ CK_RV cryptoVerifyInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 
 
 
-CK_RV cryptoVerify(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen)
+CK_RV cryptoVerify(struct p11Object_t *pObject, CK_MECHANISM_PTR mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen)
 {
 	struct p11Attribute_t *keytype;
 	CK_RV rv;
@@ -650,10 +650,10 @@ CK_RV cryptoVerify(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_
 
 	switch (*(CK_KEY_TYPE *)keytype->attrData.pValue) {
 	case CKK_RSA:
-		rv = verifyRSA(pObject, mech, pData, ulDataLen, pSignature, ulSignatureLen);
+		rv = verifyRSA(pObject, mech->mechanism, pData, ulDataLen, pSignature, ulSignatureLen);
 		break;
 	case CKK_EC:
-		rv = verifyECDSA(pObject, mech, pData, ulDataLen, pSignature, ulSignatureLen);
+		rv = verifyECDSA(pObject, mech->mechanism, pData, ulDataLen, pSignature, ulSignatureLen);
 		break;
 	default:
 		FUNC_FAILS(CKR_KEY_HANDLE_INVALID, "CKA_KEY_TYPE is neither CKK_RSA nor CKK_EC");
@@ -693,7 +693,7 @@ CK_RV cryptoEncryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 
 
 
-CK_RV cryptoEncrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
+CK_RV cryptoEncrypt(struct p11Object_t *pObject, CK_MECHANISM_PTR mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
 {
 	struct p11Attribute_t *keytype;
 	CK_RV rv;
@@ -709,7 +709,7 @@ CK_RV cryptoEncrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE
 	if (*(CK_KEY_TYPE *)keytype->attrData.pValue != CKK_RSA)
 		FUNC_FAILS(CKR_KEY_HANDLE_INVALID, "CKA_KEY_TYPE is not CKK_RSA");
 
-	switch(mech) {
+	switch(mech->mechanism) {
 	case CKM_RSA_X_509:
 		rv = encryptRSA(pObject, RSA_NO_PADDING, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
 		break;

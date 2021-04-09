@@ -230,6 +230,12 @@ int removeSession(struct p11SessionPool_t *pool, CK_SESSION_HANDLE handle)
 			return CKR_GENERAL_ERROR;
 	}
 
+	if (session->activeMechanism.pParameter) {
+		free(session->activeMechanism.pParameter);
+		session->activeMechanism.pParameter = NULL;
+		session->activeMechanism.ulParameterLen = 0;
+	}
+
 	if (session->cryptoBuffer) {
 		free(session->cryptoBuffer);
 		session->cryptoBuffer = NULL;
@@ -447,6 +453,37 @@ void clearSearchList(struct p11Session_t *session)
 	session->searchObj.searchNumOfObjects = 0;
 	session->searchObj.objectsCollected = 0;
 	session->searchObj.searchList = NULL;
+}
+
+
+
+/**
+ * Copy mechanism parameter into the session object
+ *
+ * @param session    the session
+ * @param pMechanism the mechanism parameter
+ * @return CKR_OK or CKR_HOST_MEMORY
+ */
+int copyMechanismParameter(struct p11Session_t *session, CK_MECHANISM_PTR pMechanism)
+{
+	if (session->activeMechanism.pParameter) {
+		free(session->activeMechanism.pParameter);
+		session->activeMechanism.pParameter = NULL;
+		session->activeMechanism.ulParameterLen = 0;
+	}
+
+	session->activeMechanism.mechanism = pMechanism->mechanism;
+
+	if (pMechanism->ulParameterLen > 0) {
+		session->activeMechanism.pParameter = calloc(1, pMechanism->ulParameterLen);
+		if (session->activeMechanism.pParameter == NULL) {
+			return CKR_HOST_MEMORY;
+		}
+		memcpy(session->activeMechanism.pParameter, pMechanism->pParameter, pMechanism->ulParameterLen);
+		session->activeMechanism.ulParameterLen = pMechanism->ulParameterLen;
+	}
+
+	return CKR_OK;
 }
 
 

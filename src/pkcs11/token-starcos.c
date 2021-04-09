@@ -695,7 +695,7 @@ int starcosDigest(struct p11Token_t *token, CK_MECHANISM_TYPE mech, unsigned cha
 
 
 
-static int starcos_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
+static CK_RV starcos_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 {
 	unsigned char *algotlv;
 
@@ -706,7 +706,7 @@ static int starcos_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech
 
 
 
-static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
+static CK_RV starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_PTR mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
 {
 	int rc, len, signaturelen;
 	unsigned short SW1SW2;
@@ -715,7 +715,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 
 	FUNC_CALLED();
 
-	rc = getSignatureSize(mech, pObject);
+	rc = getSignatureSize(mech->mechanism, pObject);
 	if (rc < 0) {
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Unknown mechanism");
 	}
@@ -743,10 +743,10 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 		FUNC_FAILS(CKR_DEVICE_ERROR, "selecting application failed");
 	}
 
-	if ((mech != CKM_RSA_PKCS) && (mech != CKM_RSA_PKCS_PSS) && (mech != CKM_ECDSA) && (mech != CKM_ECDSA_SHA1) &&
-		(mech != CKM_SC_HSM_PSS_SHA1) && (mech != CKM_SC_HSM_PSS_SHA224) &&
-		(mech != CKM_SC_HSM_PSS_SHA256) && (mech != CKM_SC_HSM_PSS_SHA384)  && (mech != CKM_SC_HSM_PSS_SHA512)) {
-		rc = starcosDigest(pObject->token, mech, pData, ulDataLen);
+	if ((mech->mechanism != CKM_RSA_PKCS) && (mech->mechanism != CKM_RSA_PKCS_PSS) && (mech->mechanism != CKM_ECDSA) && (mech->mechanism != CKM_ECDSA_SHA1) &&
+		(mech->mechanism != CKM_SC_HSM_PSS_SHA1) && (mech->mechanism != CKM_SC_HSM_PSS_SHA224) &&
+		(mech->mechanism != CKM_SC_HSM_PSS_SHA256) && (mech->mechanism != CKM_SC_HSM_PSS_SHA384)  && (mech->mechanism != CKM_SC_HSM_PSS_SHA512)) {
+		rc = starcosDigest(pObject->token, mech->mechanism, pData, ulDataLen);
 		if (rc != CKR_OK) {
 			starcosUnlock(pObject->token);
 			FUNC_FAILS(rc, "digesting failed");
@@ -755,7 +755,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 		ulDataLen = 0;
 	}
 
-	rc = getAlgorithmIdForSigning(pObject->token, mech, &s);
+	rc = getAlgorithmIdForSigning(pObject->token, mech->mechanism, &s);
 	if (rc != CKR_OK) {
 		starcosUnlock(pObject->token);
 		FUNC_FAILS(rc, "getAlgorithmIdForSigning() failed");
@@ -821,7 +821,7 @@ static int starcos_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, C
 
 
 
-static int starcos_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
+static CK_RV starcos_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 {
 	unsigned char *algotlv;
 
@@ -832,7 +832,7 @@ static int starcos_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR m
 
 
 
-static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+static CK_RV starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_PTR mech, CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
 	int rc, len;
 	unsigned char *d,*s;
@@ -862,7 +862,7 @@ static int starcos_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech
 		FUNC_FAILS(CKR_DEVICE_ERROR, "selecting application failed");
 	}
 
-	rc = getAlgorithmIdForDecryption(pObject->token, mech, &s);
+	rc = getAlgorithmIdForDecryption(pObject->token, mech->mechanism, &s);
 	if (rc != CKR_OK) {
 		starcosUnlock(pObject->token);
 		FUNC_FAILS(rc, "getAlgorithmIdForDecryption() failed");

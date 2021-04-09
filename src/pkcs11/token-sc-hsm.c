@@ -481,7 +481,7 @@ static int decodeECDSASignature(int fieldsizebytes, unsigned char *data, int dat
 
 
 
-static int sc_hsm_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
+static CK_RV sc_hsm_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 {
 	int algo;
 
@@ -520,14 +520,14 @@ static void applyPKCSPadding(unsigned char *di, int dilen, unsigned char *buff, 
 
 
 
-static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
+static CK_RV sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_PTR mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
 {
 	int rc, algo, signaturelen;
 	unsigned short SW1SW2;
 	unsigned char scr[512];
 	FUNC_CALLED();
 
-	rc = getSignatureSize(mech, pObject);
+	rc = getSignatureSize(mech->mechanism, pObject);
 	if (rc < 0) {
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Unknown mechanism");
 	}
@@ -543,16 +543,16 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Signature length is larger than buffer");
 	}
 
-	algo = getAlgorithmIdForSigning(mech);
+	algo = getAlgorithmIdForSigning(mech->mechanism);
 	if (algo < 0) {
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
 	}
 
-	if ((mech == CKM_SC_HSM_PSS_SHA1) && ulDataLen != 20) {
+	if ((mech->mechanism == CKM_SC_HSM_PSS_SHA1) && ulDataLen != 20) {
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Input for CKM_SC_HSM_PSS_SHA1 must be 20 bytes long");
 	}
 
-	if ((mech == CKM_SC_HSM_PSS_SHA256) && ulDataLen != 32) {
+	if ((mech->mechanism == CKM_SC_HSM_PSS_SHA256) && ulDataLen != 32) {
 		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Input for CKM_SC_HSM_PSS_SHA256 must be 32 bytes long");
 	}
 
@@ -565,7 +565,7 @@ static int sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 				ulDataLen, pData,
 				0, pSignature, *pulSignatureLen, &SW1SW2);
 	} else {
-		if (mech == CKM_RSA_PKCS) {
+		if (mech->mechanism == CKM_RSA_PKCS) {
 			if (signaturelen > sizeof(scr)) {
 				FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Signature length is larger than buffer");
 			}
@@ -625,12 +625,16 @@ static CK_RV sc_hsm_C_EncryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR 
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
 	}
 
+	if ((algo == ALGO_AES_CBC_ENCRYPT) && mech->ulParameterLen && ((mech->ulParameterLen != 16) || (mech->pParameter == NULL))) {
+		FUNC_FAILS(CKR_MECHANISM_PARAM_INVALID, "IV must be 16 bytes");
+	}
+
 	FUNC_RETURNS(CKR_OK);
 }
 
 
 
-static int sc_hsm_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
+static CK_RV sc_hsm_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 {
 	int algo;
 
@@ -644,12 +648,25 @@ static int sc_hsm_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR me
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
 	}
 
+	if ((algo == ALGO_AES_CBC_DECRYPT) && mech->ulParameterLen && ((mech->ulParameterLen != 16) || (mech->pParameter == NULL))) {
+		FUNC_FAILS(CKR_MECHANISM_PARAM_INVALID, "IV must be 16 bytes");
+	}
+
 	FUNC_RETURNS(CKR_OK);
 }
 
 
 
-static CK_RV sc_hsm_C_Encrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG pulDataLen, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR ulEncryptedDataLen)
+static void xor(CK_BYTE_PTR buff1, CK_BYTE_PTR buff2, int len)
+{
+	while(len-- >= 0) {
+		*buff1++ ^= *buff2++;
+	}
+}
+
+
+
+static CK_RV sc_hsm_C_Encrypt(struct p11Object_t *pObject, CK_MECHANISM_PTR mech, CK_BYTE_PTR pData, CK_ULONG pulDataLen, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR ulEncryptedDataLen)
 {
 	int rc, algo;
 	unsigned short SW1SW2;
@@ -662,14 +679,35 @@ static CK_RV sc_hsm_C_Encrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mec
 		FUNC_RETURNS(CKR_OK);
 	}
 
-	algo = getAlgorithmIdForEncryption(mech);
+	algo = getAlgorithmIdForEncryption(mech->mechanism);
 	if (algo < 0) {
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
 	}
 
-	rc = transmitAPDU(pObject->token->slot, 0x80, 0x78, (unsigned char)pObject->tokenid, (unsigned char)algo,
-			pulDataLen, pData,
-			0, scr, sizeof(scr), &SW1SW2);
+	if (mech->ulParameterLen && (algo == ALGO_AES_CBC_ENCRYPT)) {
+		if (pulDataLen > sizeof(scr)) {
+			FUNC_FAILS(CKR_ENCRYPTED_DATA_INVALID, "Input too large");
+		}
+
+		if (pulDataLen < 16) {
+			FUNC_FAILS(CKR_ENCRYPTED_DATA_INVALID, "Input too short");
+		}
+
+		if (pulDataLen &0x0F) {
+			FUNC_FAILS(CKR_ENCRYPTED_DATA_INVALID, "Input not a multiple of 16");
+		}
+
+		memcpy(scr, pData, pulDataLen);
+		xor(scr, (CK_BYTE_PTR)mech->pParameter, (int)mech->ulParameterLen);
+
+		rc = transmitAPDU(pObject->token->slot, 0x80, 0x78, (unsigned char)pObject->tokenid, (unsigned char)algo,
+				pulDataLen, scr,
+				0, scr, sizeof(scr), &SW1SW2);
+	} else {
+		rc = transmitAPDU(pObject->token->slot, 0x80, 0x78, (unsigned char)pObject->tokenid, (unsigned char)algo,
+				pulDataLen, pData,
+				0, scr, sizeof(scr), &SW1SW2);
+	}
 
 	if (rc < 0) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
@@ -694,10 +732,13 @@ static CK_RV sc_hsm_C_Encrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mec
 
 	if (rc > (int)*ulEncryptedDataLen) {
 		*ulEncryptedDataLen = rc;
+		memset(scr, 0, sizeof(scr));
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "supplied buffer too small");
 	}
 	*ulEncryptedDataLen = rc;
 	memcpy(pEncryptedData, scr, rc);
+
+	memset(scr, 0, sizeof(scr));
 
 	FUNC_RETURNS(CKR_OK);
 }
@@ -736,7 +777,7 @@ static int stripPKCS15Padding(unsigned char *scr, int len, CK_BYTE_PTR pData, CK
 
 
 
-static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+static CK_RV sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_PTR mech, CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
 	int rc, algo, ins;
 	unsigned short SW1SW2;
@@ -745,7 +786,7 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 	FUNC_CALLED();
 
 	if (pData == NULL) {
-		if (mech == CKM_AES_CBC) {
+		if (mech->mechanism == CKM_AES_CBC) {
 			*pulDataLen = ulEncryptedDataLen;
 		} else {
 			*pulDataLen = pObject->keysize >> 3;
@@ -753,12 +794,12 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 		FUNC_RETURNS(CKR_OK);
 	}
 
-	algo = getAlgorithmIdForDecryption(mech);
+	algo = getAlgorithmIdForDecryption(mech->mechanism);
 	if (algo < 0) {
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism not supported");
 	}
 
-	if (mech == CKM_AES_CBC) {
+	if (mech->mechanism == CKM_AES_CBC) {
 		ins = 0x78;
 	} else {
 		ins = 0x62;
@@ -792,15 +833,20 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 		break;
 	}
 
-	if ((mech == CKM_RSA_X_509)
-			|| (mech == CKM_AES_CBC)) {
+	if ((mech->mechanism == CKM_RSA_X_509)
+			|| (mech->mechanism == CKM_AES_CBC)) {
 		if (rc > (int)*pulDataLen) {
 			*pulDataLen = rc;
 			FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "supplied buffer too small");
 		}
+
+		if (mech->ulParameterLen && (algo == ALGO_AES_CBC_DECRYPT)) {
+			xor(scr, (CK_BYTE_PTR)mech->pParameter, (int)mech->ulParameterLen);
+		}
+
 		*pulDataLen = rc;
 		memcpy(pData, scr, rc);
-	} else if (mech == CKM_RSA_PKCS) {
+	} else if (mech->mechanism == CKM_RSA_PKCS) {
 		rc = stripPKCS15Padding(scr, rc, pData, pulDataLen);
 		if (rc != CKR_OK) {
 			FUNC_FAILS(rc, "Invalid PKCS#1 padding");
@@ -813,6 +859,8 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 		}
 #endif
 	}
+
+	memset(scr, 0, sizeof(scr));
 
 	FUNC_RETURNS(CKR_OK);
 }
@@ -1200,14 +1248,14 @@ static int determineFreeKeyId(struct p11Slot_t *slot, unsigned char prefix) {
 
 
 
-static int sc_hsm_C_DeriveSymmetricKey(
+static CK_RV sc_hsm_C_DeriveSymmetricKey(
 		struct p11Object_t *pObject,
 		CK_MECHANISM_PTR pMechanism,
 		CK_ATTRIBUTE_PTR pTemplate,
 		CK_ULONG ulAttributeCount,
 		struct p11Object_t **pKey);
 
-static int sc_hsm_C_DeriveKey(
+static CK_RV sc_hsm_C_DeriveKey(
 		struct p11Object_t *pObject,
 		CK_MECHANISM_PTR pMechanism,
 		CK_ATTRIBUTE_PTR pTemplate,
@@ -1648,7 +1696,7 @@ static int createPrivateKeyDescription(
 
 
 
-static int sc_hsm_C_DeriveSymmetricKey(
+static CK_RV sc_hsm_C_DeriveSymmetricKey(
 		struct p11Object_t *pObject,
 		CK_MECHANISM_PTR pMechanism,
 		CK_ATTRIBUTE_PTR pTemplate,
@@ -1708,7 +1756,7 @@ static int sc_hsm_C_DeriveSymmetricKey(
 
 
 
-static int sc_hsm_C_DeriveKey(
+static CK_RV sc_hsm_C_DeriveKey(
 		struct p11Object_t *pObject,
 		CK_MECHANISM_PTR pMechanism,
 		CK_ATTRIBUTE_PTR pTemplate,
@@ -2956,15 +3004,15 @@ struct p11TokenDriver *getSmartCardHSMTokenDriver()
 		sc_hsm_initpin,
 		sc_hsm_setpin,
 
-		sc_hsm_C_DecryptInit,		// int (*C_DecryptInit)  (struct p11Object_t *, CK_MECHANISM_PTR);
-		sc_hsm_C_Decrypt,		// int (*C_Decrypt)      (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
-		NULL,				// int (*C_DecryptUpdate)(struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
-		NULL,				// int (*C_DecryptFinal) (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
+		NULL,
+		NULL,
+		NULL,
+		NULL,
 
-		sc_hsm_C_SignInit,		// int (*C_SignInit)     (struct p11Object_t *, CK_MECHANISM_PTR);
-		sc_hsm_C_Sign,			// int (*C_Sign)         (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
-		NULL,				// int (*C_SignUpdate)   (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
-		NULL,				// int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
+		NULL,
+		NULL,
+		NULL,
+		NULL,
 
 		sc_hsm_C_GenerateKey,
 		sc_hsm_C_GenerateKeyPair,	// int (*C_GenerateKeyPair)  (struct p11Slot_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG, struct p11Object_t **, struct p11Object_t **);

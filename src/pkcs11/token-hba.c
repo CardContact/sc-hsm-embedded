@@ -188,7 +188,7 @@ static int getAlgorithmIdForDecryption(struct p11Token_t *token, CK_MECHANISM_TY
 
 
 
-static int hba_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
+static CK_RV hba_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 {
 	unsigned char algo;
 
@@ -199,7 +199,7 @@ static int hba_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 
 
 
-static int hba_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
+static CK_RV hba_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_PTR mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
 {
 	int rc, signaturelen;
 	unsigned short SW1SW2;
@@ -209,7 +209,7 @@ static int hba_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BY
 
 	FUNC_CALLED();
 
-	rc = getSignatureSize(mech, pObject);
+	rc = getSignatureSize(mech->mechanism, pObject);
 	if (rc < 0) {
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Unknown mechanism");
 	}
@@ -237,7 +237,7 @@ static int hba_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BY
 		FUNC_FAILS(CKR_DEVICE_ERROR, "selecting application failed");
 	}
 
-	rc = getAlgorithmIdForSigning(pObject->token, mech, &algo);
+	rc = getAlgorithmIdForSigning(pObject->token, mech->mechanism, &algo);
 	if (rc != CKR_OK) {
 		starcosUnlock(pObject->token);
 		FUNC_FAILS(rc, "getAlgorithmIdForSigning() failed");
@@ -303,7 +303,7 @@ static int hba_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BY
 
 
 
-static int hba_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
+static CK_RV hba_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 {
 	unsigned char algo;
 
@@ -314,7 +314,7 @@ static int hba_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
 
 
 
-static int hba_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+static CK_RV hba_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_PTR mech, CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
 	int rc;
 	unsigned char *d,algo;
@@ -344,7 +344,7 @@ static int hba_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK
 		FUNC_FAILS(CKR_DEVICE_ERROR, "selecting application failed");
 	}
 
-	rc = getAlgorithmIdForDecryption(pObject->token, mech, &algo);
+	rc = getAlgorithmIdForDecryption(pObject->token, mech->mechanism, &algo);
 	if (rc != CKR_OK) {
 		starcosUnlock(pObject->token);
 		FUNC_FAILS(rc, "getAlgorithmIdForDecryption() failed");

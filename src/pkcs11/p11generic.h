@@ -199,14 +199,14 @@ struct p11TokenDriver {
 	int (*initpin)(struct p11Slot_t *slot, CK_UTF8CHAR_PTR, CK_ULONG);
 	int (*setpin)(struct p11Slot_t *slot, CK_UTF8CHAR_PTR, CK_ULONG, CK_UTF8CHAR_PTR, CK_ULONG);
 
-	int (*C_DecryptInit)  (struct p11Object_t *, CK_MECHANISM_PTR);
-	int (*C_Decrypt)      (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
-	int (*C_DecryptUpdate)(struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
-	int (*C_DecryptFinal) (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
-	int (*C_SignInit)     (struct p11Object_t *, CK_MECHANISM_PTR);
-	int (*C_Sign)         (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
-	int (*C_SignUpdate)   (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG);
-	int (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_TYPE, CK_BYTE_PTR, CK_ULONG_PTR);
+	CK_RV (*C_DecryptInit)  (struct p11Object_t *, CK_MECHANISM_PTR);
+	CK_RV (*C_Decrypt)      (struct p11Object_t *, CK_MECHANISM_PTR, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+	CK_RV (*C_DecryptUpdate)(struct p11Object_t *, CK_MECHANISM_PTR, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+	CK_RV (*C_DecryptFinal) (struct p11Object_t *, CK_MECHANISM_PTR, CK_BYTE_PTR, CK_ULONG_PTR);
+	CK_RV (*C_SignInit)     (struct p11Object_t *, CK_MECHANISM_PTR);
+	CK_RV (*C_Sign)         (struct p11Object_t *, CK_MECHANISM_PTR, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+	CK_RV (*C_SignUpdate)   (struct p11Object_t *, CK_MECHANISM_PTR, CK_BYTE_PTR, CK_ULONG);
+	CK_RV (*C_SignFinal)    (struct p11Object_t *, CK_MECHANISM_PTR, CK_BYTE_PTR, CK_ULONG_PTR);
 
 	int (*C_GenerateKey)      (struct p11Slot_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, struct p11Object_t **);
 	int (*C_GenerateKeyPair)  (struct p11Slot_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG, struct p11Object_t **, struct p11Object_t **);

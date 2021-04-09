@@ -230,7 +230,7 @@ static int getAlgorithmIdForSigning(struct p11Token_t *token, CK_MECHANISM_TYPE 
 
 
 
-static int esign_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
+static CK_RV esign_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_PTR mech, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
 {
 	int rc, len, signaturelen;
 	unsigned short SW1SW2;
@@ -239,7 +239,7 @@ static int esign_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_
 
 	FUNC_CALLED();
 
-	rc = getSignatureSize(mech, pObject);
+	rc = getSignatureSize(mech->mechanism, pObject);
 	if (rc < 0) {
 		FUNC_FAILS(CKR_MECHANISM_INVALID, "Unknown mechanism");
 	}
@@ -267,7 +267,7 @@ static int esign_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech, CK_
 		FUNC_FAILS(CKR_DEVICE_ERROR, "selecting application failed");
 	}
 
-	rc = getAlgorithmIdForSigning(pObject->token, mech, &s);
+	rc = getAlgorithmIdForSigning(pObject->token, mech->mechanism, &s);
 	if (rc != CKR_OK) {
 		starcosUnlock(pObject->token);
 		FUNC_FAILS(rc, "getAlgorithmIdForSigning() failed");

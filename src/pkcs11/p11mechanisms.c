@@ -100,7 +100,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptInit)(
 
 	if (rv == CKR_OK) {
 		pSession->activeObjectHandle = pObject->handle;
-		pSession->activeMechanism = pMechanism->mechanism;
+		rv = copyMechanismParameter(pSession, pMechanism);
 	}
 
 	FUNC_RETURNS(rv);
@@ -163,7 +163,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Encrypt)(
 	}
 
 	if (pObject->C_Encrypt != NULL) {
-		rv = pObject->C_Encrypt(pObject, pSession->activeMechanism, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
+		rv = pObject->C_Encrypt(pObject, &pSession->activeMechanism, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
 
 		if ((pEncryptedData != NULL) && (rv != CKR_BUFFER_TOO_SMALL)) {
 			pSession->activeObjectHandle = CK_INVALID_HANDLE;
@@ -233,7 +233,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptUpdate)(
 	}
 
 	if (pObject->C_EncryptUpdate != NULL) {
-		rv = pObject->C_EncryptUpdate(pObject, pSession->activeMechanism, pPart, ulPartLen, pEncryptedPart, pulEncryptedPartLen);
+		rv = pObject->C_EncryptUpdate(pObject, &pSession->activeMechanism, pPart, ulPartLen, pEncryptedPart, pulEncryptedPartLen);
 		if (rv == CKR_DEVICE_ERROR) {
 			rv = handleDeviceError(hSession);
 			FUNC_FAILS(rv, "Device error reported");
@@ -296,7 +296,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_EncryptFinal)(
 	}
 
 	if (pObject->C_EncryptFinal != NULL) {
-		rv = pObject->C_EncryptFinal(pObject, pSession->activeMechanism, pLastEncryptedPart, pulLastEncryptedPartLen);
+		rv = pObject->C_EncryptFinal(pObject, &pSession->activeMechanism, pLastEncryptedPart, pulLastEncryptedPartLen);
 		if (rv == CKR_DEVICE_ERROR) {
 			rv = handleDeviceError(hSession);
 			FUNC_FAILS(rv, "Device error reported");
@@ -367,8 +367,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptInit)(
 
 	if (!rv) {
 		pSession->activeObjectHandle = pObject->handle;
-		pSession->activeMechanism = pMechanism->mechanism;
-		rv = CKR_OK;
+		rv = copyMechanismParameter(pSession, pMechanism);
 	}
 
 	FUNC_RETURNS(rv);
@@ -435,7 +434,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Decrypt)(
 	}
 
 	if (pObject->C_Decrypt != NULL) {
-		rv = pObject->C_Decrypt(pObject, pSession->activeMechanism, pEncryptedData, ulEncryptedDataLen, pData, pulDataLen);
+		rv = pObject->C_Decrypt(pObject, &pSession->activeMechanism, pEncryptedData, ulEncryptedDataLen, pData, pulDataLen);
 		if (rv == CKR_DEVICE_ERROR) {
 			rv = handleDeviceError(hSession);
 			FUNC_FAILS(rv, "Device error reported");
@@ -505,7 +504,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptUpdate)(
 	}
 
 	if (pObject->C_DecryptUpdate != NULL) {
-		rv = pObject->C_DecryptUpdate(pObject, pSession->activeMechanism, pEncryptedPart, ulEncryptedPartLen, pPart, pulPartLen);
+		rv = pObject->C_DecryptUpdate(pObject, &pSession->activeMechanism, pEncryptedPart, ulEncryptedPartLen, pPart, pulPartLen);
 		if (rv == CKR_DEVICE_ERROR) {
 			rv = handleDeviceError(hSession);
 			FUNC_FAILS(rv, "Device error reported");
@@ -567,7 +566,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_DecryptFinal)(
 	}
 
 	if (pObject->C_DecryptFinal != NULL) {
-		rv = pObject->C_DecryptFinal(pObject, pSession->activeMechanism, pLastPart, pulLastPartLen);
+		rv = pObject->C_DecryptFinal(pObject, &pSession->activeMechanism, pLastPart, pulLastPartLen);
 		if (rv == CKR_DEVICE_ERROR) {
 			rv = handleDeviceError(hSession);
 			FUNC_FAILS(rv, "Device error reported");
@@ -809,8 +808,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignInit)(
 
 	if (!rv) {
 		pSession->activeObjectHandle = pObject->handle;
-		pSession->activeMechanism = pMechanism->mechanism;
-		rv = CKR_OK;
+		rv = copyMechanismParameter(pSession, pMechanism);
 	}
 
 	FUNC_RETURNS(rv);
@@ -873,7 +871,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Sign)(
 	}
 
 	if (pObject->C_Sign != NULL) {
-		rv = pObject->C_Sign(pObject, pSession->activeMechanism, pData, ulDataLen, pSignature, pulSignatureLen);
+		rv = pObject->C_Sign(pObject, &pSession->activeMechanism, pData, ulDataLen, pSignature, pulSignatureLen);
 
 		if ((pSignature != NULL) && (rv != CKR_BUFFER_TOO_SMALL)) {
 			pSession->activeObjectHandle = CK_INVALID_HANDLE;
@@ -938,7 +936,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignUpdate)(
 	}
 
 	if (pObject->C_SignUpdate != NULL) {
-		rv = pObject->C_SignUpdate(pObject, pSession->activeMechanism, pPart, ulPartLen);
+		rv = pObject->C_SignUpdate(pObject, &pSession->activeMechanism, pPart, ulPartLen);
 		if (rv == CKR_DEVICE_ERROR) {
 			rv = handleDeviceError(hSession);
 			FUNC_FAILS(rv, "Device error reported");
@@ -1001,7 +999,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 	}
 
 	if (pObject->C_SignFinal != NULL) {
-		rv = pObject->C_SignFinal(pObject, pSession->activeMechanism, pSignature, pulSignatureLen);
+		rv = pObject->C_SignFinal(pObject, &pSession->activeMechanism, pSignature, pulSignatureLen);
 
 		if ((pSignature != NULL) && (rv != CKR_BUFFER_TOO_SMALL)) {
 			pSession->activeObjectHandle = CK_INVALID_HANDLE;
@@ -1014,7 +1012,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_SignFinal)(
 		}
 	} else {
 		if (pObject->C_Sign != NULL) {
-			rv = pObject->C_Sign(pObject, pSession->activeMechanism, pSession->cryptoBuffer, pSession->cryptoBufferSize, pSignature, pulSignatureLen);
+			rv = pObject->C_Sign(pObject, &pSession->activeMechanism, pSession->cryptoBuffer, pSession->cryptoBufferSize, pSignature, pulSignatureLen);
 
 			if ((pSignature != NULL) && (rv != CKR_BUFFER_TOO_SMALL)) {
 				pSession->activeObjectHandle = CK_INVALID_HANDLE;
@@ -1126,7 +1124,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyInit)(
 
 	if (rv == CKR_OK) {
 		pSession->activeObjectHandle = pObject->handle;
-		pSession->activeMechanism = pMechanism->mechanism;
+		rv = copyMechanismParameter(pSession, pMechanism);
 	}
 
 	FUNC_RETURNS(rv);
@@ -1184,7 +1182,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_Verify)(
 	}
 
 	if (pObject->C_Verify != NULL) {
-		rv = pObject->C_Verify(pObject, pSession->activeMechanism, pData, ulDataLen, pSignature, ulSignatureLen);
+		rv = pObject->C_Verify(pObject, &pSession->activeMechanism, pData, ulDataLen, pSignature, ulSignatureLen);
 		pSession->activeObjectHandle = CK_INVALID_HANDLE;
 	} else {
 		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "Operation not supported");
@@ -1239,7 +1237,7 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyUpdate)(
 	}
 
 	if (pObject->C_VerifyUpdate != NULL) {
-		rv = pObject->C_VerifyUpdate(pObject, pSession->activeMechanism, pPart, ulPartLen);
+		rv = pObject->C_VerifyUpdate(pObject, &pSession->activeMechanism, pPart, ulPartLen);
 	} else {
 		rv = appendToCryptoBuffer(pSession, pPart, ulPartLen);
 	}
@@ -1293,13 +1291,13 @@ CK_DECLARE_FUNCTION(CK_RV, C_VerifyFinal)(
 	}
 
 	if (pObject->C_VerifyFinal != NULL) {
-		rv = pObject->C_VerifyFinal(pObject, pSession->activeMechanism, pSignature, ulSignatureLen);
+		rv = pObject->C_VerifyFinal(pObject, &pSession->activeMechanism, pSignature, ulSignatureLen);
 
 		pSession->activeObjectHandle = CK_INVALID_HANDLE;
 		clearCryptoBuffer(pSession);
 	} else {
 		if (pObject->C_Verify != NULL) {
-			rv = pObject->C_Verify(pObject, pSession->activeMechanism, pSession->cryptoBuffer, pSession->cryptoBufferSize, pSignature, ulSignatureLen);
+			rv = pObject->C_Verify(pObject, &pSession->activeMechanism, pSession->cryptoBuffer, pSession->cryptoBufferSize, pSignature, ulSignatureLen);
 
 			pSession->activeObjectHandle = CK_INVALID_HANDLE;
 			clearCryptoBuffer(pSession);
