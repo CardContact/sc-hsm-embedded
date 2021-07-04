@@ -87,10 +87,13 @@ static const CK_MECHANISM_TYPE p11MechanismList[] = {
 #endif
 		CKM_EC_KEY_PAIR_GEN,
 		CKM_RSA_PKCS_KEY_PAIR_GEN,
+		CKM_AES_CBC
+		/*
 		CKM_SC_HSM_PSS_SHA1,
 		CKM_SC_HSM_PSS_SHA256,
 		CKM_SC_HSM_ECDSA_SHA224,
 		CKM_SC_HSM_ECDSA_SHA256
+		*/
 };
 
 
@@ -629,7 +632,7 @@ static CK_RV sc_hsm_C_Encrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mec
 	FUNC_CALLED();
 
 	if (pEncryptedData == NULL) {
-		*ulEncryptedDataLen = pObject->keysize >> 3;
+		*ulEncryptedDataLen = pulDataLen + (pObject->keysize >> 3);
 		FUNC_RETURNS(CKR_OK);
 	}
 
@@ -716,7 +719,7 @@ static int sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_TYPE mech,
 	FUNC_CALLED();
 
 	if (pData == NULL) {
-		*pulDataLen = pObject->keysize >> 3;
+		*pulDataLen = ulEncryptedDataLen + (pObject->keysize >> 3);
 		FUNC_RETURNS(CKR_OK);
 	}
 
@@ -2349,6 +2352,7 @@ static int sc_hsm_login(struct p11Slot_t *slot, int userType, CK_UTF8CHAR_PTR pi
 	struct token_sc_hsm *sc;
 
 	FUNC_CALLED();
+	FUNC_RETURNS(CKR_OK);
 
 	if (userType == CKU_SO) {
 		sc = getPrivateData(slot->token);
