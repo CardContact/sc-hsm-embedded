@@ -551,7 +551,7 @@ int ramConnect(struct ramContext *ctx) {
 
 	headers = curl_slist_append(headers, "Content-Type: application/org.openscdp-content-mgt-response;version=1.0");
 	headers = curl_slist_append(headers, "Accept: */*");
-	headers = curl_slist_append(headers, "X-Admin-Protocol: globalplatform-remote-admin/1.0");
+	headers = curl_slist_append(headers, "X-Admin-Protocol: openscdp-remote-admin/1.0");
 
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
