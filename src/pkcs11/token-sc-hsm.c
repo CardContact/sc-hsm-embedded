@@ -659,7 +659,7 @@ static CK_RV sc_hsm_C_DecryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR 
 
 static void xor(CK_BYTE_PTR buff1, CK_BYTE_PTR buff2, int len)
 {
-	while(len-- >= 0) {
+	while(len-- > 0) {
 		*buff1++ ^= *buff2++;
 	}
 }
