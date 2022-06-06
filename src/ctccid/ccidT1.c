@@ -334,7 +334,7 @@ int ccidT1SetIFSD(scr_t *ctx, int SrcNode, int DestNode)
 	int ret;
 	unsigned char blk[1];
 
-	blk[0] = 252;
+	blk[0] = 254;
 
 	ret = ccidT1SendBlock(ctx,
 						  CODENAD(SrcNode, DestNode),

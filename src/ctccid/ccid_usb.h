@@ -60,6 +60,8 @@
 #define NO_ICC_PRESENT				0x02
 #define ICC_STATUS_MASK				0x03
 
+#define FEATURE_AUTO_PPS			0x80
+
 #define MATCH(x,y) ((x >= (y - y / 20)) && (x <= (y + y / 20)))
 
 int PC_to_RDR_IccPowerOn(scr_t *ctx);

@@ -159,6 +159,7 @@ void ctccid_dump(void *_ptr, int len)
 	}
 
 	fprintf(debugFileHandle, "\n");
+	fflush(debugFileHandle);
 }
 
 void ctccid_termDebug()

@@ -92,6 +92,61 @@ void CCIDDump(unsigned char *mem, int len)
 
 
 
+unsigned int RDR_Features(scr_t *ctx)
+{
+	unsigned char const *desc;
+	int length;
+
+	USB_GetCCIDDescriptor(ctx->device, &desc, &length);
+
+	if (length == 54)
+		return *((unsigned int *)&desc[40]);
+
+	return 0;
+}
+
+
+
+int PerformPPS(scr_t *ctx)
+{
+        unsigned char msg[17];
+        int rc;
+        unsigned int len = 0;
+
+        memset(msg, 0, 17);
+        msg[0] = MSG_TYPE_PC_to_RDR_XfrBlock;
+        msg[1] = 0x04;
+        msg[10] = 0xFF;
+        msg[11] = 0x11;
+        msg[12] = (ctx->FI << 4) | (ctx->DI & 0x0F);
+        msg[13] = msg[10] ^ msg[11] ^ msg[12];
+
+#ifdef DEBUG
+        CCIDDump(msg, 14);
+#endif
+
+        rc = USB_Write(ctx->device, 14, msg);
+
+        if (rc < 0) {
+                return rc;
+        }
+
+        len = 14;
+        rc = USB_Read(ctx->device, &len, msg);
+
+        if (rc < 0) {
+                return rc;
+        }
+
+#ifdef DEBUG
+        CCIDDump(msg, len);
+#endif
+
+        return 0;
+}
+
+
+
 /**
  * Power on the ICC in the reader and set the ATR and the communication parameters as specified
  *
@@ -108,6 +163,7 @@ int PC_to_RDR_IccPowerOn(scr_t *ctx)
         memset(msg, 0, 10);
         msg[0] = MSG_TYPE_PC_to_RDR_IccPowerOn;
 
+        msg[7] = 0x02;
 #ifdef DEBUG
         CCIDDump(msg, 10);
 #endif
@@ -143,6 +199,16 @@ int PC_to_RDR_IccPowerOn(scr_t *ctx)
 
         if (rc < 0) {
                 return rc;
+        }
+
+        int features = RDR_Features(ctx);
+
+        if (!(features & FEATURE_AUTO_PPS)) {
+                rc = PerformPPS(ctx);
+
+                if (rc < 0) {
+                        return rc;
+                }
         }
 
         rc = PC_to_RDR_SetParameters(ctx);

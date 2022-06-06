@@ -53,6 +53,8 @@
 #define NITROKEY_VENDOR_ID	0x20a0
 #define NITROKEY_HSM		0x4230
 
+#define KEYXENTIC_VENDOR_ID	0x2f76
+#define KEYXENTIC_KX9096	0x0906
 
 #define NO_READER_NAME           0x0001		/* Do not return reader names in USB_Enumerate */
 

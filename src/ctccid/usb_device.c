@@ -125,6 +125,10 @@ int isSupported(struct libusb_device_descriptor *desc)
 		return 1;
 	}
 
+	if ((desc->idVendor == KEYXENTIC_VENDOR_ID) && (desc->idProduct == KEYXENTIC_KX9096)) {
+		return 1;
+	}
+
 	return 0;
 }
 
@@ -375,7 +379,14 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 			return ERR_USB;
 		}
 
-		rc = libusb_claim_interface((*device)->handle, (*device)->configuration_descriptor->interface->altsetting->bInterfaceNumber);
+		int ifidx = 0;
+		for (; ifidx < (*device)->configuration_descriptor->bNumInterfaces; ifidx++) {
+			if ((*device)->configuration_descriptor->interface[ifidx].altsetting->bInterfaceClass == 0x0b) {
+				break;
+			}
+		}
+
+		rc = libusb_claim_interface((*device)->handle, (*device)->configuration_descriptor->interface[ifidx].altsetting->bInterfaceNumber);
 
 		if (rc != LIBUSB_SUCCESS) {
 #ifdef DEBUG
@@ -395,11 +406,11 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 		/*
 		 * Search for the bulk in/out endpoints
 		 */
-		for (i = 0; i < (*device)->configuration_descriptor->interface->altsetting->bNumEndpoints; i++) {
+		for (i = 0; i < (*device)->configuration_descriptor->interface[ifidx].altsetting->bNumEndpoints; i++) {
 
 			uint8_t bEndpointAddress;
 
-			if ((*device)->configuration_descriptor->interface->altsetting->endpoint[i].bmAttributes
+			if ((*device)->configuration_descriptor->interface[ifidx].altsetting->endpoint[i].bmAttributes
 					== LIBUSB_TRANSFER_TYPE_INTERRUPT) {
 				/*
 				 * Ignore the interrupt endpoint
@@ -407,7 +418,7 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 				continue;
 			}
 
-			if (((*device)->configuration_descriptor->interface->altsetting->endpoint[i].bmAttributes
+			if (((*device)->configuration_descriptor->interface[ifidx].altsetting->endpoint[i].bmAttributes
 					& LIBUSB_TRANSFER_TYPE_BULK) != LIBUSB_TRANSFER_TYPE_BULK) {
 				/*
 				 * No bulk endpoint - try the next one
@@ -415,7 +426,7 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 				continue;
 			}
 
-			bEndpointAddress = (*device)->configuration_descriptor->interface->altsetting->endpoint[i].bEndpointAddress;
+			bEndpointAddress = (*device)->configuration_descriptor->interface[ifidx].altsetting->endpoint[i].bEndpointAddress;
 
 			if ((bEndpointAddress & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_IN) {
 				(*device)->bulk_in = bEndpointAddress;
