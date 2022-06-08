@@ -80,6 +80,8 @@ static const CK_MECHANISM_TYPE p11MechanismList[] = {
 		CKM_SHA256_RSA_PKCS_PSS,
 		CKM_ECDSA,
 		CKM_ECDSA_SHA1,
+		CKM_AES_CBC,
+		CKM_AES_CMAC,
 #ifdef ENABLE_LIBCRYPTO
 		CKM_RSA_PKCS_OAEP,
 		CKM_SHA_1,
@@ -2897,6 +2899,8 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 		break;
 
 	case CKM_AES_KEY_GEN:
+	case CKM_AES_CBC:
+	case CKM_AES_CMAC:
 		pInfo->ulMinKeySize = 128;
 		pInfo->ulMaxKeySize = 256;
 		break;
@@ -2970,11 +2974,16 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 	case CKM_SHA512:
 		pInfo->flags = CKF_DIGEST;
 		break;
-	case CKM_AES_KEY_GEN:
-		pInfo->flags = CKF_HW|CKF_GENERATE|CKF_DECRYPT|CKF_ENCRYPT|CKF_DERIVE;
-		break;
-
 #endif
+	case CKM_AES_KEY_GEN:
+		pInfo->flags = CKF_HW|CKF_GENERATE;
+		break;
+	case CKM_AES_CBC:
+		pInfo->flags = CKF_HW|CKF_DECRYPT|CKF_ENCRYPT;
+		break;
+	case CKM_AES_CMAC:
+		pInfo->flags = CKF_HW|CKF_SIGN;
+		break;
 	default:
 		rv = CKR_MECHANISM_INVALID;
 		break;
