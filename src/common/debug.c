@@ -42,6 +42,8 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <KnownFolders.h>
+#include <ShlObj.h>
 #include <io.h>
 #else
 #include <stdlib.h>
@@ -74,10 +76,12 @@ void decodeBCDString(unsigned char *Inbuff, int len, char *Outbuff)
 
 void initDebug(char *progname)
 {
-	char scr[128];
-	char *home,*prefix;
+	char scr[512];
+	char *home, *prefix;
 #ifdef WIN32
 	DWORD pid;
+	PWSTR dir;
+	char homedir[512];
 #else
 	pid_t pid;
 #endif
@@ -87,10 +91,17 @@ void initDebug(char *progname)
 	}
 
 #ifdef WIN32
-	home = getenv("HOMEPATH");
-	if (home == NULL)
-		home = "c:\\";
-	prefix = "\\AppData\\LocalLow\\sc-hsm-embedded\\";
+	if (SUCCEEDED(SHGetKnownFolderPath(&FOLDERID_LocalAppDataLow, 0, NULL, &dir))) {
+		wcstombs(homedir, dir, sizeof(homedir));
+		CoTaskMemFree(dir);
+		home = homedir;
+		prefix = "\\sc-hsm-embedded\\";
+	} else {
+		home = getenv("HOMEPATH");
+		if (home == NULL)
+			home = "c:\\";
+		prefix = "\\AppData\\LocalLow\\sc-hsm-embedded\\";
+	}
 	pid = GetCurrentProcessId();
 #else
 	home = getenv("HOME");
@@ -101,6 +112,8 @@ void initDebug(char *progname)
 #endif
 
 	sprintf(scr, "%s%s%s-%d.log", home, prefix, progname, pid);
+
+
 	debugFileHandle = fopen(scr, "a+");
 
 	if (debugFileHandle != NULL) {
