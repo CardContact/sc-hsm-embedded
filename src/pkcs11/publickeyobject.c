@@ -324,6 +324,9 @@ int createPublicKeyObjectFromCVC(struct p15PrivateKeyDescription *p15, unsigned 
 	}
 
 	p11o->keysize =  (CK_ULONG)(cvc.primeOrModulus.len << 3);
+	if (p11o->keysize == 0) {
+		p11o->keysize = p15->keysize;
+	}
 	*pObject = p11o;
 
 	FUNC_RETURNS(CKR_OK);
