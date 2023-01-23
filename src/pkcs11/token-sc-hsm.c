@@ -2901,8 +2901,8 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 	case CKM_AES_KEY_GEN:
 	case CKM_AES_CBC:
 	case CKM_AES_CMAC:
-		pInfo->ulMinKeySize = 128;
-		pInfo->ulMaxKeySize = 256;
+		pInfo->ulMinKeySize = 16;
+		pInfo->ulMaxKeySize = 32;
 		break;
 
 #ifdef ENABLE_LIBCRYPTO
