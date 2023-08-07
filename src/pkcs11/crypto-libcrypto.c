@@ -248,6 +248,19 @@ static CK_RV verifyDigestInfo(RSA *key, const unsigned char *data, int data_len,
 
 
 
+static const EVP_MD *getHashForHashLen(int len) {
+	switch(len) {
+	case 20: return EVP_sha1();
+	case 28: return EVP_sha224();
+	case 32: return EVP_sha256();
+	case 48: return EVP_sha384();
+	case 64: return EVP_sha512();
+	}
+	return NULL;
+}
+
+
+
 /**
  * Verify with RSA key
  */
@@ -255,6 +268,7 @@ static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 {
 	struct p11Attribute_t *modulus;
 	struct p11Attribute_t *public_exponent;
+	const EVP_MD *md = NULL;
 	RSA *rsa;
 	EVP_PKEY *pkey;
 	CK_RV rv;
@@ -330,6 +344,12 @@ static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 			rv = verifyHash(pkey, EVP_sha224(), RSA_PKCS1_PSS_PADDING, in, in_len, signature, signature_len);
 			break;
 		case CKM_RSA_PKCS_PSS:
+			md = getHashForHashLen(in_len);
+			if (md == NULL) {
+				FUNC_FAILS(CKR_DATA_LEN_RANGE, "getHashForHashLen() failed matching hash algorithm for provided input length");
+			}
+			rv = verifyHash(pkey, md, RSA_PKCS1_PSS_PADDING, in, in_len, signature, signature_len);
+			break;
 		case CKM_SC_HSM_PSS_SHA256:
 			rv = verifyHash(pkey, EVP_sha256(), RSA_PKCS1_PSS_PADDING, in, in_len, signature, signature_len);
 			break;
@@ -347,19 +367,6 @@ static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 	EVP_PKEY_free(pkey);
 
 	FUNC_RETURNS(rv);
-}
-
-
-
-static const EVP_MD *getHashForHashLen(int len) {
-	switch(len) {
-	case 20: return EVP_sha1();
-	case 28: return EVP_sha224();
-	case 32: return EVP_sha256();
-	case 48: return EVP_sha384();
-	case 64: return EVP_sha512();
-	}
-	return NULL;
 }
 
 

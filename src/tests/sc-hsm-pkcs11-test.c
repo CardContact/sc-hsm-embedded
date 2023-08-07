@@ -618,7 +618,7 @@ int findObject(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBUTE
 
 
 
-int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHANISM_TYPE mt)
+int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHANISM_TYPE mt, int hashlen)
 {
 	CK_SESSION_HANDLE session;
 	CK_OBJECT_CLASS classprk = CKO_PRIVATE_KEY;
@@ -639,7 +639,8 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 	CK_MECHANISM mech = { CKM_SHA1_RSA_PKCS, 0, 0 };
 	CK_RSA_PKCS_PSS_PARAMS pssparams = { CKM_SHA256, CKG_MGF1_SHA256, 32 };
 	CK_SESSION_INFO sessioninfo;
-	char *tbs = "Hello World";
+	char *tbs = "Hello World, this messages is going to be hashed and signed";
+	CK_ULONG tbslen;
 	CK_BYTE signature[512];
 	CK_ULONG len;
 	char scr[1024];
@@ -648,6 +649,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 
 	keyno = 0;
 	mech.mechanism = mt;
+	tbslen = strlen(tbs);
 
 	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
 	printf("C_OpenSession (Thread %i, Slot=%ld) %ld - %s : %s\n", id, slotid, session, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
@@ -663,14 +665,69 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 
 	switch(mt) {
 	case CKM_RSA_PKCS:
+		tbslen = hashlen; break;
 	case CKM_SC_HSM_PSS_SHA1:
-		tbs = "ThisIsA160BitHashStr"; break;
+		tbslen = 20; break;
 	case CKM_SC_HSM_PSS_SHA256:
-		tbs = "ThisIsA256BitHashStringTestValue"; break;
+		tbslen = 32; break;
 	case CKM_RSA_PKCS_PSS:
+		switch(hashlen) {
+		case 20:
+			pssparams.hashAlg = CKM_SHA_1;
+			pssparams.mgf = CKG_MGF1_SHA1;
+			break;
+		case 28:
+			pssparams.hashAlg = CKM_SHA224;
+			pssparams.mgf = CKG_MGF1_SHA224;
+			break;
+		case 32:
+			pssparams.hashAlg = CKM_SHA256;
+			pssparams.mgf = CKG_MGF1_SHA256;
+			break;
+		case 48:
+			pssparams.hashAlg = CKM_SHA384;
+			pssparams.mgf = CKG_MGF1_SHA384;
+			break;
+		case 64:
+			pssparams.hashAlg = CKM_SHA512;
+			pssparams.mgf = CKG_MGF1_SHA512;
+			break;
+		default:
+			printf("Invalid hash length\n");
+			return -1;
+		}
+		pssparams.sLen = hashlen;
 		mech.pParameter = (void *)&pssparams;
 		mech.ulParameterLen  = sizeof(CK_RSA_PKCS_PSS_PARAMS);
-		tbs = "ThisIsA256BitHashStringTestValue";
+		tbslen = hashlen;
+		break;
+	case CKM_SHA1_RSA_PKCS_PSS:
+		pssparams.hashAlg = CKM_SHA_1;
+		pssparams.mgf = CKG_MGF1_SHA1;
+		pssparams.sLen = 20;
+		mech.pParameter = (void *)&pssparams;
+		mech.ulParameterLen  = sizeof(CK_RSA_PKCS_PSS_PARAMS);
+		break;
+	case CKM_SHA256_RSA_PKCS_PSS:
+		pssparams.hashAlg = CKM_SHA256;
+		pssparams.mgf = CKG_MGF1_SHA256;
+		pssparams.sLen = 32;
+		mech.pParameter = (void *)&pssparams;
+		mech.ulParameterLen  = sizeof(CK_RSA_PKCS_PSS_PARAMS);
+		break;
+	case CKM_SHA384_RSA_PKCS_PSS:
+		pssparams.hashAlg = CKM_SHA384;
+		pssparams.mgf = CKG_MGF1_SHA384;
+		pssparams.sLen = 48;
+		mech.pParameter = (void *)&pssparams;
+		mech.ulParameterLen  = sizeof(CK_RSA_PKCS_PSS_PARAMS);
+		break;
+	case CKM_SHA512_RSA_PKCS_PSS:
+		pssparams.hashAlg = CKM_SHA512;
+		pssparams.mgf = CKG_MGF1_SHA512;
+		pssparams.sLen = 64;
+		mech.pParameter = (void *)&pssparams;
+		mech.ulParameterLen  = sizeof(CK_RSA_PKCS_PSS_PARAMS);
 		break;
 	}
 
@@ -690,19 +747,19 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 		printf("C_SignInit (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		len = 0;
-		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), NULL, &len);
+		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, tbslen, NULL, &len);
 		printf("C_Sign (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
 		printf("Signature size = %lu\n", len);
 
 		len--;
-		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), signature, &len);
+		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, tbslen, signature, &len);
 		printf("C_Sign (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_BUFFER_TOO_SMALL));
 
 		printf("Signature size = %lu\n", len);
 
 		len = sizeof(signature);
-		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), signature, &len);
+		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, tbslen, signature, &len);
 		printf("C_Sign (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK || rc == CKR_DEVICE_REMOVED || rc == CKR_TOKEN_NOT_PRESENT));
 
 		if (rc == CKR_DEVICE_REMOVED || rc == CKR_TOKEN_NOT_PRESENT)
@@ -726,7 +783,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 		rc = p11->C_VerifyInit(session, &mech, pubhnd);
 		printf("C_VerifyInit (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
-		rc = p11->C_Verify(session, (CK_BYTE_PTR)tbs, (CK_ULONG)strlen(tbs), signature, len);
+		rc = p11->C_Verify(session, (CK_BYTE_PTR)tbs, tbslen, signature, len);
 		printf("C_Verify (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 #endif
 
@@ -751,7 +808,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 		rc = p11->C_SignUpdate(session, (CK_BYTE_PTR)tbs, 6);
 		printf("C_SignUpdate (Thread %i, Session %ld, Slot=%ld - Part #1) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
-		rc = p11->C_SignUpdate(session, (CK_BYTE_PTR)tbs + 6, (CK_ULONG)strlen(tbs) - 6);
+		rc = p11->C_SignUpdate(session, (CK_BYTE_PTR)tbs + 6, tbslen - 6);
 		printf("C_SignUpdate (Thread %i, Session %ld, Slot=%ld - Part #2) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 #else
 		largetbs = calloc(1, 1000);
@@ -794,7 +851,7 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 		rc = p11->C_VerifyUpdate(session, (CK_BYTE_PTR)tbs, 6);
 		printf("C_VerifyUpdate (Thread %i, Session %ld, Slot=%ld - Part #1) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
-		rc = p11->C_VerifyUpdate(session, (CK_BYTE_PTR)tbs + 6, (CK_ULONG)strlen(tbs) - 6);
+		rc = p11->C_VerifyUpdate(session, (CK_BYTE_PTR)tbs + 6, tbslen - 6);
 		printf("C_VerifyUpdate (Thread %i, Session %ld, Slot=%ld - Part #2) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 #else
 		largetbs = calloc(1, 1000);
@@ -1177,15 +1234,15 @@ SignThread(void *arg) {
 	rc = CKR_OK;
 	while (d->iterations && rc == CKR_OK) {
 
-		rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SHA1_RSA_PKCS);
+		rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SHA1_RSA_PKCS, 0);
 		if ((rc == CKR_OK) && (testsfailed == 0))
-			rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_RSA_PKCS);
+			rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_RSA_PKCS, 20);
 		if ((rc == CKR_OK) && (testsfailed == 0))
-			rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SHA256_RSA_PKCS_PSS);
+			rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SHA256_RSA_PKCS_PSS, 0);
 		if ((rc == CKR_OK) && (testsfailed == 0))
-			rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SC_HSM_PSS_SHA1);
+			rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SC_HSM_PSS_SHA1, 0);
 		if ((rc == CKR_OK) && (testsfailed == 0))
-			rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SC_HSM_PSS_SHA256);
+			rc = testRSASigning(d->p11, d->slotid, d->thread_id, CKM_SC_HSM_PSS_SHA256, 0);
 
 		if ((rc == CKR_OK) && (testsfailed == 0))
 			rc = testECSigning(d->p11, d->slotid, d->thread_id, CKM_ECDSA_SHA1);
@@ -2850,16 +2907,25 @@ int main(int argc, char *argv[])
 
 				testAES(p11, slotid, 0);
 
-				testRSASigning(p11, slotid, 0, CKM_RSA_PKCS);
+				testRSASigning(p11, slotid, 0, CKM_RSA_PKCS, 20);
 				if (strncmp("3.5ID ECC C1 DGN", (char *)tokeninfo.model, 16)) {
-					testRSASigning(p11, slotid, 0, CKM_RSA_PKCS_PSS);
+					testRSASigning(p11, slotid, 0, CKM_RSA_PKCS_PSS, 32);
 				}
 
 				if (!strncmp("SmartCard-HSM", (char *)tokeninfo.label, 13)) {
-					testRSASigning(p11, slotid, 0, CKM_SHA1_RSA_PKCS);
-					testRSASigning(p11, slotid, 0, CKM_SHA256_RSA_PKCS_PSS);
-					testRSASigning(p11, slotid, 0, CKM_SC_HSM_PSS_SHA1);
-					testRSASigning(p11, slotid, 0, CKM_SC_HSM_PSS_SHA256);
+					testRSASigning(p11, slotid, 0, CKM_RSA_PKCS_PSS, 20);
+					testRSASigning(p11, slotid, 0, CKM_RSA_PKCS_PSS, 32);
+					testRSASigning(p11, slotid, 0, CKM_RSA_PKCS_PSS, 48);
+					testRSASigning(p11, slotid, 0, CKM_RSA_PKCS_PSS, 64);
+					testRSASigning(p11, slotid, 0, CKM_SHA1_RSA_PKCS, 0);
+					testRSASigning(p11, slotid, 0, CKM_SHA1_RSA_PKCS_PSS, 0);
+					testRSASigning(p11, slotid, 0, CKM_SHA256_RSA_PKCS_PSS, 0);
+					if (tokeninfo.firmwareVersion.major >= 4) {
+						testRSASigning(p11, slotid, 0, CKM_SHA384_RSA_PKCS_PSS, 0);
+						testRSASigning(p11, slotid, 0, CKM_SHA512_RSA_PKCS_PSS, 0);
+					}
+					testRSASigning(p11, slotid, 0, CKM_SC_HSM_PSS_SHA1, 0);
+					testRSASigning(p11, slotid, 0, CKM_SC_HSM_PSS_SHA256, 0);
 				}
 
 #ifdef ENABLE_LIBCRYPTO

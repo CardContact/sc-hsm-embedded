@@ -345,10 +345,14 @@ static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 	case CKM_RSA_PKCS_PSS:
 	case CKM_SHA1_RSA_PKCS:
 	case CKM_SHA256_RSA_PKCS:
+	case CKM_SHA384_RSA_PKCS:
+	case CKM_SHA512_RSA_PKCS:
 	case CKM_SC_HSM_PSS_SHA1:
 	case CKM_SC_HSM_PSS_SHA256:
 	case CKM_SHA1_RSA_PKCS_PSS:
 	case CKM_SHA256_RSA_PKCS_PSS:
+	case CKM_SHA384_RSA_PKCS_PSS:
+	case CKM_SHA512_RSA_PKCS_PSS:
 		return pObject->keysize >> 3;
 	case CKM_ECDSA:
 	case CKM_ECDSA_SHA1:
@@ -378,6 +382,10 @@ static int getAlgorithmIdForSigning(CK_MECHANISM_TYPE mech)
 		return ALGO_RSA_PSS_SHA1;
 	case CKM_SHA256_RSA_PKCS_PSS:
 		return ALGO_RSA_PSS_SHA256;
+	case CKM_SHA384_RSA_PKCS_PSS:
+		return ALGO_RSA_PSS_SHA384;
+	case CKM_SHA512_RSA_PKCS_PSS:
+		return ALGO_RSA_PSS_SHA512;
 	case CKM_ECDSA:
 		return ALGO_EC_RAW;
 	case CKM_ECDSA_SHA1:
