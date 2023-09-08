@@ -34,7 +34,7 @@ fi
 
 echo "Found libccid configuration in $LOC"
 
-if grep --quiet 0x5817 "$LOC"; then
+if grep --quiet 0x5826 "$LOC"; then
 	echo "SmartCard-HSM product id already contained in libccid configuration."
 else
 	echo "Adding product id to libccid configuration"
@@ -46,29 +46,7 @@ a \
 /ifdProductID/ {
 n
 a \
-		\<string\>0x5817\<\/string\>
-}
-/ifdFriendlyName/ {
-n
-a \
-		\<string\>CardContact SmartCard-HSM\<\/string\>
-}' "$LOC"
-fi
-
-if grep --quiet 0x5816 "$LOC"; then
-	echo "SmartCard-HSM product id already contained in libccid configuration."
-else
-	echo "Adding product id to libccid configuration"
-
-	sed -i.bak '/ifdVendorID/ {
-n
-a \
-		\<string\>0x04E6\<\/string\>
-}
-/ifdProductID/ {
-n
-a \
-		\<string\>0x5816\<\/string\>
+		\<string\>0x5826\<\/string\>
 }
 /ifdFriendlyName/ {
 n
