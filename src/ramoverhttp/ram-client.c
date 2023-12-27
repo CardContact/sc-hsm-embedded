@@ -440,16 +440,19 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	if (optListReaders) {
-		p = readers;
-		while (*p != '\0') {
-			printf("%s\n", p);
-			p += strlen(p) + 1;
-		}
-	}
-
 	if (!optReader)
 		optReader = readers;
+
+	p = readers;
+	while (*p != '\0') {
+		if (optListReaders)
+			printf("%s\n", p);
+
+		if (!strncmp(optReader, p, strlen(optReader)))
+			optReader = p;
+
+		p += strlen(p) + 1;
+	}
 
 	lctx.reader = optReader;
 
