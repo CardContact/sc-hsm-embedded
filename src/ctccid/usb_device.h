@@ -89,6 +89,12 @@ typedef struct usb_device {
          */
         struct libusb_config_descriptor *configuration_descriptor;
 
+        /*
+         * The offset into the list of interfaces
+         */
+
+        int ifidx;
+
         /**
          * ID of bulk in
          */

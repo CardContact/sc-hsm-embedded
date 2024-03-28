@@ -403,6 +403,8 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 			return ERR_USB;
 		}
 
+		(*device)->ifidx = ifidx;
+
 		/*
 		 * Search for the bulk in/out endpoints
 		 */
@@ -467,9 +469,9 @@ int USB_Open(unsigned short pn, usb_device_t **device)
 void USB_GetCCIDDescriptor(usb_device_t *device, unsigned char const **desc, int *length)
 {
 	if (length)
-		*length = device->configuration_descriptor->interface->altsetting->extra_length;
+		*length = device->configuration_descriptor->interface[device->ifidx].altsetting->extra_length;
 	if (desc)
-		*desc = device->configuration_descriptor->interface->altsetting->extra;
+		*desc = device->configuration_descriptor->interface[device->ifidx].altsetting->extra;
 }
 
 
@@ -486,7 +488,7 @@ int USB_Close(usb_device_t **device)
 	int rc;
 
 	rc = libusb_release_interface((*device)->handle,
-								  (*device)->configuration_descriptor->interface->altsetting->bInterfaceNumber);
+								  (*device)->configuration_descriptor->interface[(*device)->ifidx].altsetting->bInterfaceNumber);
 
 	if (rc != LIBUSB_SUCCESS) {
 #ifdef DEBUG
