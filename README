@@ -36,6 +36,13 @@ Download source and run
 * make
 * make install
 
+Required packages (Debian)
+
+* libpcsclite1 - for PC/SC access to token
+* libusb-1.0-0-dev - for CT-API access to token (--enable-ctapi)
+* libssl-dev - for public key crypto support (from OpenSSL)
+* libcurl4-openssl-dev - for RAMOverHTTP support (--enable-ram)
+
 Installation (Windows)
 ----------------------
 Select the 32-Bit or 64-Bit version depending on your version of Windows.
