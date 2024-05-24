@@ -353,12 +353,12 @@ static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 	case CKM_SHA256_RSA_PKCS_PSS:
 	case CKM_SHA384_RSA_PKCS_PSS:
 	case CKM_SHA512_RSA_PKCS_PSS:
-		return pObject->keysize >> 3;
+		return (pObject->keysize + 7) >> 3;
 	case CKM_ECDSA:
 	case CKM_ECDSA_SHA1:
 	case CKM_SC_HSM_ECDSA_SHA224:
 	case CKM_SC_HSM_ECDSA_SHA256:
-		return pObject->keysize >> 2;
+		return (pObject->keysize + 7) >> 2;
 	case CKM_AES_CMAC:
 		return 16;
 	default:
@@ -612,7 +612,7 @@ static CK_RV sc_hsm_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_PTR mech, C
 	}
 
 	if ((algo == ALGO_EC_RAW) || (algo == ALGO_EC_SHA1) || (algo == ALGO_EC_SHA224) || (algo == ALGO_EC_SHA256)) {
-		rc = decodeECDSASignature(pObject->keysize >> 3, scr, rc, pSignature, *pulSignatureLen);
+		rc = decodeECDSASignature((pObject->keysize + 7) >> 3, scr, rc, pSignature, *pulSignatureLen);
 		if (rc < 0) {
 			FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "supplied buffer too small");
 		}
@@ -799,7 +799,7 @@ static CK_RV sc_hsm_C_Decrypt(struct p11Object_t *pObject, CK_MECHANISM_PTR mech
 		if (mech->mechanism == CKM_AES_CBC) {
 			*pulDataLen = ulEncryptedDataLen;
 		} else {
-			*pulDataLen = pObject->keysize >> 3;
+			*pulDataLen = (pObject->keysize + 7) >> 3;
 		}
 		FUNC_RETURNS(CKR_OK);
 	}

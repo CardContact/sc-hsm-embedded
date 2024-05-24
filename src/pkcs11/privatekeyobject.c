@@ -188,7 +188,8 @@ int createPrivateKeyObjectFromP15(struct p15PrivateKeyDescription *p15, struct p
 	if (cert) {
 		p11o->keysize = cert->keysize;
 	} else {
-		p11o->keysize = p15->keysize;
+		// Fix bug in OpenSCDP that encodes secp521 as 528 bit
+		p11o->keysize = p15->keysize == 528 ? 521 : p15->keysize;
 	}
 
 	FUNC_RETURNS(CKR_OK);

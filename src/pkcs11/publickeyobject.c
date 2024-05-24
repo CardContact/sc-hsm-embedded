@@ -149,19 +149,12 @@ int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, s
 		FUNC_FAILS(rc, "Could not create public key in certificate");
 	}
 
-	p11o = calloc(sizeof(struct p11Object_t), 1);
-
-	if (p11o == NULL) {
-		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
-	}
-
 	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE) - 3;
 
 	switch(p15->keytype) {
 	case P15_KEYTYPE_RSA:
 		keyType = CKK_RSA;
 		if (decodeModulusExponentFromSPKI(spki, &template[attributes], &template[attributes + 1])) {
-			free(p11o);
 			FUNC_FAILS(CKR_KEY_TYPE_INCONSISTENT, "Can't decode modulus - Private key type does not match public key type in certificate");
 		}
 		cert->keysize = template[attributes].ulValueLen << 3;
@@ -176,22 +169,28 @@ int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, s
 	case P15_KEYTYPE_ECC:
 		keyType = CKK_ECDSA;
 		if (decodeECParamsFromSPKI(spki, &template[attributes])) {
-			free(p11o);
 			FUNC_FAILS(CKR_KEY_TYPE_INCONSISTENT, "Can't decode EC parameter - Private key type does not match public key type in certificate");
 		}
 		attributes++;
 		if (decodeECPointFromSPKI(spki, &template[attributes], eccpoint, sizeof(eccpoint))) {
-			free(p11o);
 			FUNC_FAILS(CKR_KEY_TYPE_INCONSISTENT, "Private key type does not match public key type in certificate");
 		}
 		po = (unsigned char *)template[attributes].pValue + 1;
 		len = asn1Length(&po);		// Includes '04'
 		cert->keysize = (len - 1) << 2;
+		if (cert->keysize == 528) {
+			cert->keysize = 521;
+		}
 		attributes++;
 		break;
 	default:
-		free(p11o);
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Unknown key type in PRKD");
+	}
+
+	p11o = calloc(sizeof(struct p11Object_t), 1);
+
+	if (p11o == NULL) {
+		FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
 	}
 
 	rc = createPublicKeyObject(template, attributes, p11o);
@@ -200,6 +199,8 @@ int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, s
 		free(p11o);
 		FUNC_FAILS(rc, "Could not create public key object");
 	}
+
+	p11o->keysize = cert->keysize;
 
 	*pObject = p11o;
 
@@ -326,6 +327,8 @@ int createPublicKeyObjectFromCVC(struct p15PrivateKeyDescription *p15, unsigned 
 	p11o->keysize =  (CK_ULONG)(cvc.primeOrModulus.len << 3);
 	if (p11o->keysize == 0) {
 		p11o->keysize = p15->keysize;
+	} else if (p11o->keysize == 528) {
+		p11o->keysize = 521;
 	}
 	*pObject = p11o;
 
