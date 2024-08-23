@@ -6,6 +6,7 @@ SUBDIRS = common
 
 if ENABLE_CTAPI
 SUBDIRS += ctccid
+nobase_include_HEADERS += ctccid/ctapi.h
 endif
 
 if ENABLE_RAM
