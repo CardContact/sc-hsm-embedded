@@ -67,7 +67,6 @@ void cryptoInitialize()
 {
 #ifdef DEBUG
 	ERR_load_crypto_strings();
-	CRYPTO_mem_ctrl(CRYPTO_MEM_CHECK_ON);
 #endif
 }
 
@@ -506,7 +505,7 @@ CK_RV stripOAEPPadding(unsigned char *raw, int rawlen, CK_BYTE_PTR pData, CK_ULO
 #else
 	rv = CKR_FUNCTION_NOT_SUPPORTED;
 #endif
-	
+
 	FUNC_RETURNS(CKR_OK);
 }
 
