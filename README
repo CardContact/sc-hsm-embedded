@@ -51,6 +51,16 @@ available in windows/system32. Test tools are installed in %PROGRAMFILES%/CardCo
 
 The 64-Bit version installs both, the 32-Bit and 64-Bit version of DLLs and test programs.
 
+Build with Docker
+-----------------
+The included Dockerfile creates the build environment
+
+To mount the card reader for the container use
+
+    --mount type=bind,source=/var/run/pcscd,target=/var/run/pcscd
+
+in your docker run command.
+
 Firefox
 -------
 Open Firefox and Preferences/Privacy & Security, scroll down and press "Security Devices"
