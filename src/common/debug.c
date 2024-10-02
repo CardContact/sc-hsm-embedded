@@ -105,7 +105,7 @@ void initDebug(char *progname)
 	pid = GetCurrentProcessId();
 #else
 	home = getenv("HOME");
-	if (home == NULL)
+	if (home == NULL || strlen(home) == 1)
 		home = "/var";
 	prefix = "/tmp/sc-hsm-embedded/";
 	pid = getpid();
