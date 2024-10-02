@@ -2821,11 +2821,13 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 	decodeLabel(ptoken);
 
+#ifdef CVC
 	rc = decodeDevAutCert(ptoken);
 	if (rc != CKR_OK) {
 		freeToken(ptoken);
 		FUNC_FAILS(rc, "addToken() failed");
 	}
+#endif
 
 	rc = sc_hsm_loadObjects(ptoken);
 	if (rc != CKR_OK) {

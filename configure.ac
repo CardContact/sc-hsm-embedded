@@ -31,6 +31,11 @@ AC_ARG_ENABLE(ram,
 		[AC_DEFINE([RAM])],
 		[])
 
+AC_ARG_ENABLE(cvc,
+		[AS_HELP_STRING([--enable-cvc],[include card verifiable certificates])],
+		[AC_DEFINE([CVC])],
+		[])
+
 AC_ARG_ENABLE(libcrypto,
 		[AS_HELP_STRING([--enable-libcrypto],[enable libcrypto for public key crypto @<:@detect@:>@])],
 		,
@@ -93,6 +98,7 @@ Version:                 ${PACKAGE_VERSION}
 User binaries:           $(eval eval eval echo "${bindir}")
 
 debug support:           ${enable_debug}
+cvc support:             ${enable_cvc}
 PC/SC support:           ${enable_pcsc}
 RAM support:             ${enable_ram}
 libcrypto support:       ${enable_libcrypto}

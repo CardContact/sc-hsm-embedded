@@ -1478,6 +1478,12 @@ void testKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 	publicKeyTemplate[publicKeyAttributes].ulValueLen = 10;
 	publicKeyAttributes++;
 
+	publicKeyTemplate[publicKeyAttributes].type = CKA_SC_HSM_KEY_DOMAIN;
+	unsigned char kd = 1;
+	publicKeyTemplate[publicKeyAttributes].pValue = &kd;
+	publicKeyTemplate[publicKeyAttributes].ulValueLen = sizeof(kd);
+	publicKeyAttributes++;
+
 	privateKeyTemplate[privateKeyAttributes].type = CKA_SIGN;
 	privateKeyTemplate[privateKeyAttributes].pValue = &_true;
 	privateKeyTemplate[privateKeyAttributes].ulValueLen = sizeof(_true);
