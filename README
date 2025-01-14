@@ -38,7 +38,7 @@ Download source and run
 
 Required packages (Debian)
 
-* libpcsclite1 - for PC/SC access to token
+* libpcsclite-dev - for PC/SC access to token
 * libusb-1.0-0-dev - for CT-API access to token (--enable-ctapi)
 * libssl-dev - for public key crypto support (from OpenSSL)
 * libcurl4-openssl-dev - for RAMOverHTTP support (--enable-ram)
