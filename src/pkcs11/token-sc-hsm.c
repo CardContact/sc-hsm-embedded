@@ -358,7 +358,7 @@ static int getSignatureSize(CK_MECHANISM_TYPE mech, struct p11Object_t *pObject)
 	case CKM_ECDSA_SHA1:
 	case CKM_SC_HSM_ECDSA_SHA224:
 	case CKM_SC_HSM_ECDSA_SHA256:
-		return (pObject->keysize + 7) >> 2;
+		return (pObject->keysize + 7) >> 2 & ~1;
 	case CKM_AES_CMAC:
 		return 16;
 	default:
