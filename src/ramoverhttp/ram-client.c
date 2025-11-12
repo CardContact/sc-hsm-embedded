@@ -339,7 +339,7 @@ static int reset(struct ramContext *ctx, unsigned char *atr, size_t *alen) {
 	LONG scrc;
 
 	SCardDisconnect(lctx->card, SCARD_UNPOWER_CARD);
-	scrc = SCardConnect(lctx->scardContext, lctx->reader, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T1, &lctx->card, &dwActiveProtocol);
+	scrc = SCardConnect(lctx->scardContext, lctx->reader, SCARD_SHARE_EXCLUSIVE, SCARD_PROTOCOL_T1, &lctx->card, &dwActiveProtocol);
 
 	if (scrc != SCARD_S_SUCCESS) {
 		ramForceClose(ctx, pcsc_error_to_string(scrc));
@@ -456,7 +456,7 @@ int main(int argc, char **argv)
 
 	lctx.reader = optReader;
 
-	scrc = SCardConnect(lctx.scardContext, lctx.reader, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T1, &lctx.card, &dwActiveProtocol);
+	scrc = SCardConnect(lctx.scardContext, lctx.reader, SCARD_SHARE_EXCLUSIVE, SCARD_PROTOCOL_T1, &lctx.card, &dwActiveProtocol);
 
 	if (scrc) {
 		printf("Could not connect to card (%s)\n", pcsc_error_to_string(scrc));
