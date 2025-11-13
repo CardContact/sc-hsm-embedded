@@ -16,6 +16,10 @@ Install CA Certificates
 
     pacman -S mingw-w64-ucrt-x86_64-ca-certificate
 
+Install libcurl
+
+    pacman -S mingw-w64-ucrt-x86_64-curl
+
 Create build environment
 
     meson setup build-win
