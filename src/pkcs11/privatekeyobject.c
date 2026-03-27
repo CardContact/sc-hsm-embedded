@@ -96,26 +96,26 @@ int createPrivateKeyObjectFromP15(struct p15PrivateKeyDescription *p15, struct p
 	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
 	CK_KEY_TYPE keyType = CKK_RSA;
 	CK_MECHANISM_TYPE genMechType = CKM_RSA_PKCS_KEY_PAIR_GEN;
-	CK_BBOOL true = CK_TRUE;
-	CK_BBOOL false = CK_FALSE;
+	CK_BBOOL ck_true = CK_TRUE;
+	CK_BBOOL ck_false = CK_FALSE;
 	CK_ATTRIBUTE template[] = {
 			{ CKA_CLASS, &class, sizeof(class) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
-			{ CKA_TOKEN, &true, sizeof(true) },
-			{ CKA_PRIVATE, &true, sizeof(true) },
+			{ CKA_TOKEN, &ck_true, sizeof(ck_true) },
+			{ CKA_PRIVATE, &ck_true, sizeof(ck_true) },
 			{ CKA_LABEL, NULL, 0 },
 			{ CKA_ID, NULL, 0 },
-			{ CKA_LOCAL, &true, sizeof(true) },
+			{ CKA_LOCAL, &ck_true, sizeof(ck_true) },
 			{ CKA_KEY_GEN_MECHANISM, &genMechType, sizeof(genMechType) },
-			{ CKA_SENSITIVE, &true, sizeof(true) },
-			{ CKA_DECRYPT, &true, sizeof(true) },
-			{ CKA_SIGN, &true, sizeof(true) },
-			{ CKA_SIGN_RECOVER, &true, sizeof(true) },
-			{ CKA_ALWAYS_AUTHENTICATE, &false, sizeof(false) },
-			{ CKA_UNWRAP, &false, sizeof(false) },
-			{ CKA_EXTRACTABLE, &false, sizeof(false) },
-			{ CKA_ALWAYS_SENSITIVE, &true, sizeof(true) },
-			{ CKA_NEVER_EXTRACTABLE, &true, sizeof(true) },
+			{ CKA_SENSITIVE, &ck_true, sizeof(ck_true) },
+			{ CKA_DECRYPT, &ck_true, sizeof(ck_true) },
+			{ CKA_SIGN, &ck_true, sizeof(ck_true) },
+			{ CKA_SIGN_RECOVER, &ck_true, sizeof(ck_true) },
+			{ CKA_ALWAYS_AUTHENTICATE, &ck_false, sizeof(ck_false) },
+			{ CKA_UNWRAP, &ck_false, sizeof(ck_false) },
+			{ CKA_EXTRACTABLE, &ck_false, sizeof(ck_false) },
+			{ CKA_ALWAYS_SENSITIVE, &ck_true, sizeof(ck_true) },
+			{ CKA_NEVER_EXTRACTABLE, &ck_true, sizeof(ck_true) },
 			{ 0, NULL, 0 },
 			{ 0, NULL, 0 }
 	};
@@ -149,10 +149,10 @@ int createPrivateKeyObjectFromP15(struct p15PrivateKeyDescription *p15, struct p
 		template[5].ulValueLen = (CK_ULONG)p15->id.len;
 	}
 
-	template[9].pValue = p15->usage & P15_DECIPHER ? &true : &false;
-	template[10].pValue = p15->usage & P15_SIGN ? &true : &false;
-	template[11].pValue = p15->usage & P15_SIGNRECOVER ? &true : &false;
-	template[12].pValue = useAA ? &true : &false;
+	template[9].pValue = p15->usage & P15_DECIPHER ? &ck_true : &ck_false;
+	template[10].pValue = p15->usage & P15_SIGN ? &ck_true : &ck_false;
+	template[11].pValue = p15->usage & P15_SIGNRECOVER ? &ck_true : &ck_false;
+	template[12].pValue = useAA ? &ck_true : &ck_false;
 
 	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE) - 2;
 
@@ -202,27 +202,27 @@ int createPrivateKeyObjectFromP15AndPublicKey(struct p15PrivateKeyDescription *p
 	CK_OBJECT_CLASS class = CKO_PRIVATE_KEY;
 	CK_KEY_TYPE keyType = CKK_RSA;
 	CK_MECHANISM_TYPE genMechType = CKM_RSA_PKCS_KEY_PAIR_GEN;
-	CK_BBOOL true = CK_TRUE;
-	CK_BBOOL false = CK_FALSE;
+	CK_BBOOL ck_true = CK_TRUE;
+	CK_BBOOL ck_false = CK_FALSE;
 	struct p11Attribute_t *pattr;
 	CK_ATTRIBUTE template[] = {
 			{ CKA_CLASS, &class, sizeof(class) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
-			{ CKA_TOKEN, &true, sizeof(true) },
-			{ CKA_PRIVATE, &true, sizeof(true) },
+			{ CKA_TOKEN, &ck_true, sizeof(ck_true) },
+			{ CKA_PRIVATE, &ck_true, sizeof(ck_true) },
 			{ CKA_LABEL, NULL, 0 },
 			{ CKA_ID, NULL, 0 },
-			{ CKA_LOCAL, &true, sizeof(true) },
+			{ CKA_LOCAL, &ck_true, sizeof(ck_true) },
 			{ CKA_KEY_GEN_MECHANISM, &genMechType, sizeof(genMechType) },
-			{ CKA_SENSITIVE, &true, sizeof(true) },
-			{ CKA_DECRYPT, &true, sizeof(true) },
-			{ CKA_SIGN, &true, sizeof(true) },
-			{ CKA_SIGN_RECOVER, &true, sizeof(true) },
-			{ CKA_ALWAYS_AUTHENTICATE, &false, sizeof(false) },
-			{ CKA_UNWRAP, &false, sizeof(false) },
-			{ CKA_EXTRACTABLE, &false, sizeof(false) },
-			{ CKA_ALWAYS_SENSITIVE, &true, sizeof(true) },
-			{ CKA_NEVER_EXTRACTABLE, &true, sizeof(true) },
+			{ CKA_SENSITIVE, &ck_true, sizeof(ck_true) },
+			{ CKA_DECRYPT, &ck_true, sizeof(ck_true) },
+			{ CKA_SIGN, &ck_true, sizeof(ck_true) },
+			{ CKA_SIGN_RECOVER, &ck_true, sizeof(ck_true) },
+			{ CKA_ALWAYS_AUTHENTICATE, &ck_false, sizeof(ck_false) },
+			{ CKA_UNWRAP, &ck_false, sizeof(ck_false) },
+			{ CKA_EXTRACTABLE, &ck_false, sizeof(ck_false) },
+			{ CKA_ALWAYS_SENSITIVE, &ck_true, sizeof(ck_true) },
+			{ CKA_NEVER_EXTRACTABLE, &ck_true, sizeof(ck_true) },
 			{ 0, NULL, 0 },
 			{ 0, NULL, 0 }
 	};
@@ -247,10 +247,10 @@ int createPrivateKeyObjectFromP15AndPublicKey(struct p15PrivateKeyDescription *p
 		template[5].ulValueLen = (CK_ULONG)p15->id.len;
 	}
 
-	template[9].pValue = p15->usage & P15_DECIPHER ? &true : &false;
-	template[10].pValue = p15->usage & P15_SIGN ? &true : &false;
-	template[11].pValue = p15->usage & P15_SIGNRECOVER ? &true : &false;
-	template[12].pValue = useAA ? &true : &false;
+	template[9].pValue = p15->usage & P15_DECIPHER ? &ck_true : &ck_false;
+	template[10].pValue = p15->usage & P15_SIGN ? &ck_true : &ck_false;
+	template[11].pValue = p15->usage & P15_SIGNRECOVER ? &ck_true : &ck_false;
+	template[12].pValue = useAA ? &ck_true : &ck_false;
 
 	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE) - 2;
 
