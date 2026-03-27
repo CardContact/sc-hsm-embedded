@@ -106,22 +106,22 @@ int createPublicKeyObjectFromCertificate(struct p15PrivateKeyDescription *p15, s
 	CK_OBJECT_CLASS class = CKO_PUBLIC_KEY;
 	CK_KEY_TYPE keyType = CKK_RSA;
 	CK_UTF8CHAR label[10];
-	CK_BBOOL true = CK_TRUE;
-	CK_BBOOL false = CK_FALSE;
+	CK_BBOOL ck_true = CK_TRUE;
+	CK_BBOOL ck_false = CK_FALSE;
 	CK_ULONG modulus_bits = 2048;
 	CK_ATTRIBUTE template[] = {
 			{ CKA_CLASS, &class, sizeof(class) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
-			{ CKA_TOKEN, &true, sizeof(true) },
-			{ CKA_PRIVATE, &false, sizeof(false) },
+			{ CKA_TOKEN, &ck_true, sizeof(ck_true) },
+			{ CKA_PRIVATE, &ck_false, sizeof(ck_false) },
 			{ CKA_LABEL, label, sizeof(label) - 1 },
 			{ CKA_ID, NULL, 0 },
-			{ CKA_LOCAL, &true, sizeof(true) },
-			{ CKA_ENCRYPT, &true, sizeof(true) },
-			{ CKA_VERIFY, &true, sizeof(true) },
-			{ CKA_VERIFY_RECOVER, &true, sizeof(true) },
-			{ CKA_WRAP, &false, sizeof(false) },
-			{ CKA_TRUSTED, &false, sizeof(false) },
+			{ CKA_LOCAL, &ck_true, sizeof(ck_true) },
+			{ CKA_ENCRYPT, &ck_true, sizeof(ck_true) },
+			{ CKA_VERIFY, &ck_true, sizeof(ck_true) },
+			{ CKA_VERIFY_RECOVER, &ck_true, sizeof(ck_true) },
+			{ CKA_WRAP, &ck_false, sizeof(ck_false) },
+			{ CKA_TRUSTED, &ck_false, sizeof(ck_false) },
 			{ 0, NULL, 0 },
 			{ 0, NULL, 0 },
 			{ 0, NULL, 0 }
@@ -213,22 +213,22 @@ int createPublicKeyObjectFromCVC(struct p15PrivateKeyDescription *p15, unsigned 
 {
 	CK_OBJECT_CLASS class = CKO_PUBLIC_KEY;
 	CK_KEY_TYPE keyType = CKK_RSA;
-	CK_BBOOL true = CK_TRUE;
-	CK_BBOOL false = CK_FALSE;
+	CK_BBOOL ck_true = CK_TRUE;
+	CK_BBOOL ck_false = CK_FALSE;
 	CK_ULONG modulus_bits;
 	CK_ATTRIBUTE template[] = {
 			{ CKA_CLASS, &class, sizeof(class) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
-			{ CKA_TOKEN, &true, sizeof(true) },
-			{ CKA_PRIVATE, &false, sizeof(false) },
+			{ CKA_TOKEN, &ck_true, sizeof(ck_true) },
+			{ CKA_PRIVATE, &ck_false, sizeof(ck_false) },
 			{ CKA_LABEL, NULL, 0 },
 			{ CKA_ID, NULL, 0 },
-			{ CKA_LOCAL, &true, sizeof(true) },
-			{ CKA_ENCRYPT, &true, sizeof(true) },
-			{ CKA_VERIFY, &true, sizeof(true) },
-			{ CKA_VERIFY_RECOVER, &true, sizeof(true) },
-			{ CKA_WRAP, &false, sizeof(false) },
-			{ CKA_TRUSTED, &false, sizeof(false) },
+			{ CKA_LOCAL, &ck_true, sizeof(ck_true) },
+			{ CKA_ENCRYPT, &ck_true, sizeof(ck_true) },
+			{ CKA_VERIFY, &ck_true, sizeof(ck_true) },
+			{ CKA_VERIFY_RECOVER, &ck_true, sizeof(ck_true) },
+			{ CKA_WRAP, &ck_false, sizeof(ck_false) },
+			{ CKA_TRUSTED, &ck_false, sizeof(ck_false) },
 			{ CKA_CVC_REQUEST, NULL, 0 },
 			{ 0, NULL, 0 },
 			{ 0, NULL, 0 },

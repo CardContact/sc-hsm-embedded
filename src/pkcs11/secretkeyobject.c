@@ -95,29 +95,29 @@ int createSecretKeyObjectFromP15(struct p15SecretKeyDescription *p15, struct p11
 	CK_KEY_TYPE keyType = CKK_AES;
 	CK_MECHANISM_TYPE genMechType = CKM_AES_KEY_GEN;
 	CK_ULONG keylen = 0;
-	CK_BBOOL true = CK_TRUE;
-	CK_BBOOL false = CK_FALSE;
+	CK_BBOOL ck_true = CK_TRUE;
+	CK_BBOOL ck_false = CK_FALSE;
 	CK_ATTRIBUTE template[] = {
 			{ CKA_CLASS, &class, sizeof(class) },
 			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
-			{ CKA_TOKEN, &true, sizeof(true) },
-			{ CKA_PRIVATE, &true, sizeof(true) },
+			{ CKA_TOKEN, &ck_true, sizeof(ck_true) },
+			{ CKA_PRIVATE, &ck_true, sizeof(ck_true) },
 			{ CKA_LABEL, NULL, 0 },
 			{ CKA_ID, NULL, 0 },
-			{ CKA_LOCAL, &true, sizeof(true) },
+			{ CKA_LOCAL, &ck_true, sizeof(ck_true) },
 			{ CKA_KEY_GEN_MECHANISM, &genMechType, sizeof(genMechType) },
 			{ CKA_VALUE_LEN, &keylen, sizeof(keylen) },
-			{ CKA_SENSITIVE, &true, sizeof(true) },
-			{ CKA_ENCRYPT, &true, sizeof(true) },
-			{ CKA_DECRYPT, &true, sizeof(true) },
-			{ CKA_SIGN, &true, sizeof(true) },
-			{ CKA_VERIFY, &true, sizeof(true) },
-			{ CKA_WRAP, &false, sizeof(false) },
-			{ CKA_UNWRAP, &false, sizeof(false) },
-			{ CKA_DERIVE, &false, sizeof(false) },
-			{ CKA_EXTRACTABLE, &false, sizeof(false) },
-			{ CKA_ALWAYS_SENSITIVE, &true, sizeof(true) },
-			{ CKA_NEVER_EXTRACTABLE, &true, sizeof(true) }
+			{ CKA_SENSITIVE, &ck_true, sizeof(ck_true) },
+			{ CKA_ENCRYPT, &ck_true, sizeof(ck_true) },
+			{ CKA_DECRYPT, &ck_true, sizeof(ck_true) },
+			{ CKA_SIGN, &ck_true, sizeof(ck_true) },
+			{ CKA_VERIFY, &ck_true, sizeof(ck_true) },
+			{ CKA_WRAP, &ck_false, sizeof(ck_false) },
+			{ CKA_UNWRAP, &ck_false, sizeof(ck_false) },
+			{ CKA_DERIVE, &ck_false, sizeof(ck_false) },
+			{ CKA_EXTRACTABLE, &ck_false, sizeof(ck_false) },
+			{ CKA_ALWAYS_SENSITIVE, &ck_true, sizeof(ck_true) },
+			{ CKA_NEVER_EXTRACTABLE, &ck_true, sizeof(ck_true) }
 	};
 	struct p11Object_t *p11o;
 	int rc, attributes;
@@ -142,13 +142,13 @@ int createSecretKeyObjectFromP15(struct p15SecretKeyDescription *p15, struct p11
 
 	keylen = p15->keysize >> 3;
 
-	template[10].pValue = p15->usage & P15_ENCIPHER ? &true : &false;
-	template[11].pValue = p15->usage & P15_DECIPHER ? &true : &false;
-	template[12].pValue = p15->usage & P15_SIGN ? &true : &false;
-	template[13].pValue = p15->usage & P15_VERIFY ? &true : &false;
-	template[14].pValue = p15->usage & P15_KEYENCIPHER ? &true : &false;
-	template[15].pValue = p15->usage & P15_KEYDECIPHER ? &true : &false;
-	template[16].pValue = p15->usage & P15_DERIVE ? &true : &false;
+	template[10].pValue = p15->usage & P15_ENCIPHER ? &ck_true : &ck_false;
+	template[11].pValue = p15->usage & P15_DECIPHER ? &ck_true : &ck_false;
+	template[12].pValue = p15->usage & P15_SIGN ? &ck_true : &ck_false;
+	template[13].pValue = p15->usage & P15_VERIFY ? &ck_true : &ck_false;
+	template[14].pValue = p15->usage & P15_KEYENCIPHER ? &ck_true : &ck_false;
+	template[15].pValue = p15->usage & P15_KEYDECIPHER ? &ck_true : &ck_false;
+	template[16].pValue = p15->usage & P15_DERIVE ? &ck_true : &ck_false;
 
 	attributes = sizeof(template) / sizeof(CK_ATTRIBUTE);
 

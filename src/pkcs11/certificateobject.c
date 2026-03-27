@@ -540,20 +540,20 @@ int createCertificateObjectFromP15(struct p15CertificateDescription *p15, unsign
 {
 	CK_OBJECT_CLASS class = CKO_CERTIFICATE;
 	CK_CERTIFICATE_TYPE certType = CKC_X_509;
-	CK_BBOOL true = CK_TRUE;
-	CK_BBOOL false = CK_FALSE;
+	CK_BBOOL ck_true = CK_TRUE;
+	CK_BBOOL ck_false = CK_FALSE;
 	CK_ULONG category = 1;
 	CK_ATTRIBUTE template[] = {
 			{ CKA_CLASS, &class, sizeof(class) },
 			{ CKA_CERTIFICATE_TYPE, &certType, sizeof(certType) },
-			{ CKA_TRUSTED, &ckFalse, sizeof(false) },
+			{ CKA_TRUSTED, &ckFalse, sizeof(ck_false) },
 			{ CKA_CERTIFICATE_CATEGORY, &category, sizeof(category)},
-			{ CKA_TOKEN, &true, sizeof(true) },
-			{ CKA_PRIVATE, &false, sizeof(false) },
+			{ CKA_TOKEN, &ck_true, sizeof(ck_true) },
+			{ CKA_PRIVATE, &ck_false, sizeof(ck_false) },
 			{ CKA_LABEL, NULL, 0 },
 			{ CKA_ID, NULL, 0 },
 			{ CKA_VALUE, NULL, 0 },
-			{ CKA_MODIFIABLE, &false, sizeof(false) }
+			{ CKA_MODIFIABLE, &ck_false, sizeof(ck_false) }
 	};
 	struct p11Object_t *p11o;
 	unsigned char *po;
@@ -597,12 +597,12 @@ int createCertificateObjectFromP15(struct p15CertificateDescription *p15, unsign
 	}
 
 	if (p15->isCA) {
-		template[2].pValue = &true;
+		template[2].pValue = &ck_true;
 		category = 2;
 	}
 
 	if (p15->isModifiable) {
-		template[9].pValue = &true;
+		template[9].pValue = &ck_true;
 	}
 
 	p11o = calloc(sizeof(struct p11Object_t), 1);
