@@ -14,6 +14,8 @@ endif
 
 libcurl_dep = dependency('libcurl')
 
+libcrypto_dep = dependency('libcrypto')
+
 core_inc = include_directories('src')
 
 subdir('src')
