@@ -758,6 +758,11 @@ int testRSASigning(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_MECHA
 
 		printf("Signature size = %lu\n", len);
 
+		if (len == 128 && (mt == CKM_SHA512_RSA_PKCS_PSS || (mt == CKM_RSA_PKCS_PSS && pssparams.hashAlg == CKM_SHA512))) {
+			printf("Skipping RSA PPS Test with SHA512 for 1024 bit key.\n");
+			keyno++;
+			continue;
+		}
 		len = sizeof(signature);
 		rc = p11->C_Sign(session, (CK_BYTE_PTR)tbs, tbslen, signature, &len);
 		printf("C_Sign (Thread %i, Session %ld, Slot=%ld) - %s : %s\n", id, session, slotid, id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK || rc == CKR_DEVICE_REMOVED || rc == CKR_TOKEN_NOT_PRESENT));
