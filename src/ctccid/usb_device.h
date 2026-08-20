@@ -49,6 +49,7 @@
 #define UTRUST_JCOP2_DEVICE_ID   0x5817		/* New JCOP 2.4.1r3 Token */
 #define UTRUST_SAM_DEVICE_ID     0x5816		/* SAM Slot Token */
 #define UTRUST_2700R_DEVICE_ID   0x5810		/* uTrust 2700 R */
+#define UTRUST_FLEX_DEVICE_ID    0x5826		/* uTrust Token Flex */
 
 #define NITROKEY_VENDOR_ID	0x20a0
 #define NITROKEY_HSM		0x4230

@@ -53,7 +53,7 @@ The 64-Bit version installs both, the 32-Bit and 64-Bit version of DLLs and test
 
 Build with Docker
 -----------------
-The included Dockerfile creates the build environment
+The included Dockerfile creates the build environment.
 
 To mount the card reader for the container use
 
