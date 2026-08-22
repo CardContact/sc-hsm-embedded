@@ -28,8 +28,8 @@ AC_ARG_ENABLE(ctapi,
 
 AC_ARG_ENABLE(ram,
 		[AS_HELP_STRING([--enable-ram],[enable Remote Application Management (RAM)])],
-		[AC_DEFINE([RAM])],
-		[])
+		,
+		[enable_ram="detect"])
 
 AC_ARG_ENABLE(cvc,
 		[AS_HELP_STRING([--enable-cvc],[include card verifiable certificates])],
@@ -42,8 +42,11 @@ AC_ARG_ENABLE(libcrypto,
 		[enable_libcrypto="detect"]
 )
 
+AS_IF([test "${enable_ram}" = "detect"],
+	[ PKG_CHECK_EXISTS([libcurl], [enable_ram="yes"], [enable_ram="no"]) ])
+
 AS_IF([test "${enable_ram}" = "yes"],
-	[PKG_CHECK_MODULES(LIBCURL, libcurl)])
+	[ PKG_CHECK_MODULES(LIBCURL, libcurl, AC_DEFINE(RAM))])
 
 if test "${enable_pcsc}" = "yes"; then
 	PKG_CHECK_EXISTS(

@@ -340,7 +340,7 @@ char *p11libname = P11LIBNAME;
 
 CK_UTF8CHAR *pin = NULL;
 CK_UTF8CHAR wrongpin[] = "111111";
-CK_ULONG pinlen = 6;
+CK_ULONG pinlen = 0;
 
 CK_UTF8CHAR *sopin = (CK_UTF8CHAR *)SOPIN;
 CK_ULONG sopinlen = 16;
@@ -2127,6 +2127,26 @@ void testTransportPIN(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid)
 
 
 
+void testRemoteLogin(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, char *url)
+{
+	int rc;
+	CK_SESSION_HANDLE session;
+
+	printf("Calling C_OpenSession ");
+	rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_Login User to connect to %s\n", url);
+	rc = p11->C_Login(session, CKU_USER, NULL, 0);
+	printf("- %s\n", id2name(p11CKRName, rc, 0, namebuf));
+
+	printf("Calling C_CloseSession ");
+	rc = p11->C_CloseSession(session);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+}
+
+
+
 void testLogin(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
 	int rc;
@@ -2731,12 +2751,14 @@ int main(int argc, char *argv[])
 	CK_SLOT_INFO slotinfo;
 	CK_TOKEN_INFO tokeninfo;
 	CK_ATTRIBUTE attr[6];
+	char *url;
 	CK_FUNCTION_LIST_PTR p11;
 	LIB_HANDLE dlhandle;
 	CK_RV (*C_GetFunctionList)(CK_FUNCTION_LIST_PTR_PTR);
 	CK_C_INITIALIZE_ARGS initArgs;
 
 	decodeArgs(argc, argv);
+	url = getenv("PKCS11_LOGIN_URL");
 
 	printf("PKCS11 unit test running.\n");
 
@@ -2854,9 +2876,14 @@ int main(int argc, char *argv[])
 				printf("Token model       : %s\n", p11string(tokeninfo.model, sizeof(tokeninfo.model)));
 				printf("Token flags       : %lx\n", tokeninfo.flags);
 
-				if (pin == NULL) {
+				if (pin == NULL && url == NULL) {
 					printf("Skipping tests that require a PIN. PIN can be set with --pin\n");
 					continue;
+				}
+
+				if (url != NULL && !(tokeninfo.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
+					printf("Token should report CKF_PROTECTED_AUTHENTICATION_PATH when PKCS11_LOGIN_URL is set");
+					verdict(0);
 				}
 
 				if (optTestMultiOnly)
@@ -2874,6 +2901,11 @@ int main(int argc, char *argv[])
 
 				if (optUnlockPIN) {
 					unlockPIN(p11, slotid);
+					break;
+				}
+
+				if (url) {
+					testRemoteLogin(p11, slotid, url);
 					break;
 				}
 

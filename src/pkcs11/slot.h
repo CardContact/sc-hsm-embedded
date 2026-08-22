@@ -53,6 +53,7 @@ int transmitVerifyPinAPDU(struct p11Slot_t *slot,
 		unsigned short *SW1SW2,
 		unsigned char pinformat, unsigned char minpinsize, unsigned char maxpinsize,
 		unsigned char pinblockstring, unsigned char pinlengthformat);
+int transmitPlainAPDU(struct p11Slot_t *slot, unsigned char *capdu, size_t clen, unsigned char *rapdu, size_t *rlen);
 int getToken(struct p11Slot_t *slot, struct p11Token_t **token);
 int getValidatedToken(struct p11Slot_t *slot, struct p11Token_t **token);
 int handleDeviceError(CK_SESSION_HANDLE hSession);

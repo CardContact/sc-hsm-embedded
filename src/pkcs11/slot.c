@@ -236,6 +236,23 @@ int encodeCommandAPDU(
 
 
 
+int transmitPlainAPDU(struct p11Slot_t *slot, unsigned char *capdu, size_t clen, unsigned char *rapdu, size_t *rlen)
+{
+	int rc;
+#ifdef CTAPI
+	rc = transmitAPDUviaCTAPI(slot, 0,
+			capdu, clen,
+			rapdu, *rlen);
+#else
+	rc = transmitAPDUviaPCSC(slot,
+			capdu, clen,
+			rapdu, *rlen);
+#endif
+	return rc;
+}
+
+
+
 /*
  *  Process an ISO 7816 APDU with the underlying terminal hardware.
  *

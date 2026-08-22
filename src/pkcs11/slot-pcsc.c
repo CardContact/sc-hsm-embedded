@@ -445,7 +445,6 @@ int checkForNewPCSCToken(struct p11Slot_t *slot)
 	LONG rv;
 	DWORD dwActiveProtocol;
 	DWORD atrlen,readernamelen,state,protocol;
-	unsigned char atr[36];
 
 	FUNC_CALLED();
 
@@ -473,16 +472,18 @@ int checkForNewPCSCToken(struct p11Slot_t *slot)
 	}
 
 	readernamelen = 0;
-	atrlen = sizeof(atr);
+	atrlen = sizeof(slot->atr);
 
-	rc = SCardStatus(slot->card, NULL, &readernamelen, &state, &protocol, atr, &atrlen);
+	rc = SCardStatus(slot->card, NULL, &readernamelen, &state, &protocol, slot->atr, &atrlen);
 
 	if (rc != SCARD_S_SUCCESS) {
 		closeSlot(slot);
 		FUNC_FAILS(CKR_DEVICE_ERROR, pcsc_error_to_string(rc));
 	}
 
-	rc = newToken(slot, atr, atrlen, &ptoken);
+	slot->atrlen = atrlen;
+
+	rc = newToken(slot, slot->atr, atrlen, &ptoken);
 
 	if (rc != CKR_OK) {
 		FUNC_FAILS(rc, "newToken() failed");

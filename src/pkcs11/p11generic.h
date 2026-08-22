@@ -113,6 +113,7 @@ struct p11Token_t {
 	int pinTriesLeft;					/**< The number of remaining PIN tries			    */
 	int pinUseCounter;                  /**< Number of crypto operations per PIN verify     */
 	int pinChangeRequired;              /**< PIN change required before use                 */
+	char loginURL[128];                 /**< URL to connect to for login                    */
 
 	CK_ULONG numberOfTokenObjects;      /**< The number of public objects in this token     */
 	struct p11Object_t *tokenObjList;   /**< Pointer to first object in pool                */
@@ -143,6 +144,8 @@ struct p11Slot_t {
 	SCARDCONTEXT context;             /**< Card manager context for slot       */
 	SCARDHANDLE card;                 /**< Handle to card                      */
 #endif
+	unsigned char atr[36];            /**< Answer to Reset (ATR) for the card  */
+	int atrlen;                       /**< Length of ATR                       */
 	int maxCAPDU;                     /**< Maximum length of command APDU      */
 	int maxRAPDU;                     /**< Maximum length of response APDU     */
 	int noExtLengthReadAll;           /**< Prevent using Le='000000'           */

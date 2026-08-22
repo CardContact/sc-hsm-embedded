@@ -51,6 +51,8 @@
 #include <pkcs11/strbpcpy.h>
 #include <pkcs11/crypto.h>
 
+#include <ramoverhttp/ramoverhttp.h>
+
 
 
 static unsigned char aid[] = { 0xE8,0x2B,0x06,0x01,0x04,0x01,0x81,0xC3,0x1F,0x02,0x01 };
@@ -2478,6 +2480,74 @@ static int parseSOPIN(unsigned char *pin, unsigned char *encodedPIN)
 
 
 /**
+ * APDU callback for RAMOverHTTP protocol implementation.
+ *
+ * @param slot      The slot in which the token is inserted
+ * @param capdu     Encoded command APDU
+ * @param clen      Length of capdu
+ * @param rapdu     Buffer for response APDU
+ * @param rlen      Length on buffer (IN) and length of R-APDU (out)
+ * @return          0 or RAME_CARD_ERROR
+ */
+static int sendApdu(struct ramContext *ctx, unsigned char *capdu, size_t clen, unsigned char *rapdu, size_t *rlen) {
+	int rc;
+	unsigned short SW1SW2;
+	struct p11Slot_t *slot = (struct p11Slot_t *)ramGetUserObject(ctx);
+
+	rc = transmitPlainAPDU(slot, capdu, clen, rapdu, rlen);
+
+	if (rc < 0) {
+		return RAME_CARD_ERROR;
+	}
+	*rlen = rc;
+	return 0;
+}
+
+
+
+#ifdef RAM
+/**
+ * Connect to the URL defined in PKCS11_LOGIN_URL to perform user authentication
+ *
+ * @param slot      The slot in which the token is inserted
+ */
+static int sc_hsm_remote_login(struct p11Slot_t *slot) {
+	struct ramContext *ctx;
+	int rc;
+
+	ramNewContext(&ctx);
+	ramSetSendApduHandler(ctx, sendApdu);
+	ramSetUserObject(ctx, (void *)slot);
+	ramSetURL(ctx, slot->token->loginURL);
+	ramSetATR(ctx, slot->atr, slot->atrlen);
+	rc = ramConnect(ctx);
+
+	switch(rc) {
+	case RAME_OK:
+		rc = CKR_OK;
+		break;
+	case RAME_CONNECT_FAILED:
+	case RAME_NO_CONNECT:
+#ifdef DEBUG
+		debug("Could not connect to URL (%d)\n", rc);
+#endif
+		rc = CKR_ARGUMENTS_BAD;
+		break;
+	default:
+#ifdef DEBUG
+		debug("RAMOverHTTP failed with &d\n", rc);
+#endif
+		rc = CKR_FUNCTION_FAILED;
+	}
+	ramFreeContext(&ctx);
+
+	return rc;
+}
+#endif
+
+
+
+/**
  * Perform PIN verification and make private objects visible
  *
  * @param slot      The slot in which the token is inserted
@@ -2507,17 +2577,37 @@ static int sc_hsm_login(struct p11Slot_t *slot, int userType, CK_UTF8CHAR_PTR pi
 		retry = 2;			// Retry PIN verification if applet selection was lost
 		while (retry--) {
 			if ((slot->token->info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !pinlen && !pin) {
+				if (slot->token->loginURL[0]) {
+#ifdef RAM
 #ifdef DEBUG
-				debug("Verify PIN using CKF_PROTECTED_AUTHENTICATION_PATH\n");
+					debug("Connecting to %s for remote login\n", slot->token->loginURL);
 #endif
-				rc = transmitVerifyPinAPDU(slot, 0x00, 0x20, 0x00, 0x81,
-					0, NULL,
-					&SW1SW2,
-					PIN_SYSTEM_UNIT_BYTES + PIN_POSITION_0 + PIN_LEFT_JUSTIFICATION + PIN_FORMAT_ASCII, /* bmFormatString */
-					0x06, 0x0F, /* Minimum and maximum length of PIN */
-					0x00, /* bmPINBlockString: no inserted PIN length, no PIN block size*/
-					0x00 /* bmPINLengthFormat: no PIN length insertion - set to all zeros */
-					);
+					rc = sc_hsm_remote_login(slot);
+					if (rc != CKR_OK) {
+						return rc;
+					}
+#else
+#ifdef DEBUG
+					debug("RAMOverHTTP not available.\n");
+#endif
+#endif
+					rc = transmitAPDU(slot, 0x00, 0x20, 0x00, 0x81,
+						0, NULL,
+						0, NULL, 0, &SW1SW2);
+
+				} else {
+#ifdef DEBUG
+					debug("Verify PIN using CKF_PROTECTED_AUTHENTICATION_PATH\n");
+#endif
+					rc = transmitVerifyPinAPDU(slot, 0x00, 0x20, 0x00, 0x81,
+							0, NULL,
+							&SW1SW2,
+							PIN_SYSTEM_UNIT_BYTES + PIN_POSITION_0 + PIN_LEFT_JUSTIFICATION + PIN_FORMAT_ASCII, /* bmFormatString */
+							0x06, 0x0F, /* Minimum and maximum length of PIN */
+							0x00, /* bmPINBlockString: no inserted PIN length, no PIN block size*/
+							0x00 /* bmPINLengthFormat: no PIN length insertion - set to all zeros */
+						);
+				}
 			} else {
 #ifdef DEBUG
 				debug("Verify PIN using provided PIN value\n");
@@ -2737,6 +2827,7 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	struct p11Token_t *ptoken;
 	int rc, pinstatus, isinitialized;
 	size_t tag85len;
+	char *url;
 	unsigned char tag85[10];
 
 	FUNC_CALLED();
@@ -2807,7 +2898,18 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 
 	ptoken->info.flags = CKF_LOGIN_REQUIRED|CKF_RNG;
 
-	if (slot->hasFeatureVerifyPINDirect)
+#ifdef RAM
+	url = getenv("PKCS11_LOGIN_URL");
+	if (url) {
+		if (strlen(url) > sizeof(ptoken->loginURL) - 1) {
+			FUNC_FAILS(CKR_DATA_LEN_RANGE, "URL in PKCS11_LOGIN_URL exceeds length limit");
+		}
+		strncpy(ptoken->loginURL, url, sizeof(ptoken->loginURL) - 1);
+		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
+	}
+#endif
+
+	if (slot->hasFeatureVerifyPINDirect || ptoken->loginURL[0])
 		ptoken->info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
 
 	ptoken->user = INT_CKU_NO_USER;

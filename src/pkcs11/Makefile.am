@@ -25,6 +25,10 @@ libsc_hsm_pkcs11_la_SOURCES += crypto-libcrypto.c
 libsc_hsm_pkcs11_la_LIBADD += $(LIBCRYPTO_LIBS)
 endif
 
+if ENABLE_RAM
+libsc_hsm_pkcs11_la_LIBADD += $(top_builddir)/src/ramoverhttp/libramoverhttp.la
+endif
+
 
 libsc_hsm_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
 	$(top_builddir)/src/common/libcommon.la \
