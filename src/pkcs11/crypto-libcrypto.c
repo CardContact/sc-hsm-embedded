@@ -217,34 +217,38 @@ out:
  * Verify signature against a provided DigestInfo block as used in CKM_RSA_PKCS
  *
  */
-static CK_RV verifyDigestInfo(RSA *key, const unsigned char *data, int data_len, unsigned char *signature, int signature_len)
+static CK_RV verifyDigestInfo(EVP_PKEY *key, const unsigned char *data, int data_len, unsigned char *signature, int signature_len)
 {
+	EVP_PKEY_CTX *pkey_ctx;
 	unsigned char plain[512];
+	size_t plainlen;
 	CK_RV rv;
-	int rc;
 
-	FUNC_CALLED();
+	pkey_ctx = EVP_PKEY_CTX_new(key, NULL);
 
-	if (signature_len != RSA_size(key)) {
-		FUNC_FAILS(CKR_DATA_LEN_RANGE, "Signature size does not match modulus size");
+	if (!EVP_PKEY_verify_recover_init(pkey_ctx)) {
+		FUNC_CRYPTOFAILVIAOUT("EVP_PKEY_verify_recover_init() failed");
 	}
 
-	if (signature_len > sizeof(plain)) {
-		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Signature size exceeds 4096 bit");
+	if (!EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PADDING)) {
+		FUNC_CRYPTOFAILVIAOUT("EVP_PKEY_CTX_set_rsa_padding() failed");
 	}
 
-	rc = RSA_public_decrypt(signature_len, signature, plain, key, RSA_PKCS1_PADDING);
-
-	if (rc < 0) {
-		rv = translateError();
-		FUNC_FAILS(rv, "RSA_public_decrypt() failed");
+	plainlen = sizeof(plain);
+	if (!EVP_PKEY_verify_recover(pkey_ctx, plain, &plainlen, signature, signature_len)) {
+		FUNC_CRYPTOFAILVIAOUT("EVP_PKEY_verify_recover() failed");
 	}
 
-	if ((rc != data_len) || memcmp(plain, data, data_len)) {
-		FUNC_FAILS(CKR_SIGNATURE_INVALID, "DigestInfo does not match input reference value");
+	if ((plainlen != data_len) || memcmp(plain, data, data_len)) {
+		rv = CKR_SIGNATURE_INVALID;
+	} else {
+		rv = CKR_OK;
 	}
 
-	FUNC_RETURNS(CKR_OK);
+out:
+	EVP_PKEY_CTX_free(pkey_ctx);
+
+	FUNC_RETURNS(rv);
 }
 
 
@@ -267,32 +271,37 @@ static const EVP_MD *getHashForHashLen(int len) {
  */
 static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_PTR in, CK_ULONG in_len, CK_BYTE_PTR signature, CK_ULONG signature_len)
 {
-	struct p11Attribute_t *modulus;
-	struct p11Attribute_t *public_exponent;
-	OSSL_PARAM params[3];
+	struct p11Attribute_t *modulus_attr;
+	struct p11Attribute_t *public_exponent_attr;
 	const EVP_MD *md = NULL;
 	EVP_PKEY *pkey = NULL;
 	CK_RV rv;
 
 	FUNC_CALLED();
 
-	rv = findAttribute(obj, CKA_MODULUS, &modulus);
+	rv = findAttribute(obj, CKA_MODULUS, &modulus_attr);
 
 	if (rv == -1)
 		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_MODULUS not found");
 
-	if (modulus->attrData.ulValueLen != signature_len)
+	if (modulus_attr->attrData.ulValueLen != signature_len)
 		FUNC_FAILS(CKR_SIGNATURE_LEN_RANGE, "Length of modulus does not match signature length");
 
-	rv = findAttribute(obj, CKA_PUBLIC_EXPONENT, &public_exponent);
+	rv = findAttribute(obj, CKA_PUBLIC_EXPONENT, &public_exponent_attr);
 
 	if (rv == -1)
 		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_EXPONENT not found");
 
-	params[0] = OSSL_PARAM_construct_BN(OSSL_PKEY_PARAM_RSA_N, modulus->attrData.pValue, modulus->attrData.ulValueLen);
-	params[1] = OSSL_PARAM_construct_BN(OSSL_PKEY_PARAM_RSA_E, public_exponent->attrData.pValue, public_exponent->attrData.ulValueLen);
-	params[2] = OSSL_PARAM_construct_end();
+	BIGNUM *modulus = BN_bin2bn(modulus_attr->attrData.pValue, modulus_attr->attrData.ulValueLen, NULL);
+	BIGNUM *public_exponent = BN_bin2bn(public_exponent_attr->attrData.pValue, public_exponent_attr->attrData.ulValueLen, NULL);
 
+	OSSL_PARAM_BLD *params_build = OSSL_PARAM_BLD_new();
+	if (params_build == NULL ||
+		!OSSL_PARAM_BLD_push_BN(params_build, OSSL_PKEY_PARAM_RSA_N, modulus) ||
+		!OSSL_PARAM_BLD_push_BN(params_build, OSSL_PKEY_PARAM_RSA_E, public_exponent))
+		FUNC_FAILVIAOUT(translateError(), "Could not create RSA Public Key");
+
+	OSSL_PARAM *params = OSSL_PARAM_BLD_to_param(params_build);
 	EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
 
 	if (ctx == NULL || params == NULL ||
@@ -300,7 +309,7 @@ static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 			EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) <= 0)
 		FUNC_FAILVIAOUT(translateError(), "Could not create RSA Public Key");
 
-	EVP_PKEY_print_public_fp(stdout, pkey, 0, NULL);
+	// EVP_PKEY_print_public_fp(stdout, pkey, 0, NULL);
 
 	switch (mech) {
 		case CKM_SHA1_RSA_PKCS:
@@ -334,8 +343,7 @@ static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 			rv = digestVerify(pkey, EVP_sha512(), RSA_PKCS1_PSS_PADDING, in, in_len, signature, signature_len);
 			break;
 		case CKM_RSA_PKCS:
-//			rv = verifyDigestInfo(rsa, in, in_len, signature, signature_len);
-			rv = CKR_OK;
+			rv = verifyDigestInfo(pkey, in, in_len, signature, signature_len);
 			break;
 		case CKM_SC_HSM_PSS_SHA1:
 			rv = verifyHash(pkey, EVP_sha1(), RSA_PKCS1_PSS_PADDING, in, in_len, signature, signature_len);
@@ -367,6 +375,10 @@ static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 out:
 	EVP_PKEY_free(pkey);
 	EVP_PKEY_CTX_free(ctx);
+	OSSL_PARAM_free(params);
+	OSSL_PARAM_BLD_free(params_build);
+	BN_free(public_exponent);
+	BN_free(modulus);
 
 	FUNC_RETURNS(rv);
 }
@@ -417,10 +429,11 @@ static CK_RV verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYT
 
 	curve_name = (char *)OSSL_EC_curve_nid2name(curve_nid);
 
+	// CKA_EC_POINT is wrapped as OCTET STRING
 	ppo = ecpoint->attrData.pValue;
 	len = ecpoint->attrData.ulValueLen;
 	if (1 != asn1Next(&ppo, &len, &tag, &pklen, &pk) ||
-			tag != 0x04 ||
+			tag != ASN1_OCTET_STRING ||
 			len != 0)
 		FUNC_FAILS(CKR_GENERAL_ERROR, "Invalid CKA_EC_POINT");
 
@@ -434,6 +447,8 @@ static CK_RV verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYT
 			EVP_PKEY_fromdata_init(ctx) <= 0 ||
 			EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) <= 0)
 		FUNC_FAILVIAOUT(translateError(), "Could not create EC Public Key");
+
+	EVP_PKEY_print_public_fp(stdout, pkey, 0, NULL);
 
 	len = sizeof(wrappedSig);
 	if (cvcWrapECDSASignature(signature, signature_len, wrappedSig, &len) < 0) {
@@ -463,14 +478,9 @@ static CK_RV verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYT
 	}
 
 out:
-	if (ecg != NULL)
-		EC_GROUP_free(ecg);
-
-	if (ecp != NULL)
-		EC_POINT_free(ecp);
-
-	if (pkey != NULL)
-		EVP_PKEY_free(pkey);
+	EC_GROUP_free(ecg);
+	EC_POINT_free(ecp);
+	EVP_PKEY_free(pkey);
 
 	FUNC_RETURNS(rv);
 }
