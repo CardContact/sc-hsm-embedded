@@ -517,70 +517,81 @@ CK_RV stripOAEPPadding(unsigned char *raw, int rawlen, CK_BYTE_PTR pData, CK_ULO
  */
 static CK_RV encryptRSA(struct p11Object_t *obj, int padding, CK_BYTE_PTR in, CK_ULONG in_len, CK_BYTE_PTR out, CK_ULONG_PTR out_len)
 {
-	struct p11Attribute_t *modulus;
-	struct p11Attribute_t *public_exponent;
-	unsigned char raw[512];
-	RSA *rsa;
+	struct p11Attribute_t *modulus_attr;
+	struct p11Attribute_t *public_exponent_attr;
+	size_t len;
+	EVP_PKEY *pkey = NULL;
 	CK_RV rv = 0;
 	int rc;
 
 	FUNC_CALLED();
 
-	rc = findAttribute(obj, CKA_MODULUS, &modulus);
+	rc = findAttribute(obj, CKA_MODULUS, &modulus_attr);
 
 	if (rc == -1)
 		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_MODULUS not found");
 
 	if (out == NULL) {
-		*out_len = modulus->attrData.ulValueLen;
+		*out_len = modulus_attr->attrData.ulValueLen;
 		FUNC_RETURNS(CKR_OK);
 	}
 
-	if (modulus->attrData.ulValueLen > *out_len) {
-		*out_len = modulus->attrData.ulValueLen;
+	if (modulus_attr->attrData.ulValueLen > *out_len) {
+		*out_len = modulus_attr->attrData.ulValueLen;
 		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Length of output buffer too small");
 	}
 
-	rc = findAttribute(obj, CKA_PUBLIC_EXPONENT, &public_exponent);
+	rc = findAttribute(obj, CKA_PUBLIC_EXPONENT, &public_exponent_attr);
 
 	if (rc == -1)
 		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_EXPONENT not found");
 
-	rsa = RSA_new();
+	BIGNUM *modulus = BN_bin2bn(modulus_attr->attrData.pValue, modulus_attr->attrData.ulValueLen, NULL);
+	BIGNUM *public_exponent = BN_bin2bn(public_exponent_attr->attrData.pValue, public_exponent_attr->attrData.ulValueLen, NULL);
 
-	#if (OPENSSL_VERSION_NUMBER < 0x10100000)
-	rsa->n = BN_bin2bn(modulus->attrData.pValue, modulus->attrData.ulValueLen, NULL);
-	rsa->e = BN_bin2bn(public_exponent->attrData.pValue, public_exponent->attrData.ulValueLen, NULL);
-	#else
-	BIGNUM *new_n = BN_bin2bn(modulus->attrData.pValue, modulus->attrData.ulValueLen, NULL);
-	BIGNUM *new_e = BN_bin2bn(public_exponent->attrData.pValue, public_exponent->attrData.ulValueLen, NULL);
+	OSSL_PARAM_BLD *params_build = OSSL_PARAM_BLD_new();
+	if (params_build == NULL ||
+		!OSSL_PARAM_BLD_push_BN(params_build, OSSL_PKEY_PARAM_RSA_N, modulus) ||
+		!OSSL_PARAM_BLD_push_BN(params_build, OSSL_PKEY_PARAM_RSA_E, public_exponent))
+		FUNC_FAILVIAOUT(translateError(), "Could not create RSA Public Key");
 
-	RSA_set0_key(rsa, new_n, new_e, NULL);
-	#endif
+	OSSL_PARAM *params = OSSL_PARAM_BLD_to_param(params_build);
+	EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
 
+	if (ctx == NULL || params == NULL ||
+			EVP_PKEY_fromdata_init(ctx) <= 0 ||
+			EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) <= 0)
+		FUNC_FAILVIAOUT(translateError(), "Could not create RSA Public Key");
+
+	// EVP_PKEY_print_public_fp(stdout, pkey, 0, NULL);
+
+	EVP_PKEY_CTX_free(ctx);
+	ctx = EVP_PKEY_CTX_new(pkey, NULL);
+
+	if (EVP_PKEY_encrypt_init(ctx) <= 0)
+		FUNC_FAILVIAOUT(translateError(), "Could not initialize encrypt");
+
+	EVP_PKEY_CTX_set_rsa_padding(ctx, padding);
 
 	if (padding == RSA_PKCS1_OAEP_PADDING) {
-#if (OPENSSL_VERSION_NUMBER >= 0x10002000)
-		rc = RSA_padding_add_PKCS1_OAEP_mgf1(raw, modulus->attrData.ulValueLen, in, in_len, NULL, 0, EVP_sha256(), NULL);
-		rc = RSA_public_encrypt(modulus->attrData.ulValueLen, raw, out, rsa, RSA_NO_PADDING);
-#else
-		RSA_free(rsa);
-		FUNC_RETURNS(CKR_FUNCTION_NOT_SUPPORTED);
-#endif
-	} else {
-		rc = RSA_public_encrypt(in_len, in, out, rsa, padding);
+		EVP_PKEY_CTX_set_rsa_oaep_md(ctx, EVP_sha256());
 	}
 
-	RSA_free(rsa);
+	len = *out_len;
+	if (EVP_PKEY_encrypt(ctx, out, &len, in, in_len) <= 0)
+		FUNC_FAILVIAOUT(translateError(), "Could not encrypt");
 
-	if (rc < 0) {
-		rv = translateError();
-		FUNC_FAILS(rv, "RSA_private_encrypt() failed");
-	}
+	*out_len = len;
+	rv = CKR_OK;
+out:
+	EVP_PKEY_free(pkey);
+	EVP_PKEY_CTX_free(ctx);
+	OSSL_PARAM_free(params);
+	OSSL_PARAM_BLD_free(params_build);
+	BN_free(public_exponent);
+	BN_free(modulus);
 
-	*out_len = rc;
-
-	FUNC_RETURNS(CKR_OK);
+	FUNC_RETURNS(rv);
 }
 
 
