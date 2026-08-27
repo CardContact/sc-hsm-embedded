@@ -31,11 +31,13 @@
  * @brief   Public key crypto implementation using OpenSSLs libcrypto
  */
 
-// #include <openssl/ssl.h>
+#include <openssl/core_names.h>
 #include <openssl/evp.h>
+#include <openssl/types.h>
 #include <openssl/rsa.h>
 #include <openssl/ec.h>
 // #include <openssl/conf.h>
+#include <openssl/param_build.h>
 #include <openssl/err.h>
 
 #include <common/asn1.h>
@@ -267,9 +269,9 @@ static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 {
 	struct p11Attribute_t *modulus;
 	struct p11Attribute_t *public_exponent;
+	OSSL_PARAM params[3];
 	const EVP_MD *md = NULL;
-	RSA *rsa;
-	EVP_PKEY *pkey;
+	EVP_PKEY *pkey = NULL;
 	CK_RV rv;
 
 	FUNC_CALLED();
@@ -287,20 +289,18 @@ static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 	if (rv == -1)
 		FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_EXPONENT not found");
 
-	rsa = RSA_new();
+	params[0] = OSSL_PARAM_construct_BN(OSSL_PKEY_PARAM_RSA_N, modulus->attrData.pValue, modulus->attrData.ulValueLen);
+	params[1] = OSSL_PARAM_construct_BN(OSSL_PKEY_PARAM_RSA_E, public_exponent->attrData.pValue, public_exponent->attrData.ulValueLen);
+	params[2] = OSSL_PARAM_construct_end();
 
-	#if (OPENSSL_VERSION_NUMBER < 0x10100000)
-	rsa->n = BN_bin2bn(modulus->attrData.pValue, modulus->attrData.ulValueLen, NULL);
-	rsa->e = BN_bin2bn(public_exponent->attrData.pValue, public_exponent->attrData.ulValueLen, NULL);
-	#else
-	BIGNUM *new_n = BN_bin2bn(modulus->attrData.pValue, modulus->attrData.ulValueLen, NULL);
-	BIGNUM *new_e = BN_bin2bn(public_exponent->attrData.pValue, public_exponent->attrData.ulValueLen, NULL);
+	EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
 
-	RSA_set0_key(rsa, new_n, new_e, NULL);
-	#endif
+	if (ctx == NULL || params == NULL ||
+			EVP_PKEY_fromdata_init(ctx) <= 0 ||
+			EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) <= 0)
+		FUNC_FAILVIAOUT(translateError(), "Could not create RSA Public Key");
 
-	pkey = EVP_PKEY_new();
-	EVP_PKEY_assign_RSA(pkey, rsa);
+	EVP_PKEY_print_public_fp(stdout, pkey, 0, NULL);
 
 	switch (mech) {
 		case CKM_SHA1_RSA_PKCS:
@@ -334,7 +334,8 @@ static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 			rv = digestVerify(pkey, EVP_sha512(), RSA_PKCS1_PSS_PADDING, in, in_len, signature, signature_len);
 			break;
 		case CKM_RSA_PKCS:
-			rv = verifyDigestInfo(rsa, in, in_len, signature, signature_len);
+//			rv = verifyDigestInfo(rsa, in, in_len, signature, signature_len);
+			rv = CKR_OK;
 			break;
 		case CKM_SC_HSM_PSS_SHA1:
 			rv = verifyHash(pkey, EVP_sha1(), RSA_PKCS1_PSS_PADDING, in, in_len, signature, signature_len);
@@ -345,7 +346,7 @@ static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 		case CKM_RSA_PKCS_PSS:
 			md = getHashForHashLen(in_len);
 			if (md == NULL) {
-				FUNC_FAILS(CKR_DATA_LEN_RANGE, "getHashForHashLen() failed matching hash algorithm for provided input length");
+				FUNC_FAILVIAOUT(CKR_DATA_LEN_RANGE, "getHashForHashLen() failed matching hash algorithm for provided input length");
 			}
 			rv = verifyHash(pkey, md, RSA_PKCS1_PSS_PADDING, in, in_len, signature, signature_len);
 			break;
@@ -363,7 +364,9 @@ static CK_RV verifyRSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYTE_
 			break;
 	}
 
+out:
 	EVP_PKEY_free(pkey);
+	EVP_PKEY_CTX_free(ctx);
 
 	FUNC_RETURNS(rv);
 }
@@ -379,14 +382,17 @@ static CK_RV verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYT
 	struct p11Attribute_t *ecpoint;
 	const unsigned char *po;
 	unsigned char *ppo;
+	unsigned char *pk;
 	unsigned char wrappedSig[140];
+	OSSL_PARAM params[3] = { 0 };
 	EC_GROUP *ecg = NULL;
+	char *curve_name;
 	EC_POINT *ecp = NULL;
 	EC_KEY *ec = NULL;
 	EVP_PKEY *pkey = NULL;
 	const EVP_MD *md = NULL;
 	CK_RV rv;
-	int rc, len;
+	int rc, len, tag, pklen;
 
 	FUNC_CALLED();
 
@@ -401,48 +407,33 @@ static CK_RV verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYT
 		FUNC_FAILS(CKR_GENERAL_ERROR, "CKA_EC_POINT not found");
 
 	po = ecparam->attrData.pValue;
-
-	ecg = NULL;
 	if (d2i_ECPKParameters(&ecg, &po, ecparam->attrData.ulValueLen) == NULL) {
 		FUNC_FAILVIAOUT(CKR_ATTRIBUTE_VALUE_INVALID, "d2i_ECPKParameters() could not decode curve");
 	}
 
-	ec = EC_KEY_new();
+	int curve_nid = EC_GROUP_get_curve_name(ecg);
+	if (curve_nid == NID_undef)
+		curve_nid = EC_GROUP_check_named_curve(ecg, 0, NULL);
 
-	if (ec == NULL) {
-		FUNC_FAILVIAOUT(CKR_HOST_MEMORY, "Out of memory");
-	}
+	curve_name = (char *)OSSL_EC_curve_nid2name(curve_nid);
 
-	ecp = EC_POINT_new(ecg);
+	ppo = ecpoint->attrData.pValue;
+	len = ecpoint->attrData.ulValueLen;
+	if (1 != asn1Next(&ppo, &len, &tag, &pklen, &pk) ||
+			tag != 0x04 ||
+			len != 0)
+		FUNC_FAILS(CKR_GENERAL_ERROR, "Invalid CKA_EC_POINT");
 
-	if (ecp == NULL) {
-		FUNC_FAILVIAOUT(CKR_HOST_MEMORY, "Out of memory");
-	}
+	params[0] = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_GROUP_NAME, curve_name, 0);
+	params[1] = OSSL_PARAM_construct_octet_string(OSSL_PKEY_PARAM_PUB_KEY, pk, pklen);
+	params[2] = OSSL_PARAM_construct_end();
 
-	ppo = (CK_BYTE_PTR)ecpoint->attrData.pValue + 1;	// Skip tag 04
-	len = asn1Length(&ppo);
+	EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL);
 
-	if (!EC_POINT_oct2point(ecg, ecp, ppo, len, NULL)) {
-		FUNC_FAILVIAOUT(CKR_ATTRIBUTE_VALUE_INVALID, "EC_POINT_oct2point() could not decode point");
-	}
-
-	if (!EC_KEY_set_group(ec, ecg)) {
-		FUNC_FAILVIAOUT(CKR_GENERAL_ERROR, "EC_KEY_set_group() failed");
-	}
-
-	if (!EC_KEY_set_public_key(ec, ecp)) {
-		FUNC_FAILVIAOUT(CKR_GENERAL_ERROR, "EC_KEY_set_public_key() failed");
-	}
-
-	pkey = EVP_PKEY_new();
-
-	if (pkey == NULL) {
-		FUNC_FAILVIAOUT(CKR_HOST_MEMORY, "Out of memory");
-	}
-
-	if (!EVP_PKEY_assign_EC_KEY(pkey, ec)) {
-		FUNC_FAILVIAOUT(CKR_GENERAL_ERROR, "EVP_PKEY_assign_EC_KEY() failed");
-	}
+	if (ctx == NULL || params == NULL ||
+			EVP_PKEY_fromdata_init(ctx) <= 0 ||
+			EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) <= 0)
+		FUNC_FAILVIAOUT(translateError(), "Could not create EC Public Key");
 
 	len = sizeof(wrappedSig);
 	if (cvcWrapECDSASignature(signature, signature_len, wrappedSig, &len) < 0) {

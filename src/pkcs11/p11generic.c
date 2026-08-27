@@ -449,8 +449,8 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetInfo)
 
 	memset(pInfo, 0, sizeof(CK_INFO));
 
-	pInfo->cryptokiVersion.major = 2;
-	pInfo->cryptokiVersion.minor = 20;
+	pInfo->cryptokiVersion.major = CRYPTOKI_VERSION_MAJOR;
+	pInfo->cryptokiVersion.minor = CRYPTOKI_VERSION_MINOR;
 
 	strbpcpy(pInfo->manufacturerID,
 			"CardContact (www.cardcontact.de)",
