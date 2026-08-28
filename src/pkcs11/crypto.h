@@ -40,7 +40,6 @@
 
 void cryptoInitialize();
 void cryptoFinalize();
-CK_RV stripOAEPPadding(unsigned char *raw, int rawlen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen);
 CK_RV cryptoVerifyInit(struct p11Object_t *, CK_MECHANISM_PTR);
 CK_RV cryptoVerify(struct p11Object_t *, CK_MECHANISM_PTR, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG);
 CK_RV cryptoEncryptInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech);

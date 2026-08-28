@@ -448,7 +448,7 @@ static CK_RV verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYT
 			EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) <= 0)
 		FUNC_FAILVIAOUT(translateError(), "Could not create EC Public Key");
 
-	EVP_PKEY_print_public_fp(stdout, pkey, 0, NULL);
+	// EVP_PKEY_print_public_fp(stdout, pkey, 0, NULL);
 
 	len = sizeof(wrappedSig);
 	if (cvcWrapECDSASignature(signature, signature_len, wrappedSig, &len) < 0) {
@@ -483,31 +483,6 @@ out:
 	EVP_PKEY_free(pkey);
 
 	FUNC_RETURNS(rv);
-}
-
-
-
-CK_RV stripOAEPPadding(unsigned char *raw, int rawlen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
-{
-	CK_RV rv;
-	int rc;
-
-	FUNC_CALLED();
-
-#if (OPENSSL_VERSION_NUMBER >= 0x10002000)
-	rc = RSA_padding_check_PKCS1_OAEP_mgf1(pData, (int)*pulDataLen, raw, rawlen, rawlen, NULL, 0, EVP_sha256(), NULL);
-	if (rc < 0) {
-		rv = translateError();
-		FUNC_FAILS(rv, "RSA_padding_check_PKCS1_OAEP_mgf1() failed");
-	}
-
-	*pulDataLen = (CK_ULONG)rc;
-	rv = CKR_OK;
-#else
-	rv = CKR_FUNCTION_NOT_SUPPORTED;
-#endif
-
-	FUNC_RETURNS(CKR_OK);
 }
 
 
@@ -574,7 +549,7 @@ static CK_RV encryptRSA(struct p11Object_t *obj, int padding, CK_BYTE_PTR in, CK
 	EVP_PKEY_CTX_set_rsa_padding(ctx, padding);
 
 	if (padding == RSA_PKCS1_OAEP_PADDING) {
-		EVP_PKEY_CTX_set_rsa_oaep_md(ctx, EVP_sha256());
+		EVP_PKEY_CTX_set_rsa_oaep_md(ctx, EVP_sha1());
 	}
 
 	len = *out_len;

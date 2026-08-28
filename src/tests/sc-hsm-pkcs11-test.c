@@ -1081,10 +1081,15 @@ int testRSADecryption(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, int id, CK_ME
 
 		len = sizeof(plain);
 		rc = p11->C_Decrypt(session, cipher, cipherlen, plain, &len);
-		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
 
-		bin2str(scr, sizeof(scr), plain, len);
-		printf("Plain:\n%s\n%s\n", scr, verdict(!memcmp(plain, secret, len)));
+		if (mt == CKM_RSA_PKCS_OAEP && len == 512 && rc == CKR_KEY_FUNCTION_NOT_PERMITTED) {
+			printf("Skipping RSA OAEP witgh 4096 bit key as not supported\n");
+		} else {
+			printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+			bin2str(scr, sizeof(scr), plain, len);
+			printf("Plain:\n%s\n%s\n", scr, verdict(!memcmp(plain, secret, len)));
+		}
 
 		keyno++;
 	}

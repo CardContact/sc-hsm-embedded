@@ -53,6 +53,7 @@
 
 #define ALGO_RSA_RAW		0x20		/* RSA signature with external padding */
 #define ALGO_RSA_DECRYPT	0x21		/* RSA decrypt */
+#define ALGO_RSA_OAEP		0x23		/* RSA OEAP decrypt */
 #define ALGO_RSA_PKCS1		0x30		/* RSA signature with DigestInfo input and PKCS#1 V1.5 padding */
 #define ALGO_RSA_PKCS1_SHA1	0x31		/* RSA signature with SHA-1 hash and PKCS#1 V1.5 padding */
 #define ALGO_RSA_PKCS1_SHA256	0x33		/* RSA signature with SHA-256 hash and PKCS#1 V1.5 padding */
