@@ -3,5 +3,5 @@ pkcs11 = shared_library('sc-hsm-pkcs11', ['certificateobject.c','object.c','p11s
 'crypto-libcrypto.c','p11mechanisms.c','privatekeyobject.c','slot-ctapi.c','slotpool.c','token-starcos-bnotk.c','token.c',
 'dataobject.c','p11objects.c','publickeyobject.c','slot-pcsc-event.c','strbpcpy.c','token-starcos-dgn.c'], 
 	include_directories : core_inc,
-	dependencies: [libpcsclite_dep, libcrypto_dep],
-	link_with: common_lib)
+	dependencies: [libpcsclite_dep, libcrypto_dep, libcurl_dep ],
+	link_with: [ common_lib, ramoverhttp_lib ])
