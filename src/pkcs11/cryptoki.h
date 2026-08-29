@@ -26,7 +26,8 @@
 /* Specifies that the function is a DLL entry point. */
 
 #if defined(WIN32) || defined(_WIN32)
-#define CK_IMPORT_SPEC __declspec(dllimport)
+#define CK_IMPORT_SPEC
+// #define CK_IMPORT_SPEC __declspec(dllimport)
 #pragma pack(push, cryptoki, 1)
 #else
 #define CK_IMPORT_SPEC

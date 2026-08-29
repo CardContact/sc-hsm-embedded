@@ -22,12 +22,10 @@ Install libcurl
 
 Create build environment
 
-    meson setup build-win
+    meson setup --prefer-static build
 
 Build
 
-    cd build-win
-    meson compile
+    cd build
+    meson compile -v
 
-Bundle src/ramoverthttp/ram-client.exe with libcurl-4.dll libwinpthread-1.dll libzstd.dll zlib1.dll
-from /msys64/ucrt64/lib.

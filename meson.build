@@ -1,6 +1,6 @@
 project('sc-hsm-embedded', 'c',
   version : '2.13',
-  default_options : ['warning_level=3'])
+  default_options : ['warning_level=0'])
 
 # libusb_dep = dependency('libusb-1.0', required: true)
 
@@ -25,6 +25,11 @@ compiler = meson.get_compiler('c')
 
 if compiler.has_function('memset_s', prefix : '#include <string.h>')
   add_project_arguments('-DHAVE_MEMSET_S', language: 'c')
+endif
+
+if build_machine.system() == 'windows'
+	message('Building for Windows')
+	add_project_arguments('-DCURL_STATICLIB', language: 'c')
 endif
 
 core_inc = include_directories('src')

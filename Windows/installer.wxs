@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='windows-1252'?>
+
+<?define ProductName="SmartCard-HSM Middleware (64-Bit $(var.DebRel))" ?>
+<?define UpgradeCode = "{b448e37f-c6f3-4fb7-8ee8-11b18aefac1d}" ?>
+
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+	<Product Name='$(var.ProductName)' Manufacturer='CardContact Systems GmbH'
+		Id='*' 
+		UpgradeCode='$(var.UpgradeCode)'
+		Language='1033' Codepage='1252' Version='$(var.Version)'>
+
+		<Package Id='*' Keywords='Installer' Description="SmartCard-HSM Middleware Installer"
+			Comments='PKCS#11 Module' Manufacturer='CardContact Systems GmbH'
+			InstallerVersion='200' Languages='1033' Compressed='yes' SummaryCodepage='1252'
+			InstallScope='perMachine' />
+
+		<Media Id="1" Cabinet="sc_hsm_middleware.cab" EmbedCab="yes" CompressionLevel="high"/>
+
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Directory Id="ProgramFiles64Folder" Name="PFiles">
+				<Directory Id="CardContact_64" Name="CardContact">
+					<Directory Id="INSTALLDIR64" Name="SmartCard-HSM Middleware">
+						<Component Id="sc_hsm_pkcs11_test" Guid="*" Win64="yes">
+							<File Id="sc_hsm_pkcs11_test" Source="..\build\src\tests\sc-hsm-pkcs11-test.exe" Vital="yes"/>
+						</Component>
+						<Component Id="ram_client" Guid="*" Win64="yes">
+							<File Id="ram_client" Source="..\build\src\ramoverhttp\ram-client.exe" Vital="yes"/>
+						</Component>
+						<Component Id="sc_hsm_pkcs11" Guid="*" Win64="yes">
+							<File Id="sc_hsm_pkcs11" Name="sc-hsm-pkcs11.dll" Source="..\build\src\pkcs11\libsc-hsm-pkcs11.dll" Vital="yes"/>
+						</Component>
+					</Directory>
+				</Directory>
+			</Directory>
+		</Directory>
+
+		<Feature Id='Complete' Level='1'>
+			<ComponentRef Id='sc_hsm_pkcs11_test' />
+			<ComponentRef Id='sc_hsm_pkcs11' />
+			<ComponentRef Id='ram_client' />
+		</Feature>
+
+	</Product>
+</Wix>
+
