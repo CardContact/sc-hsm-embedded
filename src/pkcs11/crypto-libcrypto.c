@@ -443,7 +443,7 @@ static CK_RV verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYT
 
 	EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL);
 
-	if (ctx == NULL || params == NULL ||
+	if (ctx == NULL ||
 			EVP_PKEY_fromdata_init(ctx) <= 0 ||
 			EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) <= 0)
 		FUNC_FAILVIAOUT(translateError(), "Could not create EC Public Key");
