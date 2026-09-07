@@ -185,23 +185,30 @@ int starcosReadTLVEF(struct p11Token_t *token, bytestring fid, unsigned char *co
 
 	FUNC_CALLED();
 
-	// Select EF
-	rc = transmitAPDU(token->slot, 0x00, 0xA4, 0x02, 0x0C,
-			(int)fid->len, fid->val,
-			0, NULL, 0, &SW1SW2);
+	if (fid->len == 1) {
+		// SFI-based access: READ BINARY with P1 = 0x80|SFI implicitly selects and reads
+		rc = transmitAPDU(token->slot, 0x00, 0xB0, (unsigned char)(0x80 | fid->val[0]), 0x00,
+				0, NULL,
+				0, content, (int)len, &SW1SW2);
+	} else {
+		// Select EF by File ID
+		rc = transmitAPDU(token->slot, 0x00, 0xA4, 0x02, 0x0C,
+				(int)fid->len, fid->val,
+				0, NULL, 0, &SW1SW2);
 
-	if (rc < 0) {
-		FUNC_FAILS(rc, "transmitAPDU failed");
+		if (rc < 0) {
+			FUNC_FAILS(rc, "transmitAPDU failed");
+		}
+
+		if (SW1SW2 != 0x9000) {
+			FUNC_FAILS(-1, "File not found");
+		}
+
+		// Read first block to determine tag and length
+		rc = transmitAPDU(token->slot, 0x00, 0xB0, 0x00, 0x00,
+				0, NULL,
+				0, content, (int)len, &SW1SW2);
 	}
-
-	if (SW1SW2 != 0x9000) {
-		FUNC_FAILS(-1, "File not found");
-	}
-
-	// Read first block to determine tag and length
-	rc = transmitAPDU(token->slot, 0x00, 0xB0, 0x00, 0x00,
-			0, NULL,
-			0, content, (int)len, &SW1SW2);
 
 	if (rc < 0) {
 		FUNC_FAILS(rc, "transmitAPDU failed");
