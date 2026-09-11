@@ -2862,9 +2862,9 @@ int main(int argc, char *argv[])
 				exit(1);
 			}
 
-			printf("Slot manufacturer: %s\n", p11string(slotinfo.manufacturerID, sizeof(slotinfo.manufacturerID)));
-			printf("Slot ID : Slot description: %ld : %s\n", slotid, p11string(slotinfo.slotDescription, sizeof(slotinfo.slotDescription)));
-			printf("Slot flags: %x\n", (int)slotinfo.flags);
+			printf("Slot manufacturer     : %s\n", p11string(slotinfo.manufacturerID, sizeof(slotinfo.manufacturerID)));
+			printf("Slot ID / description : %ld / %s\n", slotid, p11string(slotinfo.slotDescription, sizeof(slotinfo.slotDescription)));
+			printf("Slot flags            : %x\n", (int)slotinfo.flags);
 
 			printf("Calling C_GetTokenInfo ");
 
@@ -2878,10 +2878,10 @@ int main(int argc, char *argv[])
 			}
 
 			if (rc == CKR_OK) {
-				printf("Token label       : %s\n", p11string(tokeninfo.label, sizeof(tokeninfo.label)));
-				printf("Token manufacturer: %s\n", p11string(tokeninfo.manufacturerID, sizeof(tokeninfo.manufacturerID)));
-				printf("Token model       : %s\n", p11string(tokeninfo.model, sizeof(tokeninfo.model)));
-				printf("Token flags       : %lx\n", tokeninfo.flags);
+				printf("Token label           : %s\n", p11string(tokeninfo.label, sizeof(tokeninfo.label)));
+				printf("Token manufacturer    : %s\n", p11string(tokeninfo.manufacturerID, sizeof(tokeninfo.manufacturerID)));
+				printf("Token model           : %s\n", p11string(tokeninfo.model, sizeof(tokeninfo.model)));
+				printf("Token flags           : %lx\n", tokeninfo.flags);
 
 				if (pin == NULL && url == NULL) {
 					printf("Skipping tests that require a PIN. PIN can be set with --pin\n");
