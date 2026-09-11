@@ -48,6 +48,7 @@ extern "C" {
  * Structure to store EC domain parameter
  */
 struct ec_curve {
+	char *name;
 	struct bytestring_s oid;
 	struct bytestring_s prime;
 	struct bytestring_s coefficientA;
