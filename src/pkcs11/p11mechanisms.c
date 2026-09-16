@@ -1656,7 +1656,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_WrapKey)(
 		CK_ULONG_PTR pulWrappedKeyLen
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	struct p11Object_t *pWrapKey, *pKeyToWrap;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
+	struct p11Attribute_t *attr;
 
 	FUNC_CALLED();
 
@@ -1664,9 +1668,68 @@ CK_DECLARE_FUNCTION(CK_RV, C_WrapKey)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
+	if (!isValidPtr(pMechanism)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pulWrappedKeyLen)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (pWrappedKey && !isValidPtr(pWrappedKey)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	/* Validate wrapping key */
+	rv = findSlotKey(pSlot, hWrappingKey, &pWrapKey);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	/* Check CKA_WRAP on the wrapping key */
+	if (findAttribute(pWrapKey, CKA_WRAP, &attr) >= 0) {
+		if (attr->attrData.ulValueLen == sizeof(CK_BBOOL)
+				&& *(CK_BBOOL *)attr->attrData.pValue == CK_FALSE) {
+			FUNC_FAILS(CKR_KEY_NOT_WRAPPABLE, "Wrapping key does not have CKA_WRAP=TRUE");
+		}
+	}
+
+	/* Validate wrapped key */
+	rv = findSlotKey(pSlot, hKey, &pKeyToWrap);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	/* Check CKA_EXTRACTABLE on the wrapped key */
+	if (findAttribute(pKeyToWrap, CKA_EXTRACTABLE, &attr) >= 0) {
+		if (attr->attrData.ulValueLen == sizeof(CK_BBOOL)
+				&& *(CK_BBOOL *)attr->attrData.pValue == CK_FALSE) {
+			FUNC_FAILS(CKR_KEY_UNEXTRACTABLE, "Key is not extractable");
+		}
+	}
+
+	if (pWrapKey->C_WrapKey != NULL) {
+		rv = pWrapKey->C_WrapKey(pWrapKey, pMechanism, pKeyToWrap, pWrappedKey, pulWrappedKeyLen);
+	} else {
+		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "WrapKey operation not supported by token");
+	}
+
 	FUNC_RETURNS(rv);
 }
-
 
 
 /*  C_UnwrapKey unwraps (i.e. decrypts) a wrapped key, creating a new private key
@@ -1682,7 +1745,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_UnwrapKey)(
 		CK_OBJECT_HANDLE_PTR phKey
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	struct p11Object_t *pKey, *pNewKey;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
+	struct p11Attribute_t *attr;
 
 	FUNC_CALLED();
 
@@ -1690,9 +1757,68 @@ CK_DECLARE_FUNCTION(CK_RV, C_UnwrapKey)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
+	if (!isValidPtr(pMechanism)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(phKey)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pWrappedKey)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pTemplate)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	/* Validate unwrapping key */
+	rv = findSlotKey(pSlot, hUnwrappingKey, &pKey);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	/* Check CKA_UNWRAP on the unwrapping key */
+	if (findAttribute(pKey, CKA_UNWRAP, &attr) >= 0) {
+		if (attr->attrData.ulValueLen == sizeof(CK_BBOOL)
+				&& *(CK_BBOOL *)attr->attrData.pValue == CK_FALSE) {
+			FUNC_FAILS(CKR_KEY_NOT_WRAPPABLE, "Unwrapping key does not have CKA_UNWRAP=TRUE");
+		}
+	}
+
+	if (pKey->C_UnwrapKey != NULL) {
+		rv = pKey->C_UnwrapKey(pKey, pMechanism, pWrappedKey, ulWrappedKeyLen,
+				pTemplate, ulAttributeCount, &pNewKey);
+	} else {
+		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "UnwrapKey operation not supported by token");
+	}
+
+	if (rv != CKR_OK) {
+		return rv;
+	}
+
+	if (!pNewKey->tokenObj) {
+		addSessionObject(pSession, pNewKey);
+	}
+
+	*phKey = pNewKey->handle;
+
 	FUNC_RETURNS(rv);
 }
-
 
 
 /*  C_DeriveKey derives a key from a base key, creating a new key object. */

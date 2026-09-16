@@ -84,6 +84,8 @@ static const CK_MECHANISM_TYPE p11MechanismList[] = {
 		CKM_ECDSA_SHA1,
 		CKM_AES_CBC,
 		CKM_AES_CMAC,
+		CKM_AES_KEY_WRAP,
+		CKM_AES_KEY_WRAP_PAD,
 		CKM_RSA_PKCS_OAEP,
 #ifdef ENABLE_LIBCRYPTO
 		CKM_SHA_1,
@@ -1304,6 +1306,8 @@ static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char
 		p11prikey->C_EncryptInit = sc_hsm_C_EncryptInit;
 		p11prikey->C_Encrypt = sc_hsm_C_Encrypt;
 		p11prikey->C_DeriveKey = sc_hsm_C_DeriveSymmetricKey;
+		p11prikey->C_WrapKey = sc_hsm_C_WrapKey;
+		p11prikey->C_UnwrapKey = sc_hsm_C_UnwrapKey;
 	} else {
 		rc = decodePrivateKeyDescription(prkd, rc, &p15key);
 
@@ -1566,6 +1570,16 @@ static int createSecretKeyDescription(
 	rc = findAttributeInTemplate(CKA_DERIVE, pSecretKeyTemplate, ulSecretKeyAttributeCount);
 	if ((rc >= 0) && *(unsigned char *)pSecretKeyTemplate[rc].pValue) {
 		p15key->usage |= P15_DERIVE;
+	}
+
+	rc = findAttributeInTemplate(CKA_WRAP, pSecretKeyTemplate, ulSecretKeyAttributeCount);
+	if ((rc >= 0) && *(unsigned char *)pSecretKeyTemplate[rc].pValue) {
+		p15key->usage |= P15_KEYENCIPHER;
+	}
+
+	rc = findAttributeInTemplate(CKA_UNWRAP, pSecretKeyTemplate, ulSecretKeyAttributeCount);
+	if ((rc >= 0) && *(unsigned char *)pSecretKeyTemplate[rc].pValue) {
+		p15key->usage |= P15_KEYDECIPHER;
 	}
 
 	rc = findAttributeInTemplate(CKA_LABEL, pSecretKeyTemplate, ulSecretKeyAttributeCount);
@@ -3007,6 +3021,8 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 	case CKM_AES_KEY_GEN:
 	case CKM_AES_CBC:
 	case CKM_AES_CMAC:
+	case CKM_AES_KEY_WRAP:
+	case CKM_AES_KEY_WRAP_PAD:
 		pInfo->ulMinKeySize = 16;
 		pInfo->ulMaxKeySize = 32;
 		break;
@@ -3082,6 +3098,10 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 	case CKM_AES_KEY_GEN:
 		pInfo->flags = CKF_HW|CKF_GENERATE;
 		break;
+	case CKM_AES_KEY_WRAP:
+	case CKM_AES_KEY_WRAP_PAD:
+		pInfo->flags = CKF_HW|CKF_WRAP;
+		break;
 	case CKM_AES_CBC:
 		pInfo->flags = CKF_HW|CKF_DECRYPT|CKF_ENCRYPT;
 		break;
@@ -3097,6 +3117,393 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 
 }
 
+
+
+/*
+ * Hardware AES block encrypt (single 16-byte block, zero-IV CBC == ECB).
+ * Used by the KWP core to perform AES operations on the card.
+ * KWP checks only CKA_WRAP/CKA_UNWRAP; CKA_ENCRYPT/CKA_DECRYPT are
+ * ignored for these internal primitive calls.
+ */
+static int kwp_encrypt_block(struct p11Object_t *pObject, unsigned char *input, unsigned char *output)
+{
+	int rc;
+	unsigned short SW1SW2;
+
+	rc = transmitAPDU(pObject->token->slot, 0x80, 0x78,
+			(unsigned char)pObject->tokenid, ALGO_AES_CBC_ENCRYPT,
+			16, input,
+			0, output, 16, &SW1SW2);
+
+	if (rc < 0)
+		return -1;
+
+	if (SW1SW2 != 0x9000)
+		return -1;
+
+	return 0;
+}
+
+
+/*
+ * Hardware AES block decrypt (single 16-byte block, zero-IV CBC == ECB).
+ */
+static int kwp_decrypt_block(struct p11Object_t *pObject, unsigned char *input, unsigned char *output)
+{
+	int rc;
+	unsigned short SW1SW2;
+
+	rc = transmitAPDU(pObject->token->slot, 0x80, 0x78,
+			(unsigned char)pObject->tokenid, ALGO_AES_CBC_DECRYPT,
+			16, input,
+			0, output, 16, &SW1SW2);
+
+	if (rc < 0)
+		return -1;
+
+	if (SW1SW2 != 0x9000)
+		return -1;
+
+	return 0;
+}
+
+
+/*
+ * RFC 3394 Section 2.2.1 core: wrap n 64-bit blocks with IV.
+ */
+static CK_RV kwp_wrap_core(struct p11Object_t *pObject, unsigned char *iv,
+		unsigned char *R, int n, unsigned char *output)
+{
+	int i, j, t;
+	unsigned char A[8];
+	unsigned char B[16];
+
+	memcpy(A, iv, 8);
+
+	for (j = 0; j <= 5; j++) {
+		for (i = 1; i <= n; i++) {
+			/* B = AES(K, A | R[i]) */
+			memcpy(B, A, 8);
+			memcpy(B + 8, R + ((i - 1) * 8), 8);
+
+			if (kwp_encrypt_block(pObject, B, B) < 0)
+				return CKR_DEVICE_ERROR;
+
+			/* A = MSB(64, B) ^ t where t = n*j + i */
+			t = n * j + i;
+			memcpy(A, B, 8);
+			A[7] ^= (t & 0xFF);
+			A[6] ^= ((t >> 8) & 0xFF);
+			A[5] ^= ((t >> 16) & 0xFF);
+			A[4] ^= ((t >> 24) & 0xFF);
+
+			/* R[i] = LSB(64, B) */
+			memcpy(R + ((i - 1) * 8), B + 8, 8);
+		}
+	}
+
+	/* Output: A followed by R[1..n] */
+	memcpy(output, A, 8);
+	memcpy(output + 8, R, n * 8);
+
+	return CKR_OK;
+}
+
+
+/*
+ * RFC 3394 Section 2.2.2 inverse: unwrap n+1 64-bit blocks.
+ */
+static CK_RV kwp_unwrap_core(struct p11Object_t *pObject, unsigned char *input,
+		int in_blocks, unsigned char *output)
+{
+	int i, j, t;
+	int n = in_blocks - 1;
+	unsigned char A[8];
+	unsigned char B[16];
+	unsigned char R[2048];  /* large enough for any key */
+
+	memcpy(A, input, 8);
+	memcpy(R, input + 8, n * 8);
+
+	for (j = 5; j >= 0; j--) {
+		for (i = n; i >= 1; i--) {
+			t = n * j + i;
+
+			/* A = A ^ t */
+			A[7] ^= (t & 0xFF);
+			A[6] ^= ((t >> 8) & 0xFF);
+			A[5] ^= ((t >> 16) & 0xFF);
+			A[4] ^= ((t >> 24) & 0xFF);
+
+			/* B = AES^-1(K, A | R[i]) */
+			memcpy(B, A, 8);
+			memcpy(B + 8, R + ((i - 1) * 8), 8);
+
+			if (kwp_decrypt_block(pObject, B, B) < 0)
+				return CKR_DEVICE_ERROR;
+
+			memcpy(A, B, 8);
+			memcpy(R + ((i - 1) * 8), B + 8, 8);
+		}
+	}
+
+	memcpy(output, A, 8);
+	memcpy(output + 8, R, n * 8);
+
+	return CKR_OK;
+}
+
+
+static CK_RV sc_hsm_C_WrapKey(struct p11Object_t *pObject, CK_MECHANISM_PTR mech,
+		struct p11Object_t *pWrappedKey,
+		CK_BYTE_PTR pWrappedKeyData, CK_ULONG_PTR pulWrappedKeyLen)
+{
+	CK_RV rv;
+	struct p11Attribute_t *valueAttr;
+	unsigned char plaintext[256 + 7]; /* padded input */
+	unsigned char AIV[8];
+	unsigned char *input;
+	CK_ULONG m;
+	CK_ULONG padded_len;
+	int n;
+	unsigned char R[256]; /* at most 32 8-byte blocks */
+	unsigned char output[16 + 256 + 8]; /* AIV + up to 256 bytes */
+
+	FUNC_CALLED();
+
+	/* Get the plaintext key from CKA_VALUE */
+	if (findAttribute(pWrappedKey, CKA_VALUE, &valueAttr) < 0) {
+		FUNC_FAILS(CKR_KEY_UNEXTRACTABLE, "Key value not available");
+	}
+
+	input = valueAttr->attrData.pValue;
+	m = valueAttr->attrData.ulValueLen;
+
+	if (m > 256) {
+		FUNC_FAILS(CKR_KEY_SIZE_RANGE, "Key too large to wrap");
+	}
+
+	if (mech->mechanism == CKM_AES_KEY_WRAP) {
+		/* RFC 3394: m >= 8 and m % 8 == 0 */
+		if (m < 8 || (m % 8) != 0) {
+			FUNC_FAILS(CKR_KEY_SIZE_RANGE, "Key size must be multiple of 8 for RFC 3394");
+		}
+
+		/* Default IV: A6A6A6A6A6A6A6A6 */
+		memset(AIV, 0xA6, 8);
+		padded_len = m;
+		memcpy(plaintext, input, m);
+	} else {
+		/* RFC 5649: m >= 1 */
+		if (m < 1) {
+			FUNC_FAILS(CKR_KEY_SIZE_RANGE, "Key too small");
+		}
+
+		/* AIV = A65959A6 || MLI (32-bit big-endian) */
+		AIV[0] = 0xA6; AIV[1] = 0x59; AIV[2] = 0x59; AIV[3] = 0xA6;
+		AIV[4] = (m >> 24) & 0xFF;
+		AIV[5] = (m >> 16) & 0xFF;
+		AIV[6] = (m >> 8) & 0xFF;
+		AIV[7] = m & 0xFF;
+
+		/* Pad to 8-byte boundary */
+		padded_len = ((m + 7) / 8) * 8;
+		memcpy(plaintext, input, m);
+		memset(plaintext + m, 0, padded_len - m);
+	}
+
+	n = padded_len / 8;
+
+	if (n == 0) {
+		FUNC_FAILS(CKR_KEY_SIZE_RANGE, "Empty key");
+	}
+
+	if (n == 1) {
+		/* Single-block shortcut: C[0]|C[1] = AES(K, AIV | P[1]) */
+		unsigned char block[16];
+		memcpy(block, AIV, 8);
+		memcpy(block + 8, plaintext, 8);
+
+		if (kwp_encrypt_block(pObject, block, block) < 0) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Hardware encrypt failed");
+		}
+
+		if (pWrappedKeyData == NULL) {
+			*pulWrappedKeyLen = 16;
+			FUNC_RETURNS(CKR_OK);
+		}
+
+		if (*pulWrappedKeyLen < 16) {
+			*pulWrappedKeyLen = 16;
+			FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Buffer too small");
+		}
+
+		*pulWrappedKeyLen = 16;
+		memcpy(pWrappedKeyData, block, 16);
+	} else {
+		/* Multi-block wrap */
+		memcpy(R, plaintext, n * 8);
+
+		rv = kwp_wrap_core(pObject, AIV, R, n, output);
+		if (rv != CKR_OK) {
+			return rv;
+		}
+
+		if (pWrappedKeyData == NULL) {
+			*pulWrappedKeyLen = (n + 1) * 8;
+			FUNC_RETURNS(CKR_OK);
+		}
+
+		if (*pulWrappedKeyLen < (CK_ULONG)((n + 1) * 8)) {
+			*pulWrappedKeyLen = (n + 1) * 8;
+			FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Buffer too small");
+		}
+
+		*pulWrappedKeyLen = (n + 1) * 8;
+		memcpy(pWrappedKeyData, output, (n + 1) * 8);
+	}
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+static CK_RV sc_hsm_C_UnwrapKey(struct p11Object_t *pObject, CK_MECHANISM_PTR mech,
+		CK_BYTE_PTR pWrappedKeyData, CK_ULONG ulWrappedKeyLen,
+		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulAttributeCount,
+		struct p11Object_t **phKey)
+{
+	CK_RV rv;
+	int n, in_blocks, rc;
+	unsigned char unwrapped[8 + 256 + 7]; /* IV + up to 256 bytes plaintext */
+	unsigned char *R_ptr;
+	unsigned char defaultIV[8];
+	CK_ULONG mli;
+
+	FUNC_CALLED();
+
+	if (ulWrappedKeyLen < 16 || (ulWrappedKeyLen % 8) != 0) {
+		FUNC_FAILS(CKR_WRAPPED_KEY_INVALID, "Wrapped key length invalid");
+	}
+
+	in_blocks = ulWrappedKeyLen / 8;
+	n = in_blocks - 1;
+
+	if (n < 1) {
+		FUNC_FAILS(CKR_WRAPPED_KEY_INVALID, "Too few blocks");
+	}
+
+	if (n == 1) {
+		/* Single-block unwrap: AES^-1(K, C[0]|C[1]) */
+		if (kwp_decrypt_block(pObject, pWrappedKeyData, unwrapped) < 0) {
+			FUNC_FAILS(CKR_DEVICE_ERROR, "Hardware decrypt failed");
+		}
+	} else {
+		/* Multi-block unwrap */
+		rv = kwp_unwrap_core(pObject, pWrappedKeyData, in_blocks, unwrapped);
+		if (rv != CKR_OK) {
+			return rv;
+		}
+	}
+
+	/* Validate and extract */
+	if (mech->mechanism == CKM_AES_KEY_WRAP) {
+		/* RFC 3394: verify default IV */
+		memset(defaultIV, 0xA6, 8);
+		if (memcmp(unwrapped, defaultIV, 8) != 0) {
+			FUNC_FAILS(CKR_WRAPPED_KEY_INVALID, "Invalid IV - wrong KEK?");
+		}
+
+		/* Output is unwrapped[8..8+n*8-1] */
+		mli = n * 8;
+		memmove(unwrapped, unwrapped + 8, mli);
+	} else {
+		/* RFC 5649 Section 3: three validation checks */
+		/* 1. MSB(32, A) == A65959A6 */
+		if (unwrapped[0] != 0xA6 || unwrapped[1] != 0x59 ||
+		    unwrapped[2] != 0x59 || unwrapped[3] != 0xA6) {
+			FUNC_FAILS(CKR_WRAPPED_KEY_INVALID, "Invalid AIV prefix");
+		}
+
+		/* MLI at bytes 4-7 (32-bit big-endian) */
+		mli = ((CK_ULONG)unwrapped[4] << 24) |
+		      ((CK_ULONG)unwrapped[5] << 16) |
+		      ((CK_ULONG)unwrapped[6] << 8) |
+		      (CK_ULONG)unwrapped[7];
+
+		/* 2. Check MLI bounds: 8*(n-1) < MLI <= 8*n */
+		if (mli <= (CK_ULONG)(8 * (n - 1)) || mli > (CK_ULONG)(8 * n)) {
+			FUNC_FAILS(CKR_WRAPPED_KEY_INVALID, "MLI out of bounds");
+		}
+
+		/* 3. Rightmost (8n - MLI) bytes of padded plaintext must be zero */
+		R_ptr = unwrapped + 8 + mli;
+		{
+			CK_ULONG pad = 8 * n - mli;
+			CK_ULONG k;
+			for (k = 0; k < pad; k++) {
+				if (R_ptr[k] != 0) {
+					FUNC_FAILS(CKR_WRAPPED_KEY_INVALID, "Padding bytes not zero");
+				}
+			}
+		}
+
+		/* Copy plaintext (without padding) */
+		memmove(unwrapped, unwrapped + 8, mli);
+	}
+
+	if (mli > 256) {
+		FUNC_FAILS(CKR_WRAPPED_KEY_LEN_RANGE, "Unwrapped key too large");
+	}
+
+	/* Create the key object */
+	{
+		struct p11Object_t *pKey;
+		CK_OBJECT_CLASS keyClass = CKO_SECRET_KEY;
+		CK_KEY_TYPE keyType = CKK_AES;
+		CK_BBOOL ckTrue = CK_TRUE;
+		CK_BBOOL ckFalse = CK_FALSE;
+		CK_ULONG keyLen = mli;
+
+		CK_ATTRIBUTE valueTemplate[] = {
+			{ CKA_CLASS, &keyClass, sizeof(keyClass) },
+			{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
+			{ CKA_TOKEN, &ckFalse, sizeof(CK_BBOOL) },
+			{ CKA_VALUE, unwrapped, (CK_ULONG)mli },
+			{ CKA_VALUE_LEN, &keyLen, sizeof(keyLen) },
+			{ CKA_EXTRACTABLE, &ckTrue, sizeof(CK_BBOOL) },
+		};
+		int valueTemplateCount = sizeof(valueTemplate) / sizeof(CK_ATTRIBUTE);
+
+		pKey = calloc(1, sizeof(struct p11Object_t));
+		if (pKey == NULL) {
+			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+		}
+
+		rc = createSecretKeyObject(valueTemplate, valueTemplateCount, pKey);
+		if (rc != CKR_OK) {
+			free(pKey);
+			FUNC_FAILS(rc, "Failed to create secret key object");
+		}
+
+		/* Apply caller's template attributes (overlay) */
+		{
+			int i;
+			for (i = 0; i < (int)ulAttributeCount; i++) {
+				if (pTemplate[i].type != CKA_CLASS &&
+				    pTemplate[i].type != CKA_KEY_TYPE &&
+				    pTemplate[i].type != CKA_TOKEN &&
+				    pTemplate[i].type != CKA_VALUE &&
+				    pTemplate[i].type != CKA_VALUE_LEN) {
+					addAttribute(pKey, &pTemplate[i]);
+				}
+			}
+		}
+
+		*phKey = pKey;
+	}
+
+	FUNC_RETURNS(CKR_OK);
+}
 
 
 struct p11TokenDriver *getSmartCardHSMTokenDriver()

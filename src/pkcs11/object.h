@@ -53,7 +53,7 @@ struct p11Attribute_t {
 
 
 
-struct p11Token_t;				// Forward declaration
+struct p11Token_t;			// Forward declaration
 
 /**
  * Internal structure to store common attributes of an object.
@@ -96,6 +96,9 @@ struct p11Object_t {
     CK_RV (*C_VerifyFinal)  (struct p11Object_t *, CK_MECHANISM_PTR, CK_BYTE_PTR, CK_ULONG);
 
     CK_RV (*C_DeriveKey)  (struct p11Object_t *, CK_MECHANISM_PTR, CK_ATTRIBUTE_PTR, CK_ULONG, struct p11Object_t **);
+
+    CK_RV (*C_WrapKey)    (struct p11Object_t *, CK_MECHANISM_PTR, struct p11Object_t *, CK_BYTE_PTR, CK_ULONG_PTR);
+    CK_RV (*C_UnwrapKey)  (struct p11Object_t *, CK_MECHANISM_PTR, CK_BYTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG, struct p11Object_t **);
 
     struct p11Attribute_t *attrList;    /**< The list of attributes              */
     struct p11Object_t *next;       /**< Pointer to next object              */
