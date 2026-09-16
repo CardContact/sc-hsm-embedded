@@ -188,6 +188,19 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 			if (rv != CKR_OK)
 				FUNC_FAILS(rv, "CKA_VALUE");
 
+			/* For AES keys the value must be a valid AES key length */
+			{
+				int ktPos = findAttributeInTemplate(CKA_KEY_TYPE, pTemplate, ulCount);
+
+				if (ktPos >= 0
+						&& pTemplate[ktPos].ulValueLen == sizeof(CK_KEY_TYPE)
+						&& *(CK_KEY_TYPE *)pTemplate[ktPos].pValue == CKK_AES
+						&& pTemplate[pos].ulValueLen != 16
+						&& pTemplate[pos].ulValueLen != 24
+						&& pTemplate[pos].ulValueLen != 32)
+					FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_VALUE length invalid for CKK_AES");
+			}
+
 			pObject = calloc(sizeof(struct p11Object_t), 1);
 
 			if (pObject == NULL) {
@@ -449,10 +462,21 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetAttributeValue)(
 			continue;
 		}
 
-		if ((attribute->attrData.type == CKA_VALUE) && (pObject->sensitiveObj)) {
-			pTemplate[i].ulValueLen = (CK_LONG) -1;
-			rv = CKR_ATTRIBUTE_SENSITIVE;
-			continue;
+		if (attribute->attrData.type == CKA_VALUE) {
+			struct p11Attribute_t *sensAttr;
+
+			/* pObject->sensitiveObj is never set by any code path in this
+			 * module, so also gate on the object's CKA_SENSITIVE attribute.
+			 * Session secret keys created with CKA_SENSITIVE=TRUE must not
+			 * reveal CKA_VALUE. */
+			if (pObject->sensitiveObj
+					|| (findAttribute(pObject, CKA_SENSITIVE, &sensAttr) >= 0
+						&& sensAttr->attrData.ulValueLen == sizeof(CK_BBOOL)
+						&& *(CK_BBOOL *)sensAttr->attrData.pValue == CK_TRUE)) {
+				pTemplate[i].ulValueLen = (CK_LONG) -1;
+				rv = CKR_ATTRIBUTE_SENSITIVE;
+				continue;
+			}
 		}
 
 		if (pTemplate[i].pValue == NULL_PTR) {
