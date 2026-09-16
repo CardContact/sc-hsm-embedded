@@ -72,6 +72,16 @@ static struct bytestring_s defaultAESAlgorithms = { (unsigned char *)"\x10\x11\x
 
 
 
+static CK_RV sc_hsm_C_WrapKey(struct p11Object_t *pObject, CK_MECHANISM_PTR mech,
+		struct p11Object_t *pWrappedKey,
+		CK_BYTE_PTR pWrappedKeyData, CK_ULONG_PTR pulWrappedKeyLen);
+static CK_RV sc_hsm_C_UnwrapKey(struct p11Object_t *pObject, CK_MECHANISM_PTR mech,
+		CK_BYTE_PTR pWrappedKeyData, CK_ULONG ulWrappedKeyLen,
+		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulAttributeCount,
+		struct p11Object_t **phKey);
+
+
+
 static const CK_MECHANISM_TYPE p11MechanismList[] = {
 		CKM_RSA_X_509,
 		CKM_RSA_PKCS,
@@ -3100,7 +3110,7 @@ static int sc_hsm_C_GetMechanismInfo(CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_P
 		break;
 	case CKM_AES_KEY_WRAP:
 	case CKM_AES_KEY_WRAP_PAD:
-		pInfo->flags = CKF_HW|CKF_WRAP;
+		pInfo->flags = CKF_HW|CKF_WRAP|CKF_UNWRAP;
 		break;
 	case CKM_AES_CBC:
 		pInfo->flags = CKF_HW|CKF_DECRYPT|CKF_ENCRYPT;
@@ -3220,7 +3230,7 @@ static CK_RV kwp_unwrap_core(struct p11Object_t *pObject, unsigned char *input,
 	int n = in_blocks - 1;
 	unsigned char A[8];
 	unsigned char B[16];
-	unsigned char R[2048];  /* large enough for any key */
+	unsigned char R[256];  /* at most 32 8-byte blocks (input capped at 264) */
 
 	memcpy(A, input, 8);
 	memcpy(R, input + 8, n * 8);
@@ -3271,6 +3281,19 @@ static CK_RV sc_hsm_C_WrapKey(struct p11Object_t *pObject, CK_MECHANISM_PTR mech
 
 	FUNC_CALLED();
 
+	if (mech->mechanism != CKM_AES_KEY_WRAP && mech->mechanism != CKM_AES_KEY_WRAP_PAD) {
+		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism must be CKM_AES_KEY_WRAP or CKM_AES_KEY_WRAP_PAD");
+	}
+
+	if (mech->mechanism == CKM_AES_KEY_WRAP_PAD && mech->pParameter != NULL) {
+		FUNC_FAILS(CKR_MECHANISM_PARAM_INVALID, "CKM_AES_KEY_WRAP_PAD takes no mechanism parameter");
+	}
+
+	if (mech->mechanism == CKM_AES_KEY_WRAP && mech->pParameter != NULL
+			&& mech->ulParameterLen != 8) {
+		FUNC_FAILS(CKR_MECHANISM_PARAM_INVALID, "IV parameter must be 8 bytes");
+	}
+
 	/* Get the plaintext key from CKA_VALUE */
 	if (findAttribute(pWrappedKey, CKA_VALUE, &valueAttr) < 0) {
 		FUNC_FAILS(CKR_KEY_UNEXTRACTABLE, "Key value not available");
@@ -3289,8 +3312,11 @@ static CK_RV sc_hsm_C_WrapKey(struct p11Object_t *pObject, CK_MECHANISM_PTR mech
 			FUNC_FAILS(CKR_KEY_SIZE_RANGE, "Key size must be multiple of 8 for RFC 3394");
 		}
 
-		/* Default IV: A6A6A6A6A6A6A6A6 */
-		memset(AIV, 0xA6, 8);
+		/* Default IV: A6A6A6A6A6A6A6A6, or caller supplied 8-byte IV */
+		if (mech->pParameter != NULL)
+			memcpy(AIV, mech->pParameter, 8);
+		else
+			memset(AIV, 0xA6, 8);
 		padded_len = m;
 		memcpy(plaintext, input, m);
 	} else {
@@ -3381,8 +3407,25 @@ static CK_RV sc_hsm_C_UnwrapKey(struct p11Object_t *pObject, CK_MECHANISM_PTR me
 
 	FUNC_CALLED();
 
+	if (mech->mechanism != CKM_AES_KEY_WRAP && mech->mechanism != CKM_AES_KEY_WRAP_PAD) {
+		FUNC_FAILS(CKR_MECHANISM_INVALID, "Mechanism must be CKM_AES_KEY_WRAP or CKM_AES_KEY_WRAP_PAD");
+	}
+
+	if (mech->mechanism == CKM_AES_KEY_WRAP_PAD && mech->pParameter != NULL) {
+		FUNC_FAILS(CKR_MECHANISM_PARAM_INVALID, "CKM_AES_KEY_WRAP_PAD takes no mechanism parameter");
+	}
+
+	if (mech->mechanism == CKM_AES_KEY_WRAP && mech->pParameter != NULL
+			&& mech->ulParameterLen != 8) {
+		FUNC_FAILS(CKR_MECHANISM_PARAM_INVALID, "IV parameter must be 8 bytes");
+	}
+
 	if (ulWrappedKeyLen < 16 || (ulWrappedKeyLen % 8) != 0) {
 		FUNC_FAILS(CKR_WRAPPED_KEY_INVALID, "Wrapped key length invalid");
+	}
+
+	if (ulWrappedKeyLen > 264) {
+		FUNC_FAILS(CKR_WRAPPED_KEY_LEN_RANGE, "Wrapped key too large");
 	}
 
 	in_blocks = ulWrappedKeyLen / 8;
@@ -3407,8 +3450,11 @@ static CK_RV sc_hsm_C_UnwrapKey(struct p11Object_t *pObject, CK_MECHANISM_PTR me
 
 	/* Validate and extract */
 	if (mech->mechanism == CKM_AES_KEY_WRAP) {
-		/* RFC 3394: verify default IV */
-		memset(defaultIV, 0xA6, 8);
+		/* RFC 3394: verify default IV or caller supplied IV */
+		if (mech->pParameter != NULL)
+			memcpy(defaultIV, mech->pParameter, 8);
+		else
+			memset(defaultIV, 0xA6, 8);
 		if (memcmp(unwrapped, defaultIV, 8) != 0) {
 			FUNC_FAILS(CKR_WRAPPED_KEY_INVALID, "Invalid IV - wrong KEK?");
 		}
