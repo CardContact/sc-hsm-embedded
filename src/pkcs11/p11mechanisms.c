@@ -1699,12 +1699,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_WrapKey)(
 		FUNC_RETURNS(rv);
 	}
 
-	/* Check CKA_WRAP on the wrapping key */
-	if (findAttribute(pWrapKey, CKA_WRAP, &attr) >= 0) {
-		if (attr->attrData.ulValueLen == sizeof(CK_BBOOL)
-				&& *(CK_BBOOL *)attr->attrData.pValue == CK_FALSE) {
-			FUNC_FAILS(CKR_KEY_NOT_WRAPPABLE, "Wrapping key does not have CKA_WRAP=TRUE");
-		}
+	/* Check CKA_WRAP on the wrapping key (absent means not wrappable) */
+	if (findAttribute(pWrapKey, CKA_WRAP, &attr) < 0
+			|| attr->attrData.ulValueLen != sizeof(CK_BBOOL)
+			|| *(CK_BBOOL *)attr->attrData.pValue != CK_TRUE) {
+		FUNC_FAILS(CKR_KEY_NOT_WRAPPABLE, "Wrapping key does not have CKA_WRAP=TRUE");
 	}
 
 	/* Validate wrapped key */
@@ -1714,12 +1713,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_WrapKey)(
 		FUNC_RETURNS(rv);
 	}
 
-	/* Check CKA_EXTRACTABLE on the wrapped key */
-	if (findAttribute(pKeyToWrap, CKA_EXTRACTABLE, &attr) >= 0) {
-		if (attr->attrData.ulValueLen == sizeof(CK_BBOOL)
-				&& *(CK_BBOOL *)attr->attrData.pValue == CK_FALSE) {
-			FUNC_FAILS(CKR_KEY_UNEXTRACTABLE, "Key is not extractable");
-		}
+	/* Check CKA_EXTRACTABLE on the wrapped key (absent means not extractable) */
+	if (findAttribute(pKeyToWrap, CKA_EXTRACTABLE, &attr) < 0
+			|| attr->attrData.ulValueLen != sizeof(CK_BBOOL)
+			|| *(CK_BBOOL *)attr->attrData.pValue != CK_TRUE) {
+		FUNC_FAILS(CKR_KEY_UNEXTRACTABLE, "Key is not extractable");
 	}
 
 	if (pWrapKey->C_WrapKey != NULL) {
@@ -1792,12 +1790,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_UnwrapKey)(
 		FUNC_RETURNS(rv);
 	}
 
-	/* Check CKA_UNWRAP on the unwrapping key */
-	if (findAttribute(pKey, CKA_UNWRAP, &attr) >= 0) {
-		if (attr->attrData.ulValueLen == sizeof(CK_BBOOL)
-				&& *(CK_BBOOL *)attr->attrData.pValue == CK_FALSE) {
-			FUNC_FAILS(CKR_KEY_NOT_WRAPPABLE, "Unwrapping key does not have CKA_UNWRAP=TRUE");
-		}
+	/* Check CKA_UNWRAP on the unwrapping key (absent means not unwrappable) */
+	if (findAttribute(pKey, CKA_UNWRAP, &attr) < 0
+			|| attr->attrData.ulValueLen != sizeof(CK_BBOOL)
+			|| *(CK_BBOOL *)attr->attrData.pValue != CK_TRUE) {
+		FUNC_FAILS(CKR_KEY_NOT_WRAPPABLE, "Unwrapping key does not have CKA_UNWRAP=TRUE");
 	}
 
 	if (pKey->C_UnwrapKey != NULL) {

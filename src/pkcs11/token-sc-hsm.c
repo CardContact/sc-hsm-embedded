@@ -3531,15 +3531,37 @@ static CK_RV sc_hsm_C_UnwrapKey(struct p11Object_t *pObject, CK_MECHANISM_PTR me
 			FUNC_FAILS(rc, "Failed to create secret key object");
 		}
 
-		/* Apply caller's template attributes (overlay) */
+		/* Apply caller's template attributes (overlay).
+		 * Attributes already present on the object (e.g. CKA_EXTRACTABLE)
+		 * are replaced in place - addAttribute() appends and findAttribute()
+		 * returns the first match, so appending would silently ignore the
+		 * caller's value. */
 		{
 			int i;
 			for (i = 0; i < (int)ulAttributeCount; i++) {
-				if (pTemplate[i].type != CKA_CLASS &&
-				    pTemplate[i].type != CKA_KEY_TYPE &&
-				    pTemplate[i].type != CKA_TOKEN &&
-				    pTemplate[i].type != CKA_VALUE &&
-				    pTemplate[i].type != CKA_VALUE_LEN) {
+				struct p11Attribute_t *existing;
+
+				if (pTemplate[i].type == CKA_CLASS ||
+				    pTemplate[i].type == CKA_KEY_TYPE ||
+				    pTemplate[i].type == CKA_TOKEN ||
+				    pTemplate[i].type == CKA_VALUE ||
+				    pTemplate[i].type == CKA_VALUE_LEN) {
+					continue;
+				}
+
+				if (findAttribute(pKey, pTemplate[i].type, &existing) >= 0) {
+					CK_BYTE_PTR newval = calloc(
+							pTemplate[i].ulValueLen ? pTemplate[i].ulValueLen : 1, 1);
+					if (newval == NULL) {
+						freeObject(pKey);
+						FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+					}
+					if (pTemplate[i].ulValueLen)
+						memcpy(newval, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+					free(existing->attrData.pValue);
+					existing->attrData.pValue = newval;
+					existing->attrData.ulValueLen = pTemplate[i].ulValueLen;
+				} else {
 					addAttribute(pKey, &pTemplate[i]);
 				}
 			}
