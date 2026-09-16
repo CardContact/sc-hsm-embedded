@@ -184,9 +184,15 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 			if (pos == -1)
 				FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_VALUE not found in template");
 
-			rv = validateAttribute(&pTemplate[pos], 1);
+			rv = validateAttribute(&pTemplate[pos], 0);
 			if (rv != CKR_OK)
 				FUNC_FAILS(rv, "CKA_VALUE");
+
+			/* Session secret keys are opaque plaintext containers for
+			 * C_WrapKey (arbitrary lengths) - reject only empty values.
+			 * The wrap mechanism validates length at wrap time. */
+			if (pTemplate[pos].ulValueLen == 0)
+				FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_VALUE must not be empty");
 
 			pObject = calloc(sizeof(struct p11Object_t), 1);
 
