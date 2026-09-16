@@ -41,6 +41,11 @@
 #include <pkcs11/slotpool.h>
 #include <pkcs11/token.h>
 #include <pkcs11/crypto.h>
+#include <pkcs11/secretkeyobject.h>
+
+#ifdef ENABLE_LIBCRYPTO
+#include <openssl/rand.h>
+#endif
 #include <common/debug.h>
 
 
@@ -1509,7 +1514,108 @@ CK_DECLARE_FUNCTION(CK_RV, C_GenerateKey)(
 		FUNC_FAILS(rv, "CKA_TOKEN has invalid value");
 
 	if (*(CK_BBOOL *)pTemplate[pos].pValue == 0) {
-		FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "Generating session key not supported");
+		/* Session key: generate in software */
+		int keyLength, keylenPos;
+		CK_BBOOL ckTrue = CK_TRUE;
+		CK_BBOOL ckFalse = CK_FALSE;
+		CK_KEY_TYPE keyType = CKK_AES;
+		CK_OBJECT_CLASS keyClass = CKO_SECRET_KEY;
+		CK_ULONG valueLen;
+		unsigned char keyValue[32];
+		CK_ATTRIBUTE sessionKeyTemplate[16];
+		int attrCount = 0;
+		keylenPos = findAttributeInTemplate(CKA_VALUE_LEN, pTemplate, ulCount);
+		if (keylenPos < 0)
+			FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_VALUE_LEN not found in template");
+
+		keyLength = *(CK_ULONG *)pTemplate[keylenPos].pValue;
+		if (keyLength != 16 && keyLength != 24 && keyLength != 32)
+			FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "CKA_VALUE_LEN must be 16, 24, or 32");
+
+		/* Generate random key material */
+#ifdef ENABLE_LIBCRYPTO
+		if (RAND_bytes(keyValue, keyLength) != 1)
+			FUNC_FAILS(CKR_DEVICE_ERROR, "RAND_bytes failed");
+#else
+		{
+			FILE *urandom = fopen("/dev/urandom", "rb");
+			if (urandom == NULL)
+				FUNC_FAILS(CKR_DEVICE_ERROR, "Cannot open /dev/urandom");
+			if (fread(keyValue, 1, keyLength, urandom) != (size_t)keyLength) {
+				fclose(urandom);
+				FUNC_FAILS(CKR_DEVICE_ERROR, "fread from /dev/urandom failed");
+			}
+			fclose(urandom);
+		}
+#endif
+		valueLen = keyLength;
+
+		/* Build a session key object template */
+		sessionKeyTemplate[attrCount].type = CKA_CLASS;
+		sessionKeyTemplate[attrCount].pValue = &keyClass;
+		sessionKeyTemplate[attrCount].ulValueLen = sizeof(keyClass);
+		attrCount++;
+
+		sessionKeyTemplate[attrCount].type = CKA_KEY_TYPE;
+		sessionKeyTemplate[attrCount].pValue = &keyType;
+		sessionKeyTemplate[attrCount].ulValueLen = sizeof(keyType);
+		attrCount++;
+
+		sessionKeyTemplate[attrCount].type = CKA_TOKEN;
+		sessionKeyTemplate[attrCount].pValue = &ckFalse;
+		sessionKeyTemplate[attrCount].ulValueLen = sizeof(CK_BBOOL);
+		attrCount++;
+
+		sessionKeyTemplate[attrCount].type = CKA_VALUE;
+		sessionKeyTemplate[attrCount].pValue = keyValue;
+		sessionKeyTemplate[attrCount].ulValueLen = valueLen;
+		attrCount++;
+
+		sessionKeyTemplate[attrCount].type = CKA_VALUE_LEN;
+		sessionKeyTemplate[attrCount].pValue = &valueLen;
+		sessionKeyTemplate[attrCount].ulValueLen = sizeof(valueLen);
+		attrCount++;
+
+		sessionKeyTemplate[attrCount].type = CKA_EXTRACTABLE;
+		sessionKeyTemplate[attrCount].pValue = &ckTrue;
+		sessionKeyTemplate[attrCount].ulValueLen = sizeof(CK_BBOOL);
+		attrCount++;
+
+		sessionKeyTemplate[attrCount].type = CKA_SENSITIVE;
+		sessionKeyTemplate[attrCount].pValue = &ckFalse;
+		sessionKeyTemplate[attrCount].ulValueLen = sizeof(CK_BBOOL);
+		attrCount++;
+
+		/* Overlay caller template attributes (skip those we already set) */
+		{
+			int i;
+			for (i = 0; i < (int)ulCount; i++) {
+				if (pTemplate[i].type == CKA_CLASS ||
+				    pTemplate[i].type == CKA_KEY_TYPE ||
+				    pTemplate[i].type == CKA_TOKEN ||
+				    pTemplate[i].type == CKA_VALUE ||
+				    pTemplate[i].type == CKA_VALUE_LEN) {
+					continue;
+				}
+				sessionKeyTemplate[attrCount] = pTemplate[i];
+				attrCount++;
+			}
+		}
+
+		p11SecretKey = calloc(sizeof(struct p11Object_t), 1);
+		if (p11SecretKey == NULL)
+			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+
+		rv = createSecretKeyObject(sessionKeyTemplate, attrCount, p11SecretKey);
+		if (rv != CKR_OK) {
+			free(p11SecretKey);
+			FUNC_FAILS(rv, "Could not create secret key object");
+		}
+
+		addSessionObject(pSession, p11SecretKey);
+		*phKey = p11SecretKey->handle;
+
+		FUNC_RETURNS(CKR_OK);
 	}
 
 	rv = getValidatedToken(slot, &token);

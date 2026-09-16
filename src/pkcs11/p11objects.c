@@ -40,6 +40,7 @@
 #include <pkcs11/token.h>
 #include <pkcs11/dataobject.h>
 #include <pkcs11/certificateobject.h>
+#include <pkcs11/secretkeyobject.h>
 
 #ifdef DEBUG
 #include <common/debug.h>
@@ -174,6 +175,30 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 		#ifdef DEBUG
 				debug("Populating additional attributes failed\n");
 		#endif
+			}
+
+			addSessionObject(session, pObject);
+
+		} else if (objClass == CKO_SECRET_KEY) {
+			pos = findAttributeInTemplate(CKA_VALUE, pTemplate, ulCount);
+			if (pos == -1)
+				FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_VALUE not found in template");
+
+			rv = validateAttribute(&pTemplate[pos], 0);
+			if (rv != CKR_OK)
+				FUNC_FAILS(rv, "CKA_VALUE");
+
+			pObject = calloc(sizeof(struct p11Object_t), 1);
+
+			if (pObject == NULL) {
+				FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+			}
+
+			rv = createSecretKeyObject(pTemplate, ulCount, pObject);
+
+			if (rv != CKR_OK) {
+				free(pObject);
+				FUNC_FAILS(rv, "Could not create secret key object");
 			}
 
 			addSessionObject(session, pObject);

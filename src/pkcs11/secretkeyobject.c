@@ -48,6 +48,7 @@ extern CK_BBOOL ckFalse;
 
 static struct attributesForObject_t attributesSecretKeyObject[] = {
 	{{CKA_VALUE_LEN, 0, 0}, AC_OPTIONAL},
+	{{CKA_VALUE, 0, 0}, AC_OPTIONAL},
 	{{CKA_SENSITIVE, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
 	{{CKA_ENCRYPT, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
 	{{CKA_DECRYPT, &ckFalse, sizeof(CK_BBOOL)}, AC_DEFAULT},
