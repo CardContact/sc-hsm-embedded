@@ -184,22 +184,9 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 			if (pos == -1)
 				FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_VALUE not found in template");
 
-			rv = validateAttribute(&pTemplate[pos], 0);
+			rv = validateAttribute(&pTemplate[pos], 1);
 			if (rv != CKR_OK)
 				FUNC_FAILS(rv, "CKA_VALUE");
-
-			/* For AES keys the value must be a valid AES key length */
-			{
-				int ktPos = findAttributeInTemplate(CKA_KEY_TYPE, pTemplate, ulCount);
-
-				if (ktPos >= 0
-						&& pTemplate[ktPos].ulValueLen == sizeof(CK_KEY_TYPE)
-						&& *(CK_KEY_TYPE *)pTemplate[ktPos].pValue == CKK_AES
-						&& pTemplate[pos].ulValueLen != 16
-						&& pTemplate[pos].ulValueLen != 24
-						&& pTemplate[pos].ulValueLen != 32)
-					FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_VALUE length invalid for CKK_AES");
-			}
 
 			pObject = calloc(sizeof(struct p11Object_t), 1);
 
