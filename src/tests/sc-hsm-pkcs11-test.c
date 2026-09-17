@@ -1774,6 +1774,338 @@ void testAESKeyGeneration(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 
 
+/*
+ * Test AES Key Wrap (RFC 3394, CKM_AES_KEY_WRAP) and AES Key Wrap with
+ * Padding (RFC 5649, CKM_AES_KEY_WRAP_PAD).
+ *
+ * A 256-bit KEK is generated on the token with CKA_WRAP/CKA_UNWRAP. A 128-bit
+ * AES session key is created in software (CKA_TOKEN=FALSE, CKA_EXTRACTABLE=TRUE)
+ * and wrapped with both mechanisms. Each wrapped blob is unwrapped again and
+ * the recovered CKA_VALUE compared against the original. RFC 3394 KAT vectors
+ * 4.1 (128-bit key) and 4.6 (256-bit key) verify the implementation against
+ * known-good outputs. RFC 5649 KAT 4.2 (20-octet key) covers the padded
+ * variant including the single-block shortcut.
+ */
+void testAESKeyWrap(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
+{
+	int rc;
+	CK_CHAR labelKEK[] = "TestKEK";
+	CK_CHAR labelKey[] = "TestWrapKey";
+	CK_CHAR labelUnwrapped[] = "TestUnwrappedKey";
+	CK_BBOOL _false = FALSE;
+	CK_BBOOL _true = TRUE;
+
+	CK_OBJECT_CLASS secretKeyClass = CKO_SECRET_KEY;
+	CK_KEY_TYPE keyTypeAES = CKK_AES;
+	CK_ULONG kekLen = 32;
+	CK_ATTRIBUTE kekTemplate[] = {
+			{ CKA_CLASS, &secretKeyClass, sizeof(secretKeyClass) },
+			{ CKA_TOKEN, &_true, sizeof(_true)},
+			{ CKA_PRIVATE, &_true, sizeof(_true)},
+			{ CKA_SENSITIVE, &_true, sizeof(_true)},
+			{ CKA_LABEL, &labelKEK, (CK_ULONG)strlen((char *)labelKEK) },
+			{ CKA_VALUE_LEN, &kekLen, sizeof(kekLen) },
+			{ CKA_WRAP, &_true, sizeof(_true)},
+			{ CKA_UNWRAP, &_true, sizeof(_true)}
+	};
+	int kekAttributes = sizeof(kekTemplate) / sizeof(CK_ATTRIBUTE);
+
+	/* 128-bit key to wrap (RFC 3394 KAT 4.1 plaintext) */
+	CK_BYTE keyValue128[] = {
+			0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+			0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
+	};
+	CK_ATTRIBUTE keyTemplate[] = {
+			{ CKA_CLASS, &secretKeyClass, sizeof(secretKeyClass) },
+			{ CKA_KEY_TYPE, &keyTypeAES, sizeof(keyTypeAES) },
+			{ CKA_TOKEN, &_false, sizeof(_false)},
+			{ CKA_LABEL, &labelKey, (CK_ULONG)strlen((char *)labelKey) },
+			{ CKA_VALUE, keyValue128, sizeof(keyValue128) },
+			{ CKA_EXTRACTABLE, &_true, sizeof(_true)}
+	};
+	int keyAttributes = sizeof(keyTemplate) / sizeof(CK_ATTRIBUTE);
+
+	CK_ATTRIBUTE unwrapTemplate[] = {
+			{ CKA_LABEL, &labelUnwrapped, (CK_ULONG)strlen((char *)labelUnwrapped) }
+	};
+	int unwrapAttributes = sizeof(unwrapTemplate) / sizeof(CK_ATTRIBUTE);
+
+	CK_OBJECT_HANDLE hndKEK, hndKey, hndUnwrapped;
+	CK_MECHANISM mechGenAES = { CKM_AES_KEY_GEN, 0, 0 };
+	CK_MECHANISM mechWrap = { CKM_AES_KEY_WRAP, 0, 0 };
+	CK_MECHANISM mechWrapPad = { CKM_AES_KEY_WRAP_PAD, 0, 0 };
+
+	CK_BYTE wrapped[64];
+	CK_ULONG wrappedLen;
+	CK_BYTE recovered[32];
+	CK_ULONG recoveredLen;
+	CK_ATTRIBUTE valueAttr = { CKA_VALUE, recovered, sizeof(recovered) };
+	char scr[1024];
+
+	/* RFC 3394 KAT 4.1: 128-bit KEK, 128-bit plaintext */
+	CK_BYTE kek128[] = {
+			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+			0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F
+	};
+	CK_BYTE kat41Plain[] = {
+			0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+			0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
+	};
+	CK_BYTE kat41Cipher[] = {
+			0x1F, 0xA6, 0x8B, 0x0A, 0x81, 0x12, 0xB4, 0x47,
+			0xAE, 0xF3, 0x4B, 0xD8, 0xFB, 0x5A, 0x7B, 0x82,
+			0x9D, 0x3E, 0x86, 0x23, 0x71, 0xD2, 0xCF, 0xE5
+	};
+
+	/* RFC 3394 KAT 4.6: 256-bit KEK, 256-bit plaintext */
+	CK_BYTE kek256[] = {
+			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+			0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+			0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+			0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F
+	};
+	CK_BYTE kat46Plain[] = {
+			0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+			0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
+			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+			0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F
+	};
+	CK_BYTE kat46Cipher[] = {
+			0x64, 0xE8, 0xC3, 0xF9, 0xCE, 0x0F, 0x5B, 0xA2,
+			0x63, 0xE9, 0x77, 0x79, 0x05, 0x81, 0x8A, 0x2A,
+			0x93, 0xC8, 0x19, 0x1E, 0x7D, 0x6E, 0x8A, 0xE7,
+			0x64, 0xE8, 0xC3, 0xF9, 0xCE, 0x0F, 0x5B, 0xA2,
+			0x63, 0xE9, 0x77, 0x79, 0x05, 0x81, 0x8A, 0x2A,
+			0x93, 0xC8, 0x19, 0x1E, 0x7D, 0x6E, 0x8A, 0xE7
+	};
+
+	/* RFC 5649 KAT 4.2: 192-bit KEK, 20-octet plaintext */
+	CK_BYTE kek192[] = {
+			0x96, 0x77, 0x8B, 0x25, 0xAE, 0x6C, 0xA4, 0x35,
+			0xF9, 0x2B, 0x5B, 0x97, 0xC0, 0x50, 0xAE, 0xD2,
+			0x46, 0x8A, 0xB8, 0xA1, 0x7A, 0xD8, 0x4E, 0x5D
+	};
+	CK_BYTE kat5649Plain[] = {
+			0xC3, 0x7B, 0x7E, 0x64, 0x92, 0x58, 0x43, 0x40,
+			0xBE, 0xD1, 0x22, 0x07, 0x80, 0x89, 0x41, 0x15,
+			0x50, 0x68, 0xF7, 0x38
+	};
+	CK_BYTE kat5649Cipher[] = {
+			0x13, 0x8B, 0xDE, 0xAA, 0x9B, 0x8F, 0xA7, 0xFC,
+			0x61, 0xF9, 0x77, 0x42, 0xE7, 0x22, 0x48, 0xEE,
+			0x05, 0xAE, 0x6A, 0xE5, 0x36, 0x0D, 0x8D, 0x8E,
+			0x27, 0x3B, 0x29, 0x7D, 0xA6, 0xD4, 0x07, 0xB9
+	};
+
+	CK_ATTRIBUTE katKEKTemplate[] = {
+			{ CKA_CLASS, &secretKeyClass, sizeof(secretKeyClass) },
+			{ CKA_KEY_TYPE, &keyTypeAES, sizeof(keyTypeAES) },
+			{ CKA_TOKEN, &_false, sizeof(_false)},
+			{ CKA_VALUE, NULL, 0 },
+			{ CKA_WRAP, &_true, sizeof(_true)},
+			{ CKA_UNWRAP, &_true, sizeof(_true)}
+	};
+	int katKEKAttributes = sizeof(katKEKTemplate) / sizeof(CK_ATTRIBUTE);
+
+	CK_ATTRIBUTE katKeyTemplate[] = {
+			{ CKA_CLASS, &secretKeyClass, sizeof(secretKeyClass) },
+			{ CKA_KEY_TYPE, &keyTypeAES, sizeof(keyTypeAES) },
+			{ CKA_TOKEN, &_false, sizeof(_false)},
+			{ CKA_VALUE, NULL, 0 },
+			{ CKA_EXTRACTABLE, &_true, sizeof(_true)}
+	};
+	int katKeyAttributes = sizeof(katKeyTemplate) / sizeof(CK_ATTRIBUTE);
+
+	CK_OBJECT_HANDLE hndKatKEK, hndKatKey;
+
+	printf("Calling C_GenerateKey(AES 256 KEK) ");
+	rc = p11->C_GenerateKey(session, &mechGenAES, kekTemplate, kekAttributes, &hndKEK);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc != CKR_OK)
+		return;
+
+	printf("Calling C_CreateObject(AES 128 session key) ");
+	rc = p11->C_CreateObject(session, keyTemplate, keyAttributes, &hndKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc != CKR_OK)
+		goto out_kek;
+
+	/* RFC 3394 wrap */
+	printf("Calling C_WrapKey(CKM_AES_KEY_WRAP) - query size ");
+	wrappedLen = 0;
+	rc = p11->C_WrapKey(session, &mechWrap, hndKEK, hndKey, NULL, &wrappedLen);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+	printf("Wrapped size = %lu : %s\n", wrappedLen, verdict(wrappedLen == 24));
+
+	printf("Calling C_WrapKey(CKM_AES_KEY_WRAP) ");
+	wrappedLen = sizeof(wrapped);
+	rc = p11->C_WrapKey(session, &mechWrap, hndKEK, hndKey, wrapped, &wrappedLen);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	bin2str(scr, sizeof(scr), wrapped, wrappedLen);
+	printf("Wrapped key:\n%s\n", scr);
+
+	/* RFC 3394 unwrap */
+	printf("Calling C_UnwrapKey(CKM_AES_KEY_WRAP) ");
+	rc = p11->C_UnwrapKey(session, &mechWrap, hndKEK, wrapped, wrappedLen,
+			unwrapTemplate, unwrapAttributes, &hndUnwrapped);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc == CKR_OK) {
+		printf("Calling C_GetAttributeValue(CKA_VALUE) ");
+		valueAttr.ulValueLen = sizeof(recovered);
+		rc = p11->C_GetAttributeValue(session, hndUnwrapped, &valueAttr, 1);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		recoveredLen = valueAttr.ulValueLen;
+		printf("Recovered key matches original : %s\n",
+				verdict(recoveredLen == sizeof(keyValue128) && !memcmp(recovered, keyValue128, recoveredLen)));
+
+		printf("Calling C_DestroyObject(UnwrappedKey) ");
+		rc = p11->C_DestroyObject(session, hndUnwrapped);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+	}
+
+	/* RFC 5649 wrap */
+	printf("Calling C_WrapKey(CKM_AES_KEY_WRAP_PAD) - query size ");
+	wrappedLen = 0;
+	rc = p11->C_WrapKey(session, &mechWrapPad, hndKEK, hndKey, NULL, &wrappedLen);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+	printf("Wrapped size = %lu : %s\n", wrappedLen, verdict(wrappedLen == 24));
+
+	printf("Calling C_WrapKey(CKM_AES_KEY_WRAP_PAD) ");
+	wrappedLen = sizeof(wrapped);
+	rc = p11->C_WrapKey(session, &mechWrapPad, hndKEK, hndKey, wrapped, &wrappedLen);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	bin2str(scr, sizeof(scr), wrapped, wrappedLen);
+	printf("Wrapped key:\n%s\n", scr);
+
+	/* RFC 5649 unwrap */
+	printf("Calling C_UnwrapKey(CKM_AES_KEY_WRAP_PAD) ");
+	rc = p11->C_UnwrapKey(session, &mechWrapPad, hndKEK, wrapped, wrappedLen,
+			unwrapTemplate, unwrapAttributes, &hndUnwrapped);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	if (rc == CKR_OK) {
+		printf("Calling C_GetAttributeValue(CKA_VALUE) ");
+		valueAttr.ulValueLen = sizeof(recovered);
+		rc = p11->C_GetAttributeValue(session, hndUnwrapped, &valueAttr, 1);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+		recoveredLen = valueAttr.ulValueLen;
+		printf("Recovered key matches original : %s\n",
+				verdict(recoveredLen == sizeof(keyValue128) && !memcmp(recovered, keyValue128, recoveredLen)));
+
+		printf("Calling C_DestroyObject(UnwrappedKey) ");
+		rc = p11->C_DestroyObject(session, hndUnwrapped);
+		printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+	}
+
+	printf("Calling C_DestroyObject(SessionKey) ");
+	rc = p11->C_DestroyObject(session, hndKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	/* RFC 3394 KAT 4.1 */
+	katKEKTemplate[3].pValue = kek128;
+	katKEKTemplate[3].ulValueLen = sizeof(kek128);
+	katKeyTemplate[3].pValue = kat41Plain;
+	katKeyTemplate[3].ulValueLen = sizeof(kat41Plain);
+
+	printf("Calling C_CreateObject(KAT 4.1 KEK) ");
+	rc = p11->C_CreateObject(session, katKEKTemplate, katKEKAttributes, &hndKatKEK);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_CreateObject(KAT 4.1 key) ");
+	rc = p11->C_CreateObject(session, katKeyTemplate, katKeyAttributes, &hndKatKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_WrapKey(KAT 4.1) ");
+	wrappedLen = sizeof(wrapped);
+	rc = p11->C_WrapKey(session, &mechWrap, hndKatKEK, hndKatKey, wrapped, &wrappedLen);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("KAT 4.1 ciphertext matches : %s\n",
+			verdict(wrappedLen == sizeof(kat41Cipher) && !memcmp(wrapped, kat41Cipher, wrappedLen)));
+
+	printf("Calling C_DestroyObject(KAT 4.1 key) ");
+	rc = p11->C_DestroyObject(session, hndKatKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DestroyObject(KAT 4.1 KEK) ");
+	rc = p11->C_DestroyObject(session, hndKatKEK);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	/* RFC 3394 KAT 4.6 */
+	katKEKTemplate[3].pValue = kek256;
+	katKEKTemplate[3].ulValueLen = sizeof(kek256);
+	katKeyTemplate[3].pValue = kat46Plain;
+	katKeyTemplate[3].ulValueLen = sizeof(kat46Plain);
+
+	printf("Calling C_CreateObject(KAT 4.6 KEK) ");
+	rc = p11->C_CreateObject(session, katKEKTemplate, katKEKAttributes, &hndKatKEK);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_CreateObject(KAT 4.6 key) ");
+	rc = p11->C_CreateObject(session, katKeyTemplate, katKeyAttributes, &hndKatKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_WrapKey(KAT 4.6) ");
+	wrappedLen = sizeof(wrapped);
+	rc = p11->C_WrapKey(session, &mechWrap, hndKatKEK, hndKatKey, wrapped, &wrappedLen);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("KAT 4.6 ciphertext matches : %s\n",
+			verdict(wrappedLen == sizeof(kat46Cipher) && !memcmp(wrapped, kat46Cipher, wrappedLen)));
+
+	printf("Calling C_DestroyObject(KAT 4.6 key) ");
+	rc = p11->C_DestroyObject(session, hndKatKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DestroyObject(KAT 4.6 KEK) ");
+	rc = p11->C_DestroyObject(session, hndKatKEK);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	/* RFC 5649 KAT 4.2 (20-octet key, single-block shortcut) */
+	katKEKTemplate[3].pValue = kek192;
+	katKEKTemplate[3].ulValueLen = sizeof(kek192);
+	katKeyTemplate[3].pValue = kat5649Plain;
+	katKeyTemplate[3].ulValueLen = sizeof(kat5649Plain);
+
+	printf("Calling C_CreateObject(KAT 5649-4.2 KEK) ");
+	rc = p11->C_CreateObject(session, katKEKTemplate, katKEKAttributes, &hndKatKEK);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_CreateObject(KAT 5649-4.2 key) ");
+	rc = p11->C_CreateObject(session, katKeyTemplate, katKeyAttributes, &hndKatKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_WrapKey(KAT 5649-4.2) ");
+	wrappedLen = sizeof(wrapped);
+	rc = p11->C_WrapKey(session, &mechWrapPad, hndKatKEK, hndKatKey, wrapped, &wrappedLen);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("KAT 5649-4.2 ciphertext matches : %s\n",
+			verdict(wrappedLen == sizeof(kat5649Cipher) && !memcmp(wrapped, kat5649Cipher, wrappedLen)));
+
+	printf("Calling C_DestroyObject(KAT 5649-4.2 key) ");
+	rc = p11->C_DestroyObject(session, hndKatKey);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+	printf("Calling C_DestroyObject(KAT 5649-4.2 KEK) ");
+	rc = p11->C_DestroyObject(session, hndKatKEK);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+
+out_kek:
+	printf("Calling C_DestroyObject(KEK) ");
+	rc = p11->C_DestroyObject(session, hndKEK);
+	printf("- %s : %s\n", id2name(p11CKRName, rc, 0, namebuf), verdict(rc == CKR_OK));
+}
+
+
+
 void testSymmetricKeyDerivation(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
 	int rc;
@@ -2951,6 +3283,8 @@ int main(int argc, char *argv[])
 					testKeyDerivation(p11, session);
 
 					testAESKeyGeneration(p11, session);
+
+					testAESKeyWrap(p11, session);
 
 					testSymmetricKeyDerivation(p11, session);
 				}
