@@ -114,6 +114,7 @@ void initDebug(char *progname)
 
 	sprintf(scr, "%s%s%s-%d.log", home, prefix, progname, pid);
 
+//	strcpy(scr, "/dev/stderr");
 
 	debugFileHandle = fopen(scr, "a+");
 

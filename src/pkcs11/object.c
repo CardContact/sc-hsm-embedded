@@ -348,6 +348,8 @@ struct id2name_t p11CKOName[] = {
 { CKO_SECRET_KEY                        , "CKO_SECRET_KEY", 0 },
 { CKO_HW_FEATURE                        , "CKO_HW_FEATURE", 0 },
 { CKO_DOMAIN_PARAMETERS                 , "CKO_DOMAIN_PARAMETERS", 0 },
+
+{ CKO_SC_HSM_KEY_DOMAIN                 , "CKO_KEY_DOMAIN", 0 },
 { 0, NULL }
 };
 
@@ -434,6 +436,9 @@ struct id2name_t p11CKAName[] = {
 { CKA_SC_HSM_KEY_USE_COUNTER             , "CKA_SC_HSM_KEY_USE_COUNTER", CKT_BIN },
 { CKA_SC_HSM_ALGORITHM_LIST              , "CKA_SC_HSM_ALGORITHM_LIST", CKT_BIN },
 { CKA_CVC_REQUEST                        , "CKA_CVC_REQUEST", CKT_BIN },
+{ CKA_SC_HSM_SHARE_STATUS                , "CKA_SC_HSM_SHARE_STATUS", CKT_BIN },
+{ CKA_SC_HSM_KEK_KCV                     , "CKA_SC_HSM_KEK_KCV", CKT_BIN },
+{ CKA_SC_HSM_KEY_DOMAIN_UID              , "CKA_SC_HSM_KEY_DOMAIN_UID", CKT_BIN },
 { 0, NULL }
 };
 
@@ -633,7 +638,7 @@ int addAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate)
 
 	if (pAttribute->attrData.pValue == NULL) {
 		free(pAttribute);
-		return CKR_TEMPLATE_INCONSISTENT;
+		return CKR_HOST_MEMORY;
 	}
 
 	if (pTemplate->pValue)
@@ -669,6 +674,31 @@ int findAttribute(struct p11Object_t *object, CK_ATTRIBUTE_TYPE type, struct p11
 	}
 
 	return -1;
+}
+
+
+
+int updateAttribute(struct p11Object_t *object, CK_ATTRIBUTE_PTR pTemplate)
+{
+	struct p11Attribute_t *attr;
+	int idx = findAttribute(object, pTemplate->type, &attr);
+
+	if (idx < 0) {
+		addAttribute(object, pTemplate);
+	} else {
+		if (attr->attrData.pValue != NULL)
+			free(attr->attrData.pValue);
+
+		attr->attrData.pValue = calloc(pTemplate->ulValueLen, 1);
+
+		if (attr->attrData.pValue == NULL) {
+			return CKR_HOST_MEMORY;
+		}
+
+		if (pTemplate->pValue)
+			memcpy(attr->attrData.pValue, pTemplate->pValue, pTemplate->ulValueLen);
+	}
+	return CKR_OK;
 }
 
 

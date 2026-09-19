@@ -43,6 +43,7 @@
 #define MAX_P15_SIZE		1024
 
 #define PRKD_PREFIX		0xC4		/* Hi byte in file identifier for PKCS#15 PRKD objects */
+#define KD_PREFIX		0xC7		/* Hi byte in file identifier for Key Domain Description objects */
 #define CD_PREFIX		0xC8		/* Hi byte in file identifier for PKCS#15 CD objects */
 #define DCOD_PREFIX		0xC9		/* Hi byte in file identifier for PKCS#15 DCOD objects */
 #define CA_CERTIFICATE_PREFIX	0xCA		/* Hi byte in file identifier for CA certificates */
@@ -86,5 +87,7 @@ struct token_sc_hsm {
 };
 
 struct p11TokenDriver *sc_hsm_getDriver();
+
+int sc_hsm_readEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *content, size_t len);
 
 #endif /* ___TOKEN_SC_HSM_H_INC___ */

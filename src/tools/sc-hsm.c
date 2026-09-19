@@ -280,7 +280,7 @@ struct id2name_t p11CKRName[] = {
 #define CKT_LONG        4
 #define CKT_ULONG       5
 
-#define P11CKA			71
+#define P11CKA			75
 
 struct id2name_t p11CKAName[P11CKA + 1] = {
 		{ CKA_CLASS                              , "CKA_CLASS", CKT_LONG },
@@ -353,8 +353,12 @@ struct id2name_t p11CKAName[P11CKA + 1] = {
 		{ CKA_CVC_CURVE_OID                      , "CKA_CVC_CURVE_OID", CKT_BIN },
 		{ CKA_SC_HSM_PUBLIC_KEY_ALGORITHM        , "CKA_SC_HSM_PUBLIC_KEY_ALGORITHM", CKT_BIN },
 		{ CKA_SC_HSM_KEY_USE_COUNTER             , "CKA_SC_HSM_KEY_USE_COUNTER", CKT_BIN },
+		{ CKA_SC_HSM_KEY_DOMAIN                  , "CKA_SC_HSM_KEY_DOMAIN", CKT_BIN },
 		{ CKA_SC_HSM_ALGORITHM_LIST              , "CKA_SC_HSM_ALGORITHM_LIST", CKT_BIN },
 		{ CKA_CVC_REQUEST                        , "CKA_CVC_REQUEST", CKT_BIN },
+		{ CKA_SC_HSM_SHARE_STATUS                , "CKA_SC_HSM_SHARE_STATUS", CKT_BIN },
+		{ CKA_SC_HSM_KEK_KCV                     , "CKA_SC_HSM_KEK_KCV", CKT_BIN },
+		{ CKA_SC_HSM_KEY_DOMAIN_UID              , "CKA_SC_HSM_KEY_DOMAIN_UID", CKT_BIN },
 		{ 0, NULL, 0 }
 };
 
@@ -445,7 +449,7 @@ static char *p11string(CK_UTF8CHAR *str, size_t len)
 
 void decodeArgs(int argc, char **argv)
 {
-	int err = 0, r, c, long_optind = 0;
+	int c, long_optind = 0;
 
 	while (1) {
 		c = getopt_long(argc, argv, "m:vlp:", options, &long_optind);
@@ -501,6 +505,28 @@ static void bin2str(char *st, int stlen, unsigned char *data, int datalen)
 		memcpy(st, data, datalen);
 		st += datalen;
 		*st++ = '"';
+	}
+
+	*st = '\0';
+}
+
+
+
+static void bin2hex(char *st, int stlen, unsigned char *data, int datalen)
+{
+	int i;
+	unsigned char *d;
+
+	d = data;
+	i = datalen;
+
+	while (i && (stlen > 2)) {
+		sprintf(st, "%02X", *d);
+
+		st += 2;
+		stlen -= 2;
+		i--;
+		d++;
 	}
 
 	*st = '\0';
@@ -588,16 +614,16 @@ void dumpAttribute(CK_ATTRIBUTE_PTR attr)
 	switch(attr->type) {
 
 	case CKA_KEY_TYPE:
-		printf("  %s = %s\n", attribute, id2name(p11CKKName, *(CK_KEY_TYPE *)attr->pValue, NULL, namebuf));
+		printf("    %s = %s\n", attribute, id2name(p11CKKName, *(CK_KEY_TYPE *)attr->pValue, NULL, namebuf));
 		break;
 
 	default:
 		switch(atype) {
 		case CKT_BBOOL:
 			if (attr->pValue) {
-				printf("  %s = %s [%d]\n", attribute, *(CK_BBOOL *)attr->pValue ? "TRUE" : "FALSE", *(CK_BBOOL *)attr->pValue);
+				printf("    %s = %s [%d]\n", attribute, *(CK_BBOOL *)attr->pValue ? "TRUE" : "FALSE", *(CK_BBOOL *)attr->pValue);
 			} else {
-				printf("  %s\n", attribute);
+				printf("    %s\n", attribute);
 			}
 			break;
 		case CKT_DATE:
@@ -605,18 +631,18 @@ void dumpAttribute(CK_ATTRIBUTE_PTR attr)
 			// if (pdate != NULL) {
 			//     sprintf(res, "  %s = %4s-%2s-%2s", attribute, pdate->year, pdate->month, pdate->day);
 			// }
-			printf("  %s\n", attribute);
+			printf("    %s\n", attribute);
 			break;
 		case CKT_LONG:
-			printf("  %s = %d [0x%X]\n", attribute, (int)*(CK_LONG *)attr->pValue, (int)*(CK_LONG *)attr->pValue);
+			printf("    %s = %d [0x%X]\n", attribute, (int)*(CK_LONG *)attr->pValue, (int)*(CK_LONG *)attr->pValue);
 			break;
 		case CKT_ULONG:
-			printf("  %s = %u [0x%X]\n", attribute, (unsigned int)*(CK_ULONG *)attr->pValue, (unsigned int)*(CK_ULONG *)attr->pValue);
+			printf("    %s = %u [0x%X]\n", attribute, (unsigned int)*(CK_ULONG *)attr->pValue, (unsigned int)*(CK_ULONG *)attr->pValue);
 			break;
 		case CKT_BIN:
 		default:
 			bin2str(scr, sizeof(scr), attr->pValue, attr->ulValueLen);
-			printf("  %s = %s\n", attribute, scr);
+			printf("    %s = %s\n", attribute, scr);
 			break;
 		}
 	}
@@ -644,8 +670,12 @@ int handleKey(CK_ATTRIBUTE_PTR attr, int attrlen)
 		bin2str(id, sizeof(id), attr[rc].pValue, attr[rc].ulValueLen);
 	}
 
+	int indent = 24 - strlen(label);
+	if (indent < 4)
+		indent = 4;
+
 //	printf("%-18s %s  (%s)\n", keytype, label, id);
-	printf("%-20s  (%s,%s)\n", label, keytype, id);
+	printf("  '-- \"%s\"%*s(%s,%s)\n", label, indent, "", keytype, id);
 
 	return CKR_OK;
 }
@@ -688,6 +718,7 @@ int dumpObject(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_OBJECT_HA
 				dumpAttribute(&template[i]);
 			}
 		}
+		printf("    ---8<------8<------8<---\n");
 	}
 
 	if (handler != NULL) {
@@ -699,11 +730,25 @@ int dumpObject(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_OBJECT_HA
 
 
 
+int findAttr(CK_ATTRIBUTE_PTR attr, int len, CK_ATTRIBUTE_TYPE type)
+{
+	for (int i = 0; i < len; i++) {
+		if (attr[i].type == type)
+			return i;
+	}
+	return -1;
+}
+
+
+
 int listObjects(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBUTE_PTR attr, int len, int (*handler)(CK_ATTRIBUTE_PTR, int))
 {
 	CK_OBJECT_HANDLE hnd;
 	CK_ULONG cnt;
-	int rc;
+	CK_ATTRIBUTE template = { CKA_SC_HSM_KEY_DOMAIN, NULL, 0 };
+	int rc,haskd;
+
+	haskd = findAttr(attr, len, CKA_SC_HSM_KEY_DOMAIN);
 
 	rc = p11->C_FindObjectsInit(session, attr, len);
 
@@ -718,7 +763,11 @@ int listObjects(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBUT
 
 		if (rc == CKR_OK) {
 			if (cnt == 1) {
-				dumpObject(p11, session, hnd, handler);
+				rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&template, 1);
+				if ((haskd >= 0 && rc == CKR_OK) ||
+				    (haskd < 0 && rc != CKR_OK))
+					dumpObject(p11, session, hnd, handler);
+				rc = CKR_OK;
 			}
 		} else {
 			fprintf(stderr, "C_FindObjects failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
@@ -732,25 +781,193 @@ int listObjects(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBUT
 
 
 
-int listKeys(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, int loggedin)
+int listKeys(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, int loggedin, int keydomain)
 {
 	CK_OBJECT_CLASS classprk;
+	unsigned char kdid[1];
 	CK_ATTRIBUTE template[] = {
-		{ CKA_CLASS, &classprk, sizeof(classprk) }
+		{ CKA_CLASS, &classprk, sizeof(classprk) },
+		{ CKA_SC_HSM_KEY_DOMAIN, &kdid, sizeof(kdid) }
+	};
+	int rc,len;
+
+	len = 1;
+
+	if (keydomain >= 0) {
+		kdid[0] = (unsigned char)keydomain;
+		len++;
+	}
+
+	classprk = loggedin ? CKO_PRIVATE_KEY : CKO_PUBLIC_KEY;
+	while(1) {
+		rc = listObjects(p11, session, template, len, handleKey);
+		if (rc < 0) {
+			return rc;
+		}
+
+		if (classprk == CKO_SECRET_KEY)
+			break;
+
+		classprk = CKO_SECRET_KEY;
+	}
+
+	return rc;
+}
+
+
+
+int getAttributes(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE hnd, CK_ATTRIBUTE_PTR template)
+{
+	int i, attrs, rc;
+
+	for (i = 0; template[i].type != 0; i++);
+	attrs = i;
+
+	rc = p11->C_GetAttributeValue(session, hnd, template, attrs);
+	if (rc != CKR_OK && rc != CKR_ATTRIBUTE_TYPE_INVALID) {
+		fprintf(stderr, "C_GetAttributeValue failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
+		return rc;
+	}
+
+	for (i = 0; i < attrs; i++) {
+		if ((CK_LONG)template[i].ulValueLen > 0) {
+			template[i].pValue = calloc(template[i].ulValueLen, 1);
+
+			if (template[i].pValue == NULL)
+				return CKR_HOST_MEMORY;
+		}
+	}
+
+	rc = p11->C_GetAttributeValue(session, hnd, template, attrs);
+	if (rc != CKR_OK && rc != CKR_ATTRIBUTE_TYPE_INVALID) {
+		fprintf(stderr, "C_GetAttributeValue failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
+		return rc;
+	}
+	return CKR_OK;
+}
+
+
+
+void freeAttributes(CK_ATTRIBUTE_PTR template)
+{
+	while(template->type) {
+		if (template->pValue != NULL)
+			free(template->pValue);
+		template++;
+	}
+}
+
+
+
+int printKeyDomain(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE hnd)
+{
+	CK_ATTRIBUTE template[] = {
+		{ CKA_ID, NULL, 0 },
+		{ CKA_LABEL, NULL, 0 },
+		{ CKA_SC_HSM_SHARE_STATUS, NULL, 0 },
+		{ CKA_SC_HSM_KEK_KCV, NULL, 0 },
+		{ CKA_SC_HSM_KEY_DOMAIN_UID, NULL, 0 },
+		{ 0, NULL, 0 }
 	};
 	int rc;
 
-	classprk = loggedin ? CKO_PRIVATE_KEY : CKO_PUBLIC_KEY;
-	rc = listObjects(p11, session, template, sizeof(template) / sizeof(CK_ATTRIBUTE), handleKey);
-	if (rc < 0) {
+	rc = getAttributes(p11, session, hnd, template);
+	if (rc != CKR_OK)
+		return - 1;
+
+	int i = *(unsigned char *)template[0].pValue;
+
+	printf("%3d: %s", i + 1, template[2].pValue ? "DKEK" : "XKEK");
+
+	if (template[1].pValue) {
+		printf(" \"%s\"", p11string((CK_UTF8CHAR *)template[1].pValue, template[1].ulValueLen));
+	}
+
+	if (template[2].pValue) {
+		int shares = *(unsigned char*)template[2].pValue;
+		int missing = *((unsigned char*)template[2].pValue + 1);
+
+		if (missing) {
+			printf(" set-up in progress with %d of %d shares missing", missing, shares);
+		}
+	}
+
+	if (template[3].pValue) {
+		char kcvstring[20];
+		bin2hex(kcvstring, sizeof(kcvstring), template[3].pValue, template[3].ulValueLen);
+		printf(" with KCV %s", kcvstring);
+	}
+
+	if (template[4].pValue) {
+		char uidstring[70];
+		bin2hex(uidstring, sizeof(uidstring), template[4].pValue, template[4].ulValueLen);
+		printf(" with Key Domain UID %s", uidstring);
+	}
+
+	printf("\n");
+
+	freeAttributes(template);
+
+	return i;
+}
+
+
+
+int listKeyDomains(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, CK_SESSION_HANDLE session, int loggedin)
+{
+	CK_OBJECT_CLASS classkd = CKO_SC_HSM_KEY_DOMAIN;
+	CK_ATTRIBUTE searchkd[] = {
+		{ CKA_CLASS, &classkd, sizeof(classkd) }
+	};
+	CK_SESSION_HANDLE subsession;
+	CK_OBJECT_HANDLE hnd;
+	CK_ULONG cnt;
+	char scr[256];
+	int rc;
+
+	printf("  0: Default\n");
+
+	rc = listKeys(p11, session, loggedin, -1);
+	if (rc != CKR_OK) {
 		return rc;
 	}
 
-	classprk = CKO_SECRET_KEY;
-	rc = listObjects(p11, session, template, sizeof(template) / sizeof(CK_ATTRIBUTE), handleKey);
-	if (rc < 0) {
+	rc = p11->C_FindObjectsInit(session, searchkd, sizeof(searchkd) / sizeof(CK_ATTRIBUTE));
+
+	if (rc != CKR_OK) {
+		fprintf(stderr, "C_FindObjectsInit failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
 		return rc;
 	}
+
+	cnt = 1;
+	while (rc == CKR_OK && cnt) {
+		rc = p11->C_FindObjects(session, &hnd, 1, &cnt);
+
+		if (rc == CKR_OK) {
+			if (cnt == 1) {
+				int kdid = printKeyDomain(p11, session, hnd);
+
+				if (verbose > 1) {
+					dumpObject(p11, session, hnd, NULL);
+				}
+
+				rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &subsession);
+
+				if (rc != CKR_OK) {
+					fprintf(stderr, "C_OpenSession failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
+					return rc;
+				}
+
+				listKeys(p11, subsession, loggedin, kdid);
+
+				p11->C_CloseSession(subsession);
+			}
+		} else {
+			fprintf(stderr, "C_FindObjects failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
+		}
+	}
+
+	p11->C_FindObjectsFinal(session);
 
 	return rc;
 }
@@ -812,7 +1029,7 @@ int main(int argc, char *argv[])
 
 	slotlist = (CK_SLOT_ID_PTR) malloc(sizeof(CK_SLOT_ID) * slots);
 
-	rc = p11->C_GetSlotList(FALSE, slotlist, &slots);
+	rc = p11->C_GetSlotList(TRUE, slotlist, &slots);
 
 	if (rc != CKR_OK) {
 		fprintf(stderr, "C_GetSlotList failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
@@ -837,7 +1054,7 @@ int main(int argc, char *argv[])
 		}
 
 		printf("Slot manufacturer   : %s\n", p11string(slotinfo.manufacturerID, sizeof(slotinfo.manufacturerID)));
-		printf("Slot ID / desc      : %ld : %s\n", slotid, p11string(slotinfo.slotDescription, sizeof(slotinfo.slotDescription)));
+		printf("Slot ID / desc      : %ld / %s\n", slotid, p11string(slotinfo.slotDescription, sizeof(slotinfo.slotDescription)));
 		printf("Slot flags          : %x\n", (int)slotinfo.flags);
 
 		rc = p11->C_GetTokenInfo(slotid, &tokeninfo);
@@ -873,9 +1090,13 @@ int main(int argc, char *argv[])
 			loggedin = 1;
 		}
 
-		printf("------- Keys -------\n");
+//		listObjects(p11, session, NULL, 0, NULL);
 
-		rc = listKeys(p11, session, loggedin);
+		printf("----- Key Domains / Keys -----\n");
+		if (!loggedin)
+			printf("\nWithout login only public objects are shown !\n");
+
+		rc = listKeyDomains(p11, slotid, session, loggedin);
 		if (rc != CKR_OK) {
 			free(slotlist);
 			exit(1);

@@ -12,7 +12,7 @@
 #ifndef _PKCS11_H_
 #define _PKCS11_H_ 1
 
-#ifdef __cplusplus
+#ifdef _cplusplus
 extern "C" {
 #endif
 

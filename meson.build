@@ -2,6 +2,8 @@ project('sc-hsm-embedded', 'c',
   version : '2.13',
   default_options : ['warning_level=0'])
 
+add_project_arguments('-DDEBUG', language: 'c')
+
 # libusb_dep = dependency('libusb-1.0', required: true)
 
 libpcsclite_dep_test = dependency('libpcsclite', required: false)
@@ -35,3 +37,5 @@ endif
 core_inc = include_directories('src')
 
 subdir('src')
+
+

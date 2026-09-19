@@ -48,6 +48,7 @@
 #include <pkcs11/privatekeyobject.h>
 #include <pkcs11/publickeyobject.h>
 #include <pkcs11/secretkeyobject.h>
+#include <pkcs11/keydomain.h>
 #include <pkcs11/strbpcpy.h>
 #include <pkcs11/crypto.h>
 
@@ -206,7 +207,7 @@ static int enumerateObjects(struct p11Slot_t *slot, unsigned char *filelist, siz
 
 
 
-static int readEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *content, size_t len)
+int sc_hsm_readEF(struct p11Slot_t *slot, unsigned short fid, unsigned char *content, size_t len)
 {
 	int rc,blk,rlen;
 	unsigned short SW1SW2;
@@ -1137,7 +1138,7 @@ static int decodeLabel(struct p11Token_t *token)
 
 	FUNC_CALLED();
 
-	rc = readEF(token->slot, 0x2F03, ciainfo, sizeof(ciainfo));
+	rc = sc_hsm_readEF(token->slot, 0x2F03, ciainfo, sizeof(ciainfo));
 
 	if (rc < 0)
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading CIAInfo");
@@ -1177,7 +1178,7 @@ static int decodeDevAutCert(struct p11Token_t *token)
 
 	FUNC_CALLED();
 
-	len = readEF(token->slot, 0x2F02, cert, sizeof(cert));
+	len = sc_hsm_readEF(token->slot, 0x2F02, cert, sizeof(cert));
 
 	if (len < 0) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading C.DevAut");
@@ -1254,6 +1255,71 @@ static int determineFreeKeyId(struct p11Slot_t *slot, unsigned char prefix) {
 
 
 
+static int updateMetaData(struct p11Token_t *token, unsigned char id, struct p11Object_t *prikey, struct p11Object_t *pubkey)
+{
+	int rc, len;
+	unsigned short SW1SW2;
+	unsigned char fid[2];
+	unsigned char scr[256], *po;
+	FUNC_CALLED();
+
+	fid[0] = KEY_PREFIX;
+	fid[1] = id;
+
+	rc = transmitAPDU(token->slot, 0x00, 0xA4, 0x00, 0x04,
+			sizeof(fid), fid,
+			0, scr, sizeof(scr), &SW1SW2);
+
+	if (rc < 0) {
+		FUNC_FAILS(rc, "transmitAPDU failed");
+	}
+
+	if (SW1SW2 != 0x9000) {
+		FUNC_FAILS(-1, "Token did not return prikey meta data");
+	}
+
+	if (asn1Validate(scr, rc)) {
+		FUNC_FAILS(-1, "Invalid FCP returned");
+	}
+
+	po = asn1Find(scr, (unsigned char *)"\x62\xA5\x90", 3);
+
+	if (po) {
+		asn1Tag(&po);
+		len = asn1Length(&po);
+
+		if (len == 4) {
+			CK_ULONG kuc =  *po++;
+			kuc = (kuc << 8) + *po++;
+			kuc = (kuc << 8) + *po++;
+			kuc = (kuc << 8) + *po++;
+			if (kuc != 0xFFFFFFFFU) {
+				CK_ATTRIBUTE attr = { CKA_SC_HSM_KEY_USE_COUNTER, &kuc, sizeof(kuc) };
+				addAttribute(prikey, &attr);
+				if (pubkey != NULL)
+					addAttribute(pubkey, &attr);
+			}
+		}
+	}
+
+	po = asn1Find(scr, (unsigned char *)"\x62\xA5\x92", 3);
+
+	if (po) {
+		asn1Tag(&po);
+		len = asn1Length(&po);
+		if (len == 1) {
+			CK_ATTRIBUTE attr = { CKA_SC_HSM_KEY_DOMAIN, po, 1 };
+			addAttribute(prikey, &attr);
+			if (pubkey != NULL)
+				addAttribute(pubkey, &attr);
+		}
+	}
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
 static CK_RV sc_hsm_C_DeriveSymmetricKey(
 		struct p11Object_t *pObject,
 		CK_MECHANISM_PTR pMechanism,
@@ -1280,7 +1346,7 @@ static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char
 
 	FUNC_CALLED();
 
-	rc = readEF(token->slot, (PRKD_PREFIX << 8) | id, prkd, sizeof(prkd));
+	rc = sc_hsm_readEF(token->slot, (PRKD_PREFIX << 8) | id, prkd, sizeof(prkd));
 
 	if (rc < 0) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading private key description");
@@ -1311,7 +1377,7 @@ static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Error decoding private key description");
 		}
 
-		rc = readEF(token->slot, (EE_CERTIFICATE_PREFIX << 8) | id, certValue, sizeof(certValue));
+		rc = sc_hsm_readEF(token->slot, (EE_CERTIFICATE_PREFIX << 8) | id, certValue, sizeof(certValue));
 
 		if (rc > 0) {
 			certLen = rc;
@@ -1412,6 +1478,12 @@ static int addEECertificateAndKeyObjects(struct p11Token_t *token, unsigned char
 
 	p11prikey->tokenid = (int)id;
 
+	rc = updateMetaData(token, id, p11prikey, p11pubkey);
+
+	if (rc != CKR_OK) {
+		FUNC_FAILS(CKR_DEVICE_ERROR, "Could not select key to obtain meta data");
+	}
+
 	addObject(token, p11prikey, FALSE);
 
 	if (priKey != NULL)
@@ -1439,7 +1511,7 @@ static int addCACertificateObject(struct p11Token_t *token, unsigned char id)
 
 	FUNC_CALLED();
 
-	rc = readEF(token->slot, (CD_PREFIX << 8) | id, cd, sizeof(cd));
+	rc = sc_hsm_readEF(token->slot, (CD_PREFIX << 8) | id, cd, sizeof(cd));
 
 	if (rc < 0) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate description");
@@ -1452,7 +1524,7 @@ static int addCACertificateObject(struct p11Token_t *token, unsigned char id)
 	}
 
 	fid = (CA_CERTIFICATE_PREFIX << 8) | id;
-	rc = readEF(token->slot, fid, certValue, sizeof(certValue));
+	rc = sc_hsm_readEF(token->slot, fid, certValue, sizeof(certValue));
 
 	if (rc < 0) {
 		FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate");
@@ -2170,7 +2242,7 @@ static int sc_hsm_C_SetAttributeValue(struct p11Slot_t *slot, struct p11Object_t
 	case CKO_PRIVATE_KEY:
 		fid = (PRKD_PREFIX << 8) | pObject->tokenid;
 
-		rc = readEF(slot, fid, desc, sizeof(desc));
+		rc = sc_hsm_readEF(slot, fid, desc, sizeof(desc));
 
 		if (rc < 0) {
 			FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading private key description");
@@ -2233,7 +2305,7 @@ static int sc_hsm_C_SetAttributeValue(struct p11Slot_t *slot, struct p11Object_t
 		if (pObject->tokenid >= 0x100) {
 			fid = (CD_PREFIX << 8) | (pObject->tokenid & 0xFF);
 
-			rc = readEF(slot, fid, desc, sizeof(desc));
+			rc = sc_hsm_readEF(slot, fid, desc, sizeof(desc));
 
 			if (rc < 0) {
 				FUNC_FAILS(CKR_DEVICE_ERROR, "Error reading certificate description");
@@ -2920,13 +2992,20 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	rc = decodeDevAutCert(ptoken);
 	if (rc != CKR_OK) {
 		freeToken(ptoken);
-		FUNC_FAILS(rc, "addToken() failed");
+		FUNC_FAILS(rc, "decodeDevAutCert() failed");
 	}
+
+	rc = enumerateKeyDomains(ptoken);
+	if (rc != CKR_OK) {
+		freeToken(ptoken);
+		FUNC_FAILS(rc, "enumerateKeyDomains() failed");
+	}
+
 
 	rc = sc_hsm_loadObjects(ptoken);
 	if (rc != CKR_OK) {
 		freeToken(ptoken);
-		FUNC_FAILS(rc, "addToken() failed");
+		FUNC_FAILS(rc, "sc_hsm_loadObjects() failed");
 	}
 
 
