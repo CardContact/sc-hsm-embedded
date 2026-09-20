@@ -144,7 +144,7 @@ int enumerateKeyDomains(struct p11Token_t *token)
 			FUNC_FAILS(rc, "transmitAPDU failed");
 		}
 
-		if (SW1SW2 == 0x6A86) {
+		if (SW1SW2 == 0x6A86 || SW1SW2 == 0x6D00) {
 			break;
 		}
 

@@ -670,11 +670,10 @@ int handleKey(CK_ATTRIBUTE_PTR attr, int attrlen)
 		bin2str(id, sizeof(id), attr[rc].pValue, attr[rc].ulValueLen);
 	}
 
-	int indent = 24 - strlen(label);
+	int indent = 28 - strlen(label);
 	if (indent < 4)
 		indent = 4;
 
-//	printf("%-18s %s  (%s)\n", keytype, label, id);
 	printf("  '-- \"%s\"%*s(%s,%s)\n", label, indent, "", keytype, id);
 
 	return CKR_OK;
