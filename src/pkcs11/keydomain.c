@@ -56,7 +56,6 @@ static int createKeyDomainObject(int idx, unsigned char *label, int labellen, st
 	};
 
 	int len;
-	int rc;
 
 	p11o = calloc(sizeof(struct p11Object_t), 1);
 
@@ -84,9 +83,8 @@ static int createKeyDomainObject(int idx, unsigned char *label, int labellen, st
 static int updateKeyDomainObject(struct p11Object_t *pObject, unsigned char *kdstatus, int kdstatuslen)
 {
 	CK_ATTRIBUTE template;
-	unsigned char *po;
 	unsigned char zero = 0;
-	int rc, i;
+	int rc;
 
 	for (int i = 2; i < 10; i++)
 		zero |= kdstatus[i];
@@ -130,7 +128,7 @@ int enumerateKeyDomains(struct p11Token_t *token)
 	unsigned char kddesc[256];
 	unsigned char *label;
 	struct p11Object_t *p11KeyDomain;
-	int rc,kdinfolen,i,labellen;
+	int rc,kdinfolen,labellen;
 	unsigned short SW1SW2;
 
 	FUNC_CALLED();

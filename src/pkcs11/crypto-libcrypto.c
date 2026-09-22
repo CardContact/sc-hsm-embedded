@@ -400,7 +400,6 @@ static CK_RV verifyECDSA(struct p11Object_t *obj, CK_MECHANISM_TYPE mech, CK_BYT
 	EC_GROUP *ecg = NULL;
 	char *curve_name;
 	EC_POINT *ecp = NULL;
-	EC_KEY *ec = NULL;
 	EVP_PKEY *pkey = NULL;
 	const EVP_MD *md = NULL;
 	CK_RV rv;

@@ -19,7 +19,11 @@ else
   endif
 endif
 
-libcurl_dep = dependency('libcurl')
+libcurl_dep = dependency('libcurl', required: false)
+
+if libcurl_dep.found()
+	add_project_arguments('-DRAM', language: 'c')
+endif
 
 libcrypto_dep = dependency('libcrypto')
 

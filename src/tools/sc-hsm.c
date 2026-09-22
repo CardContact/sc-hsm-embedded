@@ -1098,6 +1098,12 @@ int main(int argc, char *argv[])
 		printf("Token manufacturer  : %s\n", p11string(tokeninfo.manufacturerID, sizeof(tokeninfo.manufacturerID)));
 		printf("Token model         : %s\n", p11string(tokeninfo.model, sizeof(tokeninfo.model)));
 		printf("Serial              : %s\n", p11string(tokeninfo.serialNumber, sizeof(tokeninfo.serialNumber)));
+		printf("Free memory         : %lu bytes", tokeninfo.ulFreePrivateMemory);
+		if (tokeninfo.ulFreePrivateMemory == 32767L) {
+			printf(" (at least)\n");
+		} else {
+			printf("\n");
+		}
 		printf("Token flags         : %lx\n", tokeninfo.flags);
 
 		rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &session);
@@ -1125,7 +1131,7 @@ int main(int argc, char *argv[])
 
 		printf("----- Key Domains / Keys -----\n");
 		if (!loggedin)
-			printf("\nWithout login only public objects are shown !\n");
+			printf("\nWithout login only public objects are shown !\n\n");
 
 		rc = listKeyDomains(p11, slotid, session, loggedin);
 		if (rc != CKR_OK) {

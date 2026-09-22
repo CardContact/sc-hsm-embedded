@@ -184,6 +184,35 @@ static int selectApplet(struct p11Slot_t *slot, unsigned char *tag85, size_t *ta
 
 
 
+static int queryAppletStatus(struct p11Slot_t *slot, unsigned char *tag85, size_t *tag85len)
+{
+	int rc;
+	unsigned short SW1SW2;
+	unsigned char scr[256];
+	FUNC_CALLED();
+
+	rc = transmitAPDU(slot, 0x80, 0x50, 0x00, 0x00,
+			0, NULL,
+			0, scr, sizeof(scr), &SW1SW2);
+
+	if (rc < 0) {
+		FUNC_FAILS(rc, "transmitAPDU failed");
+	}
+
+	if (SW1SW2 != 0x9000) {
+		FUNC_FAILS(-1, "Token does not support INTIIALIZE DEVICE without C-Data");
+	}
+
+	if (tag85 != NULL) {
+		*tag85len = rc;
+		memcpy(tag85, scr, *tag85len);
+	}
+
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
 static int enumerateObjects(struct p11Slot_t *slot, unsigned char *filelist, size_t len)
 {
 	int rc;
@@ -2570,7 +2599,6 @@ static int parseSOPIN(unsigned char *pin, unsigned char *encodedPIN)
  */
 static int sendApdu(struct ramContext *ctx, unsigned char *capdu, size_t clen, unsigned char *rapdu, size_t *rlen) {
 	int rc;
-	unsigned short SW1SW2;
 	struct p11Slot_t *slot = (struct p11Slot_t *)ramGetUserObject(ctx);
 
 	rc = transmitPlainAPDU(slot, capdu, clen, rapdu, rlen);
@@ -2942,6 +2970,8 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 			isinitialized = 0;
 	}
 
+	queryAppletStatus(slot, tag85, &tag85len);
+
 	rc = allocateToken(&ptoken, sizeof(struct token_sc_hsm));
 	if (rc != CKR_OK)
 		return rc;
@@ -2961,7 +2991,7 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	ptoken->info.ulMaxRwSessionCount = CK_EFFECTIVELY_INFINITE;
 	ptoken->info.ulSessionCount = CK_UNAVAILABLE_INFORMATION;
 
-	if (tag85len > 0) {
+	if (tag85len > 2) {
 		ptoken->info.firmwareVersion.major = tag85[tag85len - 2];
 		ptoken->info.firmwareVersion.minor = tag85[tag85len - 1];
 
@@ -2969,6 +2999,15 @@ int newSmartCardHSMToken(struct p11Slot_t *slot, struct p11Token_t **token)
 			ptoken->info.hardwareVersion.major = tag85[tag85len - 3];
 		} else {
 			ptoken->info.hardwareVersion.major = 2;
+		}
+		if (tag85len >= 9) {
+			unsigned char *po = &tag85[tag85len - 7];
+			CK_ULONG mem =  *po++;
+			mem = (mem << 8) + *po++;
+			mem = (mem << 8) + *po++;
+			mem = (mem << 8) + *po++;
+			ptoken->info.ulFreePrivateMemory = mem;
+			ptoken->info.ulFreePublicMemory = mem;
 		}
 	} else {
 		ptoken->info.firmwareVersion.major = 3;		// Assume 3.0 as default
