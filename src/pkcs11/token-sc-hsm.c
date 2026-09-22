@@ -1302,6 +1302,19 @@ static int updateMetaData(struct p11Token_t *token, unsigned char id, struct p11
 		}
 	}
 
+	po = asn1Find(scr, (unsigned char *)"\x62\xA5\x91", 3);
+
+	if (po) {
+		asn1Tag(&po);
+		len = asn1Length(&po);
+		if (len > 0) {
+			CK_ATTRIBUTE attr = { CKA_SC_HSM_ALGORITHM_LIST, po, len };
+			addAttribute(prikey, &attr);
+			if (pubkey != NULL)
+				addAttribute(pubkey, &attr);
+		}
+	}
+
 	po = asn1Find(scr, (unsigned char *)"\x62\xA5\x92", 3);
 
 	if (po) {

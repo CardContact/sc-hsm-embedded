@@ -549,61 +549,6 @@ int findAttribute(CK_ATTRIBUTE_PTR attr, int attrlen, CK_ATTRIBUTE_TYPE type)
 
 
 
-void describeKey(CK_ATTRIBUTE_PTR attr, int attrlen, char *buff, int bufflen) {
-	int rc;
-	CK_ULONG keysize;
-
-	*buff = 0;
-
-	rc = findAttribute(attr, attrlen, CKA_KEY_TYPE);
-	if (rc < 0)
-		return;
-
-	CK_KEY_TYPE kt = *(CK_KEY_TYPE *)attr[rc].pValue;
-
-	switch(kt) {
-	case CKK_RSA:
-		rc = findAttribute(attr, attrlen, CKA_MODULUS_BITS);
-		if (rc >= 0) {
-			keysize = *(CK_ULONG *)attr[rc].pValue;
-		} else {
-			rc = findAttribute(attr, attrlen, CKA_MODULUS);
-			if (rc < 0) {
-				return;
-			}
-			keysize = attr[rc].ulValueLen << 3;
-		}
-
-		snprintf(buff, bufflen, "RSA:%d", (int)keysize);
-		break;
-	case CKK_EC:
-		rc = findAttribute(attr, attrlen, CKA_EC_PARAMS);
-		if (rc < 0)
-			return;
-
-		char *curvename = "*Unknown*";
-		struct bytestring_s bs = { (unsigned char *)attr[rc].pValue + 2, attr[rc].ulValueLen - 2 };
-		struct ec_curve *curve = cvcGetCurveForOID(&bs);
-		if (curve != NULL) {
-			curvename = curve->name;
-		}
-		snprintf(buff, bufflen, "EC:%s", curvename);
-		break;
-	case CKK_AES:
-		rc = findAttribute(attr, attrlen, CKA_VALUE_LEN);
-		if (rc < 0)
-			return;
-
-		keysize = *(CK_ULONG *)attr[rc].pValue;
-		snprintf(buff, bufflen, "AES:%lu", keysize << 3);
-		break;
-	default:
-		strncpy(buff, id2name(p11CKKName, kt, NULL, namebuf), bufflen);
-	}
-}
-
-
-
 void dumpAttribute(CK_ATTRIBUTE_PTR attr)
 {
 	char attribute[30], scr[4096];
@@ -646,37 +591,6 @@ void dumpAttribute(CK_ATTRIBUTE_PTR attr)
 			break;
 		}
 	}
-}
-
-
-
-int handleKey(CK_ATTRIBUTE_PTR attr, int attrlen)
-{
-	char keytype[20];
-	char id[256];
-	int rc;
-
-	describeKey(attr, P11CKA, keytype, sizeof(keytype));
-
-	char *label = "";
-	rc = findAttribute(attr, attrlen, CKA_LABEL);
-	if (rc >= 0) {
-		label = p11string(attr[rc].pValue, attr[rc].ulValueLen);
-	}
-
-	id[0] = 0;
-	rc = findAttribute(attr, attrlen, CKA_ID);
-	if (rc >= 0) {
-		bin2str(id, sizeof(id), attr[rc].pValue, attr[rc].ulValueLen);
-	}
-
-	int indent = 28 - strlen(label);
-	if (indent < 4)
-		indent = 4;
-
-	printf("  '-- \"%s\"%*s(%s,%s)\n", label, indent, "", keytype, id);
-
-	return CKR_OK;
 }
 
 
@@ -744,10 +658,7 @@ int listObjects(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBUT
 {
 	CK_OBJECT_HANDLE hnd;
 	CK_ULONG cnt;
-	CK_ATTRIBUTE template = { CKA_SC_HSM_KEY_DOMAIN, NULL, 0 };
-	int rc,haskd;
-
-	haskd = findAttr(attr, len, CKA_SC_HSM_KEY_DOMAIN);
+	int rc;
 
 	rc = p11->C_FindObjectsInit(session, attr, len);
 
@@ -762,11 +673,7 @@ int listObjects(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBUT
 
 		if (rc == CKR_OK) {
 			if (cnt == 1) {
-				rc = p11->C_GetAttributeValue(session, hnd, (CK_ATTRIBUTE_PTR)&template, 1);
-				if ((haskd >= 0 && rc == CKR_OK) ||
-				    (haskd < 0 && rc != CKR_OK))
-					dumpObject(p11, session, hnd, handler);
-				rc = CKR_OK;
+				dumpObject(p11, session, hnd, handler);
 			}
 		} else {
 			fprintf(stderr, "C_FindObjects failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
@@ -780,6 +687,154 @@ int listObjects(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBUT
 
 
 
+int getAttributes(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE hnd, CK_ATTRIBUTE_PTR attr, int attrlen)
+{
+	int i, rc;
+
+	rc = p11->C_GetAttributeValue(session, hnd, attr, attrlen);
+	if (rc != CKR_OK && rc != CKR_ATTRIBUTE_TYPE_INVALID) {
+		fprintf(stderr, "C_GetAttributeValue failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
+		return rc;
+	}
+
+	for (i = 0; i < attrlen; i++) {
+		if ((CK_LONG)attr[i].ulValueLen > 0) {
+			attr[i].pValue = calloc(attr[i].ulValueLen, 1);
+
+			if (attr[i].pValue == NULL)
+				return CKR_HOST_MEMORY;
+		}
+	}
+
+	rc = p11->C_GetAttributeValue(session, hnd, attr, attrlen);
+	if (rc != CKR_OK && rc != CKR_ATTRIBUTE_TYPE_INVALID) {
+		fprintf(stderr, "C_GetAttributeValue failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
+		return rc;
+	}
+	return CKR_OK;
+}
+
+
+
+void freeAttributes(CK_ATTRIBUTE_PTR attr, int attrlen)
+{
+	while(attrlen--) {
+		if (attr->pValue != NULL)
+			free(attr->pValue);
+		attr++;
+	}
+}
+
+
+
+void describeKey(CK_ATTRIBUTE_PTR attr, int attrlen, char *buff, int bufflen) {
+	int rc;
+	CK_ULONG keysize;
+
+	*buff = 0;
+
+	rc = findAttribute(attr, attrlen, CKA_KEY_TYPE);
+	if (rc < 0)
+		return;
+
+	CK_KEY_TYPE kt = *(CK_KEY_TYPE *)attr[rc].pValue;
+
+	switch(kt) {
+	case CKK_RSA:
+		rc = findAttribute(attr, attrlen, CKA_MODULUS_BITS);
+		if (rc >= 0) {
+			keysize = *(CK_ULONG *)attr[rc].pValue;
+		} else {
+			rc = findAttribute(attr, attrlen, CKA_MODULUS);
+			if (rc < 0) {
+				return;
+			}
+			keysize = attr[rc].ulValueLen << 3;
+		}
+
+		snprintf(buff, bufflen, "RSA:%d", (int)keysize);
+		break;
+	case CKK_EC:
+		rc = findAttribute(attr, attrlen, CKA_EC_PARAMS);
+		if (rc < 0)
+			return;
+
+		char *curvename = "*Unknown*";
+		struct bytestring_s bs = { (unsigned char *)attr[rc].pValue + 2, attr[rc].ulValueLen - 2 };
+		struct ec_curve *curve = cvcGetCurveForOID(&bs);
+		if (curve != NULL) {
+			curvename = curve->name;
+		}
+		snprintf(buff, bufflen, "EC:%s", curvename);
+		break;
+	case CKK_AES:
+		rc = findAttribute(attr, attrlen, CKA_VALUE_LEN);
+		if (rc < 0)
+			return;
+
+		keysize = *(CK_ULONG *)attr[rc].pValue;
+		snprintf(buff, bufflen, "AES:%lu", keysize << 3);
+		break;
+	default:
+		strncpy(buff, id2name(p11CKKName, kt, NULL, namebuf), bufflen);
+	}
+}
+
+
+
+void printKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE hnd)
+{
+	CK_ATTRIBUTE attr[] = {
+		{ CKA_KEY_TYPE, NULL, 0 },
+		{ CKA_ID, NULL, 0 },
+		{ CKA_LABEL, NULL, 0 },
+		{ CKA_MODULUS, NULL, 0 },
+		{ CKA_EC_PARAMS, NULL, 0 },
+		{ CKA_VALUE_LEN, NULL, 0 },
+		{ CKA_SC_HSM_KEY_USE_COUNTER, NULL, 0 },
+		{ CKA_SC_HSM_ALGORITHM_LIST, NULL, 0 }
+	};
+	char scr[256];
+	char *label = "";
+	int rc;
+
+	rc = getAttributes(p11, session, hnd, attr, sizeof(attr) / sizeof(CK_ATTRIBUTE));
+	if (rc != CKR_OK)
+		return;
+
+	describeKey(attr, sizeof(attr) / sizeof(CK_ATTRIBUTE), scr, sizeof(scr));
+
+	if (attr[2].pValue != NULL) {
+		label = p11string(attr[2].pValue, attr[2].ulValueLen);
+	}
+
+	int indent = 28 - strlen(label);
+	if (indent < 4)
+		indent = 4;
+
+	printf("  '-- \"%s\"%*s(%s", label, indent, "", scr);
+
+	if (attr[1].pValue != NULL) {
+		bin2str(scr, sizeof(scr), attr[1].pValue, attr[1].ulValueLen);
+		printf(",ID:%s", scr);
+	}
+
+	if (attr[6].pValue != NULL) {
+		printf(",KUC:%lu", *(CK_ULONG*)attr[6].pValue);
+	}
+
+	if (attr[7].pValue != NULL) {
+		bin2str(scr, sizeof(scr), attr[7].pValue, attr[7].ulValueLen);
+		printf(",ALG:%s", scr);
+	}
+
+	printf(")\n");
+
+	freeAttributes(attr, sizeof(attr) / sizeof(CK_ATTRIBUTE));
+}
+
+
+
 int listKeys(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, int loggedin, int keydomain)
 {
 	CK_OBJECT_CLASS classprk;
@@ -788,6 +843,8 @@ int listKeys(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, int loggedin, 
 		{ CKA_CLASS, &classprk, sizeof(classprk) },
 		{ CKA_SC_HSM_KEY_DOMAIN, &kdid, sizeof(kdid) }
 	};
+	CK_OBJECT_HANDLE hnd;
+	CK_ULONG cnt;
 	int rc,len;
 
 	len = 1;
@@ -799,10 +856,31 @@ int listKeys(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, int loggedin, 
 
 	classprk = loggedin ? CKO_PRIVATE_KEY : CKO_PUBLIC_KEY;
 	while(1) {
-		rc = listObjects(p11, session, template, len, handleKey);
-		if (rc < 0) {
+		rc = p11->C_FindObjectsInit(session, template, len);
+
+		if (rc != CKR_OK) {
+			fprintf(stderr, "C_FindObjectsInit failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
 			return rc;
 		}
+
+		cnt = 1;
+		while (rc == CKR_OK && cnt) {
+			rc = p11->C_FindObjects(session, &hnd, 1, &cnt);
+
+			if (rc == CKR_OK) {
+				if (cnt == 1) {
+					rc = p11->C_GetAttributeValue(session, hnd, &template[1], 1);
+					if ((keydomain >= 0 && rc == CKR_OK) ||
+					    (keydomain < 0 && rc != CKR_OK))
+						printKey(p11, session, hnd);
+					rc = CKR_OK;
+				}
+			} else {
+				fprintf(stderr, "C_FindObjects failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
+			}
+		}
+
+		p11->C_FindObjectsFinal(session);
 
 		if (classprk == CKO_SECRET_KEY)
 			break;
@@ -815,52 +893,9 @@ int listKeys(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, int loggedin, 
 
 
 
-int getAttributes(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE hnd, CK_ATTRIBUTE_PTR template)
-{
-	int i, attrs, rc;
-
-	for (i = 0; template[i].type != 0; i++);
-	attrs = i;
-
-	rc = p11->C_GetAttributeValue(session, hnd, template, attrs);
-	if (rc != CKR_OK && rc != CKR_ATTRIBUTE_TYPE_INVALID) {
-		fprintf(stderr, "C_GetAttributeValue failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
-		return rc;
-	}
-
-	for (i = 0; i < attrs; i++) {
-		if ((CK_LONG)template[i].ulValueLen > 0) {
-			template[i].pValue = calloc(template[i].ulValueLen, 1);
-
-			if (template[i].pValue == NULL)
-				return CKR_HOST_MEMORY;
-		}
-	}
-
-	rc = p11->C_GetAttributeValue(session, hnd, template, attrs);
-	if (rc != CKR_OK && rc != CKR_ATTRIBUTE_TYPE_INVALID) {
-		fprintf(stderr, "C_GetAttributeValue failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
-		return rc;
-	}
-	return CKR_OK;
-}
-
-
-
-void freeAttributes(CK_ATTRIBUTE_PTR template)
-{
-	while(template->type) {
-		if (template->pValue != NULL)
-			free(template->pValue);
-		template++;
-	}
-}
-
-
-
 int printKeyDomain(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE hnd)
 {
-	CK_ATTRIBUTE template[] = {
+	CK_ATTRIBUTE attr[] = {
 		{ CKA_ID, NULL, 0 },
 		{ CKA_LABEL, NULL, 0 },
 		{ CKA_SC_HSM_SHARE_STATUS, NULL, 0 },
@@ -870,42 +905,42 @@ int printKeyDomain(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_OBJEC
 	};
 	int rc;
 
-	rc = getAttributes(p11, session, hnd, template);
+	rc = getAttributes(p11, session, hnd, attr, sizeof(attr) / sizeof(CK_ATTRIBUTE));
 	if (rc != CKR_OK)
 		return - 1;
 
-	int i = *(unsigned char *)template[0].pValue;
+	int i = *(unsigned char *)attr[0].pValue;
 
-	printf("%3d: %s", i + 1, template[2].pValue ? "DKEK" : "XKEK");
+	printf("%3d: %s", i + 1, attr[2].pValue ? "DKEK" : "XKEK");
 
-	if (template[1].pValue) {
-		printf(" \"%s\"", p11string((CK_UTF8CHAR *)template[1].pValue, template[1].ulValueLen));
+	if (attr[1].pValue) {
+		printf(" \"%s\"", p11string((CK_UTF8CHAR *)attr[1].pValue, attr[1].ulValueLen));
 	}
 
-	if (template[2].pValue) {
-		int shares = *(unsigned char*)template[2].pValue;
-		int missing = *((unsigned char*)template[2].pValue + 1);
+	if (attr[2].pValue) {
+		int shares = *(unsigned char*)attr[2].pValue;
+		int missing = *((unsigned char*)attr[2].pValue + 1);
 
 		if (missing) {
 			printf(" set-up in progress with %d of %d shares missing", missing, shares);
 		}
 	}
 
-	if (template[3].pValue) {
+	if (attr[3].pValue) {
 		char kcvstring[20];
-		bin2hex(kcvstring, sizeof(kcvstring), template[3].pValue, template[3].ulValueLen);
+		bin2hex(kcvstring, sizeof(kcvstring), attr[3].pValue, attr[3].ulValueLen);
 		printf(" with KCV %s", kcvstring);
 	}
 
-	if (template[4].pValue) {
+	if (attr[4].pValue) {
 		char uidstring[70];
-		bin2hex(uidstring, sizeof(uidstring), template[4].pValue, template[4].ulValueLen);
+		bin2hex(uidstring, sizeof(uidstring), attr[4].pValue, attr[4].ulValueLen);
 		printf(" with Key Domain UID %s", uidstring);
 	}
 
 	printf("\n");
 
-	freeAttributes(template);
+	freeAttributes(attr, sizeof(attr) / sizeof(CK_ATTRIBUTE));
 
 	return i;
 }
@@ -921,7 +956,6 @@ int listKeyDomains(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, CK_SESSION_HANDL
 	CK_SESSION_HANDLE subsession;
 	CK_OBJECT_HANDLE hnd;
 	CK_ULONG cnt;
-	char scr[256];
 	int rc;
 
 	printf("  0: Default\n");
@@ -945,10 +979,6 @@ int listKeyDomains(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, CK_SESSION_HANDL
 		if (rc == CKR_OK) {
 			if (cnt == 1) {
 				int kdid = printKeyDomain(p11, session, hnd);
-
-				if (verbose > 1) {
-					dumpObject(p11, session, hnd, NULL);
-				}
 
 				rc = p11->C_OpenSession(slotid, CKF_RW_SESSION | CKF_SERIAL_SESSION, NULL, NULL, &subsession);
 
@@ -1089,7 +1119,9 @@ int main(int argc, char *argv[])
 			loggedin = 1;
 		}
 
-//		listObjects(p11, session, NULL, 0, NULL);
+		if (verbose > 1) {
+			listObjects(p11, session, NULL, 0, NULL);
+		}
 
 		printf("----- Key Domains / Keys -----\n");
 		if (!loggedin)
