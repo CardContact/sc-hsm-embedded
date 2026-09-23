@@ -283,6 +283,14 @@ CK_FUNCTION_LIST pkcs11_function_list = {
 
 
 
+CK_INTERFACE pkcs11_interfaces[] = {
+	{(CK_UTF8CHAR_PTR)"PKCS 11", (void *)&pkcs11_function_list, 0}
+};
+
+#define PKCS11_INTERFACES (sizeof(pkcs11_interfaces) / sizeof(CK_INTERFACE))
+
+
+
 /**
  * C_Initialize initializes the Cryptoki library.
  *
@@ -489,4 +497,81 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetFunctionList)
 	*ppFunctionList = &pkcs11_function_list;
 
 	return CKR_OK;
+}
+
+
+
+/**
+ * C_GetInterfaceList returns all the interfaces supported by the module.
+ *
+ */
+CK_DECLARE_FUNCTION(CK_RV, C_GetInterfaceList)
+(
+		  CK_INTERFACE_PTR  pInterfacesList,  /* returned interfaces */
+		  CK_ULONG_PTR      pulCount          /* number of interfaces returned */
+)
+{
+	if (!isValidPtr(pulCount)) {
+		return CKR_ARGUMENTS_BAD;
+	}
+
+	if (pInterfacesList == NULL) {
+		*pulCount = PKCS11_INTERFACES;
+		return CKR_OK;
+	}
+
+	if (*pulCount < 1) {
+		*pulCount = PKCS11_INTERFACES;
+		return CKR_BUFFER_TOO_SMALL;
+	}
+
+	memcpy(pInterfacesList, pkcs11_interfaces, sizeof(pkcs11_interfaces));
+	*pulCount = PKCS11_INTERFACES;
+
+	return CKR_OK;
+}
+
+
+
+/**
+ * C_GetInterface returns a specific interface from the module.
+ */
+CK_DECLARE_FUNCTION(CK_RV, C_GetInterface)
+(
+		CK_UTF8CHAR_PTR       pInterfaceName, /* name of the interface */
+		CK_VERSION_PTR        pVersion,       /* version of the interface */
+		CK_INTERFACE_PTR_PTR  ppInterface,    /* returned interface */
+		CK_FLAGS              flags           /* flags controlling the semantic of the interface */
+)
+{
+	if (ppInterface == NULL) {
+		return CKR_ARGUMENTS_BAD;
+	}
+
+	if (pInterfaceName == NULL_PTR) {
+		*ppInterface = &pkcs11_interfaces[0];
+		return CKR_OK;
+	}
+
+	for (int i = 0; i < PKCS11_INTERFACES; i++) {
+		CK_VERSION_PTR interface_version = (CK_VERSION_PTR)pkcs11_interfaces[i].pFunctionList;
+
+		if (strcmp((char *)pInterfaceName, (char *)pkcs11_interfaces[i].pInterfaceName) != 0) {
+			continue;
+		}
+
+		if (pVersion != NULL && (pVersion->major != interface_version->major ||
+		    pVersion->minor != interface_version->minor)) {
+			continue;
+		}
+
+		if ((flags & pkcs11_interfaces[i].flags) != flags) {
+			continue;
+		}
+
+		*ppInterface = &pkcs11_interfaces[i];
+		return CKR_OK;
+	}
+
+	return CKR_ARGUMENTS_BAD;
 }
