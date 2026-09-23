@@ -40,6 +40,7 @@
 #include <pkcs11/token.h>
 #include <pkcs11/dataobject.h>
 #include <pkcs11/certificateobject.h>
+#include <pkcs11/secretkeyobject.h>
 
 #ifdef DEBUG
 #include <common/debug.h>
@@ -174,6 +175,36 @@ CK_DECLARE_FUNCTION(CK_RV, C_CreateObject)(
 		#ifdef DEBUG
 				debug("Populating additional attributes failed\n");
 		#endif
+			}
+
+			addSessionObject(session, pObject);
+
+		} else if (objClass == CKO_SECRET_KEY) {
+			pos = findAttributeInTemplate(CKA_VALUE, pTemplate, ulCount);
+			if (pos == -1)
+				FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_VALUE not found in template");
+
+			rv = validateAttribute(&pTemplate[pos], 0);
+			if (rv != CKR_OK)
+				FUNC_FAILS(rv, "CKA_VALUE");
+
+			/* Session secret keys are opaque plaintext containers for
+			 * C_WrapKey (arbitrary lengths) - reject only empty values.
+			 * The wrap mechanism validates length at wrap time. */
+			if (pTemplate[pos].ulValueLen == 0)
+				FUNC_FAILS(CKR_ATTRIBUTE_VALUE_INVALID, "CKA_VALUE must not be empty");
+
+			pObject = calloc(sizeof(struct p11Object_t), 1);
+
+			if (pObject == NULL) {
+				FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+			}
+
+			rv = createSecretKeyObject(pTemplate, ulCount, pObject);
+
+			if (rv != CKR_OK) {
+				free(pObject);
+				FUNC_FAILS(rv, "Could not create secret key object");
 			}
 
 			addSessionObject(session, pObject);
@@ -424,10 +455,21 @@ CK_DECLARE_FUNCTION(CK_RV, C_GetAttributeValue)(
 			continue;
 		}
 
-		if ((attribute->attrData.type == CKA_VALUE) && (pObject->sensitiveObj)) {
-			pTemplate[i].ulValueLen = (CK_LONG) -1;
-			rv = CKR_ATTRIBUTE_SENSITIVE;
-			continue;
+		if (attribute->attrData.type == CKA_VALUE) {
+			struct p11Attribute_t *sensAttr;
+
+			/* pObject->sensitiveObj is never set by any code path in this
+			 * module, so also gate on the object's CKA_SENSITIVE attribute.
+			 * Session secret keys created with CKA_SENSITIVE=TRUE must not
+			 * reveal CKA_VALUE. */
+			if (pObject->sensitiveObj
+					|| (findAttribute(pObject, CKA_SENSITIVE, &sensAttr) >= 0
+						&& sensAttr->attrData.ulValueLen == sizeof(CK_BBOOL)
+						&& *(CK_BBOOL *)sensAttr->attrData.pValue == CK_TRUE)) {
+				pTemplate[i].ulValueLen = (CK_LONG) -1;
+				rv = CKR_ATTRIBUTE_SENSITIVE;
+				continue;
+			}
 		}
 
 		if (pTemplate[i].pValue == NULL_PTR) {

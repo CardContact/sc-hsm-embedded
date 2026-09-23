@@ -41,6 +41,11 @@
 #include <pkcs11/slotpool.h>
 #include <pkcs11/token.h>
 #include <pkcs11/crypto.h>
+#include <pkcs11/secretkeyobject.h>
+
+#ifdef ENABLE_LIBCRYPTO
+#include <openssl/rand.h>
+#endif
 #include <common/debug.h>
 
 
@@ -1509,7 +1514,130 @@ CK_DECLARE_FUNCTION(CK_RV, C_GenerateKey)(
 		FUNC_FAILS(rv, "CKA_TOKEN has invalid value");
 
 	if (*(CK_BBOOL *)pTemplate[pos].pValue == 0) {
-		FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "Generating session key not supported");
+		/* Session key: generate in software */
+		CK_ULONG keyLength, i;
+		int keylenPos;
+		CK_BBOOL ckTrue = CK_TRUE;
+		CK_BBOOL ckFalse = CK_FALSE;
+		CK_KEY_TYPE keyType = CKK_AES;
+		CK_OBJECT_CLASS keyClass = CKO_SECRET_KEY;
+		unsigned char keyValue[32];
+		CK_ATTRIBUTE *sessionKeyTemplate;
+		int attrCount = 0;
+
+		if (pMechanism->mechanism != CKM_AES_KEY_GEN)
+			FUNC_FAILS(CKR_MECHANISM_INVALID, "Session key generation only supports CKM_AES_KEY_GEN");
+
+		keylenPos = findAttributeInTemplate(CKA_VALUE_LEN, pTemplate, ulCount);
+		if (keylenPos < 0)
+			FUNC_FAILS(CKR_TEMPLATE_INCOMPLETE, "CKA_VALUE_LEN not found in template");
+
+		rv = validateAttribute(&pTemplate[keylenPos], sizeof(CK_ULONG));
+		if (rv != CKR_OK)
+			FUNC_FAILS(rv, "CKA_VALUE_LEN has invalid value");
+
+		keyLength = *(CK_ULONG *)pTemplate[keylenPos].pValue;
+		if (keyLength != 16 && keyLength != 24 && keyLength != 32)
+			FUNC_FAILS(CKR_TEMPLATE_INCONSISTENT, "CKA_VALUE_LEN must be 16, 24, or 32");
+
+		/* Generate random key material */
+#ifdef ENABLE_LIBCRYPTO
+		if (RAND_bytes(keyValue, (int)keyLength) != 1)
+			FUNC_FAILS(CKR_DEVICE_ERROR, "RAND_bytes failed");
+#else
+		{
+			FILE *urandom = fopen("/dev/urandom", "rb");
+			if (urandom == NULL)
+				FUNC_FAILS(CKR_DEVICE_ERROR, "Cannot open /dev/urandom");
+			if (fread(keyValue, 1, keyLength, urandom) != (size_t)keyLength) {
+				fclose(urandom);
+				FUNC_FAILS(CKR_DEVICE_ERROR, "fread from /dev/urandom failed");
+			}
+			fclose(urandom);
+		}
+#endif
+
+		/* The buffer must hold the 5 core attributes, the two optional
+		 * defaults and every non-core attribute of the caller template.
+		 * A fixed-size stack buffer here would overflow for templates
+		 * with more than a handful of attributes. */
+		sessionKeyTemplate = calloc(sizeof(CK_ATTRIBUTE), ulCount + 8);
+		if (sessionKeyTemplate == NULL)
+			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+
+		/* Build a session key object template */
+		sessionKeyTemplate[attrCount].type = CKA_CLASS;
+		sessionKeyTemplate[attrCount].pValue = &keyClass;
+		sessionKeyTemplate[attrCount].ulValueLen = sizeof(keyClass);
+		attrCount++;
+
+		sessionKeyTemplate[attrCount].type = CKA_KEY_TYPE;
+		sessionKeyTemplate[attrCount].pValue = &keyType;
+		sessionKeyTemplate[attrCount].ulValueLen = sizeof(keyType);
+		attrCount++;
+
+		sessionKeyTemplate[attrCount].type = CKA_TOKEN;
+		sessionKeyTemplate[attrCount].pValue = &ckFalse;
+		sessionKeyTemplate[attrCount].ulValueLen = sizeof(CK_BBOOL);
+		attrCount++;
+
+		sessionKeyTemplate[attrCount].type = CKA_VALUE;
+		sessionKeyTemplate[attrCount].pValue = keyValue;
+		sessionKeyTemplate[attrCount].ulValueLen = keyLength;
+		attrCount++;
+
+		sessionKeyTemplate[attrCount].type = CKA_VALUE_LEN;
+		sessionKeyTemplate[attrCount].pValue = &keyLength;
+		sessionKeyTemplate[attrCount].ulValueLen = sizeof(keyLength);
+		attrCount++;
+
+		/* Defaults apply only when the caller did not supply the attribute -
+		 * findAttributeInTemplate() returns the first match, so an
+		 * unconditional default would silently override the caller */
+		if (findAttributeInTemplate(CKA_EXTRACTABLE, pTemplate, ulCount) < 0) {
+			sessionKeyTemplate[attrCount].type = CKA_EXTRACTABLE;
+			sessionKeyTemplate[attrCount].pValue = &ckTrue;
+			sessionKeyTemplate[attrCount].ulValueLen = sizeof(CK_BBOOL);
+			attrCount++;
+		}
+
+		if (findAttributeInTemplate(CKA_SENSITIVE, pTemplate, ulCount) < 0) {
+			sessionKeyTemplate[attrCount].type = CKA_SENSITIVE;
+			sessionKeyTemplate[attrCount].pValue = &ckFalse;
+			sessionKeyTemplate[attrCount].ulValueLen = sizeof(CK_BBOOL);
+			attrCount++;
+		}
+
+		/* Copy caller template attributes (skip the core attributes) */
+		for (i = 0; i < ulCount; i++) {
+			if (pTemplate[i].type == CKA_CLASS ||
+			    pTemplate[i].type == CKA_KEY_TYPE ||
+			    pTemplate[i].type == CKA_TOKEN ||
+			    pTemplate[i].type == CKA_VALUE ||
+			    pTemplate[i].type == CKA_VALUE_LEN) {
+				continue;
+			}
+			sessionKeyTemplate[attrCount] = pTemplate[i];
+			attrCount++;
+		}
+
+		p11SecretKey = calloc(sizeof(struct p11Object_t), 1);
+		if (p11SecretKey == NULL) {
+			free(sessionKeyTemplate);
+			FUNC_FAILS(CKR_HOST_MEMORY, "Out of memory");
+		}
+
+		rv = createSecretKeyObject(sessionKeyTemplate, attrCount, p11SecretKey);
+		free(sessionKeyTemplate);
+		if (rv != CKR_OK) {
+			free(p11SecretKey);
+			FUNC_FAILS(rv, "Could not create secret key object");
+		}
+
+		addSessionObject(pSession, p11SecretKey);
+		*phKey = p11SecretKey->handle;
+
+		FUNC_RETURNS(CKR_OK);
 	}
 
 	rv = getValidatedToken(slot, &token);
@@ -1656,7 +1784,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_WrapKey)(
 		CK_ULONG_PTR pulWrappedKeyLen
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	struct p11Object_t *pWrapKey, *pKeyToWrap;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
+	struct p11Attribute_t *attr;
 
 	FUNC_CALLED();
 
@@ -1664,9 +1796,70 @@ CK_DECLARE_FUNCTION(CK_RV, C_WrapKey)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
+	if (!isValidPtr(pMechanism)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pulWrappedKeyLen)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (pWrappedKey && !isValidPtr(pWrappedKey)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	/* Validate wrapping key */
+	rv = findSlotKey(pSlot, hWrappingKey, &pWrapKey);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	/* Check CKA_WRAP on the wrapping key (absent means not wrappable) */
+	if (findAttribute(pWrapKey, CKA_WRAP, &attr) < 0
+			|| attr->attrData.ulValueLen != sizeof(CK_BBOOL)
+			|| *(CK_BBOOL *)attr->attrData.pValue != CK_TRUE) {
+		FUNC_FAILS(CKR_KEY_NOT_WRAPPABLE, "Wrapping key does not have CKA_WRAP=TRUE");
+	}
+
+	/* Validate wrapped key - session objects (e.g. secret keys created with
+	 * CKA_TOKEN=FALSE) are searched first, then token keys. Mirrors the
+	 * visibility rules used by C_GetAttributeValue. */
+	if (findSessionObject(pSession, hKey, &pKeyToWrap) < 0) {
+		rv = findSlotKey(pSlot, hKey, &pKeyToWrap);
+
+		if (rv != CKR_OK) {
+			FUNC_RETURNS(rv);
+		}
+	}
+
+	/* Check CKA_EXTRACTABLE on the wrapped key (absent means not extractable) */
+	if (findAttribute(pKeyToWrap, CKA_EXTRACTABLE, &attr) < 0
+			|| attr->attrData.ulValueLen != sizeof(CK_BBOOL)
+			|| *(CK_BBOOL *)attr->attrData.pValue != CK_TRUE) {
+		FUNC_FAILS(CKR_KEY_UNEXTRACTABLE, "Key is not extractable");
+	}
+
+	if (pWrapKey->C_WrapKey != NULL) {
+		rv = pWrapKey->C_WrapKey(pWrapKey, pMechanism, pKeyToWrap, pWrappedKey, pulWrappedKeyLen);
+	} else {
+		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "WrapKey operation not supported by token");
+	}
+
 	FUNC_RETURNS(rv);
 }
-
 
 
 /*  C_UnwrapKey unwraps (i.e. decrypts) a wrapped key, creating a new private key
@@ -1682,7 +1875,11 @@ CK_DECLARE_FUNCTION(CK_RV, C_UnwrapKey)(
 		CK_OBJECT_HANDLE_PTR phKey
 )
 {
-	CK_RV rv = CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	struct p11Object_t *pKey, *pNewKey;
+	struct p11Slot_t *pSlot;
+	struct p11Session_t *pSession;
+	struct p11Attribute_t *attr;
 
 	FUNC_CALLED();
 
@@ -1690,9 +1887,67 @@ CK_DECLARE_FUNCTION(CK_RV, C_UnwrapKey)(
 		FUNC_FAILS(CKR_CRYPTOKI_NOT_INITIALIZED, "C_Initialize not called");
 	}
 
+	if (!isValidPtr(pMechanism)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(phKey)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pWrappedKey)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	if (!isValidPtr(pTemplate)) {
+		FUNC_FAILS(CKR_ARGUMENTS_BAD, "Invalid pointer argument");
+	}
+
+	rv = findSessionByHandle(&context->sessionPool, hSession, &pSession);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	rv = findSlot(&context->slotPool, pSession->slotID, &pSlot);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	/* Validate unwrapping key */
+	rv = findSlotKey(pSlot, hUnwrappingKey, &pKey);
+
+	if (rv != CKR_OK) {
+		FUNC_RETURNS(rv);
+	}
+
+	/* Check CKA_UNWRAP on the unwrapping key (absent means not unwrappable) */
+	if (findAttribute(pKey, CKA_UNWRAP, &attr) < 0
+			|| attr->attrData.ulValueLen != sizeof(CK_BBOOL)
+			|| *(CK_BBOOL *)attr->attrData.pValue != CK_TRUE) {
+		FUNC_FAILS(CKR_KEY_NOT_WRAPPABLE, "Unwrapping key does not have CKA_UNWRAP=TRUE");
+	}
+
+	if (pKey->C_UnwrapKey != NULL) {
+		rv = pKey->C_UnwrapKey(pKey, pMechanism, pWrappedKey, ulWrappedKeyLen,
+				pTemplate, ulAttributeCount, &pNewKey);
+	} else {
+		FUNC_FAILS(CKR_FUNCTION_NOT_SUPPORTED, "UnwrapKey operation not supported by token");
+	}
+
+	if (rv != CKR_OK) {
+		return rv;
+	}
+
+	if (!pNewKey->tokenObj) {
+		addSessionObject(pSession, pNewKey);
+	}
+
+	*phKey = pNewKey->handle;
+
 	FUNC_RETURNS(rv);
 }
-
 
 
 /*  C_DeriveKey derives a key from a base key, creating a new key object. */
