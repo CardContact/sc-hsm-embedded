@@ -61,21 +61,21 @@ static unsigned char atrHBA[] = { 0x3B,0xD3,0x96,0xFF,0x81,0xB1,0xFE,0x45,0x1F,0
 
 static struct p15PrivateKeyDescription prkd_eSign[] = {
 		{
-			P15_KT_RSA,
+			P15_KT_EC,
 			{ "C.CH.AUT" },
 			1,
 			{ (unsigned char *)"\x03", 1 },
 			P15_SIGN,
-			2048,
+			256,
 			0x82
 		},
 		{
-			P15_KT_RSA,
+			P15_KT_EC,
 			{ "C.CH.ENC" },
 			1,
 			{ (unsigned char *)"\x04", 1 },
 			P15_DECIPHER,
-			2048,
+			256,
 			0x83
 		}
 };
@@ -104,9 +104,45 @@ static struct p15CertificateDescription certd_eSign[] = {
 
 
 static unsigned char aid_eSign[] = { 0xA0,0x00,0x00,0x01,0x67,0x45,0x53,0x49,0x47,0x4E };
+static unsigned char aid_QES[]   = { 0xD2,0x76,0x00,0x00,0x66,0x01 };
+
+
+static struct p15PrivateKeyDescription prkd_QES[] = {
+	{
+		P15_KT_EC,
+		{ "C.CH.DS" },
+		1,
+		{ (unsigned char *)"\x01", 1 },
+		P15_SIGN|P15_NONREPUDIATION,
+		256,
+		0x86			// EC key reference on HBA STARCOS 3.7 QES app
+	}
+};
+
+static struct p15CertificateDescription certd_QES[] = {
+	{
+		0,                                          // isCA
+		0,                                          // isModifiable
+		P15_CT_X509,                                // Certificate type
+		{ "C.CH.DS" },                              // Label
+		{ (unsigned char *)"\x01", 1 },				// Id
+		{ (unsigned char *)"\x06", 1 }				// efifOrPath: SFI 6 = new EC QES cert (qCA 22:PN)
+	}
+};
 
 
 static struct starcosApplication starcosApplications[] = {
+		{
+				"HBA.QES",
+				{ aid_QES, sizeof(aid_QES) },
+				2,
+				0x81,
+				0,
+				prkd_QES,
+				sizeof(prkd_QES) / sizeof(struct p15PrivateKeyDescription),
+				certd_QES,
+				sizeof(certd_QES) / sizeof(struct p15CertificateDescription)
+		},
 		{
 				"HBA.eSign",
 				{ aid_eSign, sizeof(aid_eSign) },
@@ -431,6 +467,7 @@ static int isCandidate(unsigned char *atr, size_t atrLen)
 
 
 struct p11TokenDriver *getHBATokenDriver();
+struct p11TokenDriver *getHBAQESTokenDriver();
 
 /**
  * Create a new HBA token if token detection and initialization is successful
@@ -442,11 +479,12 @@ struct p11TokenDriver *getHBATokenDriver();
 static int newHBAToken(struct p11Slot_t *slot, struct p11Token_t **token)
 {
 	struct p11Token_t *ptoken;
+	struct p11Slot_t *vslot;
 	int rc;
 
 	FUNC_CALLED();
 
-	rc = createStarcosToken(slot, &ptoken, getHBATokenDriver(), &starcosApplications[0]);
+	rc = createStarcosToken(slot, &ptoken, getHBATokenDriver(), &starcosApplications[1]);
 	if (rc != CKR_OK)
 		FUNC_FAILS(rc, "Token creation failed");
 
@@ -456,6 +494,21 @@ static int newHBAToken(struct p11Slot_t *slot, struct p11Token_t **token)
 	}
 
 	*token = ptoken;
+
+	if (slot->supportsVirtualSlots) {
+		rc = getVirtualSlot(slot, 0, &vslot);
+		if (rc != CKR_OK)
+			FUNC_FAILS(rc, "Virtual slot creation failed");
+
+		rc = createStarcosToken(vslot, &ptoken, getHBAQESTokenDriver(), &starcosApplications[0]);
+		if (rc != CKR_OK)
+			FUNC_FAILS(rc, "QES token creation failed");
+
+		rc = addToken(vslot, ptoken);
+		if (rc != CKR_OK)
+			FUNC_FAILS(rc, "addToken() for QES failed");
+	}
+
 	FUNC_RETURNS(CKR_OK);
 }
 
@@ -488,6 +541,145 @@ static int hba_C_GetMechanismList(CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG
 
 
 struct p11TokenDriver *getStarcosTokenDriver();
+
+
+
+static CK_RV hba_qes_C_SignInit(struct p11Object_t *pObject, CK_MECHANISM_PTR mech)
+{
+	FUNC_CALLED();
+
+	switch (mech->mechanism) {
+	case CKM_ECDSA:
+	case CKM_ECDSA_SHA1:
+	case CKM_SHA1_RSA_PKCS:   // allow Acrobat to try any hash+ECDSA variant
+	case CKM_SHA256_RSA_PKCS: // same
+		FUNC_RETURNS(CKR_OK);
+	default:
+		FUNC_RETURNS(CKR_OK); // accept any mechanism - card decides
+	}
+}
+
+
+
+static CK_RV hba_qes_C_Sign(struct p11Object_t *pObject, CK_MECHANISM_PTR mech,
+	CK_BYTE_PTR pData, CK_ULONG ulDataLen,
+	CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
+{
+	int rc;
+	unsigned short SW1SW2;
+	unsigned char manageData[3];
+	struct p11Slot_t *slot;
+
+	FUNC_CALLED();
+
+	// ECDSA P-256 DER signature is at most 72 bytes; use 80 as safe buffer
+	if (pSignature == NULL) {
+		*pulSignatureLen = 80;
+		FUNC_RETURNS(CKR_OK);
+	}
+
+	if (*pulSignatureLen < 80) {
+		*pulSignatureLen = 80;
+		FUNC_FAILS(CKR_BUFFER_TOO_SMALL, "Signature buffer too small");
+	}
+
+	slot = pObject->token->slot;
+	starcosLock(pObject->token);
+	if (!slot->token) {
+		FUNC_RETURNS(CKR_DEVICE_REMOVED);
+	}
+
+	// Only re-select the QES application if not yet authenticated. Re-selecting
+	// the AID on STARCOS 3.7 resets the Signature-PIN verification state, so we
+	// must not SELECT AID again after C_Login has verified the PIN.
+	if (pObject->token->user != CKU_USER) {
+		rc = starcosSelectApplication(pObject->token);
+		if (rc < 0) {
+			starcosUnlock(pObject->token);
+			FUNC_FAILS(CKR_DEVICE_ERROR, "selecting application failed");
+		}
+	}
+
+	// MANAGE SE: B6 template, key reference only (no algo TLV — HBA QES rejects 89-02 format)
+	manageData[0] = 0x84;
+	manageData[1] = 0x01;
+	manageData[2] = (unsigned char)pObject->tokenid;
+
+	rc = transmitAPDU(pObject->token->slot, 0x00, 0x22, 0x41, 0xB6,
+		3, manageData,
+		0, NULL, 0, &SW1SW2);
+
+	if (rc < 0) {
+		starcosUnlock(pObject->token);
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+	}
+
+	if (SW1SW2 != 0x9000) {
+		starcosUnlock(pObject->token);
+		if (SW1SW2 == 0x6982) {
+			pObject->token->user = INT_CKU_NO_USER;
+			FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "User not logged in (MANAGE SE)");
+		}
+		FUNC_FAILS(CKR_DEVICE_ERROR, "MANAGE SE failed");
+	}
+
+	// PSO COMPUTE DIGITAL SIGNATURE — must be Case 4 APDU (Le present) for STARCOS 3.7
+	// INTERNAL AUTH (0x88) was tried but returns 6985: B6 template pairs with PSO CDS, not INT AUTH
+	rc = transmitAPDU(pObject->token->slot, 0x00, 0x2A, 0x9E, 0x9A,
+		ulDataLen, pData,
+		0, pSignature, *pulSignatureLen, &SW1SW2);
+
+	if (rc < 0) {
+		starcosUnlock(pObject->token);
+		FUNC_FAILS(CKR_DEVICE_ERROR, "transmitAPDU failed");
+	}
+
+	if (SW1SW2 != 0x9000) {
+		switch (SW1SW2) {
+		case 0x6982:
+			starcosUnlock(pObject->token);
+			pObject->token->user = INT_CKU_NO_USER;
+			FUNC_FAILS(CKR_USER_NOT_LOGGED_IN, "User not logged in");
+		case 0x6A81:
+			starcosUnlock(pObject->token);
+			FUNC_FAILS(CKR_KEY_FUNCTION_NOT_PERMITTED, "Signature operation not allowed for key");
+		default:
+			// STARCOS QES may return 0x62XX/0x63XX warning SWs on success (e.g. PIN use counter
+			// decremented). Accept any warning that still returned signature bytes.
+			if (rc <= 0) {
+				starcosUnlock(pObject->token);
+				FUNC_FAILS(CKR_DEVICE_ERROR, "Signature operation failed");
+			}
+			break;
+		}
+	}
+
+	*pulSignatureLen = rc;
+
+	if ((pObject->token->user == CKU_USER) && (pObject->token->pinUseCounter == 1)) {
+		pObject->token->user = INT_CKU_NO_USER;
+	}
+
+	starcosUnlock(pObject->token);
+	FUNC_RETURNS(CKR_OK);
+}
+
+
+
+struct p11TokenDriver *getHBAQESTokenDriver()
+{
+	static struct p11TokenDriver qes_token;
+
+	qes_token = *getStarcosTokenDriver();
+
+	qes_token.name = "HBA";
+	qes_token.isCandidate = isCandidate;
+	qes_token.newToken = newHBAToken;
+	qes_token.C_SignInit = hba_qes_C_SignInit;
+	qes_token.C_Sign = hba_qes_C_Sign;
+
+	return &qes_token;
+}
 
 struct p11TokenDriver *getHBATokenDriver()
 {
