@@ -1078,6 +1078,9 @@ static int encodeGAKP(bytebuffer bb, struct p11Token_t *token, CK_MECHANISM_PTR 
 		asn1Append(bb, 0x87, &curve->coFactor);
 
 		keybits = (int)(curve->prime.len << 3);
+		if (keybits == 528) {	// Fix for secp521
+			keybits = 521;
+		}
 	} else {
 		rc = findAttributeInTemplate(CKA_MODULUS_BITS, pPublicKeyTemplate, ulPublicKeyAttributeCount);
 		if (rc < 0) {

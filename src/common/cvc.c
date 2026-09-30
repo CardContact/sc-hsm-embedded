@@ -192,6 +192,23 @@ struct ec_curve *cvcGetCurveForOID(bytestring oid)
 
 
 
+bytestring cvcGetCurveOIDForName(char *curveName)
+{
+	struct ec_curve *c;
+
+	c = curves;
+	while ((c->oid.val != NULL) && strncasecmp(curveName, c->name, strlen(c->name))) {
+		c++;
+	}
+	if (c->name == NULL) {
+		return NULL;
+	}
+
+	return &c->oid;
+}
+
+
+
 int cvcDetermineCurveOID(struct cvc *cvc, bytestring *oid)
 {
 	struct ec_curve *c;

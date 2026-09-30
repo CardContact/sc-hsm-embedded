@@ -119,8 +119,12 @@ enum {
 static const struct option options[] = {
 	{ "module",			1, NULL,		'm' },
 	{ "verbose",			1, NULL,		'v' },
-	{ "login",			0, NULL,		'l' },
+	{ "login",			0, NULL,		'L' },
 	{ "pin",			1, NULL,		'p' },
+	{ "label",			1, NULL,		'l' },
+	{ "key-domain",			1, NULL,		'd' },
+	{ "key-use-counter",		1, NULL,		OPT_KEY_USE_COUNTER },
+	{ "generate-key",		1, NULL,		'G' },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -131,6 +135,10 @@ static const char *option_help[] = {
 	"Increase verbose mode level",
 	"Log into token",
 	"Define PIN to use for login",
+	"Define label for key or key domain",
+	"Define key domain number",
+	"Define key use counter",
+	"Generate key",
 };
 
 
@@ -398,6 +406,13 @@ int optSlotId = -1;
 int verbose = 0;
 int optLogin = 0;
 char *optPIN = NULL;
+char *optLabel = NULL;
+char *optKeyGen = NULL;
+int optKeyDomain = -1;
+CK_ULONG optKeyUseCounter = 0;
+
+CK_BBOOL _false = FALSE;
+CK_BBOOL _true = TRUE;
 
 
 
@@ -452,7 +467,7 @@ void decodeArgs(int argc, char **argv)
 	int c, long_optind = 0;
 
 	while (1) {
-		c = getopt_long(argc, argv, "m:vlp:", options, &long_optind);
+		c = getopt_long(argc, argv, "m:vLp:G:l:d:", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?') {
@@ -466,11 +481,23 @@ void decodeArgs(int argc, char **argv)
 		case 'v':
 			verbose++;
 			break;
-		case 'l':
+		case 'L':
 			optLogin = 1;
 			break;
 		case 'p':
 			optPIN = optarg;
+			break;
+		case 'l':
+			optLabel = optarg;
+			break;
+		case 'd':
+			optKeyDomain = atoi(optarg);
+			break;
+		case OPT_KEY_USE_COUNTER:
+			optKeyUseCounter = atoi(optarg);
+			break;
+		case 'G':
+			optKeyGen = optarg;
 			break;
 		}
 	}
@@ -1003,6 +1030,235 @@ int listKeyDomains(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, CK_SESSION_HANDL
 
 
 
+CK_RV generateRSAKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ULONG size)
+{
+	CK_MECHANISM mech_genrsa = { CKM_RSA_PKCS_KEY_PAIR_GEN, 0, 0 };
+	CK_BYTE publicExponent[] = { 0x01, 0x00, 0x01 };
+	CK_OBJECT_CLASS publicKeyClass = CKO_PUBLIC_KEY;
+	CK_ATTRIBUTE publicKeyTemplate[20] = {
+			{ CKA_CLASS, &publicKeyClass, sizeof(publicKeyClass) },
+			{ CKA_TOKEN, &_true, sizeof(_true)},
+			{ CKA_MODULUS_BITS, &size, sizeof(size)},
+			{ CKA_PUBLIC_EXPONENT, &publicExponent, sizeof(publicExponent)}
+	};
+	int publicKeyAttributes = 4;
+	CK_OBJECT_CLASS privateKeyClass = CKO_PRIVATE_KEY;
+	CK_ATTRIBUTE privateKeyTemplate[20] = {
+			{ CKA_CLASS, &privateKeyClass, sizeof(privateKeyClass) },
+			{ CKA_TOKEN, &_true, sizeof(_true)},
+			{ CKA_PRIVATE, &_true, sizeof(_true)},
+			{ CKA_SENSITIVE, &_true, sizeof(_true)}
+	};
+	int privateKeyAttributes = 4;
+	unsigned char kdid;
+	CK_OBJECT_HANDLE hndPrivateKey, hndPublicKey;
+	CK_RV rc;
+
+	if (optLabel != NULL) {
+		privateKeyTemplate[privateKeyAttributes].type = CKA_LABEL;
+		privateKeyTemplate[privateKeyAttributes].pValue = optLabel;
+		privateKeyTemplate[privateKeyAttributes].ulValueLen = strlen(optLabel);
+		privateKeyAttributes++;
+	}
+
+	if (optKeyDomain > 0) {
+		kdid = (unsigned char)(optKeyDomain - 1);
+		publicKeyTemplate[publicKeyAttributes].type = CKA_SC_HSM_KEY_DOMAIN;
+		publicKeyTemplate[publicKeyAttributes].pValue = &kdid;
+		publicKeyTemplate[publicKeyAttributes].ulValueLen = sizeof(kdid);
+		publicKeyAttributes++;
+	}
+
+	if (optKeyUseCounter > 0) {
+		publicKeyTemplate[publicKeyAttributes].type = CKA_SC_HSM_KEY_USE_COUNTER;
+		publicKeyTemplate[publicKeyAttributes].pValue = &optKeyUseCounter;
+		publicKeyTemplate[publicKeyAttributes].ulValueLen = sizeof(optKeyUseCounter);
+		publicKeyAttributes++;
+	}
+
+	rc = p11->C_GenerateKeyPair(session, &mech_genrsa,
+		publicKeyTemplate, publicKeyAttributes,
+		privateKeyTemplate, privateKeyAttributes,
+		&hndPublicKey, &hndPrivateKey);
+
+	if (rc != CKR_OK) {
+		fprintf(stderr, "C_GenerateKeyPair failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
+		return rc;
+	}
+
+	return CKR_OK;
+}
+
+
+
+CK_RV generateECKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, bytestring curve)
+{
+	CK_MECHANISM mech_genecc = { CKM_EC_KEY_PAIR_GEN, 0, 0 };
+	CK_OBJECT_CLASS publicKeyClass = CKO_PUBLIC_KEY;
+	unsigned char curve_oid[16];
+	CK_ATTRIBUTE publicKeyTemplate[20] = {
+			{ CKA_CLASS, &publicKeyClass, sizeof(publicKeyClass) },
+			{ CKA_TOKEN, &_true, sizeof(_true)},
+			{ CKA_EC_PARAMS, &curve_oid, sizeof(curve_oid)}
+	};
+	int publicKeyAttributes = 3;
+	CK_OBJECT_CLASS privateKeyClass = CKO_PRIVATE_KEY;
+	CK_ATTRIBUTE privateKeyTemplate[20] = {
+			{ CKA_CLASS, &privateKeyClass, sizeof(privateKeyClass) },
+			{ CKA_TOKEN, &_true, sizeof(_true)},
+			{ CKA_PRIVATE, &_true, sizeof(_true)},
+			{ CKA_SENSITIVE, &_true, sizeof(_true)}
+	};
+	int privateKeyAttributes = 4;
+	unsigned char kdid;
+	CK_OBJECT_HANDLE hndPrivateKey, hndPublicKey;
+	CK_RV rc;
+
+	curve_oid[0] = ASN1_OBJECT_IDENTIFIER;
+	curve_oid[1] = curve->len;
+	memcpy(curve_oid + 2, curve->val, curve->len);
+	publicKeyTemplate[2].ulValueLen = curve->len + 2;
+
+	if (optLabel != NULL) {
+		privateKeyTemplate[privateKeyAttributes].type = CKA_LABEL;
+		privateKeyTemplate[privateKeyAttributes].pValue = optLabel;
+		privateKeyTemplate[privateKeyAttributes].ulValueLen = strlen(optLabel);
+		privateKeyAttributes++;
+	}
+
+	if (optKeyDomain > 0) {
+		kdid = (unsigned char)(optKeyDomain - 1);
+		publicKeyTemplate[publicKeyAttributes].type = CKA_SC_HSM_KEY_DOMAIN;
+		publicKeyTemplate[publicKeyAttributes].pValue = &kdid;
+		publicKeyTemplate[publicKeyAttributes].ulValueLen = sizeof(kdid);
+		publicKeyAttributes++;
+	}
+
+	if (optKeyUseCounter > 0) {
+		publicKeyTemplate[publicKeyAttributes].type = CKA_SC_HSM_KEY_USE_COUNTER;
+		publicKeyTemplate[publicKeyAttributes].pValue = &optKeyUseCounter;
+		publicKeyTemplate[publicKeyAttributes].ulValueLen = sizeof(optKeyUseCounter);
+		publicKeyAttributes++;
+	}
+
+	rc = p11->C_GenerateKeyPair(session, &mech_genecc,
+		publicKeyTemplate, publicKeyAttributes,
+		privateKeyTemplate, privateKeyAttributes,
+		&hndPublicKey, &hndPrivateKey);
+
+	if (rc != CKR_OK) {
+		fprintf(stderr, "C_GenerateKeyPair failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
+		return rc;
+	}
+
+	return CKR_OK;
+}
+
+
+
+CK_RV generateAESKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ULONG size)
+{
+	CK_OBJECT_CLASS secretKeyClass = CKO_SECRET_KEY;
+	CK_MECHANISM mech_genaes = { CKM_AES_KEY_GEN, 0, 0 };
+	CK_ULONG len = 16;
+	CK_BYTE algoList[] = {0x10, 0x11, 0x18, 0x99};
+	CK_ATTRIBUTE secretKeyTemplate[20] = {
+			{ CKA_CLASS, &secretKeyClass, sizeof(secretKeyClass) },
+			{ CKA_TOKEN, &_true, sizeof(_true)},
+			{ CKA_PRIVATE, &_true, sizeof(_true)},
+			{ CKA_SENSITIVE, &_true, sizeof(_true)},
+			{ CKA_VALUE_LEN, &len, sizeof(len) },
+			{ CKA_SC_HSM_ALGORITHM_LIST, &algoList, sizeof(algoList)},
+			{ CKA_SIGN, &_true, sizeof(_true)},
+			{ CKA_DERIVE, &_true, sizeof(_true)},
+			{ CKA_ENCRYPT, &_true, sizeof(_true)},
+			{ CKA_DECRYPT, &_true, sizeof(_true)}
+	};
+	int secretKeyAttributes = 10;
+	unsigned char kdid;
+	CK_OBJECT_HANDLE hndSecretKey;
+	CK_RV rc;
+
+	len = size >> 3;
+
+	if (optLabel != NULL) {
+		secretKeyTemplate[secretKeyAttributes].type = CKA_LABEL;
+		secretKeyTemplate[secretKeyAttributes].pValue = optLabel;
+		secretKeyTemplate[secretKeyAttributes].ulValueLen = strlen(optLabel);
+		secretKeyAttributes++;
+	}
+
+	if (optKeyDomain > 0) {
+		kdid = (unsigned char)(optKeyDomain - 1);
+		secretKeyTemplate[secretKeyAttributes].type = CKA_SC_HSM_KEY_DOMAIN;
+		secretKeyTemplate[secretKeyAttributes].pValue = &kdid;
+		secretKeyTemplate[secretKeyAttributes].ulValueLen = sizeof(kdid);
+		secretKeyAttributes++;
+	}
+
+	if (optKeyUseCounter > 0) {
+		secretKeyTemplate[secretKeyAttributes].type = CKA_SC_HSM_KEY_USE_COUNTER;
+		secretKeyTemplate[secretKeyAttributes].pValue = &optKeyUseCounter;
+		secretKeyTemplate[secretKeyAttributes].ulValueLen = sizeof(optKeyUseCounter);
+		secretKeyAttributes++;
+	}
+
+	rc = p11->C_GenerateKey(session, &mech_genaes, secretKeyTemplate, secretKeyAttributes, &hndSecretKey);
+
+	if (rc != CKR_OK) {
+		fprintf(stderr, "C_GenerateKey failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
+		return rc;
+	}
+
+	return CKR_OK;
+}
+
+
+
+void generateKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
+{
+	char scr[256],*po;
+	int size, attrcnt;
+
+	strncpy(scr, optKeyGen, sizeof(scr));
+	po = strchr(scr, ':');
+
+	if (po == NULL) {
+		fprintf(stderr, "Key specification must be in format '<type>:<spec>'\n");
+		return;
+	}
+
+	*po++ = 0;
+
+	if (!strncasecmp("RSA", scr, 3)) {
+		size = atoi(po);
+		if (size != 1024 && size != 1536 && size != 2048 && size != 3072 && size != 4096) {
+			fprintf(stderr, "RSA key size must be 1024, 1536, 2048, 3072 or 4096\n");
+			return;
+		}
+		generateRSAKey(p11, session, size);
+	} else if (!strncasecmp("EC", scr, 2)) {
+		bytestring oid = cvcGetCurveOIDForName(po);
+		if (oid == NULL) {
+			fprintf(stderr, "Unknown curve for EC key\n");
+			return;
+		}
+		generateECKey(p11, session, oid);
+	} else if (!strncasecmp("AES", scr, 2)) {
+		size = atoi(po);
+		if (size != 128 && size != 196 && size != 256) {
+			fprintf(stderr, "AES key size must be 128, 192 or 256\n");
+			return;
+		}
+		generateAESKey(p11, session, size);
+	} else {
+		fprintf(stderr, "Key type must be one of 'RSA', 'EC' or 'AES'\n");
+		return;
+	}
+}
+
+
+
 int main(int argc, char *argv[])
 {
 	int i;
@@ -1127,6 +1383,10 @@ int main(int argc, char *argv[])
 
 		if (verbose > 1) {
 			listObjects(p11, session, NULL, 0, NULL);
+		}
+
+		if (optKeyGen != NULL) {
+			generateKey(p11, session);
 		}
 
 		printf("----- Key Domains / Keys -----\n");
