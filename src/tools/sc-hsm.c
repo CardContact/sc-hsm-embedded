@@ -125,6 +125,7 @@ static const struct option options[] = {
 	{ "key-domain",			1, NULL,		'd' },
 	{ "key-use-counter",		1, NULL,		OPT_KEY_USE_COUNTER },
 	{ "generate-key",		1, NULL,		'G' },
+	{ "delete-key",			0, NULL,		'D' },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -139,6 +140,7 @@ static const char *option_help[] = {
 	"Define key domain number",
 	"Define key use counter",
 	"Generate key",
+	"Delete key",
 };
 
 
@@ -408,6 +410,7 @@ int optLogin = 0;
 char *optPIN = NULL;
 char *optLabel = NULL;
 char *optKeyGen = NULL;
+int optDeleteKey = 0;
 int optKeyDomain = -1;
 CK_ULONG optKeyUseCounter = 0;
 
@@ -467,7 +470,7 @@ void decodeArgs(int argc, char **argv)
 	int c, long_optind = 0;
 
 	while (1) {
-		c = getopt_long(argc, argv, "m:vLp:G:l:d:", options, &long_optind);
+		c = getopt_long(argc, argv, "m:vLp:G:Dl:d:", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?') {
@@ -498,6 +501,9 @@ void decodeArgs(int argc, char **argv)
 			break;
 		case 'G':
 			optKeyGen = optarg;
+			break;
+		case 'D':
+			optDeleteKey = 1;
 			break;
 		}
 	}
@@ -920,6 +926,42 @@ int listKeys(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, int loggedin, 
 
 
 
+CK_RV findObjectByLabelOrId(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_OBJECT_CLASS classprk, CK_OBJECT_HANDLE_PTR phnd)
+{
+	CK_ATTRIBUTE template[2] = {
+		{ CKA_CLASS, &classprk, sizeof(classprk) }
+	};
+	CK_ULONG cnt;
+	int rc,len;
+
+	len = 1;
+
+	if (optLabel != NULL) {
+		template[len].type = CKA_LABEL;
+		template[len].pValue = optLabel;
+		template[len].ulValueLen = strlen(optLabel);
+		len++;
+	}
+
+	rc = p11->C_FindObjectsInit(session, template, len);
+
+	if (rc != CKR_OK) {
+		fprintf(stderr, "C_FindObjectsInit failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
+		return rc;
+	}
+
+	rc = p11->C_FindObjects(session, phnd, 1, &cnt);
+
+	if (cnt < 1)
+		rc = CKR_CANCEL;
+
+	p11->C_FindObjectsFinal(session);
+
+	return rc;
+}
+
+
+
 int printKeyDomain(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE hnd)
 {
 	CK_ATTRIBUTE attr[] = {
@@ -1218,7 +1260,7 @@ CK_RV generateAESKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ULO
 void generateKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 {
 	char scr[256],*po;
-	int size, attrcnt;
+	int size;
 
 	strncpy(scr, optKeyGen, sizeof(scr));
 	po = strchr(scr, ':');
@@ -1259,6 +1301,29 @@ void generateKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 
 
+void deleteKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
+{
+	CK_OBJECT_HANDLE hnd;
+
+	if (findObjectByLabelOrId(p11, session, CKO_PRIVATE_KEY, &hnd) == CKR_OK) {
+		p11->C_DestroyObject(session, hnd);
+	}
+
+	if (findObjectByLabelOrId(p11, session, CKO_PUBLIC_KEY, &hnd) == CKR_OK) {
+		p11->C_DestroyObject(session, hnd);
+	}
+
+	if (findObjectByLabelOrId(p11, session, CKO_CERTIFICATE, &hnd) == CKR_OK) {
+		p11->C_DestroyObject(session, hnd);
+	}
+
+	if (findObjectByLabelOrId(p11, session, CKO_SECRET_KEY, &hnd) == CKR_OK) {
+		p11->C_DestroyObject(session, hnd);
+	}
+}
+
+
+
 int main(int argc, char *argv[])
 {
 	int i;
@@ -1281,7 +1346,7 @@ int main(int argc, char *argv[])
 
 	if (!dlhandle) {
 		fprintf(stderr, "dlopen() failed with %s\n", dlerror());
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	C_GetFunctionList = (CK_RV (*)(CK_FUNCTION_LIST_PTR_PTR))dlsym(dlhandle, "C_GetFunctionList");
@@ -1295,21 +1360,21 @@ int main(int argc, char *argv[])
 
 	if (rc != CKR_OK) {
 		fprintf(stderr, "C_Initialize failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	rc = p11->C_GetInfo(&info);
 
 	if (rc != CKR_OK) {
 		fprintf(stderr, "C_GetInfo failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	rc = p11->C_GetSlotList(TRUE, NULL, &slots);
 
 	if (rc != CKR_OK) {
 		fprintf(stderr, "C_GetSlotList failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	slotlist = (CK_SLOT_ID_PTR) malloc(sizeof(CK_SLOT_ID) * slots);
@@ -1318,7 +1383,7 @@ int main(int argc, char *argv[])
 
 	if (rc != CKR_OK) {
 		fprintf(stderr, "C_GetSlotList failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	i = 0;
@@ -1335,7 +1400,7 @@ int main(int argc, char *argv[])
 		if (rc != CKR_OK) {
 			fprintf(stderr, "C_GetSlotInfo failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
 			free(slotlist);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		printf("Slot manufacturer   : %s\n", p11string(slotinfo.manufacturerID, sizeof(slotinfo.manufacturerID)));
@@ -1347,12 +1412,13 @@ int main(int argc, char *argv[])
 		if (rc != CKR_OK) {
 			fprintf(stderr, "C_GetTokenInfo failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
 			free(slotlist);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		printf("Token label         : %s\n", p11string(tokeninfo.label, sizeof(tokeninfo.label)));
 		printf("Token manufacturer  : %s\n", p11string(tokeninfo.manufacturerID, sizeof(tokeninfo.manufacturerID)));
 		printf("Token model         : %s\n", p11string(tokeninfo.model, sizeof(tokeninfo.model)));
+		printf("Firmware Version    : %d.%d\n", tokeninfo.firmwareVersion.major, tokeninfo.firmwareVersion.minor);
 		printf("Serial              : %s\n", p11string(tokeninfo.serialNumber, sizeof(tokeninfo.serialNumber)));
 		printf("Free memory         : %lu bytes", tokeninfo.ulFreePrivateMemory);
 		if (tokeninfo.ulFreePrivateMemory == 32767L) {
@@ -1367,7 +1433,7 @@ int main(int argc, char *argv[])
 		if (rc != CKR_OK) {
 			fprintf(stderr, "C_OpenSession failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
 			free(slotlist);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		int loggedin = 0;
@@ -1376,7 +1442,7 @@ int main(int argc, char *argv[])
 			if (rc != CKR_OK) {
 				fprintf(stderr, "C_Login failed with %s\n", id2name(p11CKRName, rc, 0, namebuf));
 				free(slotlist);
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 			loggedin = 1;
 		}
@@ -1389,6 +1455,15 @@ int main(int argc, char *argv[])
 			generateKey(p11, session);
 		}
 
+		if (optDeleteKey) {
+			if (optLabel == NULL) {
+				fprintf(stderr, "--delete-key (-D) requires label\n");
+				free(slotlist);
+				exit(EXIT_FAILURE);
+			}
+			deleteKey(p11, session);
+		}
+
 		printf("----- Key Domains / Keys -----\n");
 		if (!loggedin)
 			printf("\nWithout login only public objects are shown !\n\n");
@@ -1396,8 +1471,10 @@ int main(int argc, char *argv[])
 		rc = listKeyDomains(p11, slotid, session, loggedin);
 		if (rc != CKR_OK) {
 			free(slotlist);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
+
+	exit(EXIT_SUCCESS);
 }
 
