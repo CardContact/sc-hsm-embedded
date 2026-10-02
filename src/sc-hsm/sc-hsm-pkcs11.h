@@ -80,6 +80,55 @@ extern "C" {
 /* Derive key value using the Extraction-then-Expansion key derivation algorithm */
 #define CKM_SC_HSM_SP80056C_DERIVE		CKC_VENDOR_DEFINED + 0x00000013
 
+
+/* Algorithm IDs */
+
+#define SC_HSM_ALG_CBC_ENC		0x10
+#define SC_HSM_ALG_CBC_DEC		0x11
+#define SC_HSM_ALG_CMAC			0x18
+#define SC_HSM_ALG_DERIVE_SP800_56C	0x99
+#define SC_HSM_ALG_REPLACE		0x94
+
+#define SC_HSM_ALG_RSA_SIGN_RAW		0x20
+#define SC_HSM_ALG_RSA_DECRYPT_RAW	0x21
+#define SC_HSM_ALG_RSA_DECRYPT_V15	0x22
+#define SC_HSM_ALG_RSA_DECRYPT_OAEP	0x23
+
+#define SC_HSM_ALG_RSA_SIGN_V15		0x30
+#define SC_HSM_ALG_RSA_SIGN_V15_SHA1	0x31
+#define SC_HSM_ALG_RSA_SIGN_V15_SHA224	0x32
+#define SC_HSM_ALG_RSA_SIGN_V15_SHA256	0x33
+#define SC_HSM_ALG_RSA_SIGN_V15_SHA384	0x34
+#define SC_HSM_ALG_RSA_SIGN_V15_SHA512	0x35
+
+#define SC_HSM_ALG_RSA_SIGN_PSS		0x40
+#define SC_HSM_ALG_RSA_SIGN_PSS_SHA1	0x41
+#define SC_HSM_ALG_RSA_SIGN_PSS_SHA224	0x42
+#define SC_HSM_ALG_RSA_SIGN_PSS_SHA256	0x43
+#define SC_HSM_ALG_RSA_SIGN_PSS_SHA384	0x44
+#define SC_HSM_ALG_RSA_SIGN_PSS_SHA512	0x45
+
+#define SC_HSM_ALG_ECDSA		0x70
+#define SC_HSM_ALG_ECDSA_SHA1		0x71
+#define SC_HSM_ALG_ECDSA_SHA224		0x72
+#define SC_HSM_ALG_ECDSA_SHA256		0x73
+#define SC_HSM_ALG_ECDSA_SHA384		0x74
+#define SC_HSM_ALG_ECDSA_SHA512		0x75
+
+#define SC_HSM_ALG_ECDH			0x80
+#define SC_HSM_ALG_ECDHAutPuk		0x83
+#define SC_HSM_ALG_ECDHXKEK		0x84
+#define SC_HSM_ALG_DERIVE_EC_KEY	0x98
+
+#define SC_HSM_ALG_WRAP			0x92
+#define SC_HSM_ALG_UNWRAP		0x93
+#define SC_HSM_ALG_SIGN_DEFAULT		0xA0
+
+#define SC_HSM_ALG_GENERATE_AES128	0xB0
+#define SC_HSM_ALG_GENERATE_AES192	0xB1
+#define SC_HSM_ALG_GENERATE_AES256	0xB2
+
+
 /* Support for C++ compiler ----------------------------------------------- */
 
 #ifdef __cplusplus

@@ -122,6 +122,7 @@ static const struct option options[] = {
 	{ "login",			0, NULL,		'L' },
 	{ "pin",			1, NULL,		'p' },
 	{ "label",			1, NULL,		'l' },
+	{ "algorithms",			1, NULL,		'a' },
 	{ "key-domain",			1, NULL,		'd' },
 	{ "key-use-counter",		1, NULL,		OPT_KEY_USE_COUNTER },
 	{ "generate-key",		1, NULL,		'G' },
@@ -137,6 +138,7 @@ static const char *option_help[] = {
 	"Log into token",
 	"Define PIN to use for login",
 	"Define label for key or key domain",
+	"Define algorithms for key",
 	"Define key domain number",
 	"Define key use counter",
 	"Generate key",
@@ -402,6 +404,51 @@ struct id2name_t p11CKKName[] = {
 
 
 
+struct id2name_t algoName[] = {
+		 { SC_HSM_ALG_CBC_ENC               , "CBC_ENC", 0 },
+		 { SC_HSM_ALG_CBC_DEC               , "CBC_DEC", 0 },
+		 { SC_HSM_ALG_CMAC                  , "CMAC", 0 },
+		 { SC_HSM_ALG_DERIVE_SP800_56C      , "DERIVE_SP800_56C", 0 },
+		 { SC_HSM_ALG_REPLACE               , "REPLACE", 0 },
+
+		 { SC_HSM_ALG_RSA_SIGN_RAW          , "RSA_RAW", 0 },
+		 { SC_HSM_ALG_RSA_DECRYPT_RAW       , "RSA_DECRYPT_RAW", 0 },
+		 { SC_HSM_ALG_RSA_DECRYPT_V15       , "RSA_DECRYPT_V15", 0 },
+		 { SC_HSM_ALG_RSA_DECRYPT_OAEP      , "RSA_DECRYPT_OAEP", 0 },
+
+		 { SC_HSM_ALG_RSA_SIGN_V15          , "RSA_V15", 0 },
+		 { SC_HSM_ALG_RSA_SIGN_V15_SHA1     , "RSA_V15_SHA1", 0 },
+		 { SC_HSM_ALG_RSA_SIGN_V15_SHA224   , "RSA_V15_SHA224", 0 },
+		 { SC_HSM_ALG_RSA_SIGN_V15_SHA256   , "RSA_V15_SHA256", 0 },
+		 { SC_HSM_ALG_RSA_SIGN_V15_SHA384   , "RSA_V15_SHA384", 0 },
+		 { SC_HSM_ALG_RSA_SIGN_V15_SHA512   , "RSA_V15_SHA512", 0 },
+
+		 { SC_HSM_ALG_RSA_SIGN_PSS          , "RSA_PSS", 0 },
+		 { SC_HSM_ALG_RSA_SIGN_PSS_SHA1     , "RSA_PSS_SHA1", 0 },
+		 { SC_HSM_ALG_RSA_SIGN_PSS_SHA224   , "RSA_PSS_SHA224", 0 },
+		 { SC_HSM_ALG_RSA_SIGN_PSS_SHA256   , "RSA_PSS_SHA256", 0 },
+		 { SC_HSM_ALG_RSA_SIGN_PSS_SHA384   , "RSA_PSS_SHA384", 0 },
+		 { SC_HSM_ALG_RSA_SIGN_PSS_SHA512   , "RSA_PSS_SHA512", 0 },
+
+		 { SC_HSM_ALG_ECDSA                 , "ECDSA", 0 },
+		 { SC_HSM_ALG_ECDSA_SHA1            , "ECDSA_SHA1", 0 },
+		 { SC_HSM_ALG_ECDSA_SHA224          , "ECDSA_SHA224", 0 },
+		 { SC_HSM_ALG_ECDSA_SHA256          , "ECDSA_SHA256", 0 },
+		 { SC_HSM_ALG_ECDSA_SHA384          , "ECDSA_SHA384", 0 },
+		 { SC_HSM_ALG_ECDSA_SHA512          , "ECDSA_SHA512", 0 },
+
+		 { SC_HSM_ALG_ECDH                  , "ECDH", 0 },
+		 { SC_HSM_ALG_ECDHAutPuk            , "ECDH_AUTPUK", 0 },
+		 { SC_HSM_ALG_ECDHXKEK              , "ECDH_XKEK", 0 },
+		 { SC_HSM_ALG_DERIVE_EC_KEY         , "DERIVE_EC", 0 },
+
+		 { SC_HSM_ALG_WRAP                  , "WRAP", 0 },
+		 { SC_HSM_ALG_UNWRAP                , "UNWRAP", 0 },
+		 { SC_HSM_ALG_SIGN_DEFAULT          , "SIGN_DEFAULT", 0 }
+};
+
+
+
 char *p11libname = P11LIBNAME;
 static char namebuf[40]; /* used by main thread */
 int optSlotId = -1;
@@ -412,6 +459,8 @@ char *optLabel = NULL;
 char *optKeyGen = NULL;
 int optDeleteKey = 0;
 int optKeyDomain = -1;
+int optAlgorithms = -1;
+unsigned char optAlgoList[40];
 CK_ULONG optKeyUseCounter = 0;
 
 CK_BBOOL _false = FALSE;
@@ -461,52 +510,6 @@ static char *p11string(CK_UTF8CHAR *str, size_t len)
 		}
 	}
 	return buffer;
-}
-
-
-
-void decodeArgs(int argc, char **argv)
-{
-	int c, long_optind = 0;
-
-	while (1) {
-		c = getopt_long(argc, argv, "m:vLp:G:Dl:d:", options, &long_optind);
-		if (c == -1)
-			break;
-		if (c == '?') {
-			usage();
-			exit(0);
-		}
-		switch (c) {
-		case 'm':
-			p11libname = optarg;
-			break;
-		case 'v':
-			verbose++;
-			break;
-		case 'L':
-			optLogin = 1;
-			break;
-		case 'p':
-			optPIN = optarg;
-			break;
-		case 'l':
-			optLabel = optarg;
-			break;
-		case 'd':
-			optKeyDomain = atoi(optarg);
-			break;
-		case OPT_KEY_USE_COUNTER:
-			optKeyUseCounter = atoi(optarg);
-			break;
-		case 'G':
-			optKeyGen = optarg;
-			break;
-		case 'D':
-			optDeleteKey = 1;
-			break;
-		}
-	}
 }
 
 
@@ -760,6 +763,60 @@ void freeAttributes(CK_ATTRIBUTE_PTR attr, int attrlen)
 
 
 
+void describeAlgorithms(unsigned char *algos, size_t algoslen, char *buff, int bufflen)
+{
+	while(algoslen > 0 && bufflen > 4) {
+		id2name(algoName, *algos++, NULL, buff);
+		algoslen--;
+		if (algoslen > 0) {
+			strcat(buff, "+");
+		}
+		bufflen -= strlen(buff);
+		buff += strlen(buff);
+	}
+
+	if (algoslen > 0) {
+		strcat(buff, "...");
+	}
+}
+
+
+
+int parseAlgorithms(char *spec, unsigned char *buff, size_t bufflen)
+{
+	char *str = spec;
+	char *token;
+	int algocnt = 0;
+
+	do	{
+		token = strtok(str, ",;+");
+		str = NULL;
+		if (token) {
+			int i = 0;
+			for (; i < sizeof(algoName) / sizeof(struct id2name_t); i++) {
+				if (0 == strcasecmp(token, algoName[i].name)) {
+					break;
+				}
+			}
+			if (i == sizeof(algoName) / sizeof(struct id2name_t)) {
+				fprintf(stderr, "%s is not a valid algorithm name\n", token);
+				return -1;
+			}
+
+			if (bufflen == 0) {
+				fprintf(stderr, "Too many algorithms in list\n");
+				return -1;
+			}
+			*buff++ = (unsigned char)algoName[i].id;
+			bufflen--;
+			algocnt++;
+		}
+	} while(token != NULL);
+	return algocnt;
+}
+
+
+
 void describeKey(CK_ATTRIBUTE_PTR attr, int attrlen, char *buff, int bufflen) {
 	int rc;
 	CK_ULONG keysize;
@@ -857,7 +914,8 @@ void printKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_OBJECT_HAN
 	}
 
 	if (attr[7].pValue != NULL) {
-		bin2str(scr, sizeof(scr), attr[7].pValue, attr[7].ulValueLen);
+//		bin2str(scr, sizeof(scr), attr[7].pValue, attr[7].ulValueLen);
+		describeAlgorithms(attr[7].pValue, attr[7].ulValueLen, scr, sizeof(scr));
 		printf(",ALG:%s", scr);
 	}
 
@@ -1072,6 +1130,50 @@ int listKeyDomains(CK_FUNCTION_LIST_PTR p11, CK_SLOT_ID slotid, CK_SESSION_HANDL
 
 
 
+CK_RV addPrivateKeyAttributes(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ATTRIBUTE *keyTemplate, int *keyAttributes, CK_OBJECT_CLASS class)
+{
+	CK_RV rv;
+	CK_OBJECT_HANDLE hnd;
+
+	if (optLabel != NULL) {
+		rv = findObjectByLabelOrId(p11, session, class, &hnd);
+		if (rv == CKR_OK) {
+			fprintf(stderr, "A key with label '%s' does already exist\n", optLabel);
+			return CKR_FUNCTION_FAILED;
+		}
+
+		keyTemplate[*keyAttributes].type = CKA_LABEL;
+		keyTemplate[*keyAttributes].pValue = optLabel;
+		keyTemplate[*keyAttributes].ulValueLen = strlen(optLabel);
+		(*keyAttributes)++;
+	}
+
+	return CKR_OK;
+}
+
+
+
+CK_RV addPublicKeyAttributes(CK_ATTRIBUTE *keyTemplate, int *keyAttributes)
+{
+	if (optKeyUseCounter > 0) {
+		keyTemplate[*keyAttributes].type = CKA_SC_HSM_KEY_USE_COUNTER;
+		keyTemplate[*keyAttributes].pValue = &optKeyUseCounter;
+		keyTemplate[*keyAttributes].ulValueLen = sizeof(optKeyUseCounter);
+		(*keyAttributes)++;
+	}
+
+	if (optAlgorithms > 0) {
+		keyTemplate[*keyAttributes].type = CKA_SC_HSM_ALGORITHM_LIST;
+		keyTemplate[*keyAttributes].pValue = &optAlgoList;
+		keyTemplate[*keyAttributes].ulValueLen = optAlgorithms;
+		(*keyAttributes)++;
+	}
+
+	return CKR_OK;
+}
+
+
+
 CK_RV generateRSAKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ULONG size)
 {
 	CK_MECHANISM mech_genrsa = { CKM_RSA_PKCS_KEY_PAIR_GEN, 0, 0 };
@@ -1096,12 +1198,9 @@ CK_RV generateRSAKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ULO
 	CK_OBJECT_HANDLE hndPrivateKey, hndPublicKey;
 	CK_RV rc;
 
-	if (optLabel != NULL) {
-		privateKeyTemplate[privateKeyAttributes].type = CKA_LABEL;
-		privateKeyTemplate[privateKeyAttributes].pValue = optLabel;
-		privateKeyTemplate[privateKeyAttributes].ulValueLen = strlen(optLabel);
-		privateKeyAttributes++;
-	}
+	rc = addPrivateKeyAttributes(p11, session, privateKeyTemplate, &privateKeyAttributes, CKO_PRIVATE_KEY);
+	if (rc != CKR_OK)
+		return rc;
 
 	if (optKeyDomain > 0) {
 		kdid = (unsigned char)(optKeyDomain - 1);
@@ -1111,12 +1210,7 @@ CK_RV generateRSAKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ULO
 		publicKeyAttributes++;
 	}
 
-	if (optKeyUseCounter > 0) {
-		publicKeyTemplate[publicKeyAttributes].type = CKA_SC_HSM_KEY_USE_COUNTER;
-		publicKeyTemplate[publicKeyAttributes].pValue = &optKeyUseCounter;
-		publicKeyTemplate[publicKeyAttributes].ulValueLen = sizeof(optKeyUseCounter);
-		publicKeyAttributes++;
-	}
+	addPublicKeyAttributes(publicKeyTemplate, &publicKeyAttributes);
 
 	rc = p11->C_GenerateKeyPair(session, &mech_genrsa,
 		publicKeyTemplate, publicKeyAttributes,
@@ -1161,12 +1255,9 @@ CK_RV generateECKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, bytestr
 	memcpy(curve_oid + 2, curve->val, curve->len);
 	publicKeyTemplate[2].ulValueLen = curve->len + 2;
 
-	if (optLabel != NULL) {
-		privateKeyTemplate[privateKeyAttributes].type = CKA_LABEL;
-		privateKeyTemplate[privateKeyAttributes].pValue = optLabel;
-		privateKeyTemplate[privateKeyAttributes].ulValueLen = strlen(optLabel);
-		privateKeyAttributes++;
-	}
+	rc = addPrivateKeyAttributes(p11, session, privateKeyTemplate, &privateKeyAttributes, CKO_PRIVATE_KEY);
+	if (rc != CKR_OK)
+		return rc;
 
 	if (optKeyDomain > 0) {
 		kdid = (unsigned char)(optKeyDomain - 1);
@@ -1176,12 +1267,7 @@ CK_RV generateECKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, bytestr
 		publicKeyAttributes++;
 	}
 
-	if (optKeyUseCounter > 0) {
-		publicKeyTemplate[publicKeyAttributes].type = CKA_SC_HSM_KEY_USE_COUNTER;
-		publicKeyTemplate[publicKeyAttributes].pValue = &optKeyUseCounter;
-		publicKeyTemplate[publicKeyAttributes].ulValueLen = sizeof(optKeyUseCounter);
-		publicKeyAttributes++;
-	}
+	addPublicKeyAttributes(publicKeyTemplate, &publicKeyAttributes);
 
 	rc = p11->C_GenerateKeyPair(session, &mech_genecc,
 		publicKeyTemplate, publicKeyAttributes,
@@ -1203,32 +1289,27 @@ CK_RV generateAESKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ULO
 	CK_OBJECT_CLASS secretKeyClass = CKO_SECRET_KEY;
 	CK_MECHANISM mech_genaes = { CKM_AES_KEY_GEN, 0, 0 };
 	CK_ULONG len = 16;
-	CK_BYTE algoList[] = {0x10, 0x11, 0x18, 0x99};
 	CK_ATTRIBUTE secretKeyTemplate[20] = {
 			{ CKA_CLASS, &secretKeyClass, sizeof(secretKeyClass) },
 			{ CKA_TOKEN, &_true, sizeof(_true)},
 			{ CKA_PRIVATE, &_true, sizeof(_true)},
 			{ CKA_SENSITIVE, &_true, sizeof(_true)},
 			{ CKA_VALUE_LEN, &len, sizeof(len) },
-			{ CKA_SC_HSM_ALGORITHM_LIST, &algoList, sizeof(algoList)},
 			{ CKA_SIGN, &_true, sizeof(_true)},
 			{ CKA_DERIVE, &_true, sizeof(_true)},
 			{ CKA_ENCRYPT, &_true, sizeof(_true)},
 			{ CKA_DECRYPT, &_true, sizeof(_true)}
 	};
-	int secretKeyAttributes = 10;
+	int secretKeyAttributes = 9;
 	unsigned char kdid;
 	CK_OBJECT_HANDLE hndSecretKey;
 	CK_RV rc;
 
 	len = size >> 3;
 
-	if (optLabel != NULL) {
-		secretKeyTemplate[secretKeyAttributes].type = CKA_LABEL;
-		secretKeyTemplate[secretKeyAttributes].pValue = optLabel;
-		secretKeyTemplate[secretKeyAttributes].ulValueLen = strlen(optLabel);
-		secretKeyAttributes++;
-	}
+	rc = addPrivateKeyAttributes(p11, session, secretKeyTemplate, &secretKeyAttributes, CKO_SECRET_KEY);
+	if (rc != CKR_OK)
+		return rc;
 
 	if (optKeyDomain > 0) {
 		kdid = (unsigned char)(optKeyDomain - 1);
@@ -1238,12 +1319,7 @@ CK_RV generateAESKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session, CK_ULO
 		secretKeyAttributes++;
 	}
 
-	if (optKeyUseCounter > 0) {
-		secretKeyTemplate[secretKeyAttributes].type = CKA_SC_HSM_KEY_USE_COUNTER;
-		secretKeyTemplate[secretKeyAttributes].pValue = &optKeyUseCounter;
-		secretKeyTemplate[secretKeyAttributes].ulValueLen = sizeof(optKeyUseCounter);
-		secretKeyAttributes++;
-	}
+	addPublicKeyAttributes(secretKeyTemplate, &secretKeyAttributes);
 
 	rc = p11->C_GenerateKey(session, &mech_genaes, secretKeyTemplate, secretKeyAttributes, &hndSecretKey);
 
@@ -1319,6 +1395,58 @@ void deleteKey(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE session)
 
 	if (findObjectByLabelOrId(p11, session, CKO_SECRET_KEY, &hnd) == CKR_OK) {
 		p11->C_DestroyObject(session, hnd);
+	}
+}
+
+
+
+void decodeArgs(int argc, char **argv)
+{
+	int c, long_optind = 0;
+
+	while (1) {
+		c = getopt_long(argc, argv, "m:vLp:G:Dl:a:d:", options, &long_optind);
+		if (c == -1)
+			break;
+		if (c == '?') {
+			usage();
+			exit(0);
+		}
+		switch (c) {
+		case 'm':
+			p11libname = optarg;
+			break;
+		case 'v':
+			verbose++;
+			break;
+		case 'L':
+			optLogin = 1;
+			break;
+		case 'p':
+			optPIN = optarg;
+			break;
+		case 'l':
+			optLabel = optarg;
+			break;
+		case 'a':
+			optAlgorithms = parseAlgorithms(optarg, optAlgoList, sizeof(optAlgoList));
+			if (optAlgorithms < 0) {
+				exit(EXIT_FAILURE);
+			}
+			break;
+		case 'd':
+			optKeyDomain = atoi(optarg);
+			break;
+		case OPT_KEY_USE_COUNTER:
+			optKeyUseCounter = atoi(optarg);
+			break;
+		case 'G':
+			optKeyGen = optarg;
+			break;
+		case 'D':
+			optDeleteKey = 1;
+			break;
+		}
 	}
 }
 
