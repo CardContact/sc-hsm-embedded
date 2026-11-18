@@ -1158,7 +1158,7 @@ static int login(struct p11Slot_t *slot, int userType, CK_UTF8CHAR_PTR pin, CK_U
 		}
 	} else {
 
-		if ((slot->token->info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !pinlen && !pin) {
+		if ((slot->token->info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !pinlen) {
 #ifdef DEBUG
 			debug("Verify PIN using CKF_PROTECTED_AUTHENTICATION_PATH\n");
 #endif
