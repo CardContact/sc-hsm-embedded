@@ -2570,7 +2570,7 @@ static int sc_hsm_login(struct p11Slot_t *slot, int userType, CK_UTF8CHAR_PTR pi
 	} else {
 		retry = 2;			// Retry PIN verification if applet selection was lost
 		while (retry--) {
-			if ((slot->token->info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !pinlen && !pin) {
+			if ((slot->token->info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !pinlen) {
 				if (slot->token->loginURL[0]) {
 #ifdef RAM
 #ifdef DEBUG
